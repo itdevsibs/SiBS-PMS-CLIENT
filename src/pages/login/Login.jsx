@@ -111,7 +111,7 @@ const Login = () => {
     <section className="font-jakarta flex min-h-screen items-center justify-center overflow-x-hidden overflow-y-auto bg-[#1e4d7b] px-4 py-6 text-white sm:px-6 lg:px-8">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_22%_18%,rgba(240,90,40,0.24),transparent_28%),radial-gradient(circle_at_80%_82%,rgba(255,212,0,0.12),transparent_28%),linear-gradient(135deg,#1e4d7b_0%,#3b5f7f_48%,#714d52_100%)]" />
 
-      <div className="relative flex w-full max-w-[430px] flex-col items-center gap-3">
+      <div className="relative flex w-full max-w-[480px] flex-col items-center gap-3">
         <div className="w-full rounded-[22px] border border-white/25 bg-white/12 p-5 shadow-2xl shadow-sibs-primary-1/20 backdrop-blur-md sm:p-7 lg:p-8">
           <div className="mb-6 flex items-center justify-center gap-3 sm:mb-8">
             <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#f05a28] text-white sm:h-12 sm:w-12">
@@ -121,7 +121,7 @@ const Login = () => {
               <p className="m-0 text-2xl font-bold tracking-normal text-white sm:text-3xl">
                 SiBS <span className="text-[#ff7a30]">PMS</span>
               </p>
-              <p className="mt-1 max-w-[190px] text-[9px] font-semibold uppercase tracking-[0.2em] text-[#dbe8f3] sm:text-[10px]">
+              <p className="mt-1 whitespace-nowrap text-[9px] font-semibold uppercase tracking-[0.16em] text-[#dbe8f3] sm:text-[10px]">
                 Performance Management System
               </p>
             </div>
