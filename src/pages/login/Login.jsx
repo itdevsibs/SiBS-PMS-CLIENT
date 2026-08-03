@@ -1,6 +1,6 @@
 import { useState } from "react";
 import {
-  ArrowRight,
+  Activity,
   CheckCircle2,
   Eye,
   EyeOff,
@@ -13,179 +13,220 @@ import { useNavigate } from "react-router-dom";
 import AppModal from "@/components/ui/app-modal";
 import { Button } from "@/components/ui/button";
 import LoadingModal from "@/components/ui/loading-modal";
+import { saveAuthSession } from "@/lib/auth";
+import { loginUser } from "@/lib/axios/login";
+import { authenticateMockUser } from "@/lib/mock-users";
 
-const VALID_USERNAME = "admin";
-const VALID_PASSWORD = "admin123";
+const MIN_LOGIN_LOADING_MS = 900;
+
+function waitForMinimumLoading(startedAt) {
+  const elapsed = Date.now() - startedAt;
+  const remaining = Math.max(0, MIN_LOGIN_LOADING_MS - elapsed);
+
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, remaining);
+  });
+}
 
 const Login = () => {
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
-  const [username, setUsername] = useState(VALID_USERNAME);
-  const [password, setPassword] = useState(VALID_PASSWORD);
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
   const [loginStatus, setLoginStatus] = useState("idle");
+  const [loginMessage, setLoginMessage] = useState("");
 
   const isLoading = loginStatus === "loading";
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
+    setLoginMessage("");
     setLoginStatus("loading");
+    const loadingStartedAt = Date.now();
 
-    window.setTimeout(() => {
-      const isValid =
-        username.trim() === VALID_USERNAME && password === VALID_PASSWORD;
+    try {
+      const staticUser = authenticateMockUser({
+        username: username.trim(),
+        password,
+      });
 
-      if (!isValid) {
+      if (staticUser && staticUser.role !== "agent") {
+        await waitForMinimumLoading(loadingStartedAt);
+
+        saveAuthSession({
+          user: staticUser,
+        });
+        setLoginStatus("success");
+
+        window.setTimeout(() => {
+          navigate(staticUser.dashboardPath);
+        }, 900);
+
+        return;
+      }
+
+      const data = await loginUser({
+        username: username.trim(),
+        password,
+      });
+      const user = data?.user;
+
+      await waitForMinimumLoading(loadingStartedAt);
+
+      if (!data?.success || !user) {
+        setLoginMessage("Invalid username or password.");
         setLoginStatus("invalid");
         return;
       }
 
-      localStorage.setItem("pms-auth-user", VALID_USERNAME);
+      const authUser = {
+        ...user,
+        dashboardPath: user.dashboardPath || `/dashboard/${user.role}`,
+        roleLabel: user.roleLabel || "Agent",
+      };
+
+      saveAuthSession({
+        token: data.token,
+        user: authUser,
+      });
       setLoginStatus("success");
 
       window.setTimeout(() => {
-        navigate("/admin-dashboard");
+        navigate(authUser.dashboardPath);
       }, 900);
-    }, 2500);
+    } catch (error) {
+      const message =
+        error.response?.data?.message ||
+        error.message ||
+        "Check your username and password, then try again.";
+
+      await waitForMinimumLoading(loadingStartedAt);
+
+      setLoginMessage(message);
+      setLoginStatus("invalid");
+    }
   };
 
   return (
-    <section className="font-jakarta flex min-h-screen items-center justify-center bg-sibs-primary-3 px-4 py-8 text-sibs-primary-1">
-      <div className="grid w-full max-w-5xl overflow-hidden rounded-2xl border border-sibs-tertiary-9 bg-white shadow-sm md:grid-cols-[0.9fr_1.1fr]">
-        <aside className="hidden bg-sibs-primary-1 p-10 text-white md:flex md:flex-col md:justify-center">
-          <div className="max-w-sm">
-            <p className="m-0 text-sm font-semibold uppercase tracking-wide text-sibs-primary-2">
-              PMS
+    <section className="font-jakarta flex min-h-screen items-center justify-center overflow-x-hidden overflow-y-auto bg-[#1e4d7b] px-4 py-6 text-white sm:px-6 lg:px-8">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_22%_18%,rgba(240,90,40,0.24),transparent_28%),radial-gradient(circle_at_80%_82%,rgba(255,212,0,0.12),transparent_28%),linear-gradient(135deg,#1e4d7b_0%,#3b5f7f_48%,#714d52_100%)]" />
+
+      <div className="relative flex w-full max-w-[430px] flex-col items-center gap-3">
+        <div className="w-full rounded-[22px] border border-white/25 bg-white/12 p-5 shadow-2xl shadow-sibs-primary-1/20 backdrop-blur-md sm:p-7 lg:p-8">
+          <div className="mb-6 flex items-center justify-center gap-3 sm:mb-8">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#f05a28] text-white sm:h-12 sm:w-12">
+              <Activity className="h-6 w-6 sm:h-7 sm:w-7" aria-hidden="true" />
+            </div>
+            <div className="min-w-0 leading-none">
+              <p className="m-0 text-2xl font-bold tracking-normal text-white sm:text-3xl">
+                SiBS <span className="text-[#ff7a30]">PMS</span>
+              </p>
+              <p className="mt-1 max-w-[190px] text-[9px] font-semibold uppercase tracking-[0.2em] text-[#dbe8f3] sm:text-[10px]">
+                Performance Management System
+              </p>
+            </div>
+          </div>
+
+          <form className="space-y-4 sm:space-y-5" onSubmit={handleSubmit}>
+            <div>
+              <label
+                htmlFor="username"
+                className="mb-2 block text-sm font-semibold text-[#edf5fb]"
+              >
+                Username
+              </label>
+              <div className="relative">
+                <User
+                  className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#dbe8f3]"
+                  aria-hidden="true"
+                />
+                <input
+                  id="username"
+                  name="username"
+                  type="text"
+                  autoComplete="username"
+                  value={username}
+                  onChange={(event) => setUsername(event.target.value)}
+                  className="h-11 w-full rounded-lg border border-white/30 bg-white/15 px-4 pl-11 text-sm text-white outline-none transition placeholder:text-white/45 focus:border-[#ff7a30] focus:bg-white/20 focus:shadow-[0_0_0_4px_rgba(240,90,40,0.16)] disabled:cursor-not-allowed disabled:opacity-60 sm:h-12"
+                  disabled={isLoading}
+                />
+              </div>
+            </div>
+
+            <div>
+              <label
+                htmlFor="password"
+                className="mb-2 block text-sm font-semibold text-[#edf5fb]"
+              >
+                Password
+              </label>
+              <div className="relative">
+                <Lock
+                  className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#dbe8f3]"
+                  aria-hidden="true"
+                />
+                <input
+                  id="password"
+                  name="password"
+                  type={showPassword ? "text" : "password"}
+                  autoComplete="current-password"
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  className="h-11 w-full rounded-lg border border-white/30 bg-white/15 px-4 pl-11 pr-11 text-sm text-white outline-none transition placeholder:text-white/45 focus:border-[#ff7a30] focus:bg-white/20 focus:shadow-[0_0_0_4px_rgba(240,90,40,0.16)] disabled:cursor-not-allowed disabled:opacity-60 sm:h-12"
+                  disabled={isLoading}
+                />
+                <button
+                  type="button"
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                  onClick={() => setShowPassword((value) => !value)}
+                  className="absolute right-3 top-1/2 inline-flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-lg border-0 bg-transparent text-[#dbe8f3] transition hover:bg-white/10 hover:text-white"
+                  disabled={isLoading}
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4" aria-hidden="true" />
+                  ) : (
+                    <Eye className="h-4 w-4" aria-hidden="true" />
+                  )}
+                </button>
+              </div>
+            </div>
+
+            <Button
+              type="submit"
+              size="lg"
+              className="mt-5 h-11 w-full rounded-lg bg-[#f05a28] text-base font-bold text-white shadow-sm hover:bg-[#ff7a30] sm:mt-6 sm:h-12"
+              disabled={isLoading}
+            >
+              {isLoading ? "Signing in..." : "Login"}
+            </Button>
+          </form>
+        </div>
+
+        <aside className="w-full max-w-[390px] rounded-xl border border-white/20 bg-white/10 p-3 text-[10px] leading-4 text-[#dbe8f3] shadow-lg shadow-sibs-primary-1/10 backdrop-blur-md sm:text-[11px]">
+          <p className="m-0 text-[11px] font-bold uppercase tracking-[0.16em] text-white sm:text-xs">
+            Test users
+          </p>
+          <div className="mt-2 grid grid-cols-1 gap-x-3 gap-y-1 sm:grid-cols-2">
+            <p className="m-0 break-words">
+              <span className="font-bold text-white">Work Force Management</span> = wfm/wfm123
             </p>
-            <p className="mt-3 mb-0 text-3xl font-bold leading-tight">
-              Performance Management System
+            <p className="m-0 break-words">
+              <span className="font-bold text-white">Agents</span> = employee code/123
             </p>
-            <p className="mt-5 mb-0 inline-flex rounded-full bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-sibs-primary-3">
-              by SIBS
+            <p className="m-0 break-words">
+              <span className="font-bold text-white">Operations Management</span> = om/om123
+            </p>
+            <p className="m-0 break-words">
+              <span className="font-bold text-white">Team Leader</span> = tl/tl123
+            </p>
+            <p className="m-0 break-words">
+              <span className="font-bold text-white">Client</span> = client/client123
+            </p>
+            <p className="m-0 break-words">
+              <span className="font-bold text-white">Board of Directors</span> = bod/bod123
             </p>
           </div>
         </aside>
-
-        <div className="flex items-center justify-center p-6 sm:p-10">
-          <div className="w-full max-w-md">
-            <div className="mb-8 md:hidden">
-              <p className="m-0 text-sm font-semibold uppercase tracking-wide text-sibs-primary-2">
-                PMS
-              </p>
-              <p className="m-0 text-sm text-sibs-tertiary-5">
-                Performance Management System
-              </p>
-              <p className="mt-3 mb-0 text-xs font-semibold uppercase tracking-wide text-sibs-primary-1">
-                by SIBS
-              </p>
-            </div>
-
-            <div className="mb-8">
-              <p className="m-0 text-2xl font-bold text-sibs-primary-1">
-                Welcome back
-              </p>
-              <p className="mt-2 text-sm text-sibs-tertiary-5">
-                Enter your credentials to continue.
-              </p>
-            </div>
-
-            <form className="space-y-5" onSubmit={handleSubmit}>
-              <div>
-                <label
-                  htmlFor="username"
-                  className="mb-2 block text-sm font-semibold text-sibs-primary-1"
-                >
-                  Username
-                </label>
-                <div className="relative">
-                  <User
-                    className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-sibs-primary-1"
-                    aria-hidden="true"
-                  />
-                  <input
-                    id="username"
-                    name="username"
-                    type="text"
-                    autoComplete="username"
-                    placeholder="Enter username"
-                    value={username}
-                    onChange={(event) => setUsername(event.target.value)}
-                    className="form-input pl-11"
-                    disabled={isLoading}
-                  />
-                </div>
-              </div>
-
-              <div>
-                <div className="mb-2 flex items-center justify-between gap-3">
-                  <label
-                    htmlFor="password"
-                    className="block text-sm font-semibold text-sibs-primary-1"
-                  >
-                    Password
-                  </label>
-                  <button
-                    type="button"
-                    className="rounded-md border-0 bg-transparent px-2 py-1 text-xs font-semibold text-sibs-tertiary-5 hover:bg-sibs-tertiary-4 hover:text-white"
-                  >
-                    Forgot password?
-                  </button>
-                </div>
-                <div className="relative">
-                  <Lock
-                    className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-sibs-primary-1"
-                    aria-hidden="true"
-                  />
-                  <input
-                    id="password"
-                    name="password"
-                    type={showPassword ? "text" : "password"}
-                    autoComplete="current-password"
-                    placeholder="Enter your password"
-                    value={password}
-                    onChange={(event) => setPassword(event.target.value)}
-                    className="form-input pl-11 pr-11"
-                    disabled={isLoading}
-                  />
-                  <button
-                    type="button"
-                    aria-label={showPassword ? "Hide password" : "Show password"}
-                    onClick={() => setShowPassword((value) => !value)}
-                    className="absolute right-3 top-1/2 inline-flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-lg border-0 bg-transparent text-sibs-primary-1 hover:bg-sibs-tertiary-4 hover:text-white"
-                    disabled={isLoading}
-                  >
-                    {showPassword ? (
-                      <EyeOff className="h-4 w-4" aria-hidden="true" />
-                    ) : (
-                      <Eye className="h-4 w-4" aria-hidden="true" />
-                    )}
-                  </button>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between gap-4">
-                <label className="flex min-w-0 items-center gap-2 text-sm text-sibs-tertiary-5">
-                  <input
-                    type="checkbox"
-                    className="h-4 w-4 rounded border-sibs-tertiary-8 text-sibs-primary-1"
-                  />
-                  <span>Remember me</span>
-                </label>
-              </div>
-
-              <Button
-                type="submit"
-                size="lg"
-                className="h-11 w-full rounded-xl bg-sibs-primary-1 text-white hover:bg-sibs-tertiary-4"
-                disabled={isLoading}
-              >
-                {isLoading ? "Signing in..." : "Sign in"}
-                {!isLoading && (
-                  <ArrowRight className="h-4 w-4" aria-hidden="true" />
-                )}
-              </Button>
-            </form>
-          </div>
-        </div>
       </div>
 
       <AppModal
@@ -217,7 +258,7 @@ const Login = () => {
               Invalid login
             </p>
             <p className="m-0 text-sm text-sibs-tertiary-5">
-              Check your username and password, then try again.
+              {loginMessage || "Check your username and password, then try again."}
             </p>
             <Button
               type="button"

@@ -11,7 +11,8 @@ const AdminSidebar = ({
   modules,
   onLogoutClick,
   onMobileClose,
-  userName = "admin",
+  userName = "User",
+  userRole = "Signed in",
 }) => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -31,53 +32,52 @@ const AdminSidebar = ({
     <>
       <div
         className={`sibs-sidebar-brand-row ${
-          collapsed
-            ? "justify-center px-4"
-            : "items-start gap-3 px-4 py-5"
+          collapsed ? "collapsed" : "items-center gap-2 py-5"
         }`}
       >
         <div
-          className={`sibs-sidebar-brand text-white ${
-            collapsed ? "justify-center" : "items-start"
+          className={`sibs-sidebar-brand ${
+            collapsed ? "justify-center" : "items-center"
           }`}
         >
+          <span className="sibs-sidebar-logo-mark">S</span>
           {!collapsed && (
-            <span className="min-w-0 flex-1 border-l-2 border-sibs-primary-2 pl-3 leading-tight">
-              <span className="block max-w-[165px] whitespace-normal font-sans text-[15px] font-bold leading-5">
-                Performance Management System
+            <span className="sibs-sidebar-brand-copy">
+              <span className="sibs-sidebar-brand-title">
+                SiBS <span className="text-sibs-primary-2">PMS</span>
               </span>
-              <span className="mt-1 block text-xs font-semibold uppercase tracking-wide text-sibs-primary-2">
-                by SIBS
+              <span className="sibs-sidebar-brand-subtitle">
+                <span>Performance Management</span>
+                <span>System</span>
               </span>
-            </span>
-          )}
-          {collapsed && (
-            <span className="font-sans text-sm font-bold text-sibs-primary-2">
-              PMS
             </span>
           )}
         </div>
 
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon-sm"
-          aria-label={mobile ? "Close sidebar" : collapsed ? "Open sidebar" : "Close sidebar"}
-          onClick={mobile ? onMobileClose : handleSidebarToggle}
-          className="sibs-sidebar-toggle text-white hover:bg-sibs-tertiary-4 hover:text-white"
-        >
-          {collapsed ? (
-            <ChevronRight className="h-4 w-4" aria-hidden="true" />
-          ) : (
-            <ChevronLeft className="h-4 w-4" aria-hidden="true" />
-          )}
-        </Button>
+        {!mobile && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            aria-label={collapsed ? "Open sidebar" : "Close sidebar"}
+            onClick={handleSidebarToggle}
+            className={`sibs-sidebar-toggle text-sibs-primary-1 hover:text-white ${
+              collapsed ? "collapsed" : ""
+            }`}
+          >
+            {collapsed ? (
+              <ChevronRight className="h-4 w-4" aria-hidden="true" />
+            ) : (
+              <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+            )}
+          </Button>
+        )}
       </div>
 
-      <div className={`sibs-sidebar-scroll py-3 ${collapsed ? "px-3" : "px-4"}`}>
+      <div className={`sibs-sidebar-scroll py-3 ${collapsed ? "px-3" : "px-3"}`}>
         <div className="sibs-sidebar-section">
           <p
-            className={`sibs-sidebar-section-title mb-3 text-sibs-primary-3 ${
+            className={`sibs-sidebar-section-title mb-3 ${
               collapsed ? "collapsed" : ""
             }`}
           >
@@ -102,16 +102,22 @@ const AdminSidebar = ({
                       onMobileClose?.();
                     }
                   }}
-                  className={`min-h-10 w-full justify-start gap-3 rounded-lg border-0 px-3 text-left text-sibs-primary-3 hover:bg-sibs-tertiary-4 hover:text-white ${
-                    isActive ? "bg-sibs-tertiary-4 font-semibold text-white" : ""
-                  } ${collapsed ? "h-10 min-h-10 justify-center px-0" : ""}`}
+                  className={`h-auto min-h-10 w-full justify-start gap-3 rounded-lg border-0 px-3 py-2.5 text-left font-medium text-[#dbe8f3] hover:bg-[#f05a28] hover:text-white ${
+                    isActive ? "bg-sibs-primary-2 text-white" : ""
+                  } ${mobile ? "mobile" : ""} ${
+                    collapsed ? "h-10 min-h-10 justify-center px-0" : ""
+                  }`}
                 >
                   <Icon
                     className="h-4 w-4 shrink-0"
                     aria-hidden="true"
                   />
                   {!collapsed && (
-                    <span className="min-w-0 flex-1 truncate text-left">
+                    <span
+                      className={`min-w-0 flex-1 text-left leading-5 ${
+                        mobile ? "whitespace-normal break-words" : "whitespace-nowrap"
+                      }`}
+                    >
                       {item.name}
                     </span>
                   )}
@@ -124,20 +130,24 @@ const AdminSidebar = ({
 
       <div className="border-t border-white/10 p-4">
         <div
-          className={`flex items-center ${
+          className={`flex ${
             collapsed
-              ? "justify-center"
-              : "justify-between gap-2 rounded-xl bg-white/10 px-3 py-2"
+              ? "items-center justify-center"
+              : "flex-col gap-3 rounded-xl bg-white/10 px-3 py-3"
           }`}
         >
           {!collapsed && (
-            <div className="flex min-w-0 items-center gap-3">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-sibs-primary-2 text-sm font-bold text-white">
+            <div className="flex w-full min-w-0 items-center gap-3">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#f05a28] text-sm font-semibold text-white">
                 {userName.charAt(0).toUpperCase()}
               </div>
               <div className="min-w-0">
-                <p className="m-0 text-sm font-bold text-white">{userName}</p>
-                <p className="m-0 text-xs text-sibs-primary-3">signed-in</p>
+                <p className="m-0 truncate text-sm font-bold leading-4 text-white">
+                  {userName}
+                </p>
+                <p className="m-0 truncate text-xs leading-4 text-[#b8ccdd]">
+                  {userRole}
+                </p>
               </div>
             </div>
           )}
@@ -149,9 +159,12 @@ const AdminSidebar = ({
             onClick={onLogoutClick}
             aria-label="Logout"
             title="Logout"
-            className="h-9 w-9 rounded-lg border-white/20 bg-white/10 text-white hover:bg-sibs-tertiary-4 hover:text-white"
+            className={`rounded-lg border-white/20 bg-white/10 text-white hover:bg-[#f05a28] hover:text-white ${
+              collapsed ? "h-9 w-9" : "h-9 w-full gap-2"
+            }`}
           >
             <LogOut className="h-4 w-4" aria-hidden="true" />
+            {!collapsed && <span className="text-sm font-bold">Logout</span>}
           </Button>
         </div>
       </div>
@@ -161,7 +174,7 @@ const AdminSidebar = ({
   return (
     <>
       <aside
-        className={`sibs-sidebar m-3 hidden h-[calc(100vh-1.5rem)] rounded-2xl border-sibs-primary-1 bg-sibs-primary-1 text-white shadow-sm md:flex ${
+        className={`sibs-sidebar hidden border-r border-[#315f85] bg-[#1e4d7b] text-white shadow-sm md:flex ${
           isCollapsed ? "collapsed" : ""
         }`}
       >
@@ -178,7 +191,7 @@ const AdminSidebar = ({
       )}
 
       <aside
-        className={`sibs-sidebar mobile z-[100] !w-[280px] max-w-[calc(100vw-2rem)] rounded-r-2xl border-sibs-primary-1 bg-sibs-primary-1 text-white shadow-2xl sm:!w-[320px] md:hidden ${
+        className={`sibs-sidebar mobile z-[100] !w-[280px] max-w-[calc(100vw-2rem)] border-r border-[#315f85] bg-[#1e4d7b] text-white shadow-2xl sm:!w-[320px] md:hidden ${
           isMobileOpen ? "mobile-open" : ""
         }`}
       >

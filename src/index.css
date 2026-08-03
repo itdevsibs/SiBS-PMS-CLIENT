@@ -132,7 +132,7 @@
   body {
     margin: 0;
     overflow-x: hidden;
-    background: var(--sibs-tertiary-10);
+    background: #eef3f7;
     color: var(--sibs-primary-1);
     font-family: "Plus Jakarta Sans", system-ui, sans-serif;
     @apply bg-background text-foreground;
@@ -531,7 +531,7 @@
   }
 
   .sibs-card {
-    @apply rounded-2xl border bg-white;
+    @apply rounded-2xl border bg-[#f8fbfd];
     border-color: rgba(190, 203, 218, 0.55);
     box-shadow: 0 8px 22px rgba(4, 44, 81, 0.04);
   }
@@ -642,7 +642,7 @@
 ========================= */
 @layer components {
   .app-header {
-    @apply relative z-[90] shrink-0 bg-sibs-tertiary-10;
+    @apply relative z-[90] shrink-0 bg-[#eef3f7];
   }
 
   .app-header-inner {
@@ -650,7 +650,7 @@
   }
 
   .app-header-line {
-    @apply h-px w-full bg-sibs-tertiary-8;
+    @apply h-px w-full bg-[#c7d5e1];
   }
 
   .app-header-notification {
@@ -677,7 +677,7 @@
 
   @media (max-width: 640px) {
     .app-header-inner {
-      @apply gap-3 py-0 pl-14 pr-4;
+      @apply h-auto min-h-[73px] gap-3 px-4 py-3;
     }
 
     .app-header-divider {
@@ -695,7 +695,7 @@
 ========================= */
 @layer components {
   .sibs-sidebar {
-    @apply relative flex h-screen min-h-0 w-64 shrink-0 flex-col overflow-hidden border-r border-sibs-tertiary-9 bg-sibs-tertiary-10 transition-all duration-300;
+    @apply relative z-[100] flex h-screen min-h-0 w-[340px] shrink-0 flex-col overflow-visible transition-all duration-300;
   }
 
   .sibs-sidebar.collapsed {
@@ -703,7 +703,7 @@
   }
 
   .sibs-sidebar.mobile {
-    @apply fixed inset-y-0 left-0 z-50 w-[280px] -translate-x-full shadow-2xl;
+    @apply fixed inset-y-0 left-0 z-50 w-[280px] overflow-hidden -translate-x-full shadow-2xl;
   }
 
   .sibs-sidebar.mobile.mobile-open {
@@ -719,11 +719,43 @@
   }
 
   .sibs-sidebar-brand-row {
-    @apply flex h-[73px] min-h-[73px] shrink-0 items-center justify-between gap-2 px-4;
+    @apply relative flex h-[86px] min-h-[86px] shrink-0 items-center justify-between border-b border-white/10 py-5 pl-4 pr-8;
+  }
+
+  .sibs-sidebar-brand-row.collapsed {
+    @apply justify-center px-0;
   }
 
   .sibs-sidebar-brand {
-    @apply flex min-w-0 items-center gap-2 text-xl font-extrabold leading-none text-sibs-primary-1;
+    @apply flex min-w-0 flex-1 items-center gap-3 text-white;
+  }
+
+  .sibs-sidebar-logo-mark {
+    @apply relative flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] bg-[#f05a28] text-lg font-semibold text-white;
+  }
+
+  .sibs-sidebar-logo-mark::after {
+    content: "";
+    position: absolute;
+    right: -3px;
+    top: -3px;
+    width: 11px;
+    height: 11px;
+    border-radius: 9999px;
+    border: 2px solid #1e4d7b;
+    background: #ffffff;
+  }
+
+  .sibs-sidebar-brand-copy {
+    @apply flex min-w-0 flex-1 flex-col justify-center leading-none;
+  }
+
+  .sibs-sidebar-brand-title {
+    @apply block whitespace-nowrap font-sans text-[19px] font-bold leading-[20px] tracking-normal text-white;
+  }
+
+  .sibs-sidebar-brand-subtitle {
+    @apply mt-[2px] flex flex-col text-[9px] font-semibold uppercase leading-[9px] tracking-[0.12em] text-[#b8ccdd];
   }
 
   .sibs-sidebar-logo-dot {
@@ -735,7 +767,25 @@
   }
 
   .sibs-sidebar-toggle {
-    @apply inline-flex h-[30px] w-[30px] shrink-0 cursor-pointer items-center justify-center rounded-lg border-0 bg-transparent text-sibs-primary-1 transition hover:bg-sibs-tertiary-9;
+    position: absolute;
+    right: -13px;
+    top: 30px;
+    z-index: 5;
+    width: 26px;
+    height: 26px;
+    border: 1px solid rgba(255, 255, 255, 0.75);
+    border-radius: 9999px;
+    background: #ffffff !important;
+    box-shadow: 0 8px 18px rgba(4, 44, 81, 0.22);
+    @apply inline-flex shrink-0 cursor-pointer items-center justify-center transition;
+  }
+
+  .sibs-sidebar-toggle:hover {
+    background: var(--sibs-primary-2) !important;
+  }
+
+  .sibs-sidebar-toggle.collapsed {
+    top: 28px;
   }
 
   .sibs-sidebar-loading {
@@ -748,9 +798,9 @@
   }
 
   .sibs-sidebar-scroll {
-    @apply min-h-0 flex-1 overflow-y-auto overflow-x-hidden py-3.5 pl-4 pr-2.5;
+    @apply min-h-0 flex-1 overflow-y-auto overflow-x-hidden py-3.5;
     scrollbar-width: thin;
-    scrollbar-color: var(--sibs-tertiary-8) transparent;
+    scrollbar-color: #527da1 transparent;
   }
 
   .sibs-sidebar-scroll::-webkit-scrollbar {
@@ -763,7 +813,7 @@
 
   .sibs-sidebar-scroll::-webkit-scrollbar-thumb {
     border-radius: 9999px;
-    background: var(--sibs-tertiary-8);
+    background: #527da1;
   }
 
   .sibs-sidebar-section {
@@ -771,7 +821,7 @@
   }
 
   .sibs-sidebar-section-title {
-    @apply mb-2 mt-0 text-xs font-medium uppercase leading-tight text-sibs-tertiary-5;
+    @apply mb-2 mt-0 px-3 text-[11px] font-extrabold uppercase leading-tight tracking-[0.14em] text-[#b8ccdd];
   }
 
   .sibs-sidebar-section-title.collapsed {
@@ -779,7 +829,7 @@
   }
 
   .sibs-sidebar-nav {
-    @apply flex flex-col gap-1;
+    @apply flex flex-col gap-1.5;
   }
 
   .sibs-sidebar-link {

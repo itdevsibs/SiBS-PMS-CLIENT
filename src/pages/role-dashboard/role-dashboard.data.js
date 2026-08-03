@@ -1,0 +1,130 @@
+export const dashboardContent = {
+  wfm: {
+    section: "File Operations",
+    summary: [
+      { label: "Files Downloaded", value: "42", note: "from client tools" },
+      { label: "Pending Uploads", value: "6", note: "queued for dumping" },
+      { label: "Successful Dumps", value: "35", note: "validated records" },
+      { label: "Failed Files", value: "1", note: "needs review" },
+    ],
+    tableTitle: "Client Tool File Dumping",
+    columns: [
+      "File Name",
+      "Client Tool",
+      "Account",
+      "File Type",
+      "Date Covered",
+      "Downloaded By",
+      "Status",
+      "Records",
+      "Failed Rows",
+      "Remarks",
+    ],
+    rows: [
+      ["acme_kpi_0730.csv", "Client Portal", "ACME", "KPI", "Jul 30, 2026", "WFM", "Dumped", "1,248", "0", "Ready for reporting"],
+      ["nova_attendance.xlsx", "WFM Tool", "NovaTel", "Attendance", "Jul 29, 2026", "WFM", "Pending", "864", "-", "For validation"],
+      ["orbit_quality.csv", "QA Export", "OrbitCX", "Quality", "Jul 29, 2026", "WFM", "Failed", "520", "12", "Invalid employee IDs"],
+    ],
+  },
+  agent: {
+    section: "My Performance",
+    summary: [
+      { label: "Overall Score", value: "91%", note: "current month" },
+      { label: "Quality Score", value: "94%", note: "target 90%" },
+      { label: "Productivity", value: "88%", note: "target 85%" },
+      { label: "Attendance", value: "96%", note: "target 95%" },
+    ],
+    tableTitle: "Personal KPI Scorecard",
+    columns: ["KPI", "Target", "Actual", "Score", "Weight", "Status", "Month", "Remarks"],
+    rows: [
+      ["Quality", "90%", "94%", "104%", "35%", "Passed", "Jul 2026", "Above quality target"],
+      ["Productivity", "85%", "88%", "103%", "30%", "Passed", "Jul 2026", "Stable output"],
+      ["Attendance", "95%", "96%", "101%", "20%", "Passed", "Jul 2026", "No critical absence"],
+      ["Compliance", "98%", "97%", "99%", "15%", "Watch", "Jul 2026", "Review checklist misses"],
+    ],
+    notes: [
+      "Maintain quality calibration consistency.",
+      "Improve checklist compliance before the next review cycle.",
+      "Eligible for recognition if score remains above 90%.",
+    ],
+  },
+  om: {
+    section: "Account Performance",
+    filterLabel: "Account",
+    filters: ["ACME", "NovaTel", "OrbitCX"],
+    summary: [
+      { label: "Selected Account Score", value: "89%", note: "weighted KPI" },
+      { label: "Total Agents", value: "84", note: "active headcount" },
+      { label: "Passing Agents", value: "71", note: "above target" },
+      { label: "For Coaching", value: "13", note: "below threshold" },
+    ],
+    tableTitle: "Agent Performance by Account",
+    columns: ["Agent", "Employee ID", "Quality", "Productivity", "Attendance", "Compliance", "Overall", "Status", "Remarks"],
+    rows: [
+      ["Maria Santos", "EMP-1042", "96%", "91%", "98%", "97%", "95%", "Passed", "Top performer"],
+      ["John Reyes", "EMP-1148", "88%", "86%", "94%", "93%", "90%", "Passed", "Monitor productivity"],
+      ["Paolo Lim", "EMP-1280", "78%", "82%", "91%", "88%", "84%", "Coaching", "Quality improvement plan"],
+    ],
+  },
+  bod: {
+    section: "Executive Overview",
+    summary: [
+      { label: "Company Score", value: "90%", note: "all accounts" },
+      { label: "Total Accounts", value: "8", note: "active clients" },
+      { label: "Best Account", value: "ACME", note: "95% overall" },
+      { label: "Below Target", value: "2", note: "risk watchlist" },
+    ],
+    tableTitle: "All Account KPI Performance",
+    columns: ["Account", "Agents", "Average", "Quality", "Productivity", "Attendance", "Compliance", "KPI Status", "Trend", "Risk"],
+    rows: [
+      ["ACME", "84", "95%", "96%", "93%", "98%", "94%", "Green", "+4%", "Low"],
+      ["NovaTel", "63", "89%", "90%", "87%", "93%", "86%", "Amber", "+1%", "Medium"],
+      ["OrbitCX", "51", "82%", "79%", "84%", "91%", "80%", "Red", "-3%", "High"],
+    ],
+  },
+  tl: {
+    section: "Team Performance",
+    summary: [
+      { label: "Team Score", value: "88%", note: "assigned account" },
+      { label: "Team Members", value: "18", note: "active agents" },
+      { label: "Passing Agents", value: "14", note: "within target" },
+      { label: "For Coaching", value: "4", note: "action required" },
+      { label: "Attendance Issues", value: "3", note: "this cycle" },
+    ],
+    tableTitle: "Team Agent Scorecard",
+    columns: ["Agent", "Employee ID", "Quality", "Productivity", "Attendance", "Compliance", "Overall", "Status", "Coaching", "Last Coaching"],
+    rows: [
+      ["Alyssa Cruz", "EMP-2011", "92%", "89%", "96%", "95%", "93%", "Passed", "No", "Jul 12, 2026"],
+      ["Benito Ramos", "EMP-2034", "84%", "86%", "90%", "88%", "87%", "Watch", "Yes", "Jul 22, 2026"],
+      ["Carla Mendez", "EMP-2098", "76%", "80%", "92%", "85%", "82%", "Coaching", "Yes", "Jul 26, 2026"],
+    ],
+  },
+  client: {
+    section: "Client KPI View",
+    summary: [
+      { label: "Account Score", value: "91%", note: "current cycle" },
+      { label: "SLA Compliance", value: "97%", note: "target 95%" },
+      { label: "Quality Avg.", value: "93%", note: "all agents" },
+      { label: "Productivity Avg.", value: "88%", note: "all agents" },
+      { label: "Below Target", value: "5", note: "agents" },
+    ],
+    overall: {
+      title: "Overall Account KPI",
+      columns: ["Account", "KPI", "Target", "Actual", "Score", "SLA Status", "Period", "Remarks"],
+      rows: [
+        ["ACME", "Quality", "90%", "93%", "103%", "Met", "Jul 2026", "Above client target"],
+        ["ACME", "Productivity", "85%", "88%", "104%", "Met", "Jul 2026", "Stable delivery"],
+        ["ACME", "Attendance", "95%", "97%", "102%", "Met", "Jul 2026", "Healthy staffing"],
+      ],
+    },
+    perAgent: {
+      title: "Per-Agent KPI",
+      columns: ["Account", "Agent", "KPI", "Target", "Actual", "Score", "SLA Status", "Period", "Remarks"],
+      rows: [
+        ["ACME", "Maria Santos", "Quality", "90%", "96%", "107%", "Met", "Jul 2026", "Excellent"],
+        ["ACME", "John Reyes", "Productivity", "85%", "86%", "101%", "Met", "Jul 2026", "On track"],
+        ["ACME", "Paolo Lim", "Quality", "90%", "78%", "87%", "Missed", "Jul 2026", "For coaching"],
+      ],
+    },
+  },
+};
