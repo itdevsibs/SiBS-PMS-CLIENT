@@ -31,8 +31,6 @@ import { clearAuthSession, getAuthUser, isAuthenticated } from "@/lib/auth";
 import SuperAdminDashboard from "@/pages/super-admin/SuperAdminDashboard";
 import SuperAdminHistoryLogs from "@/pages/super-admin/SuperAdminHistoryLogs";
 
-import { dashboardContent } from "./dashboard.data";
-
 const roleIcons = {
   superadmin: ShieldCheck,
   wfm: FolderDown,
@@ -42,103 +40,6 @@ const roleIcons = {
   client: LineChart,
   bod: BarChart3,
 };
-
-function StatusPill({ value }) {
-  const status = String(value || "").toLowerCase();
-  const className = status.includes("fail") || status.includes("red") || status.includes("missed") || status.includes("coaching")
-    ? "bg-red-100 text-red-700"
-    : status.includes("watch") || status.includes("amber") || status.includes("pending")
-      ? "bg-amber-100 text-amber-700"
-      : "bg-green-100 text-green-700";
-
-  return (
-    <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-bold ${className}`}>
-      {value}
-    </span>
-  );
-}
-
-function SummaryCards({ items }) {
-  return (
-    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-      {items.map((item) => (
-        <div key={item.label} className="sibs-card sibs-page-card-in p-4">
-          <p className="m-0 text-sm font-semibold text-sibs-tertiary-5">
-            {item.label}
-          </p>
-          <p className="mt-2 mb-0 text-2xl font-bold text-sibs-primary-1">
-            {item.value}
-          </p>
-          <p className="mt-3 mb-0 border-t border-sibs-tertiary-10 pt-3 text-sm text-sibs-tertiary-5">
-            {item.note}
-          </p>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function ReportTable({ columns, rows, title }) {
-  return (
-    <div className="sibs-card sibs-page-card-in mt-5 overflow-hidden">
-      <div className="border-b border-sibs-tertiary-10 px-5 py-4">
-        <p className="m-0 text-base font-bold text-sibs-primary-1">{title}</p>
-        <p className="mt-1 mb-0 text-sm text-sibs-tertiary-5">
-          Mock reporting structure for future API integration.
-        </p>
-      </div>
-
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[920px] border-collapse text-left text-sm">
-          <thead className="bg-[#eef3f7] text-xs uppercase text-sibs-tertiary-5">
-            <tr>
-              {columns.map((column) => (
-                <th key={column} className="px-5 py-3 font-bold">
-                  {column}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-sibs-tertiary-10">
-            {rows.map((row, rowIndex) => (
-              <tr key={`${row[0]}-${rowIndex}`} className="bg-[#f8fbfd]">
-                {row.map((cell, cellIndex) => {
-                  const column = columns[cellIndex] || "";
-                  const isStatusColumn = /status|risk/i.test(column);
-
-                  return (
-                    <td key={`${column}-${cell}`} className="px-5 py-4 text-sibs-tertiary-5">
-                      {isStatusColumn ? <StatusPill value={cell} /> : cell}
-                    </td>
-                  );
-                })}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
-
-function AgentNotes({ notes }) {
-  if (!notes?.length) return null;
-
-  return (
-    <div className="sibs-card sibs-page-card-in mt-5 p-5">
-      <p className="m-0 text-base font-bold text-sibs-primary-1">
-        Coaching Notes
-      </p>
-      <div className="mt-4 grid gap-3 md:grid-cols-3">
-        {notes.map((note) => (
-          <div key={note} className="rounded-xl border border-sibs-tertiary-10 bg-[#eef3f7] p-4 text-sm text-sibs-tertiary-5">
-            {note}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
 
 const wfmRawDataColumns = [
   "Employee ID",
@@ -3172,22 +3073,31 @@ function WfmDashboardContent() {
   );
 }
 
-const DashboardPage = () => {
+const DashboardLayout = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
-  const [selectedAccount, setSelectedAccount] = useState("ACME");
-  const [clientView, setClientView] = useState("overall");
   const [authUser] = useState(() => getAuthUser());
 
   const role = authUser?.role || "agent";
-  const content = dashboardContent[role] || dashboardContent.agent;
   const Icon = roleIcons[role] || Gauge;
   const isSuperAdminHistoryLogs =
     role === "superadmin" &&
     location.pathname.endsWith("/history-logs");
+  const isUnfinalizedInterface = ["agent", "bod", "client", "om", "tl"].includes(role);
+  const unfinishedDashboardComponents = useMemo(
+    () => ({
+      agent: AgentDashboardContent,
+      bod: BodDashboardContent,
+      client: ClientDashboardContent,
+      om: OperationsDashboardContent,
+      tl: TeamLeaderDashboardContent,
+    }),
+    [],
+  );
+  const UnfinishedDashboardContent = unfinishedDashboardComponents[role];
 
   const modules = useMemo(
     () => {
@@ -3229,56 +3139,6 @@ const DashboardPage = () => {
     }, 900);
   };
 
-  const renderMainReport = () => {
-    if (role === "client") {
-      const table = clientView === "overall" ? content.overall : content.perAgent;
-
-      return (
-        <>
-          <div className="mt-5 inline-flex rounded-xl border border-sibs-tertiary-9 bg-[#f8fbfd] p-1">
-            {["overall", "perAgent"].map((view) => (
-              <Button
-                key={view}
-                type="button"
-                variant={clientView === view ? "default" : "ghost"}
-                onClick={() => setClientView(view)}
-                className="h-9 rounded-lg px-4"
-              >
-                {view === "overall" ? "Overall" : "Per Agent"}
-              </Button>
-            ))}
-          </div>
-          <ReportTable title={table.title} columns={table.columns} rows={table.rows} />
-        </>
-      );
-    }
-
-    return (
-      <>
-        {content.filters && (
-          <div className="mt-5 flex max-w-sm flex-col gap-2">
-            <label className="text-sm font-bold text-sibs-primary-1">
-              {content.filterLabel}
-            </label>
-            <select
-              value={selectedAccount}
-              onChange={(event) => setSelectedAccount(event.target.value)}
-              className="form-input h-10 rounded-lg py-0"
-            >
-              {content.filters.map((filter) => (
-                <option key={filter} value={filter}>
-                  {filter}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
-        <ReportTable title={content.tableTitle} columns={content.columns} rows={content.rows} />
-        <AgentNotes notes={content.notes} />
-      </>
-    );
-  };
-
   return (
     <section className="font-jakarta flex min-h-screen bg-[#eef3f7] text-sibs-primary-1">
       <AdminSidebar
@@ -3304,39 +3164,10 @@ const DashboardPage = () => {
             <SuperAdminDashboard />
           ) : role === "wfm" ? (
             <WfmDashboardContent />
-          ) : role === "agent" ? (
-            <AgentDashboardContent />
-          ) : role === "bod" ? (
-            <BodDashboardContent />
-          ) : role === "client" ? (
-            <ClientDashboardContent />
-          ) : role === "om" ? (
-            <OperationsDashboardContent />
-          ) : role === "tl" ? (
-            <TeamLeaderDashboardContent />
+          ) : isUnfinalizedInterface && UnfinishedDashboardContent ? (
+            null
           ) : (
-            <>
-              <div className="sibs-card sibs-page-card-in p-5">
-                <div className="flex min-w-0 gap-4">
-                  <div className="sibs-icon-box h-12 w-12 shrink-0 bg-sibs-primary-1">
-                    <Icon className="h-6 w-6" aria-hidden="true" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="m-0 text-xl font-bold text-sibs-primary-1">
-                      {content.section}
-                    </p>
-                    <p className="mt-2 mb-0 max-w-3xl text-sm leading-6 text-sibs-tertiary-5">
-                      {authUser?.description}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-5">
-                <SummaryCards items={content.summary} />
-                {renderMainReport()}
-              </div>
-            </>
+            null
           )}
         </div>
       </main>
@@ -3361,4 +3192,4 @@ const DashboardPage = () => {
   );
 };
 
-export default DashboardPage;
+export default DashboardLayout;
