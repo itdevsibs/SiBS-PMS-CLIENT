@@ -1,6 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 
+import AdminSidebar from "@/components/layout/AdminSidebar";
+import AppHeader from "@/components/layout/AppHeader";
 import { Button } from "@/components/ui/button";
+import ConfirmationModal from "@/components/ui/confirmation-modal";
+import LoadingModal from "@/components/ui/loading-modal";
+import useDashboardPage from "@/hooks/useDashboardPage";
 import api from "@/lib/axios/api-template";
 
 function formatLogTime(timestamp) {
@@ -13,12 +18,14 @@ function formatLogTime(timestamp) {
 }
 
 function SuperAdminHistoryLogs() {
+  const dashboard = useDashboardPage();
   const [logs, setLogs] = useState([]);
   const [dateFilter, setDateFilter] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const rowsPerPage = 10;
+  const userName = dashboard.authUser?.name || dashboard.authUser?.username || "User";
 
   const filteredLogs = useMemo(
     () =>
@@ -68,7 +75,25 @@ function SuperAdminHistoryLogs() {
   }, []);
 
   return (
-    <section className="sibs-card sibs-page-card-in overflow-hidden">
+    <section className="font-jakarta flex min-h-screen bg-[#eef3f7] text-sibs-primary-1">
+      <AdminSidebar
+        isMobileOpen={dashboard.isMobileSidebarOpen}
+        modules={dashboard.modules}
+        onLogoutClick={() => dashboard.setShowLogoutModal(true)}
+        onMobileClose={() => dashboard.setIsMobileSidebarOpen(false)}
+        userName={userName}
+        userRole={dashboard.authUser?.email || dashboard.authUser?.roleLabel || "User"}
+      />
+
+      <main className="min-w-0 flex-1">
+        <AppHeader
+          title={`${dashboard.authUser?.roleLabel || "User"} Dashboard`}
+          subtitle="Performance Management System"
+          onMenuClick={() => dashboard.setIsMobileSidebarOpen(true)}
+        />
+
+        <div className="sibs-scrollbar max-h-[calc(100vh-74px)] overflow-y-auto p-3 sm:p-4 lg:p-5">
+      <section className="sibs-card sibs-page-card-in overflow-hidden">
       <div className="flex flex-col gap-3 border-b border-sibs-tertiary-10 bg-sibs-primary-3/30 px-5 py-4 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex flex-wrap items-center gap-2">
           <h3 className="m-0 text-base font-bold text-sibs-primary-1">
@@ -158,6 +183,26 @@ function SuperAdminHistoryLogs() {
           </div>
         </div>
       ) : null}
+      </section>
+        </div>
+      </main>
+
+      <ConfirmationModal
+        isOpen={dashboard.showLogoutModal}
+        title="Confirm logout"
+        message="Are you sure you want to logout?"
+        cancelText="Cancel"
+        confirmText="Logout"
+        onCancel={() => dashboard.setShowLogoutModal(false)}
+        onConfirm={dashboard.handleLogout}
+        tone="neutral"
+      />
+
+      <LoadingModal
+        isOpen={dashboard.isLoggingOut}
+        title="Logging out"
+        message="Please wait while we end your session."
+      />
     </section>
   );
 }
