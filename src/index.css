@@ -734,18 +734,6 @@
     @apply relative flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] bg-[#f05a28] text-lg font-semibold text-white;
   }
 
-  .sibs-sidebar-logo-mark::after {
-    content: "";
-    position: absolute;
-    right: -3px;
-    top: -3px;
-    width: 11px;
-    height: 11px;
-    border-radius: 9999px;
-    border: 2px solid #1e4d7b;
-    background: #ffffff;
-  }
-
   .sibs-sidebar-brand-copy {
     @apply flex min-w-0 flex-1 flex-col justify-center leading-none;
   }

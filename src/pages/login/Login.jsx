@@ -211,7 +211,10 @@ const Login = () => {
               <span className="font-bold text-white">Work Force Management</span> = wfm/wfm123
             </p>
             <p className="m-0 break-words">
-              <span className="font-bold text-white">Agents</span> = employee code/123
+              <span className="font-bold text-white">Super Admin</span> = superadmin/superadmin123
+            </p>
+            <p className="m-0 break-words">
+              <span className="font-bold text-white">Agents</span> = employee code/database password
             </p>
             <p className="m-0 break-words">
               <span className="font-bold text-white">Operations Management</span> = om/om123

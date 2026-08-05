@@ -1,5 +1,15 @@
 export const MOCK_USERS = [
   {
+    id: "superadmin",
+    username: "superadmin",
+    password: "superadmin123",
+    name: "Super Admin",
+    role: "superadmin",
+    roleLabel: "Super Admin",
+    dashboardPath: "/dashboard/superadmin",
+    description: "Manage system-level access, role coverage, and mock readiness views.",
+  },
+  {
     id: "wfm",
     username: "wfm",
     password: "wfm123",

@@ -1,44 +1,40 @@
 import { useEffect, useMemo, useState } from "react";
 import {
-  AlertCircle,
   Award,
   BarChart3,
   Calendar,
   CheckCircle2,
   ClipboardList,
   CloudUpload,
-  Copy,
   Download,
-  Eye,
   Filter,
-  HelpCircle,
-  Info,
   FolderDown,
   Gauge,
   LineChart,
   MoreVertical,
-  Pause,
-  RefreshCw,
-  Rocket,
   Search,
+  ShieldCheck,
   Target,
   Trash2,
   TrendingUp,
-  TriangleAlert,
   UserRound,
 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
 import AppHeader from "@/components/layout/AppHeader";
 import AdminSidebar from "@/components/layout/AdminSidebar";
+import AppModal from "@/components/ui/app-modal";
 import ConfirmationModal from "@/components/ui/confirmation-modal";
 import LoadingModal from "@/components/ui/loading-modal";
 import { Button } from "@/components/ui/button";
 import { clearAuthSession, getAuthUser, isAuthenticated } from "@/lib/auth";
+import SuperAdminDashboard from "@/pages/super-admin/SuperAdminDashboard";
+import SuperAdminHistoryLogs from "@/pages/super-admin/SuperAdminHistoryLogs";
 
-import { dashboardContent } from "./role-dashboard.data";
+import { dashboardContent } from "./dashboard.data";
 
 const roleIcons = {
+  superadmin: ShieldCheck,
   wfm: FolderDown,
   agent: Gauge,
   om: Filter,
@@ -144,82 +140,232 @@ function AgentNotes({ notes }) {
   );
 }
 
-const wfmMetrics = [
-  { label: "Total Uploads", value: "128", color: "border-sibs-primary-1" },
-  { label: "Processed", value: "112", color: "border-sibs-secondary-3" },
-  { label: "Validation", value: "8", color: "border-sibs-primary-2" },
-  { label: "Errors", value: "5", color: "border-sibs-danger" },
-  { label: "Processing", value: "3", color: "border-sibs-secondary-2" },
-  { label: "Records", value: "18.5k", color: "border-sibs-tertiary-8" },
+const wfmRawDataColumns = [
+  "Employee ID",
+  "Employee Name",
+  "Account",
+  "Team Leader",
+  "Operations Manager",
+  "KPI Period",
+  "Attendance %",
+  "Quality %",
+  "Productivity %",
+  "CSAT %",
+  "AHT Sec",
+  "Compliance %",
+  "Final Score",
+  "Status",
+  "Remarks",
+  "Source File",
 ];
 
-const wfmIssues = [
-  {
-    title: "Missing Employee ID",
-    detail: "File: QA_Retail_Oct.csv - 22 instances",
-    icon: TriangleAlert,
-    tone: "danger",
-  },
-  {
-    title: "Duplicate Records",
-    detail: "File: ATT_Health_01.xlsx - 5 instances",
-    icon: Copy,
-    tone: "danger",
-  },
-  {
-    title: "Invalid Date Format",
-    detail: "File: CSAT_Fin_Wk4.csv - Row 458",
-    icon: Calendar,
-    tone: "warning",
-  },
-  {
-    title: "Unrecognized Account ID",
-    detail: "Manual mapping required",
-    icon: AlertCircle,
-    tone: "danger",
-  },
-  {
-    title: "Header Mismatch",
-    detail: "System auto-corrected 'Emp_ID'",
-    icon: Info,
-    tone: "info",
-  },
+const wfmRawDataColumnConfig = [
+  { label: "Employee ID", width: "110px" },
+  { label: "Employee Name", width: "190px" },
+  { label: "Account", width: "180px" },
+  { label: "Team Leader", width: "160px" },
+  { label: "Operations Manager", width: "190px" },
+  { label: "KPI Period", width: "120px" },
+  { label: "Attendance %", width: "120px", align: "right" },
+  { label: "Quality %", width: "105px", align: "right" },
+  { label: "Productivity %", width: "130px", align: "right" },
+  { label: "CSAT %", width: "90px", align: "right" },
+  { label: "AHT Sec", width: "95px", align: "right" },
+  { label: "Compliance %", width: "130px", align: "right" },
+  { label: "Final Score", width: "110px", align: "right" },
+  { label: "Status", width: "115px" },
+  { label: "Remarks", width: "260px" },
+  { label: "Source File", width: "230px" },
 ];
 
-const wfmRecentUploads = [
-  {
-    fileName: "QA_Sept_Week4.csv",
-    account: "Retail Client Global",
-    reportType: "QA Scorecards",
-    status: "Completed",
-    records: "2,450",
-    actions: [Eye, Download],
-  },
-  {
-    fileName: "ATT_Health_Oct01.xlsx",
-    account: "Healthcare Systems North",
-    reportType: "Attendance Records",
-    status: "Failed",
-    records: "0",
-    actions: [RefreshCw, Trash2],
-  },
-  {
-    fileName: "CSAT_Survey_Fintech.csv",
-    account: "Fintech Solutions Ltd",
-    reportType: "Customer CSAT",
-    status: "Processing",
-    records: "Pending",
-    actions: [Pause],
-  },
-  {
-    fileName: "Daily_AHT_Telecom.xlsx",
-    account: "Telecommunications Inc.",
-    reportType: "AHT Metrics",
-    status: "Validation",
-    records: "1,120",
-    actions: [ClipboardList],
-  },
-];
+const WFM_IMPORT_CACHE_KEY = "sibs-wfm-import-cache";
+
+function readWfmImportCache() {
+  if (typeof window === "undefined") {
+    return {
+      selectedUpload: "",
+      uploadedFiles: [],
+    };
+  }
+
+  try {
+    const cached = JSON.parse(
+      window.localStorage.getItem(WFM_IMPORT_CACHE_KEY) || "{}",
+    );
+    const uploadedFiles = Array.isArray(cached.uploadedFiles)
+      ? cached.uploadedFiles
+      : [];
+
+    return {
+      selectedUpload: cached.selectedUpload || uploadedFiles[0]?.fileName || "",
+      uploadedFiles,
+    };
+  } catch {
+    return {
+      selectedUpload: "",
+      uploadedFiles: [],
+    };
+  }
+}
+
+function writeWfmImportCache({ selectedUpload, uploadedFiles }) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.localStorage.setItem(
+    WFM_IMPORT_CACHE_KEY,
+    JSON.stringify({
+      selectedUpload,
+      uploadedFiles,
+    }),
+  );
+}
+
+function normalizeColumnKey(value) {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "");
+}
+
+function getCellText(value) {
+  if (value == null) {
+    return "";
+  }
+
+  if (typeof value === "object") {
+    if ("text" in value) return String(value.text || "");
+    if ("result" in value) return String(value.result || "");
+    if ("richText" in value) {
+      return value.richText.map((item) => item.text || "").join("");
+    }
+  }
+
+  return String(value);
+}
+
+function parseCsvRows(text, fileName) {
+  const lines = String(text || "")
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  if (lines.length <= 1) {
+    return [];
+  }
+
+  return lines.slice(1).map((line) => {
+    const cells = line.split(",").map((cell) => cell.trim().replace(/^"|"$/g, ""));
+    const normalized = wfmRawDataColumns.map((_, index) => cells[index] || "-");
+    normalized[normalized.length - 1] = fileName;
+    return normalized;
+  });
+}
+
+function normalizeImportedObjects(rows, fileName) {
+  if (!rows.length) {
+    return [];
+  }
+
+  return rows.map((row) =>
+    wfmRawDataColumns.map((column, index) => {
+      if (column === "Source File") {
+        return fileName;
+      }
+
+      const normalizedColumn = normalizeColumnKey(column);
+      const matchedKey = Object.keys(row).find(
+        (key) => normalizeColumnKey(key) === normalizedColumn,
+      );
+
+      return getCellText(row[matchedKey] ?? row[index] ?? "-") || "-";
+    }),
+  );
+}
+
+function isImportDataRow(values) {
+  return values.some((value) => value && value !== "-");
+}
+
+function getHeaderMatchCount(values) {
+  const normalizedValues = values.map(normalizeColumnKey);
+
+  return wfmRawDataColumns.filter((column) =>
+    normalizedValues.includes(normalizeColumnKey(column)),
+  ).length;
+}
+
+async function parseWorkbookRows(arrayBuffer, fileName) {
+  const XLSX = await import("xlsx");
+  const workbook = XLSX.read(arrayBuffer, {
+    type: "array",
+    cellDates: true,
+    cellText: false,
+  });
+  const sheetName = workbook.SheetNames.find(
+    (name) => workbook.Sheets[name]?.["!ref"],
+  );
+
+  if (!sheetName) {
+    return [];
+  }
+
+  const sheetRows = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], {
+    header: 1,
+    defval: "",
+    blankrows: false,
+    raw: false,
+  });
+  const normalizedSheetRows = sheetRows
+    .map((row) => row.map((cell) => getCellText(cell).trim()))
+    .filter(isImportDataRow);
+
+  if (!normalizedSheetRows.length) {
+    return [];
+  }
+
+  let headerRowIndex = -1;
+  const scanLimit = Math.min(12, normalizedSheetRows.length);
+
+  for (let index = 0; index < scanLimit; index += 1) {
+    const candidateValues = normalizedSheetRows[index];
+    const matchCount = getHeaderMatchCount(candidateValues);
+
+    if (matchCount >= 2 || (matchCount >= 1 && candidateValues.length >= 5)) {
+      headerRowIndex = index;
+      break;
+    }
+  }
+
+  const headers = headerRowIndex >= 0 ? normalizedSheetRows[headerRowIndex] : [];
+  const dataRows =
+    headerRowIndex >= 0
+      ? normalizedSheetRows.slice(headerRowIndex + 1)
+      : normalizedSheetRows;
+  const rows = dataRows.map((cells) => {
+    const rowObject = {};
+
+    headers.forEach((header, index) => {
+      if (header) {
+        rowObject[header] = cells[index] || "";
+      }
+    });
+
+    return {
+      ...cells,
+      ...rowObject,
+    };
+  });
+
+  return normalizeImportedObjects(rows, fileName);
+}
+
+function formatUploadTimestamp(date = new Date()) {
+  return new Intl.DateTimeFormat("en-US", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(date);
+}
 
 function WfmStatusPill({ status }) {
   const statusMap = {
@@ -237,30 +383,6 @@ function WfmStatusPill({ status }) {
     >
       {status}
     </span>
-  );
-}
-
-function WfmIssueCard({ issue }) {
-  const Icon = issue.icon;
-  const toneClass =
-    issue.tone === "danger"
-      ? "border-sibs-danger/20 bg-sibs-danger/10 text-sibs-danger"
-      : issue.tone === "warning"
-        ? "border-sibs-primary-2/20 bg-sibs-primary-2/10 text-sibs-primary-2"
-        : "border-sibs-secondary-2/40 bg-sibs-secondary-2/10 text-sibs-secondary-2";
-
-  return (
-    <div className={`flex gap-4 rounded-lg border p-4 ${toneClass}`}>
-      <Icon className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
-      <div className="min-w-0">
-        <p className="m-0 text-sm font-bold text-sibs-primary-1">
-          {issue.title}
-        </p>
-        <p className="mt-1 mb-0 text-sm text-sibs-tertiary-5">
-          {issue.detail}
-        </p>
-      </div>
-    </div>
   );
 }
 
@@ -2594,238 +2716,256 @@ function TeamLeaderDashboardContent() {
 }
 
 function WfmDashboardContent() {
-  const [isDropActive, setIsDropActive] = useState(false);
-  const [selectedUpload, setSelectedUpload] = useState("QA_Sept_Week4.csv");
-  const [selectedFileName, setSelectedFileName] = useState("");
+  const cachedImportState = useMemo(() => readWfmImportCache(), []);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
+  const [isDeletingFile, setIsDeletingFile] = useState(false);
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [fileToDelete, setFileToDelete] = useState(null);
+  const [selectedUpload, setSelectedUpload] = useState(cachedImportState.selectedUpload);
+  const [uploadedFiles, setUploadedFiles] = useState(cachedImportState.uploadedFiles);
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const selectedUploadedFile = useMemo(
+    () => uploadedFiles.find((upload) => upload.fileName === selectedUpload),
+    [selectedUpload, uploadedFiles],
+  );
+  const displayedRows = useMemo(
+    () =>
+      selectedUploadedFile
+        ? selectedUploadedFile.rows
+        : uploadedFiles.flatMap((upload) => upload.rows),
+    [selectedUploadedFile, uploadedFiles],
+  );
+  const rowsPerPage = 25;
+  const totalPages = Math.max(1, Math.ceil(displayedRows.length / rowsPerPage));
+  const paginatedRows = displayedRows.slice(
+    (currentPage - 1) * rowsPerPage,
+    currentPage * rowsPerPage,
+  );
+
+  const handleSelectedUploadChange = (fileName) => {
+    setSelectedUpload(fileName);
+    setCurrentPage(1);
+  };
+
+  useEffect(() => {
+    writeWfmImportCache({
+      selectedUpload,
+      uploadedFiles,
+    });
+  }, [selectedUpload, uploadedFiles]);
 
   const handleFileSelect = (files) => {
     const file = files?.[0];
 
     if (file) {
-      setSelectedFileName(file.name);
+      setSelectedFile(file);
     }
+  };
+
+  const closeImportModal = () => {
+    setIsImportModalOpen(false);
+    setSelectedFile(null);
+  };
+
+  const readSelectedFile = () =>
+    new Promise((resolve) => {
+      if (!selectedFile) {
+        resolve([]);
+        return;
+      }
+
+      if (/\.csv$/i.test(selectedFile.name)) {
+        const reader = new FileReader();
+        reader.onload = () => resolve(parseCsvRows(reader.result, selectedFile.name));
+        reader.onerror = () => resolve([]);
+        reader.readAsText(selectedFile);
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = async () => {
+        try {
+          resolve(await parseWorkbookRows(reader.result, selectedFile.name));
+        } catch (error) {
+          console.error("Excel import failed:", error);
+          resolve([]);
+        }
+      };
+      reader.onerror = () => resolve([]);
+      reader.readAsArrayBuffer(selectedFile);
+    });
+
+  const handleUploadFile = async () => {
+    const fileName = selectedFile?.name || "workforce_raw_import.xlsx";
+    setIsImportModalOpen(false);
+    setIsImporting(true);
+    const [rows] = await Promise.all([
+      readSelectedFile(),
+      new Promise((resolve) => {
+        window.setTimeout(resolve, 3000);
+      }),
+    ]);
+
+    setUploadedFiles((currentFiles) => {
+      const nextFiles = [
+        {
+          fileName,
+          account: "Workforce Raw Import",
+          reportType: "Employee Performance KPI",
+          status: "Completed",
+          records: rows.length.toLocaleString(),
+          uploadedAt: formatUploadTimestamp(),
+          rows,
+        },
+        ...currentFiles.filter((upload) => upload.fileName !== fileName),
+      ];
+
+      writeWfmImportCache({
+        selectedUpload: fileName,
+        uploadedFiles: nextFiles,
+      });
+
+      return nextFiles;
+    });
+    handleSelectedUploadChange(fileName);
+    closeImportModal();
+    setIsImporting(false);
+    setShowSuccessModal(true);
+  };
+
+  const confirmDeleteFile = (upload) => {
+    setFileToDelete(upload);
+    setShowDeleteConfirm(true);
+  };
+
+  const handleDeleteFile = async () => {
+    const deletedFileName = fileToDelete?.fileName;
+    setShowDeleteConfirm(false);
+    setIsDeletingFile(true);
+
+    await new Promise((resolve) => {
+      window.setTimeout(resolve, 800);
+    });
+
+    const nextFiles = uploadedFiles.filter(
+      (upload) => upload.fileName !== deletedFileName,
+    );
+
+    if (selectedUpload === deletedFileName) {
+      const nextFile = nextFiles[0];
+      handleSelectedUploadChange(nextFile?.fileName || "");
+    }
+
+    setUploadedFiles(nextFiles);
+    writeWfmImportCache({
+      selectedUpload:
+        selectedUpload === deletedFileName ? nextFiles[0]?.fileName || "" : selectedUpload,
+      uploadedFiles: nextFiles,
+    });
+
+    setFileToDelete(null);
+    setIsDeletingFile(false);
   };
 
   return (
     <>
-      <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
-        {wfmMetrics.map((metric) => (
-          <div
-            key={metric.label}
-            className={`flex min-h-[78px] flex-col justify-between rounded-lg border bg-[#f8fbfd] p-3 ${metric.color}`}
-          >
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-sibs-tertiary-6">
-              {metric.label}
-            </span>
-            <span className="text-[22px] font-bold text-sibs-primary-1">
-              {metric.value}
-            </span>
-          </div>
-        ))}
-      </div>
-
       <div className="grid grid-cols-12 gap-4">
-        <section className="sibs-card col-span-12 flex flex-col gap-4 p-4 lg:col-span-8">
-          <div className="flex items-center justify-between gap-4">
-            <h2 className="m-0 text-lg font-semibold text-sibs-primary-1">
-              New File Upload
-            </h2>
-            <div className="flex gap-2 text-sibs-tertiary-6">
-              <HelpCircle className="h-5 w-5" aria-hidden="true" />
-              <MoreVertical className="h-5 w-5" aria-hidden="true" />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-            <div className="flex flex-col gap-1">
-              <label className="text-xs font-semibold text-sibs-tertiary-5">
-                Account
-              </label>
-              <select className="form-input rounded-lg bg-sibs-primary-3 py-2.5">
-                <option>Retail Client Global</option>
-                <option>Healthcare Systems North</option>
-                <option>Fintech Solutions Ltd</option>
-                <option>Telecommunications Inc.</option>
-              </select>
-            </div>
-            <div className="flex flex-col gap-1">
-              <label className="text-xs font-semibold text-sibs-tertiary-5">
-                Report Type
-              </label>
-              <select className="form-input rounded-lg bg-sibs-primary-3 py-2.5">
-                <option>Attendance Records</option>
-                <option>QA Scorecards</option>
-                <option>AHT Metrics</option>
-                <option>Customer CSAT</option>
-              </select>
-            </div>
-          </div>
-
-          <div
-            role="button"
-            tabIndex={0}
-            onDragOver={(event) => {
-              event.preventDefault();
-              setIsDropActive(true);
-            }}
-            onDragLeave={() => setIsDropActive(false)}
-            onDrop={(event) => {
-              event.preventDefault();
-              setIsDropActive(false);
-              handleFileSelect(event.dataTransfer.files);
-            }}
-            className={`flex cursor-pointer flex-col items-center justify-center gap-3 rounded-lg border border-dashed p-4 text-center transition ${
-              isDropActive
-                ? "border-sibs-primary-2 bg-sibs-primary-2/10"
-                : "border-sibs-tertiary-9 hover:border-sibs-primary-2 hover:bg-sibs-primary-2/5"
-            }`}
-          >
-            <input
-              id="wfm-file-input"
-              type="file"
-              accept=".csv,.xlsx"
-              className="hidden"
-              onChange={(event) => handleFileSelect(event.target.files)}
-            />
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-sibs-primary-2/10">
-              <CloudUpload
-                className="h-6 w-6 text-sibs-primary-2"
-                aria-hidden="true"
-              />
-            </div>
-            <div>
-              <p className="m-0 text-sm font-semibold text-sibs-primary-1">
-                {selectedFileName || "Drag and drop file here"}
-              </p>
-              <p className="mt-1 mb-0 text-xs text-sibs-tertiary-5">
-                {selectedFileName ? "Selected file ready for processing." : "Limit 50MB per file - CSV, XLSX"}
-              </p>
-            </div>
-            <Button
-              type="button"
-              onClick={() => document.getElementById("wfm-file-input")?.click()}
-              className="h-9 rounded-lg bg-sibs-primary-2 px-5 text-white hover:bg-sibs-warning"
-            >
-              Browse Files
-            </Button>
-          </div>
-
-          <div className="flex justify-end">
-            <Button className="h-10 rounded-lg bg-sibs-primary-1 px-6 text-white hover:bg-sibs-tertiary-4">
-              <Rocket className="h-4 w-4" aria-hidden="true" />
-              Process Upload
-            </Button>
-          </div>
-        </section>
-
-        <section className="sibs-card col-span-12 flex flex-col gap-4 p-4 lg:col-span-4">
-          <h2 className="m-0 text-lg font-semibold text-sibs-primary-1">
-            Critical Issues
-          </h2>
-          <div className="sibs-scrollbar flex max-h-[300px] flex-col gap-2 overflow-y-auto pr-1">
-            {wfmIssues.map((issue) => (
-              <WfmIssueCard key={issue.title} issue={issue} />
-            ))}
-          </div>
+        <section className="col-span-12 flex justify-end">
           <Button
-            variant="outline"
-            className="h-10 rounded-lg border-sibs-tertiary-8 bg-transparent text-sibs-tertiary-5 hover:bg-sibs-primary-3 hover:text-sibs-primary-1"
+            type="button"
+            onClick={() => setIsImportModalOpen(true)}
+            className="h-10 rounded-lg bg-sibs-primary-1 px-5 text-white hover:bg-sibs-tertiary-4"
           >
-            View All Validation Rules
+            <CloudUpload className="h-4 w-4" aria-hidden="true" />
+            Upload/Import File
           </Button>
         </section>
 
-        <section className="sibs-card col-span-12 flex h-60 flex-col gap-3 p-4 lg:col-span-4">
-          <h3 className="m-0 text-xs font-semibold uppercase text-sibs-tertiary-6">
-            6-Week Upload Performance
-          </h3>
-          <div className="relative flex flex-1 items-center justify-center">
-            <div
-              className="flex h-32 w-32 items-center justify-center rounded-full border-[12px] border-sibs-secondary-2"
-              style={{
-                borderRightColor: "var(--sibs-primary-2)",
-                borderBottomColor: "var(--sibs-secondary-3)",
-              }}
-            >
-              <div className="text-center">
-                <p className="m-0 text-2xl font-bold text-sibs-primary-1">94%</p>
-                <p className="m-0 text-xs font-semibold uppercase text-sibs-tertiary-6">
-                  Success
-                </p>
-              </div>
-            </div>
-            <div className="absolute bottom-0 flex gap-4 text-[10px] text-sibs-tertiary-5">
-              <span className="flex items-center gap-1">
-                <span className="h-3 w-3 rounded-full bg-sibs-secondary-2" />
-                Valid
-              </span>
-              <span className="flex items-center gap-1">
-                <span className="h-3 w-3 rounded-full bg-sibs-secondary-3" />
-                Fix
-              </span>
-              <span className="flex items-center gap-1">
-                <span className="h-3 w-3 rounded-full bg-sibs-primary-2" />
-                Fail
-              </span>
-            </div>
+        <section className="sibs-card col-span-12 p-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="m-0 text-base font-semibold text-sibs-primary-1">
+              Uploaded Excel Files
+            </h2>
+            <span className="inline-flex items-center gap-1 rounded-full border border-sibs-tertiary-10 bg-[#f8fbfd] px-2.5 py-1 text-xs font-semibold text-sibs-tertiary-5">
+              Imported files
+              <strong className="text-sibs-primary-1">{uploadedFiles.length}</strong>
+            </span>
           </div>
-        </section>
 
-        <section className="sibs-card col-span-12 flex h-60 flex-col gap-3 p-4 lg:col-span-4">
-          <h3 className="m-0 text-xs font-semibold uppercase text-sibs-tertiary-6">
-            Activity (Last 6 Weeks)
-          </h3>
-          <div className="flex flex-1 items-end justify-between gap-3 px-3 pt-4">
-            {[40, 65, 100, 55, 85, 45].map((height, index) => (
-              <div
-                key={`${height}-${index}`}
-                className={`w-full rounded-t-sm ${
-                  index === 4 ? "bg-sibs-secondary-3" : "bg-sibs-secondary-2"
-                }`}
-                style={{ height: `${height}%`, opacity: index === 2 ? 1 : 0.7 }}
-              />
-            ))}
-          </div>
-          <div className="flex justify-between px-1 text-[10px] font-bold text-sibs-tertiary-6">
-            <span>WK 38</span>
-            <span>WK 39</span>
-            <span>WK 40</span>
-            <span>WK 41</span>
-            <span>WK 42</span>
-            <span>WK 43</span>
-          </div>
-        </section>
-
-        <section className="sibs-card col-span-12 flex h-60 flex-col gap-3 p-4 lg:col-span-4">
-          <h3 className="m-0 text-xs font-semibold uppercase text-sibs-tertiary-6">
-            Records by Account (6W)
-          </h3>
-          <div className="space-y-3 pt-2">
-            {[
-              ["Retail Global", "12.4k", "90%", "bg-sibs-secondary-2"],
-              ["Healthcare", "7.2k", "60%", "bg-sibs-secondary-3"],
-              ["Fintech", "4.1k", "40%", "bg-sibs-secondary-2"],
-              ["Telecom", "2.8k", "25%", "bg-sibs-secondary-3"],
-            ].map(([account, value, width, color]) => (
-              <div key={account} className="space-y-1">
-                <div className="flex justify-between text-xs font-bold text-sibs-primary-1">
-                  <span>{account}</span>
-                  <span>{value}</span>
+          {uploadedFiles.length > 0 ? (
+            <div className="mt-2 divide-y divide-sibs-tertiary-10 overflow-hidden rounded-lg border border-sibs-tertiary-10 bg-[#f8fbfd]">
+              {uploadedFiles.map((upload) => (
+                <div
+                  key={`${upload.fileName}-${upload.uploadedAt}`}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => handleSelectedUploadChange(upload.fileName)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      handleSelectedUploadChange(upload.fileName);
+                    }
+                  }}
+                  className={`grid cursor-pointer gap-2 px-3 py-2 text-left transition hover:bg-sibs-primary-2/5 md:grid-cols-[minmax(0,1fr)_145px_64px_30px] md:items-center ${
+                    selectedUpload === upload.fileName
+                      ? "bg-sibs-primary-2/5"
+                      : ""
+                  }`}
+                >
+                  <div className="min-w-0">
+                    <p className="m-0 truncate text-xs font-bold text-sibs-primary-1">
+                      {upload.fileName}
+                    </p>
+                  </div>
+                  <div className="truncate text-xs text-sibs-tertiary-5">
+                    {upload.uploadedAt}
+                  </div>
+                  <div className="text-xs text-sibs-tertiary-5">
+                    <span>{upload.records} rows</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      confirmDeleteFile(upload);
+                    }}
+                    className="inline-flex h-7 w-7 items-center justify-center rounded-md text-sibs-danger transition hover:bg-sibs-danger/10 md:justify-self-end"
+                    title="Delete file"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+                  </button>
                 </div>
-                <div className="h-2 overflow-hidden rounded-full bg-sibs-tertiary-10">
-                  <div className={`h-full ${color}`} style={{ width }} />
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <div className="mt-4 rounded-lg border border-dashed border-sibs-tertiary-9 bg-[#f8fbfd] px-5 py-8 text-center text-sm text-sibs-tertiary-5">
+              No uploaded files yet.
+            </div>
+          )}
         </section>
 
         <section className="sibs-card col-span-12 overflow-hidden">
           <div className="flex flex-col gap-3 border-b border-sibs-tertiary-10 bg-sibs-primary-3/30 px-5 py-3 md:flex-row md:items-center md:justify-between">
             <h2 className="m-0 text-lg font-semibold text-sibs-primary-1">
-              Recent Uploads
+              Imported Employee Performance Rows
             </h2>
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+              <select
+                value={selectedUpload}
+                onChange={(event) => handleSelectedUploadChange(event.target.value)}
+                className="form-input h-9 rounded-full py-0 sm:w-72"
+              >
+                <option value="">All uploaded files</option>
+                {uploadedFiles.map((upload) => (
+                  <option key={`${upload.fileName}-${upload.uploadedAt}`} value={upload.fileName}>
+                    {upload.fileName}
+                  </option>
+                ))}
+              </select>
               <div className="relative">
                 <Search
                   className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-sibs-tertiary-6"
@@ -2833,7 +2973,7 @@ function WfmDashboardContent() {
                 />
                 <input
                   className="h-9 w-full rounded-full border border-sibs-tertiary-9 bg-white pl-9 pr-4 text-sm outline-none focus:border-sibs-primary-2 sm:w-56"
-                  placeholder="Search files..."
+                  placeholder="Search rows..."
                   type="text"
                 />
               </div>
@@ -2843,84 +2983,198 @@ function WfmDashboardContent() {
             </div>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[860px] border-collapse text-left">
+          <div className="sibs-scrollbar overflow-x-auto">
+            <table className="w-max min-w-full table-fixed border-collapse text-left">
+              <colgroup>
+                {wfmRawDataColumnConfig.map((column) => (
+                  <col key={column.label} style={{ width: column.width }} />
+                ))}
+              </colgroup>
               <thead className="bg-sibs-primary-3/50 text-xs uppercase text-sibs-tertiary-6">
                 <tr>
-                  {["File Name", "Account", "Report Type", "Status", "Records", "Actions"].map((header) => (
-                <th
-                      key={header}
-                      className={`px-5 py-3 font-bold ${
-                        header === "Actions" ? "text-right" : ""
+                  {wfmRawDataColumnConfig.map((column) => (
+                    <th
+                      key={column.label}
+                      className={`whitespace-nowrap px-4 py-3 font-bold ${
+                        column.align === "right" ? "text-right" : ""
                       }`}
                     >
-                      {header}
+                      {column.label}
                     </th>
                   ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-sibs-tertiary-10 text-sm">
-                {wfmRecentUploads.map((upload) => (
-                  <tr
-                    key={upload.fileName}
-                    onClick={() => setSelectedUpload(upload.fileName)}
-                    className={`cursor-pointer transition hover:bg-sibs-primary-2/5 ${
-                      selectedUpload === upload.fileName ? "bg-sibs-primary-2/5" : ""
-                    }`}
-                  >
-                    <td className="px-5 py-3 font-bold text-sibs-primary-1">
-                      {upload.fileName}
-                    </td>
-                    <td className="px-5 py-3 text-sibs-tertiary-5">
-                      {upload.account}
-                    </td>
-                    <td className="px-5 py-3 text-sibs-tertiary-5">
-                      {upload.reportType}
-                    </td>
-                    <td className="px-5 py-3">
-                      <WfmStatusPill status={upload.status} />
-                    </td>
-                    <td className="px-5 py-3 text-sibs-tertiary-5">
-                      {upload.records}
-                    </td>
-                    <td className="px-5 py-3 text-right">
-                      <div className="inline-flex gap-2">
-                        {upload.actions.map((ActionIcon) => (
-                          <button
-                            key={ActionIcon.displayName || ActionIcon.name}
-                            type="button"
-                            className="rounded p-1 text-sibs-secondary-2 transition hover:bg-sibs-secondary-2/10"
-                          >
-                            <ActionIcon className="h-4 w-4" aria-hidden="true" />
-                          </button>
-                        ))}
-                      </div>
+                {paginatedRows.length > 0 ? (
+                  paginatedRows.map((row, rowIndex) => (
+                    <tr key={`${row[0]}-${rowIndex}`} className="bg-[#f8fbfd] transition hover:bg-sibs-primary-2/5">
+                      {row.map((cell, cellIndex) => (
+                        <td
+                          key={`${wfmRawDataColumns[cellIndex]}-${cellIndex}`}
+                          className={`max-w-0 whitespace-nowrap px-4 py-3 text-sibs-tertiary-5 ${
+                            wfmRawDataColumnConfig[cellIndex]?.align === "right"
+                              ? "text-right"
+                              : ""
+                          }`}
+                          title={String(cell || "")}
+                        >
+                          {wfmRawDataColumns[cellIndex] === "Status" ? (
+                            <WfmStatusPill status={cell} />
+                          ) : (
+                            <span className="block truncate">{cell}</span>
+                          )}
+                        </td>
+                      ))}
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={wfmRawDataColumns.length} className="bg-[#f8fbfd] px-5 py-10 text-center text-sm text-sibs-tertiary-5">
+                      No raw data imported yet. Upload a file to populate this table.
                     </td>
                   </tr>
-                ))}
+                )}
               </tbody>
             </table>
           </div>
 
           <div className="flex flex-col gap-3 border-t border-sibs-tertiary-10 px-5 py-3 text-sm text-sibs-tertiary-6 sm:flex-row sm:items-center sm:justify-between">
-            <span>Showing 4 of 128 uploads</span>
-            <div className="flex gap-2">
-              <Button variant="outline" className="h-9 rounded-lg px-4" disabled>
-                Previous
-              </Button>
-              <Button variant="outline" className="h-9 rounded-lg px-4">
-                Next
-              </Button>
+            <span>
+              Showing {paginatedRows.length} of {displayedRows.length} imported rows
+            </span>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+              <span>{selectedUpload || "All uploaded files"}</span>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-9 rounded-lg px-4"
+                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+                >
+                  Previous
+                </Button>
+                <span className="text-xs font-bold text-sibs-tertiary-6">
+                  Page {currentPage} of {totalPages}
+                </span>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-9 rounded-lg px-4"
+                  disabled={currentPage === totalPages}
+                  onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+                >
+                  Next
+                </Button>
+              </div>
             </div>
           </div>
         </section>
       </div>
+
+      <AppModal isOpen={isImportModalOpen} className="max-w-2xl">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="m-0 text-lg font-bold text-sibs-primary-1">
+              Upload/Import File
+            </p>
+            <p className="mt-1 mb-0 text-sm text-sibs-tertiary-5">
+              Select an Excel or CSV raw KPI file for frontend staging.
+            </p>
+          </div>
+          <CloudUpload className="h-6 w-6 text-sibs-primary-2" aria-hidden="true" />
+        </div>
+
+        <label
+          htmlFor="wfm-import-file-input"
+          className="mt-5 flex cursor-pointer items-center gap-4 rounded-lg border border-dashed border-sibs-tertiary-9 bg-[#f8fbfd] p-5 text-left transition hover:border-sibs-primary-2 hover:bg-sibs-primary-2/5"
+        >
+          <input
+            id="wfm-import-file-input"
+            type="file"
+            accept=".csv,.xlsx,.xls"
+            className="hidden"
+            onChange={(event) => handleFileSelect(event.target.files)}
+          />
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-sibs-primary-2/10">
+            <CloudUpload className="h-6 w-6 text-sibs-primary-2" aria-hidden="true" />
+          </div>
+          <div className="min-w-0 flex-1 overflow-hidden">
+            <p className="m-0 truncate text-sm font-bold text-sibs-primary-1">
+              {selectedFile?.name || "Choose Excel sheet file"}
+            </p>
+            <p className="mt-1 mb-0 text-xs text-sibs-tertiary-5">
+              Accepted: .xlsx, .xls, .csv
+            </p>
+          </div>
+        </label>
+
+        <div className="mt-5 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={closeImportModal}
+            className="h-10 rounded-xl border-sibs-tertiary-8 sm:w-auto"
+          >
+            Cancel
+          </Button>
+          <Button
+            type="button"
+            disabled={!selectedFile}
+            onClick={handleUploadFile}
+            className="h-10 rounded-xl bg-sibs-primary-1 font-semibold text-white hover:bg-sibs-tertiary-4 sm:w-auto"
+          >
+            Upload
+          </Button>
+        </div>
+      </AppModal>
+
+      <ConfirmationModal
+        isOpen={showDeleteConfirm}
+        title="Delete uploaded file"
+        message={`Remove ${fileToDelete?.fileName || "this file"} from the uploaded files list?`}
+        cancelText="Cancel"
+        confirmText="Delete"
+        onCancel={() => setShowDeleteConfirm(false)}
+        onConfirm={handleDeleteFile}
+        tone="neutral"
+      />
+
+      <LoadingModal
+        isOpen={isImporting}
+        title="Importing file"
+        message="Please wait while we read and stage the uploaded file."
+      />
+
+      <LoadingModal
+        isOpen={isDeletingFile}
+        title="Deleting file"
+        message="Removing the uploaded file from this workspace."
+      />
+
+      <AppModal isOpen={showSuccessModal} textAlign="center">
+        <CheckCircle2 className="mx-auto h-11 w-11 text-sibs-success" aria-hidden="true" />
+        <p className="mt-4 mb-1 text-base font-bold text-sibs-primary-1">
+          Action completed
+        </p>
+        <p className="m-0 text-sm text-sibs-tertiary-5">
+          The WFM import workspace has been updated.
+        </p>
+        <Button
+          type="button"
+          onClick={() => setShowSuccessModal(false)}
+          className="mt-5 h-10 w-full rounded-xl bg-sibs-primary-1 text-white hover:bg-sibs-tertiary-4"
+        >
+          Done
+        </Button>
+      </AppModal>
     </>
   );
 }
 
-const RoleDashboard = () => {
+const DashboardPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
@@ -2931,16 +3185,32 @@ const RoleDashboard = () => {
   const role = authUser?.role || "agent";
   const content = dashboardContent[role] || dashboardContent.agent;
   const Icon = roleIcons[role] || Gauge;
+  const isSuperAdminHistoryLogs =
+    role === "superadmin" &&
+    location.pathname.endsWith("/history-logs");
 
   const modules = useMemo(
-    () => [
-      {
+    () => {
+      const dashboardModule = {
         name: `${authUser?.roleLabel || "User"} Dashboard`,
         icon: Icon,
         path: authUser?.dashboardPath || "/dashboard",
-      },
-    ],
-    [Icon, authUser],
+      };
+
+      if (role !== "superadmin") {
+        return [dashboardModule];
+      }
+
+      return [
+        dashboardModule,
+        {
+          name: "History Logs",
+          icon: ClipboardList,
+          path: "/dashboard/superadmin/history-logs",
+        },
+      ];
+    },
+    [Icon, authUser, role],
   );
 
   useEffect(() => {
@@ -3028,7 +3298,11 @@ const RoleDashboard = () => {
         />
 
         <div className="sibs-scrollbar max-h-[calc(100vh-74px)] overflow-y-auto p-3 sm:p-4 lg:p-5">
-          {role === "wfm" ? (
+          {isSuperAdminHistoryLogs ? (
+            <SuperAdminHistoryLogs />
+          ) : role === "superadmin" ? (
+            <SuperAdminDashboard />
+          ) : role === "wfm" ? (
             <WfmDashboardContent />
           ) : role === "agent" ? (
             <AgentDashboardContent />
@@ -3087,4 +3361,4 @@ const RoleDashboard = () => {
   );
 };
 
-export default RoleDashboard;
+export default DashboardPage;
