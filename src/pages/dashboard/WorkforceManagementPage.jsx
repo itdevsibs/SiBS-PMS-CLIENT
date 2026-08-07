@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { CheckCircle2, CloudUpload, Filter, Search, Trash2 } from "lucide-react";
+import { useMemo, useState } from "react";
+import { ArrowLeft, BarChart3, Search, Trash2 } from "lucide-react";
 
 import AdminSidebar from "@/components/layout/AdminSidebar";
 import AppHeader from "@/components/layout/AppHeader";
@@ -8,8 +8,13 @@ import ConfirmationModal from "@/components/ui/confirmation-modal";
 import LoadingModal from "@/components/ui/loading-modal";
 import { Button } from "@/components/ui/button";
 import useDashboardPage from "@/hooks/useDashboardPage";
+import {
+  generateWfmGraphReports,
+  saveWfmGraphReportSet,
+} from "@/lib/wfm-graph-reports";
+import { addWfmHistoryLog } from "@/lib/wfm-history-logs";
 
-const wfmRawDataColumns = [
+const knownWfmRawDataColumns = [
   "Employee ID",
   "Employee Name",
   "Account",
@@ -28,26 +33,31 @@ const wfmRawDataColumns = [
   "Source File",
 ];
 
-const wfmRawDataColumnConfig = [
-  { label: "Employee ID", width: "110px" },
-  { label: "Employee Name", width: "190px" },
-  { label: "Account", width: "180px" },
-  { label: "Team Leader", width: "160px" },
-  { label: "Operations Manager", width: "190px" },
-  { label: "KPI Period", width: "120px" },
-  { label: "Attendance %", width: "120px", align: "right" },
-  { label: "Quality %", width: "105px", align: "right" },
-  { label: "Productivity %", width: "130px", align: "right" },
-  { label: "CSAT %", width: "90px", align: "right" },
-  { label: "AHT Sec", width: "95px", align: "right" },
-  { label: "Compliance %", width: "130px", align: "right" },
-  { label: "Final Score", width: "110px", align: "right" },
-  { label: "Status", width: "115px" },
-  { label: "Remarks", width: "260px" },
-  { label: "Source File", width: "230px" },
+const WFM_DASHBOARD_IMPORT_CACHE_KEY = "sibs-wfm-dashboard-import-cache";
+const RAW_DATA_UPLOADS_KEY = "sibs-wfm-raw-data-uploads";
+
+const accountOptions = [
+  "US VISA",
+  "YUM-DEL",
+  "Account 1",
+  "Account 2",
+  "Account 3",
+  "Account 4",
+  "Account 5",
 ];
 
-const WFM_IMPORT_CACHE_KEY = "sibs-wfm-import-cache-v2";
+const rawDataTemplates = Array.from({ length: 15 }, (_, index) => ({
+  key: `raw-data-${index + 1}`,
+  title: `Raw Data ${index + 1}`,
+}));
+
+function getRawDataCards(account) {
+  return rawDataTemplates.map((template) => ({
+    ...template,
+    id: `${account.toLowerCase().replace(/[^a-z0-9]/g, "-")}-${template.key}`,
+    account,
+  }));
+}
 
 function readWfmImportCache() {
   if (typeof window === "undefined") {
@@ -59,10 +69,10 @@ function readWfmImportCache() {
 
   try {
     const cached = JSON.parse(
-      window.localStorage.getItem(WFM_IMPORT_CACHE_KEY) || "{}",
+      window.localStorage.getItem(WFM_DASHBOARD_IMPORT_CACHE_KEY) || "{}",
     );
     const uploadedFiles = Array.isArray(cached.uploadedFiles)
-      ? cached.uploadedFiles
+      ? cached.uploadedFiles.map(normalizeCachedUpload)
       : [];
 
     return {
@@ -83,12 +93,24 @@ function writeWfmImportCache({ selectedUpload, uploadedFiles }) {
   }
 
   window.localStorage.setItem(
-    WFM_IMPORT_CACHE_KEY,
+    WFM_DASHBOARD_IMPORT_CACHE_KEY,
     JSON.stringify({
       selectedUpload,
       uploadedFiles,
     }),
   );
+}
+
+function readRawDataUploadCache() {
+  if (typeof window === "undefined") {
+    return {};
+  }
+
+  try {
+    return JSON.parse(window.localStorage.getItem(RAW_DATA_UPLOADS_KEY) || "{}") || {};
+  } catch {
+    return {};
+  }
 }
 
 function normalizeColumnKey(value) {
@@ -113,144 +135,155 @@ function getCellText(value) {
   return String(value);
 }
 
-function parseCsvRows(text, fileName) {
-  const lines = String(text || "")
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter(Boolean);
+function buildImportedRow(columns, cells, fileName) {
+  const row = {};
 
-  if (lines.length <= 1) {
-    return [];
-  }
-
-  return lines.slice(1).map((line) => {
-    const cells = line.split(",").map((cell) => cell.trim().replace(/^"|"$/g, ""));
-    const normalized = wfmRawDataColumns.map((_, index) => cells[index] || "-");
-    normalized[normalized.length - 1] = fileName;
-    return normalized;
+  columns.forEach((column, index) => {
+    row[column] = getCellText(cells[index]).trim() || "-";
   });
+  row["Source File"] = fileName;
+
+  return row;
 }
 
-function normalizeImportedObjects(rows, fileName) {
-  if (!rows.length) {
-    return [];
-  }
+function getColumnConfig(column) {
+  const width = Math.min(Math.max(String(column).length * 8 + 48, 110), 190);
 
-  return rows.map((row) =>
-    wfmRawDataColumns.map((column, index) => {
-      if (column === "Source File") {
-        return fileName;
+  return {
+    label: column,
+    width: `${width}px`,
+  };
+}
+
+function getCombinedColumns(uploadedFiles) {
+  const columns = [];
+
+  uploadedFiles.forEach((upload) => {
+    (upload.columns || []).forEach((column) => {
+      if (!columns.includes(column)) {
+        columns.push(column);
       }
+    });
+  });
 
-      const normalizedColumn = normalizeColumnKey(column);
-      const matchedKey = Object.keys(row).find(
-        (key) => normalizeColumnKey(key) === normalizedColumn,
-      );
-
-      return getCellText(row[matchedKey] ?? row[index] ?? "-") || "-";
-    }),
-  );
+  return columns;
 }
 
-function isImportDataRow(values) {
-  return values.some((value) => value && value !== "-");
-}
-
-function getHeaderMatchCount(values) {
-  const normalizedValues = values.map(normalizeColumnKey);
-
-  return wfmRawDataColumns.filter((column) =>
-    normalizedValues.includes(normalizeColumnKey(column)),
-  ).length;
+function isGenericColumnName(column) {
+  return /^column\s+\d+$/i.test(String(column || "").trim());
 }
 
 function getFilledCellCount(values) {
-  return values.filter((value) => value && value !== "-").length;
+  return values.filter((value) => getCellText(value).trim() && value !== "-").length;
 }
 
-function findGenericHeaderRowIndex(rows) {
-  return rows.findIndex((row, index) => {
-    const filledCellCount = getFilledCellCount(row);
-    const nextFilledCellCount = getFilledCellCount(rows[index + 1] || []);
+function isLikelyImportedHeader(values, nextValues) {
+  const joinedValues = values.map((value) => getCellText(value).toLowerCase()).join(" ");
+  const knownHeaderWords = [
+    "employee",
+    "record",
+    "date",
+    "skill",
+    "calls",
+    "account",
+    "team",
+    "quality",
+    "score",
+  ];
+  const headerWordMatches = knownHeaderWords.filter((word) =>
+    joinedValues.includes(word),
+  ).length;
 
-    return filledCellCount >= 4 && nextFilledCellCount >= 4;
-  });
+  return (
+    getFilledCellCount(values) >= 3 &&
+    getFilledCellCount(nextValues || []) >= 3 &&
+    headerWordMatches >= 2
+  );
 }
 
-async function parseWorkbookRows(arrayBuffer, fileName) {
-  const XLSX = await import("xlsx");
-  const workbook = XLSX.read(arrayBuffer, {
-    type: "array",
-    cellDates: true,
-    cellText: false,
-  });
-  const sheetName = workbook.SheetNames.find(
-    (name) => workbook.Sheets[name]?.["!ref"],
+function repairGenericImportedUpload(upload) {
+  const columns = Array.isArray(upload.columns) ? upload.columns : [];
+
+  if (!columns.some(isGenericColumnName) || !Array.isArray(upload.rows)) {
+    return upload;
+  }
+
+  const rowValues = upload.rows.map((row) =>
+    columns.map((column) => getCellText(row?.[column]).trim()),
+  );
+  const headerRowIndex = rowValues.findIndex((values, index) =>
+    isLikelyImportedHeader(values, rowValues[index + 1]),
   );
 
-  if (!sheetName) {
-    return [];
-  }
-
-  const sheetRows = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], {
-    header: 1,
-    defval: "",
-    blankrows: false,
-    raw: false,
-  });
-  const normalizedSheetRows = sheetRows
-    .map((row) => row.map((cell) => getCellText(cell).trim()))
-    .filter(isImportDataRow);
-
-  if (!normalizedSheetRows.length) {
-    return [];
-  }
-
-  let headerRowIndex = -1;
-  const scanLimit = Math.min(25, normalizedSheetRows.length);
-
-  for (let index = 0; index < scanLimit; index += 1) {
-    const candidateValues = normalizedSheetRows[index];
-    const matchCount = getHeaderMatchCount(candidateValues);
-
-    if (matchCount >= 2) {
-      headerRowIndex = index;
-      break;
-    }
-  }
-
   if (headerRowIndex < 0) {
-    headerRowIndex = findGenericHeaderRowIndex(normalizedSheetRows);
+    return upload;
   }
 
-  const headers = headerRowIndex >= 0 ? normalizedSheetRows[headerRowIndex] : [];
-  const dataRows =
-    headerRowIndex >= 0
-      ? normalizedSheetRows.slice(headerRowIndex + 1)
-      : normalizedSheetRows;
-  const rows = dataRows.map((cells) => {
-    const rowObject = {};
+  const repairedColumns = rowValues[headerRowIndex]
+    .map((value, index) => value || `Column ${index + 1}`)
+    .filter(Boolean);
+  const uniqueColumns = repairedColumns.map((column, index, allColumns) => {
+    const duplicateIndex = allColumns.slice(0, index).filter((item) => item === column).length;
 
-    headers.forEach((header, index) => {
-      if (header) {
-        rowObject[header] = cells[index] || "";
-      }
-    });
-
-    return {
-      ...cells,
-      ...rowObject,
-    };
+    return duplicateIndex ? `${column} ${duplicateIndex + 1}` : column;
   });
+  const rows = rowValues.slice(headerRowIndex + 1).map((values) =>
+    buildImportedRow(uniqueColumns, values, upload.fileName),
+  );
 
-  return normalizeImportedObjects(rows, fileName);
+  return {
+    ...upload,
+    columns: [...uniqueColumns, "Source File"],
+    rows,
+  };
 }
 
-function formatUploadTimestamp(date = new Date()) {
-  return new Intl.DateTimeFormat("en-US", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(date);
+function normalizeCachedUpload(upload) {
+  if (Array.isArray(upload.columns) && upload.rows?.every((row) => !Array.isArray(row))) {
+    return repairGenericImportedUpload(upload);
+  }
+
+  const columns = [...knownWfmRawDataColumns];
+  const rows = Array.isArray(upload.rows)
+    ? upload.rows.map((row) => {
+        if (!Array.isArray(row)) {
+          return row;
+        }
+
+        return buildImportedRow(columns, row, upload.fileName);
+      })
+    : [];
+
+  return repairGenericImportedUpload({
+    ...upload,
+    columns,
+    rows,
+  });
+}
+
+function getUploadTimeMs(upload) {
+  if (upload?.uploadedAtMs) return upload.uploadedAtMs;
+
+  const parsedTime = new Date(upload?.uploadedAt || "").getTime();
+
+  return Number.isNaN(parsedTime) ? Date.now() : parsedTime;
+}
+
+function formatRelativeTime(upload) {
+  const elapsedMs = Math.max(0, Date.now() - getUploadTimeMs(upload));
+  const elapsedMinutes = Math.floor(elapsedMs / 60000);
+  const elapsedHours = Math.floor(elapsedMinutes / 60);
+  const elapsedDays = Math.floor(elapsedHours / 24);
+
+  if (elapsedMinutes < 1) return "just now";
+  if (elapsedMinutes < 60) {
+    return `${elapsedMinutes} min${elapsedMinutes === 1 ? "" : "s"} ago`;
+  }
+  if (elapsedHours < 24) {
+    return `${elapsedHours} hour${elapsedHours === 1 ? "" : "s"} ago`;
+  }
+
+  return `${elapsedDays} day${elapsedDays === 1 ? "" : "s"} ago`;
 }
 
 function WfmStatusPill({ status }) {
@@ -275,16 +308,59 @@ function WfmStatusPill({ status }) {
 
 function WfmDashboardContent() {
   const cachedImportState = useMemo(() => readWfmImportCache(), []);
-  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [showSuccessModal, setShowSuccessModal] = useState(false);
-  const [isImporting, setIsImporting] = useState(false);
-  const [isDeletingFile, setIsDeletingFile] = useState(false);
-  const [selectedFile, setSelectedFile] = useState(null);
-  const [fileToDelete, setFileToDelete] = useState(null);
+  const rawDataUploadCache = useMemo(() => readRawDataUploadCache(), []);
   const [selectedUpload, setSelectedUpload] = useState(cachedImportState.selectedUpload);
   const [uploadedFiles, setUploadedFiles] = useState(cachedImportState.uploadedFiles);
+  const [isImportUploadedDataOpen, setIsImportUploadedDataOpen] = useState(false);
+  const [selectedImportAccount, setSelectedImportAccount] = useState("");
+  const [activeDashboardImportCard, setActiveDashboardImportCard] = useState(null);
+  const [dashboardImportSearch, setDashboardImportSearch] = useState("");
+  const [dashboardUploadToImport, setDashboardUploadToImport] = useState(null);
+  const [isImportingDashboardData, setIsImportingDashboardData] = useState(false);
+  const [importedDashboardUpload, setImportedDashboardUpload] = useState(null);
+  const [showRemoveTableConfirm, setShowRemoveTableConfirm] = useState(false);
+  const [isRemovingTableData, setIsRemovingTableData] = useState(false);
+  const [removedTableData, setRemovedTableData] = useState(null);
+  const [showMakeGraphConfirm, setShowMakeGraphConfirm] = useState(false);
+  const [isMakingGraph, setIsMakingGraph] = useState(false);
+  const [madeGraphSet, setMadeGraphSet] = useState(null);
+  const [graphError, setGraphError] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  const uploadedCardCounts = useMemo(
+    () =>
+      Object.fromEntries(
+        accountOptions.map((account) => {
+          const uploadedCount = getRawDataCards(account).filter(
+            (card) => (rawDataUploadCache[card.id] || []).length > 0,
+          ).length;
+
+          return [account, uploadedCount];
+        }),
+      ),
+    [rawDataUploadCache],
+  );
+  const selectedAccountCards = useMemo(
+    () => (selectedImportAccount ? getRawDataCards(selectedImportAccount) : []),
+    [selectedImportAccount],
+  );
+  const activeDashboardImportUploads = useMemo(
+    () => rawDataUploadCache[activeDashboardImportCard?.id] || [],
+    [activeDashboardImportCard, rawDataUploadCache],
+  );
+  const filteredDashboardImportUploads = useMemo(() => {
+    const searchValue = dashboardImportSearch.trim().toLowerCase();
+
+    if (!searchValue) {
+      return activeDashboardImportUploads;
+    }
+
+    return activeDashboardImportUploads.filter((upload) =>
+      [upload.fileName, upload.uploadedAt, formatRelativeTime(upload)]
+        .join(" ")
+        .toLowerCase()
+        .includes(searchValue),
+    );
+  }, [activeDashboardImportUploads, dashboardImportSearch]);
 
   const selectedUploadedFile = useMemo(
     () => uploadedFiles.find((upload) => upload.fileName === selectedUpload),
@@ -297,6 +373,17 @@ function WfmDashboardContent() {
         : uploadedFiles.flatMap((upload) => upload.rows),
     [selectedUploadedFile, uploadedFiles],
   );
+  const tableColumns = useMemo(
+    () =>
+      selectedUploadedFile
+        ? selectedUploadedFile.columns || []
+        : getCombinedColumns(uploadedFiles),
+    [selectedUploadedFile, uploadedFiles],
+  );
+  const tableColumnConfig = useMemo(
+    () => tableColumns.map((column) => getColumnConfig(column)),
+    [tableColumns],
+  );
   const rowsPerPage = 25;
   const totalPages = Math.max(1, Math.ceil(displayedRows.length / rowsPerPage));
   const paginatedRows = displayedRows.slice(
@@ -304,258 +391,189 @@ function WfmDashboardContent() {
     currentPage * rowsPerPage,
   );
 
-  const handleSelectedUploadChange = (fileName) => {
-    setSelectedUpload(fileName);
-    setCurrentPage(1);
+  const handleOpenImportUploadedData = () => {
+    setSelectedImportAccount("");
+    setActiveDashboardImportCard(null);
+    setDashboardImportSearch("");
+    setIsImportUploadedDataOpen(true);
   };
 
-  useEffect(() => {
-    writeWfmImportCache({
-      selectedUpload,
-      uploadedFiles,
-    });
-  }, [selectedUpload, uploadedFiles]);
-
-  const handleFileSelect = (files) => {
-    const file = files?.[0];
-
-    if (file) {
-      setSelectedFile(file);
+  const handleImportDashboardUpload = async () => {
+    if (!dashboardUploadToImport) {
+      return;
     }
-  };
 
-  const closeImportModal = () => {
-    setIsImportModalOpen(false);
-    setSelectedFile(null);
-  };
+    const upload = dashboardUploadToImport;
+    const sourceCard = activeDashboardImportCard;
 
-  const readSelectedFile = () =>
-    new Promise((resolve) => {
-      if (!selectedFile) {
-        resolve([]);
-        return;
-      }
-
-      if (/\.csv$/i.test(selectedFile.name)) {
-        const reader = new FileReader();
-        reader.onload = () => resolve(parseCsvRows(reader.result, selectedFile.name));
-        reader.onerror = () => resolve([]);
-        reader.readAsText(selectedFile);
-        return;
-      }
-
-      const reader = new FileReader();
-      reader.onload = async () => {
-        try {
-          resolve(await parseWorkbookRows(reader.result, selectedFile.name));
-        } catch (error) {
-          console.error("Excel import failed:", error);
-          resolve([]);
-        }
-      };
-      reader.onerror = () => resolve([]);
-      reader.readAsArrayBuffer(selectedFile);
-    });
-
-  const handleUploadFile = async () => {
-    const fileName = selectedFile?.name || "workforce_raw_import.xlsx";
-    setIsImportModalOpen(false);
-    setIsImporting(true);
-    const [rows] = await Promise.all([
-      readSelectedFile(),
-      new Promise((resolve) => {
-        window.setTimeout(resolve, 3000);
-      }),
-    ]);
-
-    setUploadedFiles((currentFiles) => {
-      const nextFiles = [
-        {
-          fileName,
-          account: "Workforce Raw Import",
-          reportType: "Employee Performance KPI",
-          status: "Completed",
-          records: rows.length.toLocaleString(),
-          uploadedAt: formatUploadTimestamp(),
-          rows,
-        },
-        ...currentFiles.filter((upload) => upload.fileName !== fileName),
-      ];
-
-      writeWfmImportCache({
-        selectedUpload: fileName,
-        uploadedFiles: nextFiles,
-      });
-
-      return nextFiles;
-    });
-    handleSelectedUploadChange(fileName);
-    closeImportModal();
-    setIsImporting(false);
-    setShowSuccessModal(true);
-  };
-
-  const confirmDeleteFile = (upload) => {
-    setFileToDelete(upload);
-    setShowDeleteConfirm(true);
-  };
-
-  const handleDeleteFile = async () => {
-    const deletedFileName = fileToDelete?.fileName;
-    setShowDeleteConfirm(false);
-    setIsDeletingFile(true);
+    setDashboardUploadToImport(null);
+    setActiveDashboardImportCard(null);
+    setIsImportUploadedDataOpen(false);
+    setIsImportingDashboardData(true);
 
     await new Promise((resolve) => {
-      window.setTimeout(resolve, 800);
+      window.setTimeout(resolve, 1200);
     });
 
-    const nextFiles = uploadedFiles.filter(
-      (upload) => upload.fileName !== deletedFileName,
-    );
-
-    if (selectedUpload === deletedFileName) {
-      const nextFile = nextFiles[0];
-      handleSelectedUploadChange(nextFile?.fileName || "");
-    }
+    const importedUpload = normalizeCachedUpload(upload);
+    const nextFiles = [
+      importedUpload,
+      ...uploadedFiles.filter((file) => file.fileName !== importedUpload.fileName),
+    ];
 
     setUploadedFiles(nextFiles);
+    setSelectedUpload(importedUpload.fileName);
+    setCurrentPage(1);
     writeWfmImportCache({
-      selectedUpload:
-        selectedUpload === deletedFileName ? nextFiles[0]?.fileName || "" : selectedUpload,
+      selectedUpload: importedUpload.fileName,
       uploadedFiles: nextFiles,
     });
+    addWfmHistoryLog({
+      action: "dashboard-imported",
+      account: sourceCard?.account || importedUpload.account,
+      fileName: importedUpload.fileName,
+      rawDataTitle: sourceCard?.title || importedUpload.rawDataTitle,
+      message: `Imported to Work Force Management Dashboard: ${importedUpload.fileName}`,
+    });
+    setSelectedImportAccount("");
+    setDashboardImportSearch("");
+    setIsImportingDashboardData(false);
+    setImportedDashboardUpload(importedUpload);
+  };
 
-    setFileToDelete(null);
-    setIsDeletingFile(false);
+  const handleCloseImportUploadedData = () => {
+    setIsImportUploadedDataOpen(false);
+    setSelectedImportAccount("");
+    setActiveDashboardImportCard(null);
+    setDashboardImportSearch("");
+  };
+
+  const handleRemoveDashboardTableData = async () => {
+    const removedFileName = selectedUploadedFile?.fileName || selectedUpload;
+    const removedRows = displayedRows.length;
+
+    setShowRemoveTableConfirm(false);
+    setIsRemovingTableData(true);
+
+    await new Promise((resolve) => {
+      window.setTimeout(resolve, 900);
+    });
+
+    setUploadedFiles([]);
+    setSelectedUpload("");
+    setCurrentPage(1);
+    writeWfmImportCache({
+      selectedUpload: "",
+      uploadedFiles: [],
+    });
+    addWfmHistoryLog({
+      action: "dashboard-removed",
+      fileName: removedFileName || "Dashboard table data",
+      message: `Removed data from Work Force Management Dashboard table`,
+    });
+    setRemovedTableData({
+      fileName: removedFileName,
+      rows: removedRows,
+    });
+    setIsRemovingTableData(false);
+  };
+
+  const handleRequestMakeGraph = () => {
+    if (!displayedRows.length || !tableColumns.length) {
+      return;
+    }
+
+    setShowMakeGraphConfirm(true);
+  };
+
+  const handleMakeGraph = async () => {
+    if (!displayedRows.length || !tableColumns.length) {
+      return;
+    }
+
+    setShowMakeGraphConfirm(false);
+    setGraphError("");
+    setIsMakingGraph(true);
+
+    await new Promise((resolve) => {
+      window.setTimeout(resolve, 5000);
+    });
+
+    const graphSet = generateWfmGraphReports({
+      columns: tableColumns,
+      rows: displayedRows,
+      sourceFile: selectedUpload || "Imported dashboard data",
+      sourceUploadId: selectedUploadedFile?.id,
+      sourceCardId: selectedUploadedFile?.cardId,
+      sourceUploadedAtMs: selectedUploadedFile?.uploadedAtMs,
+      rawDataTitle: selectedUploadedFile?.rawDataTitle,
+    });
+
+    if (!graphSet) {
+      setIsMakingGraph(false);
+      setGraphError("No graphable fields were found in the imported data.");
+      return;
+    }
+
+    saveWfmGraphReportSet(graphSet);
+    addWfmHistoryLog({
+      action: "graph-generated",
+      fileName: graphSet.sourceFile,
+      message: `Generated graphs from Work Force Management Dashboard: ${graphSet.sourceFile}`,
+    });
+    setIsMakingGraph(false);
+    setMadeGraphSet(graphSet);
   };
 
   return (
     <>
       <div className="grid grid-cols-12 gap-4">
-        <section className="col-span-12 flex justify-end">
-          <Button
-            type="button"
-            onClick={() => setIsImportModalOpen(true)}
-            className="h-10 rounded-lg bg-sibs-primary-1 px-5 text-white hover:bg-sibs-tertiary-4"
-          >
-            <CloudUpload className="h-4 w-4" aria-hidden="true" />
-            Upload/Import File
-          </Button>
-        </section>
-
-        <section className="sibs-card col-span-12 p-3">
-          <div className="flex flex-wrap items-center gap-2">
-            <h2 className="m-0 text-base font-semibold text-sibs-primary-1">
-              Uploaded Excel Files
-            </h2>
-            <span className="inline-flex items-center gap-1 rounded-full border border-sibs-tertiary-10 bg-[#f8fbfd] px-2.5 py-1 text-xs font-semibold text-sibs-tertiary-5">
-              Imported files
-              <strong className="text-sibs-primary-1">{uploadedFiles.length}</strong>
-            </span>
-          </div>
-
-          {uploadedFiles.length > 0 ? (
-            <div className="mt-2 divide-y divide-sibs-tertiary-10 overflow-hidden rounded-lg border border-sibs-tertiary-10 bg-[#f8fbfd]">
-              {uploadedFiles.map((upload) => (
-                <div
-                  key={`${upload.fileName}-${upload.uploadedAt}`}
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => handleSelectedUploadChange(upload.fileName)}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter" || event.key === " ") {
-                      event.preventDefault();
-                      handleSelectedUploadChange(upload.fileName);
-                    }
-                  }}
-                  className={`grid cursor-pointer gap-2 px-3 py-2 text-left transition hover:bg-sibs-primary-2/5 md:grid-cols-[minmax(0,1fr)_145px_64px_30px] md:items-center ${
-                    selectedUpload === upload.fileName
-                      ? "bg-sibs-primary-2/5"
-                      : ""
-                  }`}
-                >
-                  <div className="min-w-0">
-                    <p className="m-0 truncate text-xs font-bold text-sibs-primary-1">
-                      {upload.fileName}
-                    </p>
-                  </div>
-                  <div className="truncate text-xs text-sibs-tertiary-5">
-                    {upload.uploadedAt}
-                  </div>
-                  <div className="text-xs text-sibs-tertiary-5">
-                    <span>{upload.records} rows</span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      confirmDeleteFile(upload);
-                    }}
-                    className="inline-flex h-7 w-7 items-center justify-center rounded-md text-sibs-danger transition hover:bg-sibs-danger/10 md:justify-self-end"
-                    title="Delete file"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="mt-4 rounded-lg border border-dashed border-sibs-tertiary-9 bg-[#f8fbfd] px-5 py-8 text-center text-sm text-sibs-tertiary-5">
-              No uploaded files yet.
-            </div>
-          )}
-        </section>
-
         <section className="sibs-card col-span-12 overflow-hidden">
-          <div className="flex flex-col gap-3 border-b border-sibs-tertiary-10 bg-sibs-primary-3/30 px-5 py-3 md:flex-row md:items-center md:justify-between">
+          <div className="flex flex-col gap-3 border-b border-sibs-tertiary-10 bg-sibs-primary-3/30 px-5 py-3 xl:flex-row xl:items-center xl:justify-between">
             <h2 className="m-0 text-lg font-semibold text-sibs-primary-1">
               Imported Employee Performance Rows
             </h2>
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-              <select
-                value={selectedUpload}
-                onChange={(event) => handleSelectedUploadChange(event.target.value)}
-                className="form-input h-9 rounded-full py-0 sm:w-72"
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleOpenImportUploadedData}
+                className="h-9 rounded-full border-sibs-tertiary-8 bg-white px-4 font-semibold text-sibs-primary-1 shadow-sm hover:!border-sibs-tertiary-7 hover:!bg-sibs-tertiary-10 hover:!text-sibs-primary-1 sm:w-auto"
               >
-                <option value="">All uploaded files</option>
-                {uploadedFiles.map((upload) => (
-                  <option key={`${upload.fileName}-${upload.uploadedAt}`} value={upload.fileName}>
-                    {upload.fileName}
-                  </option>
-                ))}
-              </select>
-              <div className="relative">
-                <Search
-                  className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-sibs-tertiary-6"
-                  aria-hidden="true"
-                />
-                <input
-                  className="h-9 w-full rounded-full border border-sibs-tertiary-9 bg-white pl-9 pr-4 text-sm outline-none focus:border-sibs-primary-2 sm:w-56"
-                  placeholder="Search rows..."
-                  type="text"
-                />
-              </div>
-              <Button variant="ghost" size="icon" className="rounded-full">
-                <Filter className="h-4 w-4" aria-hidden="true" />
+                Import Uploaded Data
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={!displayedRows.length}
+                onClick={handleRequestMakeGraph}
+                className="h-9 rounded-full border-sibs-tertiary-8 bg-white px-4 font-semibold text-sibs-primary-1 shadow-sm hover:!border-sibs-tertiary-7 hover:!bg-sibs-tertiary-10 hover:!text-sibs-primary-1 sm:w-auto"
+              >
+                <BarChart3 className="h-4 w-4" aria-hidden="true" />
+                Make graph
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setShowRemoveTableConfirm(true)}
+                disabled={!displayedRows.length}
+                className="h-9 rounded-full border-sibs-danger/30 bg-white px-4 font-semibold text-sibs-danger shadow-sm hover:!border-sibs-tertiary-8 hover:!bg-sibs-tertiary-10 hover:!text-sibs-danger sm:w-auto"
+              >
+                <Trash2 className="h-4 w-4" aria-hidden="true" />
+                Remove data from table
               </Button>
             </div>
           </div>
 
           <div className="sibs-scrollbar overflow-x-auto">
-            <table className="w-max min-w-full table-fixed border-collapse text-left">
-              <colgroup>
-                {wfmRawDataColumnConfig.map((column) => (
-                  <col key={column.label} style={{ width: column.width }} />
-                ))}
-              </colgroup>
+            <table className="w-max min-w-full border-collapse text-left">
               <thead className="bg-sibs-primary-3/50 text-xs uppercase text-sibs-tertiary-6">
                 <tr>
-                  {wfmRawDataColumnConfig.map((column) => (
+                  {tableColumnConfig.map((column) => (
                     <th
                       key={column.label}
-                      className={`whitespace-nowrap px-4 py-3 font-bold ${
-                        column.align === "right" ? "text-right" : ""
-                      }`}
+                      className="whitespace-nowrap px-4 py-3 text-left font-bold"
+                      style={{ minWidth: column.width }}
                     >
                       {column.label}
                     </th>
@@ -565,29 +583,29 @@ function WfmDashboardContent() {
               <tbody className="divide-y divide-sibs-tertiary-10 text-sm">
                 {paginatedRows.length > 0 ? (
                   paginatedRows.map((row, rowIndex) => (
-                    <tr key={`${row[0]}-${rowIndex}`} className="bg-[#f8fbfd] transition hover:bg-sibs-primary-2/5">
-                      {row.map((cell, cellIndex) => (
+                    <tr key={`${row["Source File"] || "row"}-${rowIndex}`} className="bg-[#f8fbfd] transition hover:bg-sibs-primary-2/5">
+                      {tableColumnConfig.map((column) => {
+                        const cell = row[column.label] || "-";
+
+                        return (
                         <td
-                          key={`${wfmRawDataColumns[cellIndex]}-${cellIndex}`}
-                          className={`max-w-0 whitespace-nowrap px-4 py-3 text-sibs-tertiary-5 ${
-                            wfmRawDataColumnConfig[cellIndex]?.align === "right"
-                              ? "text-right"
-                              : ""
-                          }`}
+                          key={`${column.label}-${rowIndex}`}
+                          className="whitespace-nowrap px-4 py-3 text-left text-sibs-tertiary-5"
+                          style={{ minWidth: column.width }}
                           title={String(cell || "")}
                         >
-                          {wfmRawDataColumns[cellIndex] === "Status" ? (
+                          {normalizeColumnKey(column.label) === "status" ? (
                             <WfmStatusPill status={cell} />
                           ) : (
-                            <span className="block truncate">{cell}</span>
+                            <span>{cell}</span>
                           )}
                         </td>
-                      ))}
+                      )})}
                     </tr>
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={wfmRawDataColumns.length} className="bg-[#f8fbfd] px-5 py-10 text-center text-sm text-sibs-tertiary-5">
+                    <td colSpan={Math.max(tableColumns.length, 1)} className="bg-[#f8fbfd] px-5 py-10 text-center text-sm text-sibs-tertiary-5">
                       No raw data imported yet. Upload a file to populate this table.
                     </td>
                   </tr>
@@ -601,7 +619,7 @@ function WfmDashboardContent() {
               Showing {paginatedRows.length} of {displayedRows.length} imported rows
             </span>
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-              <span>{selectedUpload || "All uploaded files"}</span>
+              <span>{selectedUpload || "No imported upload selected"}</span>
               <div className="flex items-center gap-2">
                 <Button
                   type="button"
@@ -630,98 +648,308 @@ function WfmDashboardContent() {
         </section>
       </div>
 
-      <AppModal isOpen={isImportModalOpen} className="max-w-2xl">
-        <div className="flex items-start justify-between gap-4">
+      <AppModal
+        isOpen={isImportUploadedDataOpen}
+        className="flex h-[min(92vh,830px)] !max-w-none flex-col sm:!w-[min(94vw,1280px)]"
+      >
+        <div className="shrink-0 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="m-0 text-lg font-bold text-sibs-primary-1">
-              Upload/Import File
+            <p className="m-0 text-xl font-bold text-sibs-primary-1">
+              Import Uploaded Data
             </p>
             <p className="mt-1 mb-0 text-sm text-sibs-tertiary-5">
-              Select an Excel or CSV raw KPI file for frontend staging.
+              Choose staged raw data to reflect in this dashboard.
             </p>
           </div>
-          <CloudUpload className="h-6 w-6 text-sibs-primary-2" aria-hidden="true" />
+          {activeDashboardImportCard ? (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setActiveDashboardImportCard(null);
+                setDashboardImportSearch("");
+              }}
+              className="h-9 rounded-lg px-4"
+            >
+              <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+              Raw data cards
+            </Button>
+          ) : selectedImportAccount ? (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setSelectedImportAccount("");
+                setDashboardImportSearch("");
+              }}
+              className="h-9 rounded-lg px-4"
+            >
+              <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+              All accounts
+            </Button>
+          ) : null}
         </div>
 
-        <label
-          htmlFor="wfm-import-file-input"
-          className="mt-5 flex cursor-pointer items-center gap-4 rounded-lg border border-dashed border-sibs-tertiary-9 bg-[#f8fbfd] p-5 text-left transition hover:border-sibs-primary-2 hover:bg-sibs-primary-2/5"
-        >
-          <input
-            id="wfm-import-file-input"
-            type="file"
-            accept=".csv,.xlsx,.xls"
-            className="hidden"
-            onChange={(event) => handleFileSelect(event.target.files)}
-          />
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-sibs-primary-2/10">
-            <CloudUpload className="h-6 w-6 text-sibs-primary-2" aria-hidden="true" />
-          </div>
-          <div className="min-w-0 flex-1 overflow-hidden">
-            <p className="m-0 truncate text-sm font-bold text-sibs-primary-1">
-              {selectedFile?.name || "Choose Excel sheet file"}
-            </p>
-            <p className="mt-1 mb-0 text-xs text-sibs-tertiary-5">
-              Accepted: .xlsx, .xls, .csv
-            </p>
-          </div>
-        </label>
+        <div className="sibs-scrollbar mt-5 min-h-0 flex-1 overflow-y-auto pr-2">
+          {activeDashboardImportCard ? (
+            <>
+              <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <p className="m-0 text-lg font-bold text-sibs-primary-1">
+                  {activeDashboardImportCard.title} Uploaded Data
+                </p>
+                <div className="relative w-full sm:w-80">
+                  <Search
+                    className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-sibs-tertiary-6"
+                    aria-hidden="true"
+                  />
+                  <input
+                    value={dashboardImportSearch}
+                    onChange={(event) => setDashboardImportSearch(event.target.value)}
+                    className="h-9 w-full rounded-full border border-sibs-tertiary-9 bg-white pl-9 pr-4 text-sm outline-none focus:border-sibs-primary-2"
+                    placeholder="Search uploaded data..."
+                    type="text"
+                  />
+                </div>
+              </div>
 
-        <div className="mt-5 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+              <div className="min-h-[420px] divide-y divide-sibs-tertiary-10 overflow-hidden rounded-lg border border-sibs-tertiary-10">
+                {filteredDashboardImportUploads.length ? (
+                  filteredDashboardImportUploads.map((upload) => (
+                    <div
+                      key={upload.id || `${upload.fileName}-${upload.uploadedAt}`}
+                      className="grid gap-3 bg-[#f8fbfd] px-4 py-3 sm:grid-cols-[minmax(0,1fr)_120px] sm:items-center"
+                    >
+                      <div className="min-w-0">
+                        <p className="m-0 break-words text-sm font-bold text-sibs-primary-1">
+                          {upload.fileName}
+                        </p>
+                        <p className="mt-1 mb-0 text-xs text-sibs-tertiary-5">
+                          {upload.uploadedAt} ({formatRelativeTime(upload)})
+                        </p>
+                      </div>
+                      <Button
+                        type="button"
+                        onClick={() => setDashboardUploadToImport(upload)}
+                        className="h-8 rounded-lg bg-sibs-primary-1 px-3 text-xs text-white hover:bg-sibs-tertiary-4"
+                      >
+                        Import Data
+                      </Button>
+                    </div>
+                  ))
+                ) : (
+                  <div className="bg-[#f8fbfd] px-4 py-8 text-center text-sm text-sibs-tertiary-5">
+                    {activeDashboardImportUploads.length
+                      ? "No uploaded data found."
+                      : "No uploaded data yet."}
+                  </div>
+                )}
+              </div>
+            </>
+          ) : !selectedImportAccount ? (
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+              {accountOptions.map((account) => (
+                <button
+                  key={account}
+                  type="button"
+                  onClick={() => setSelectedImportAccount(account)}
+                  className="sibs-card min-h-[130px] p-4 text-left transition hover:border-sibs-primary-2 hover:bg-sibs-primary-2/5"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="m-0 truncate text-base font-bold text-sibs-primary-1">
+                        {account}
+                      </p>
+                      <p className="mt-1 mb-0 text-sm font-semibold text-sibs-tertiary-5">
+                        Open account raw data
+                      </p>
+                    </div>
+                    <span className="rounded-full bg-[#f8fbfd] px-2.5 py-1 text-xs font-bold text-sibs-primary-1">
+                      {uploadedCardCounts[account] || 0}
+                    </span>
+                  </div>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+              {selectedAccountCards.map((card) => {
+                const cardUploads = rawDataUploadCache[card.id] || [];
+                const latestUploads = cardUploads.slice(0, 5);
+
+                return (
+                  <button
+                    key={card.id}
+                    type="button"
+                    onClick={() => {
+                      setActiveDashboardImportCard(card);
+                      setDashboardImportSearch("");
+                    }}
+                    className="sibs-card flex min-h-[260px] flex-col p-4 text-left transition hover:border-sibs-primary-2 hover:bg-sibs-primary-2/5"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="m-0 truncate text-sm font-bold text-sibs-primary-1">
+                          {card.title}
+                        </p>
+                        <p className="mt-1 mb-0 truncate text-xs font-semibold text-sibs-tertiary-5">
+                          {card.account}
+                        </p>
+                      </div>
+                      <span className="rounded-full bg-[#f8fbfd] px-2.5 py-1 text-xs font-bold text-sibs-primary-1">
+                        {cardUploads.length}
+                      </span>
+                    </div>
+
+                    <div className="mt-4 min-h-[155px] flex-1 space-y-1 rounded-lg border border-sibs-tertiary-10 bg-[#f8fbfd] px-3 py-2">
+                      {latestUploads.length ? (
+                        latestUploads.map((upload) => (
+                          <div
+                            key={upload.id || `${upload.fileName}-${upload.uploadedAt}`}
+                            className="border-b border-sibs-tertiary-10 pb-1 last:border-b-0 last:pb-0"
+                          >
+                            <span className="block truncate text-[11px] font-semibold leading-4 text-sibs-primary-1">
+                              {upload.fileName}
+                            </span>
+                            <span className="block text-[10px] leading-3 text-sibs-tertiary-5">
+                              {formatRelativeTime(upload)}
+                            </span>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="flex min-h-[130px] items-center justify-center text-center text-xs text-sibs-tertiary-5">
+                          No uploaded data yet
+                        </div>
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        <div className="mt-5 flex shrink-0 justify-end border-t border-sibs-tertiary-10 pt-5">
           <Button
             type="button"
             variant="outline"
-            onClick={closeImportModal}
-            className="h-10 rounded-xl border-sibs-tertiary-8 sm:w-auto"
+            onClick={handleCloseImportUploadedData}
+            className="h-10 rounded-lg px-4"
           >
-            Cancel
-          </Button>
-          <Button
-            type="button"
-            disabled={!selectedFile}
-            onClick={handleUploadFile}
-            className="h-10 rounded-xl bg-sibs-primary-1 font-semibold text-white hover:bg-sibs-tertiary-4 sm:w-auto"
-          >
-            Upload
+            Close
           </Button>
         </div>
       </AppModal>
 
+      <LoadingModal
+        isOpen={isImportingDashboardData}
+        title="Importing data"
+        message="Please wait while we reflect the selected uploaded data."
+      />
+
       <ConfirmationModal
-        isOpen={showDeleteConfirm}
-        title="Delete uploaded file"
-        message={`Remove ${fileToDelete?.fileName || "this file"} from the uploaded files list?`}
+        isOpen={Boolean(dashboardUploadToImport)}
+        title="Import uploaded data"
+        message={`Import ${dashboardUploadToImport?.fileName || "this uploaded data"} to the Work Force Management Dashboard table?`}
         cancelText="Cancel"
-        confirmText="Delete"
-        onCancel={() => setShowDeleteConfirm(false)}
-        onConfirm={handleDeleteFile}
+        confirmText="Import"
+        onCancel={() => setDashboardUploadToImport(null)}
+        onConfirm={handleImportDashboardUpload}
+        tone="neutral"
+      />
+
+      <ConfirmationModal
+        isOpen={showRemoveTableConfirm}
+        title="Remove data from table"
+        message="Remove the imported data currently shown in the Work Force Management Dashboard table?"
+        cancelText="Cancel"
+        confirmText="Remove"
+        onCancel={() => setShowRemoveTableConfirm(false)}
+        onConfirm={handleRemoveDashboardTableData}
         tone="neutral"
       />
 
       <LoadingModal
-        isOpen={isImporting}
-        title="Importing file"
-        message="Please wait while we read and stage the uploaded file."
+        isOpen={isRemovingTableData}
+        title="Removing data"
+        message="Please wait while we clear the dashboard table."
       />
 
       <LoadingModal
-        isOpen={isDeletingFile}
-        title="Deleting file"
-        message="Removing the uploaded file from this workspace."
+        isOpen={isMakingGraph}
+        title="Converting to graph"
+        message="Please wait while we convert the imported dashboard data into graph reports."
       />
 
-      <AppModal isOpen={showSuccessModal} textAlign="center">
-        <CheckCircle2 className="mx-auto h-11 w-11 text-sibs-success" aria-hidden="true" />
-        <p className="mt-4 mb-1 text-base font-bold text-sibs-primary-1">
-          Action completed
+      <ConfirmationModal
+        isOpen={showMakeGraphConfirm}
+        title="Make graph"
+        message="Convert the current Work Force Management Dashboard table data into graph reports?"
+        cancelText="Cancel"
+        confirmText="Make graph"
+        onCancel={() => setShowMakeGraphConfirm(false)}
+        onConfirm={handleMakeGraph}
+        tone="neutral"
+      />
+
+      <AppModal isOpen={Boolean(madeGraphSet)} className="max-w-sm" textAlign="center">
+        <p className="m-0 text-lg font-bold text-sibs-primary-1">
+          Graphs generated
         </p>
-        <p className="m-0 text-sm text-sibs-tertiary-5">
-          The WFM import workspace has been updated.
+        <p className="mt-2 mb-0 text-sm text-sibs-tertiary-5">
+          {madeGraphSet?.summary?.reports || 0} graph(s) are now available in View Graphs.
         </p>
         <Button
           type="button"
-          onClick={() => setShowSuccessModal(false)}
-          className="mt-5 h-10 w-full rounded-xl bg-sibs-primary-1 text-white hover:bg-sibs-tertiary-4"
+          onClick={() => setMadeGraphSet(null)}
+          className="mt-5 h-10 w-full rounded-lg bg-sibs-primary-1 text-white hover:bg-sibs-tertiary-4"
+        >
+          Done
+        </Button>
+      </AppModal>
+
+      <AppModal isOpen={Boolean(graphError)} className="max-w-sm" textAlign="center">
+        <p className="m-0 text-lg font-bold text-sibs-primary-1">
+          Graph not generated
+        </p>
+        <p className="mt-2 mb-0 text-sm text-sibs-tertiary-5">
+          {graphError}
+        </p>
+        <Button
+          type="button"
+          onClick={() => setGraphError("")}
+          className="mt-5 h-10 w-full rounded-lg bg-sibs-primary-1 text-white hover:bg-sibs-tertiary-4"
+        >
+          Done
+        </Button>
+      </AppModal>
+
+      <AppModal isOpen={Boolean(removedTableData)} className="max-w-sm" textAlign="center">
+        <p className="m-0 text-lg font-bold text-sibs-primary-1">
+          Table data removed
+        </p>
+        <p className="mt-2 mb-0 text-sm text-sibs-tertiary-5">
+          {removedTableData?.rows || 0} row(s) were removed from the dashboard table.
+        </p>
+        <Button
+          type="button"
+          onClick={() => setRemovedTableData(null)}
+          className="mt-5 h-10 w-full rounded-lg bg-sibs-primary-1 text-white hover:bg-sibs-tertiary-4"
+        >
+          Done
+        </Button>
+      </AppModal>
+
+      <AppModal isOpen={Boolean(importedDashboardUpload)} className="max-w-sm" textAlign="center">
+        <p className="m-0 text-lg font-bold text-sibs-primary-1">
+          Imported data reflected
+        </p>
+        <p className="mt-2 mb-0 text-sm text-sibs-tertiary-5">
+          {importedDashboardUpload?.fileName} is now shown in the dashboard table.
+        </p>
+        <Button
+          type="button"
+          onClick={() => setImportedDashboardUpload(null)}
+          className="mt-5 h-10 w-full rounded-lg bg-sibs-primary-1 text-white hover:bg-sibs-tertiary-4"
         >
           Done
         </Button>
