@@ -13,7 +13,7 @@ import { useNavigate } from "react-router-dom";
 import { clearAuthSession, getAuthUser, isAuthenticated } from "@/lib/auth";
 
 const roleIcons = {
-  superadmin: ShieldCheck,
+  admin: ShieldCheck,
   wfm: FolderDown,
   agent: Gauge,
   om: Filter,
@@ -38,7 +38,7 @@ function useDashboardPage() {
       path: authUser?.dashboardPath || "/dashboard",
     };
 
-    if (role !== "superadmin") {
+    if (role !== "admin") {
       return [dashboardModule];
     }
 
