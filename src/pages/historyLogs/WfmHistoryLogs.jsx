@@ -76,6 +76,7 @@ function WfmHistoryLogs() {
           title={`${dashboard.authUser?.roleLabel || "User"} Dashboard`}
           subtitle="Performance Management System"
           onMenuClick={() => dashboard.setIsMobileSidebarOpen(true)}
+          onLogoutClick={() => dashboard.setShowLogoutModal(true)}
         />
 
         <div className="sibs-scrollbar max-h-[calc(100vh-74px)] overflow-y-auto p-3 sm:p-4 lg:p-5">

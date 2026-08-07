@@ -695,7 +695,7 @@
 ========================= */
 @layer components {
   .sibs-sidebar {
-    @apply relative z-[100] flex h-screen min-h-0 w-[340px] shrink-0 flex-col overflow-visible transition-all duration-300;
+    @apply relative z-[100] flex h-screen min-h-0 w-[260px] shrink-0 flex-col overflow-visible transition-all duration-300;
   }
 
   .sibs-sidebar.collapsed {
@@ -719,7 +719,7 @@
   }
 
   .sibs-sidebar-brand-row {
-    @apply relative flex h-[86px] min-h-[86px] shrink-0 items-center justify-between border-b border-white/10 py-5 pl-4 pr-8;
+    @apply relative flex h-[86px] min-h-[86px] shrink-0 items-center justify-between border-b border-white/10 py-5 pl-5 pr-8;
   }
 
   .sibs-sidebar-brand-row.collapsed {
@@ -731,7 +731,7 @@
   }
 
   .sibs-sidebar-logo-mark {
-    @apply relative flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] bg-[#f05a28] text-lg font-semibold text-white;
+    @apply relative flex h-11 w-11 shrink-0 items-center justify-center rounded-[13px] bg-[#ff5c28] text-lg font-semibold text-white;
   }
 
   .sibs-sidebar-brand-copy {
@@ -743,7 +743,7 @@
   }
 
   .sibs-sidebar-brand-subtitle {
-    @apply mt-[2px] flex flex-col text-[9px] font-semibold uppercase leading-[9px] tracking-[0.12em] text-[#b8ccdd];
+    @apply mt-[2px] flex flex-col text-[9px] font-semibold uppercase leading-[9px] tracking-[0.12em] text-[#a7bed0];
   }
 
   .sibs-sidebar-logo-dot {

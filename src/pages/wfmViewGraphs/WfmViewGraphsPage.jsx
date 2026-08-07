@@ -13,6 +13,7 @@ import {
   readWfmGraphReports,
   WFM_GRAPH_REPORTS_UPDATED_EVENT,
 } from "@/lib/wfm-graph-reports";
+import { getRawDataTitleFromCardId } from "@/lib/wfm-raw-data-cards";
 
 const gridColor = "#e5e7eb";
 const graphWindowSize = 6;
@@ -127,15 +128,19 @@ function formatGeneratedAt(value) {
 
 function SummaryCard({ label, value }) {
   return (
-    <div className="sibs-card p-4">
+    <div className="sibs-card min-w-0 p-3">
       <p className="m-0 text-xs font-bold uppercase text-sibs-tertiary-5">
         {label}
       </p>
-      <p className="mt-2 mb-0 break-words text-sm font-bold text-sibs-primary-1">
+      <p className="mt-1 mb-0 break-words text-xs font-bold leading-snug text-sibs-primary-1 sm:text-sm">
         {value || "-"}
       </p>
     </div>
   );
+}
+
+function getDisplayRawDataTitle(graphSet) {
+  return getRawDataTitleFromCardId(graphSet?.sourceCardId, graphSet?.rawDataTitle);
 }
 
 function getSeriesData(metric, period) {
@@ -716,6 +721,7 @@ function WfmViewGraphsPage() {
           title={`${dashboard.authUser?.roleLabel || "User"} Dashboard`}
           subtitle="Performance Management System"
           onMenuClick={() => dashboard.setIsMobileSidebarOpen(true)}
+          onLogoutClick={() => dashboard.setShowLogoutModal(true)}
         />
 
         <div className="sibs-scrollbar max-h-[calc(100vh-74px)] overflow-y-auto p-3 sm:p-4 lg:p-5">
@@ -812,9 +818,9 @@ function WfmViewGraphsPage() {
 
               {selectedGraphSet ? (
                 <>
-                  <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                  <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                     <SummaryCard label="Source File" value={selectedGraphSet.sourceFile} />
-                    <SummaryCard label="Raw Data" value={selectedGraphSet.rawDataTitle} />
+                    <SummaryCard label="Raw Data" value={getDisplayRawDataTitle(selectedGraphSet)} />
                     <SummaryCard label="Date Range" value={selectedDateLabel} />
                     <SummaryCard
                       label="Generated"

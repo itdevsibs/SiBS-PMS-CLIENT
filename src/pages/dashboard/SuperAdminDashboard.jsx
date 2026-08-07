@@ -250,6 +250,7 @@ function SuperAdminDashboard() {
           title={`${dashboard.authUser?.roleLabel || "User"} Dashboard`}
           subtitle="Performance Management System"
           onMenuClick={() => dashboard.setIsMobileSidebarOpen(true)}
+          onLogoutClick={() => dashboard.setShowLogoutModal(true)}
         />
 
         <div className="sibs-scrollbar max-h-[calc(100vh-74px)] overflow-y-auto p-3 sm:p-4 lg:p-5">
@@ -412,7 +413,7 @@ function SuperAdminDashboard() {
             value={employeeSearch}
             onChange={(event) => handleEmployeeSearchChange(event.target.value)}
             className="form-input h-10 w-full rounded-lg pl-9"
-            placeholder="Search by employee ID or first name..."
+            placeholder="Search gy_user or gy_employee ID..."
             type="text"
           />
         </div>

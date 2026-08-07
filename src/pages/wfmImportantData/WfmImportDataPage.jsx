@@ -9,37 +9,17 @@ import ConfirmationModal from "@/components/ui/confirmation-modal";
 import LoadingModal from "@/components/ui/loading-modal";
 import useDashboardPage from "@/hooks/useDashboardPage";
 import { addWfmHistoryLog } from "@/lib/wfm-history-logs";
+import {
+  accountOptions,
+  getRawDataCards,
+} from "@/lib/wfm-raw-data-cards";
 
 const RAW_DATA_UPLOADS_KEY = "sibs-wfm-raw-data-uploads";
 
 const accountFilters = [
   "All Accounts",
-  "US VISA",
-  "YUM-DEL",
-  "Account 1",
-  "Account 2",
-  "Account 3",
-  "Account 4",
-  "Account 5",
+  ...accountOptions,
 ];
-const accountOptions = accountFilters.filter((account) => account !== "All Accounts");
-
-const rawDataTemplates = Array.from({ length: 15 }, (_, index) => ({
-  key: `raw-data-${index + 1}`,
-  title: `Raw Data ${index + 1}`,
-}));
-
-function getRawDataCards(account) {
-  if (account === "All Accounts") {
-    return [];
-  }
-
-  return rawDataTemplates.map((template) => ({
-    ...template,
-    id: `${account.toLowerCase().replace(/[^a-z0-9]/g, "-")}-${template.key}`,
-    account,
-  }));
-}
 
 function formatUploadTimestamp(date = new Date()) {
   return new Intl.DateTimeFormat("en-US", {
@@ -497,6 +477,7 @@ function WfmImportDataPage() {
           title={`${dashboard.authUser?.roleLabel || "User"} Dashboard`}
           subtitle="Performance Management System"
           onMenuClick={() => dashboard.setIsMobileSidebarOpen(true)}
+          onLogoutClick={() => dashboard.setShowLogoutModal(true)}
         />
 
         <div className="sibs-scrollbar max-h-[calc(100vh-74px)] overflow-y-auto p-3 sm:p-4 lg:p-5">

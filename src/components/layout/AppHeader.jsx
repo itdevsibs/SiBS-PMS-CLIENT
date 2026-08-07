@@ -1,5 +1,8 @@
 import { useState } from "react";
 import { ChevronDown, LogOut, Menu, UserRound } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+
+import { clearAuthSession, getAuthUser } from "@/lib/auth";
 
 const AppHeader = ({
   onLogoutClick,
@@ -9,12 +12,38 @@ const AppHeader = ({
   userEmail,
   userName,
 }) => {
+  const navigate = useNavigate();
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
-  const userInitial = userName?.charAt(0)?.toUpperCase() || "U";
+  const authUser = getAuthUser();
+  const fullNameFromParts = [
+    authUser?.firstName,
+    authUser?.middleName,
+    authUser?.lastName,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .trim();
+  const displayName =
+    userName ||
+    authUser?.fullName ||
+    authUser?.name ||
+    fullNameFromParts ||
+    authUser?.username ||
+    authUser?.sibs_id ||
+    "User";
+  const displayEmail = userEmail || authUser?.email || authUser?.roleLabel || "signed-in";
+  const userInitial = displayName?.charAt(0)?.toUpperCase() || "U";
 
   const handleLogoutClick = () => {
     setIsUserMenuOpen(false);
-    onLogoutClick?.();
+
+    if (onLogoutClick) {
+      onLogoutClick();
+      return;
+    }
+
+    clearAuthSession();
+    navigate("/");
   };
 
   return (
@@ -44,7 +73,7 @@ const AppHeader = ({
           </div>
         </div>
 
-        {userName && (
+        {displayName && (
           <div className="relative shrink-0">
             <button
               type="button"
@@ -52,7 +81,7 @@ const AppHeader = ({
               className={`group flex min-w-0 items-center gap-3 rounded-xl border bg-white px-2 py-1.5 text-left shadow-sm transition hover:border-sibs-tertiary-8 ${
                 isUserMenuOpen
                   ? "border-sibs-tertiary-8 ring-2 ring-sibs-tertiary-9/70"
-                  : "border-transparent"
+                  : "border-sibs-tertiary-9"
               }`}
               aria-expanded={isUserMenuOpen}
               aria-haspopup="menu"
@@ -62,10 +91,10 @@ const AppHeader = ({
               </span>
               <span className="hidden min-w-0 sm:block">
                 <span className="block max-w-[220px] truncate text-sm font-extrabold uppercase leading-5 text-sibs-primary-1">
-                  {userName}
+                  {displayName}
                 </span>
                 <span className="block max-w-[220px] truncate text-xs font-semibold leading-4 text-sibs-primary-2">
-                  {userEmail || "signed-in"}
+                  {displayEmail}
                 </span>
               </span>
               <ChevronDown
