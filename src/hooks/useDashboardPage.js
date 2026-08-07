@@ -33,7 +33,7 @@ function useDashboardPage() {
   const Icon = roleIcons[role] || Gauge;
   const modules = useMemo(() => {
     const dashboardModule = {
-      name: `${authUser?.roleLabel || "User"} Dashboard`,
+      name: role === "wfm" ? "Dashboard" : `${authUser?.roleLabel || "User"} Dashboard`,
       icon: Icon,
       path: authUser?.dashboardPath || "/dashboard",
     };
@@ -86,7 +86,7 @@ function useDashboardPage() {
     window.setTimeout(() => {
       clearAuthSession();
       navigate("/");
-    }, 900);
+    }, 2500);
   };
 
   return {
