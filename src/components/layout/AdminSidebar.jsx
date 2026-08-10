@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ChevronLeft, ChevronRight, LogOut } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 
 import { Button } from "@/components/ui/button";
@@ -102,7 +102,7 @@ const AdminSidebar = ({
                       onMobileClose?.();
                     }
                   }}
-                  className={`h-auto min-h-10 w-full justify-start gap-3 rounded-lg border-0 px-3 py-2.5 text-left font-medium text-[#dbe8f3] hover:bg-[#f05a28] hover:text-white ${
+                  className={`h-auto min-h-10 w-full justify-start gap-3 rounded-lg border-0 px-3 py-2.5 text-left text-sm font-bold text-[#b9cad8] hover:bg-[#ff5c28] hover:text-white ${
                     isActive ? "bg-sibs-primary-2 text-white" : ""
                   } ${mobile ? "mobile" : ""} ${
                     collapsed ? "h-10 min-h-10 justify-center px-0" : ""
@@ -128,53 +128,14 @@ const AdminSidebar = ({
         </div>
       </div>
 
-      <div className="border-t border-white/10 p-4">
-        <div
-          className={`flex ${
-            collapsed
-              ? "items-center justify-center"
-              : "flex-col gap-3 rounded-xl bg-white/10 px-3 py-3"
-          }`}
-        >
-          {!collapsed && (
-            <div className="flex w-full min-w-0 items-center gap-3">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#f05a28] text-sm font-semibold text-white">
-                {userName.charAt(0).toUpperCase()}
-              </div>
-              <div className="min-w-0">
-                <p className="m-0 truncate text-sm font-bold leading-4 text-white">
-                  {userName}
-                </p>
-                <p className="m-0 truncate text-xs leading-4 text-[#b8ccdd]">
-                  {userRole}
-                </p>
-              </div>
-            </div>
-          )}
-
-          <Button
-            type="button"
-            variant="outline"
-            size="icon-lg"
-            onClick={onLogoutClick}
-            aria-label="Logout"
-            title="Logout"
-            className={`rounded-lg border-white/20 bg-white/10 text-white hover:bg-[#f05a28] hover:text-white ${
-              collapsed ? "h-9 w-9" : "h-9 w-full gap-2"
-            }`}
-          >
-            <LogOut className="h-4 w-4" aria-hidden="true" />
-            {!collapsed && <span className="text-sm font-bold">Logout</span>}
-          </Button>
-        </div>
-      </div>
+      <div className="mt-auto border-t border-white/10 p-4" />
     </>
   );
 
   return (
     <>
       <aside
-        className={`sibs-sidebar hidden border-r border-[#315f85] bg-[#1e4d7b] text-white shadow-sm md:flex ${
+        className={`sibs-sidebar hidden border-r border-[#174e78] bg-[#07385f] text-white shadow-sm md:flex ${
           isCollapsed ? "collapsed" : ""
         }`}
       >
@@ -191,7 +152,7 @@ const AdminSidebar = ({
       )}
 
       <aside
-        className={`sibs-sidebar mobile z-[100] !w-[280px] max-w-[calc(100vw-2rem)] border-r border-[#315f85] bg-[#1e4d7b] text-white shadow-2xl sm:!w-[320px] md:hidden ${
+        className={`sibs-sidebar mobile z-[100] !w-[260px] max-w-[calc(100vw-2rem)] border-r border-[#174e78] bg-[#07385f] text-white shadow-2xl sm:!w-[280px] md:hidden ${
           isMobileOpen ? "mobile-open" : ""
         }`}
       >

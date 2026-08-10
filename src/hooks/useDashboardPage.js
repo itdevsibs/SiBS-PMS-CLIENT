@@ -33,10 +33,31 @@ function useDashboardPage() {
   const Icon = roleIcons[role] || Gauge;
   const modules = useMemo(() => {
     const dashboardModule = {
-      name: `${authUser?.roleLabel || "User"} Dashboard`,
+      name: role === "wfm" ? "Dashboard" : `${authUser?.roleLabel || "User"} Dashboard`,
       icon: Icon,
       path: authUser?.dashboardPath || "/dashboard",
     };
+
+    if (role === "wfm") {
+      return [
+        dashboardModule,
+        {
+          name: "Import Data",
+          icon: ClipboardList,
+          path: "/dashboard/wfm/import-data",
+        },
+        {
+          name: "View Graphs",
+          icon: BarChart3,
+          path: "/dashboard/wfm/view-graphs",
+        },
+        {
+          name: "History Logs",
+          icon: ClipboardList,
+          path: "/dashboard/wfm/history-logs",
+        },
+      ];
+    }
 
     if (role !== "admin") {
       return [dashboardModule];
@@ -65,7 +86,7 @@ function useDashboardPage() {
     window.setTimeout(() => {
       clearAuthSession();
       navigate("/");
-    }, 900);
+    }, 2500);
   };
 
   return {
