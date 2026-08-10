@@ -59,7 +59,7 @@ function useDashboardPage() {
       ];
     }
 
-    if (role !== "superadmin") {
+    if (role !== "admin") {
       return [dashboardModule];
     }
 
