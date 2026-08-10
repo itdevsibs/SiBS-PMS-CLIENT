@@ -33,7 +33,7 @@ function useDashboardPage() {
   const Icon = roleIcons[role] || Gauge;
   const modules = useMemo(() => {
     const dashboardModule = {
-      name: role === "wfm" ? "Dashboard" : `${authUser?.roleLabel || "User"} Dashboard`,
+      name: "Dashboard",
       icon: Icon,
       path: authUser?.dashboardPath || "/dashboard",
     };
