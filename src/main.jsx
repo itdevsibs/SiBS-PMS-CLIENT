@@ -1,3 +1,4 @@
+// Boots the React application into the browser.
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import "./index.css";

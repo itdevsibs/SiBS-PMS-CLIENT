@@ -1,3 +1,4 @@
+// WFM page for viewing generated graph cards and report windows.
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Trash2 } from "lucide-react";
 

@@ -1,3 +1,4 @@
+// Defines all frontend routes and page mappings.
 import { Route, Routes } from "react-router-dom";
 import AgentsPage from "./pages/dashboard/AgentsPage";
 import BoardOfDirectorsPage from "./pages/dashboard/BoardOfDirectorsPage";

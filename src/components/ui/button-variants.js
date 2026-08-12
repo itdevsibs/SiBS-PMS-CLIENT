@@ -1,3 +1,4 @@
+// Defines shared button style variants.
 import { cva } from "class-variance-authority";
 
 export const buttonVariants = cva(

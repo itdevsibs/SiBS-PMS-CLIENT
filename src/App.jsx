@@ -1,3 +1,4 @@
+// Renders the root app component.
 import AppShell from "./AppShell";
 import Router from "./router";
 

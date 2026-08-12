@@ -1,3 +1,4 @@
+// Renders the page header with profile menu actions.
 import { useState } from "react";
 import { ChevronDown, LogOut, Menu, UserRound } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -15,6 +16,7 @@ const AppHeader = ({
   const navigate = useNavigate();
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const authUser = getAuthUser();
+  // Uses the saved employee name fields when the API does not send one full name.
   const fullNameFromParts = [
     authUser?.firstName,
     authUser?.middleName,
@@ -37,6 +39,7 @@ const AppHeader = ({
   const handleLogoutClick = () => {
     setIsUserMenuOpen(false);
 
+    // Dashboard pages pass this handler to show the confirmation modal first.
     if (onLogoutClick) {
       onLogoutClick();
       return;

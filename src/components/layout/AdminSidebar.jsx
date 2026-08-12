@@ -1,3 +1,4 @@
+// Renders the collapsible dashboard sidebar navigation.
 import { useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";

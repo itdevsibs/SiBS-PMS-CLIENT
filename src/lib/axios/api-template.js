@@ -1,3 +1,4 @@
+// Configures Axios base URL, auth redirects, and logout handling.
 import axios from "axios";
 
 function getBaseURL() {

@@ -1,3 +1,4 @@
+// Exposes shared wrappers around the Axios API instance.
 import api from "./api-template";
 
 /* ================================

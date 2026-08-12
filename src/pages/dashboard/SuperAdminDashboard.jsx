@@ -1,3 +1,4 @@
+// Super admin page for assigning dashboard interface access.
 import { useEffect, useMemo, useState } from "react";
 import { Search, Settings2, UserPlus } from "lucide-react";
 
