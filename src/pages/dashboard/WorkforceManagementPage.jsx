@@ -1,3 +1,4 @@
+// WFM dashboard page for importing raw data and generating graphs.
 import { useMemo, useState } from "react";
 import { ArrowLeft, BarChart3, Search, Trash2 } from "lucide-react";
 

@@ -1,3 +1,4 @@
+// Defines WFM raw data card names and stable card IDs.
 export const accountOptions = [
   "US VISA",
   "YUM-DEL",
@@ -13,6 +14,7 @@ const defaultRawDataTitles = Array.from(
   (_, index) => `Raw Data ${index + 1}`,
 );
 
+// Account-specific labels shown on the WFM raw data upload cards.
 const accountRawDataTitles = {
   "US VISA": [
     "PMIS",
@@ -41,6 +43,7 @@ function getAccountTitles(account) {
   return accountRawDataTitles[account] || defaultRawDataTitles;
 }
 
+// Builds stable card IDs used to connect uploads, dashboard imports, and graphs.
 export function getRawDataCards(account) {
   if (!account || account === "All Accounts") {
     return [];
@@ -54,6 +57,7 @@ export function getRawDataCards(account) {
   }));
 }
 
+// Resolves old saved graph card IDs back into the visible raw data title.
 export function getRawDataTitleFromCardId(cardId, fallbackTitle = "") {
   const safeCardId = String(cardId || "");
   const rawDataMatch = safeCardId.match(/^(.*)-raw-data-(\d+)$/);

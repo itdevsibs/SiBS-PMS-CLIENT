@@ -1,3 +1,4 @@
+// Utility helpers shared by UI components.
 import { clsx } from "clsx";
 import { twMerge } from "tailwind-merge"
 

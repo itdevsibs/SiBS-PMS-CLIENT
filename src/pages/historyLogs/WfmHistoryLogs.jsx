@@ -1,3 +1,4 @@
+// Shows WFM import, graph, and removal history logs.
 import { useMemo, useState } from "react";
 
 import AdminSidebar from "@/components/layout/AdminSidebar";

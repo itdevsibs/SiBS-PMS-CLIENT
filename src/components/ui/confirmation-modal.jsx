@@ -1,3 +1,4 @@
+// Modal used for confirm/cancel user decisions.
 import AppModal from "@/components/ui/app-modal";
 import { Button } from "@/components/ui/button";
 

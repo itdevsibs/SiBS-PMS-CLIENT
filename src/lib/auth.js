@@ -1,3 +1,4 @@
+// Stores and reads the local authenticated user session.
 const AUTH_USER_KEY = "pms-auth-user";
 const AUTH_TOKEN_KEY = "pms-auth-token";
 

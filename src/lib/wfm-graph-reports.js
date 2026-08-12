@@ -1,3 +1,4 @@
+// Builds and stores dynamic WFM graph report data from uploaded raw rows.
 const WFM_GRAPH_REPORTS_KEY = "sibs-wfm-graph-reports";
 export const WFM_GRAPH_REPORTS_UPDATED_EVENT = "sibs-wfm-graph-reports-updated";
 

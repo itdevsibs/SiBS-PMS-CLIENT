@@ -1,3 +1,4 @@
+// API helper for submitting login credentials.
 import api from "./api-template";
 
 export async function getLogin(sibsId, password) {

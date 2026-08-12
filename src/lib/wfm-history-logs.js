@@ -1,3 +1,4 @@
+// Stores WFM import, graph, and removal history in local storage.
 const WFM_HISTORY_LOGS_KEY = "sibs-wfm-history-logs";
 
 export function readWfmHistoryLogs() {

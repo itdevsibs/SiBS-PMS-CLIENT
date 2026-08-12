@@ -1,3 +1,4 @@
+// Modal used to show blocking loading progress.
 import AppModal from "@/components/ui/app-modal";
 
 const LoadingModal = ({

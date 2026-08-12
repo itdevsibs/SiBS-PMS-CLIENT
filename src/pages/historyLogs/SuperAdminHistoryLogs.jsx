@@ -1,3 +1,4 @@
+// Shows super admin interface access history logs.
 import { useEffect, useMemo, useState } from "react";
 
 import AdminSidebar from "@/components/layout/AdminSidebar";

@@ -1,3 +1,4 @@
+// Manages dashboard auth state, sidebar modules, and logout flow.
 import { useEffect, useMemo, useState } from "react";
 import {
   BarChart3,
@@ -22,6 +23,7 @@ const roleIcons = {
   bod: BarChart3,
 };
 
+// Central dashboard state shared by all role-based dashboard pages.
 function useDashboardPage() {
   const navigate = useNavigate();
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
@@ -32,6 +34,7 @@ function useDashboardPage() {
   const role = authUser?.role || "agent";
   const Icon = roleIcons[role] || Gauge;
   const modules = useMemo(() => {
+    // Builds the sidebar modules allowed for the signed-in user's role.
     const dashboardModule = {
       name: "Dashboard",
       icon: Icon,
@@ -83,6 +86,7 @@ function useDashboardPage() {
     setShowLogoutModal(false);
     setIsLoggingOut(true);
 
+    // Keeps the loading modal visible before clearing the local session.
     window.setTimeout(() => {
       clearAuthSession();
       navigate("/");

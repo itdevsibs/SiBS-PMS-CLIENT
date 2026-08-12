@@ -1,3 +1,4 @@
+// WFM page for uploading and managing raw data files.
 import { useEffect, useMemo, useState } from "react";
 import { CloudUpload, FolderOpen, Search, Trash2 } from "lucide-react";
 

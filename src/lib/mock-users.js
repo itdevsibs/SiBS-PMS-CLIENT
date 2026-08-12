@@ -1,3 +1,4 @@
+// Local fallback users for mock dashboard access.
 export const MOCK_USERS = [
   {
     id: "superadmin",

@@ -1,3 +1,4 @@
+// API helper for fetching employee records.
 import { apiGet } from "./api";
 
 export function getEmployees({

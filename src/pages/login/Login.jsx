@@ -1,3 +1,4 @@
+// Login page that authenticates users and routes them by role.
 import { useState } from "react";
 import {
   Activity,
@@ -529,12 +530,6 @@ const Login = () => {
                 : "your dashboard"}
               .
             </p>
-
-            {redirectPath && (
-              <p className="mt-2 text-xs text-sibs-tertiary-5/70">
-                {redirectPath}
-              </p>
-            )}
           </>
         )}
 

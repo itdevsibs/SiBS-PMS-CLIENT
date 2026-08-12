@@ -1,3 +1,4 @@
+// Reusable modal shell for centered app dialogs.
 const AppModal = ({ children, className = "", isOpen, textAlign = "left" }) => {
   if (!isOpen) {
     return null;
