@@ -12,6 +12,7 @@ import WfmHistoryLogs from "./pages/historyLogs/WfmHistoryLogs";
 import WfmImportDataPage from "./pages/wfmImportantData/WfmImportDataPage";
 import WfmViewGraphsPage from "./pages/wfmViewGraphs/WfmViewGraphsPage";
 import WorkforceManagementPage from "./pages/dashboard/WorkforceManagementPage";
+import SeniorOperationsManagerPage from "@/pages/dashboard/SeniorOperationsManagerPage";
 
 const Router = () => {
   return (
@@ -38,6 +39,7 @@ const Router = () => {
       <Route path="/dashboard/client" element={<ClientPage />} />
       <Route path="/dashboard/bod" element={<BoardOfDirectorsPage />} />
       <Route path="/dashboard/superadmin" element={<SuperAdminDashboard />} />
+      <Route path="/dashboard/som" element={<SeniorOperationsManagerPage />} />
       <Route
         path="/dashboard/superadmin/history-logs"
         element={<SuperAdminHistoryLogs />}
