@@ -1,4 +1,3 @@
-// Login page that authenticates users and routes them by role.
 import { useState } from "react";
 import {
   Activity,
@@ -22,7 +21,10 @@ const SUCCESS_REDIRECT_DELAY_MS = 900;
 
 function waitForMinimumLoading(startedAt) {
   const elapsed = Date.now() - startedAt;
-  const remaining = Math.max(0, MIN_LOGIN_LOADING_MS - elapsed);
+  const remaining = Math.max(
+    0,
+    MIN_LOGIN_LOADING_MS - elapsed,
+  );
 
   return new Promise((resolve) => {
     window.setTimeout(resolve, remaining);
@@ -30,7 +32,12 @@ function waitForMinimumLoading(startedAt) {
 }
 
 function getResponseUser(result) {
-  return result?.user || result?.data?.user || result?.data || null;
+  return (
+    result?.user ||
+    result?.data?.user ||
+    result?.data ||
+    null
+  );
 }
 
 function getResponseExpiry(result) {
@@ -44,23 +51,50 @@ function getResponseExpiry(result) {
 }
 
 function getResponseExpiresInMs(result) {
-  return result?.expiresInMs || result?.data?.expiresInMs || null;
+  return (
+    result?.expiresInMs ||
+    result?.data?.expiresInMs ||
+    null
+  );
 }
 
+/* ================================
+   ROLE RESOLUTION
+
+   HRIS ADMIN ACCESS MAPPING
+
+   7  = Admin
+   6  = BOD
+   5  = OM
+   8  = TL
+   9  = WFM
+   10 = SOM
+
+   Anything else = Employee
+
+   *Client will be added soon*
+================================ */
 function getUserRole(user) {
   if (user?.resolvedRole) {
-    return String(user.resolvedRole).trim().toLowerCase();
+    return String(user.resolvedRole)
+      .trim()
+      .toLowerCase();
   }
 
   if (user?.resolved_role) {
-    return String(user.resolved_role).trim().toLowerCase();
+    return String(user.resolved_role)
+      .trim()
+      .toLowerCase();
   }
 
-  const assignedAccounts = Array.isArray(user?.assignedAccounts)
+  const assignedAccounts = Array.isArray(
+    user?.assignedAccounts,
+  )
     ? user.assignedAccounts
     : [];
 
-  const firstAssignedAccount = assignedAccounts[0] || null;
+  const firstAssignedAccount =
+    assignedAccounts[0] || null;
 
   const rawRole =
     user?.access ??
@@ -74,40 +108,67 @@ function getUserRole(user) {
     firstAssignedAccount?.access ??
     firstAssignedAccount?.accessValue ??
     firstAssignedAccount?.access_value ??
+    firstAssignedAccount?.adminAccess ??
+    firstAssignedAccount?.admin_access ??
     "";
 
   const numericAccess = Number(rawRole);
 
-  if (!Number.isNaN(numericAccess) && numericAccess > 0) {
+  if (
+    !Number.isNaN(numericAccess) &&
+    numericAccess > 0
+  ) {
     switch (numericAccess) {
-      case 1:
+      case 7:
         return "admin";
 
-      case 2:
+      case 6:
         return "bod";
 
-      case 3:
+      case 5:
         return "om";
 
-      case 4:
-        return "wfm";
-
-      case 5:
+      case 8:
         return "tl";
 
-      case 6:
-        return "client";
+      case 9:
+        return "wfm";
+
+      case 10:
+        return "som";
 
       default:
         return "employee";
     }
   }
 
-  const normalizedRole = String(rawRole).trim().toLowerCase();
+  const normalizedRole = String(rawRole)
+    .trim()
+    .toLowerCase();
 
-  return normalizedRole || "employee";
+  const allowedRoles = [
+    "admin",
+    "bod",
+    "om",
+    "tl",
+    "wfm",
+    "som",
+  ];
+
+  if (
+    allowedRoles.includes(
+      normalizedRole,
+    )
+  ) {
+    return normalizedRole;
+  }
+
+  return "employee";
 }
 
+/* ================================
+   ROLE LABEL
+================================ */
 function getRoleLabel(role) {
   switch (role) {
     case "admin":
@@ -119,50 +180,136 @@ function getRoleLabel(role) {
     case "om":
       return "Operations Manager";
 
-    case "wfm":
-      return "Workforce Management";
-
     case "tl":
       return "Team Leader";
 
-    case "client":
-      return "Client";
+    case "wfm":
+      return "Workforce Management";
+
+    case "som":
+      return "Senior Operations Manager";
 
     case "employee":
       return "Employee";
 
     default:
-      return role
-        ? role.charAt(0).toUpperCase() + role.slice(1)
-        : "Employee";
+      return "Employee";
   }
 }
 
+/* ================================
+   DASHBOARD NORMALIZATION
+================================ */
 function normalizeDashboardPath(path) {
-  const normalizedPath = String(path || "").trim();
+  const normalizedPath = String(
+    path || "",
+  ).trim();
 
   const dashboardMappings = {
-    "/admin/dashboard": "/dashboard/admin",
-    "/employee/dashboard": "/dashboard/employee",
+    /*
+      Old Admin paths
+    */
+    "/admin/dashboard":
+      "/dashboard/superadmin",
+
+    "/dashboard/admin":
+      "/dashboard/superadmin",
+
+    /*
+      Old Employee paths
+    */
+    "/employee/dashboard":
+      "/dashboard/agent",
+
+    "/dashboard/employee":
+      "/dashboard/agent",
+
+    /*
+      WFM legacy path compatibility
+    */
+    "/wfm/dashboard":
+      "/dashboard/wfm",
+
+    /*
+      SOM legacy path compatibility
+    */
+    "/som/dashboard":
+      "/dashboard/som",
   };
 
-  return dashboardMappings[normalizedPath] || normalizedPath;
-}
-
-function getDashboardPath(user, result = {}) {
   return (
-    result?.redirectTo ||
-    result?.user?.redirectTo ||
-    result?.data?.user?.redirectTo ||
-    result?.user?.dashboard ||
-    result?.data?.user?.dashboard ||
-    user?.redirectTo ||
-    user?.dashboard ||
-    `/dashboard/${getUserRole(user)}`
+    dashboardMappings[normalizedPath] ||
+    normalizedPath
   );
 }
 
-function saveAuthenticatedUser(user, expiresAt, expiresInMs) {
+/* ================================
+   DASHBOARD RESOLUTION
+================================ */
+function getDashboardPath(
+  user,
+  result = {},
+) {
+  /*
+    Prefer the route returned
+    by the backend users.js.
+  */
+  const serverPath =
+    result?.redirectTo ||
+    result?.user?.redirectTo ||
+    result?.data?.redirectTo ||
+    result?.data?.user?.redirectTo ||
+    result?.user?.dashboard ||
+    result?.data?.dashboard ||
+    result?.data?.user?.dashboard ||
+    user?.redirectTo ||
+    user?.dashboard ||
+    "";
+
+  if (serverPath) {
+    return normalizeDashboardPath(
+      serverPath,
+    );
+  }
+
+  /*
+    Fallback if the backend does not
+    return redirectTo/dashboard.
+  */
+  const role = getUserRole(user);
+
+  switch (role) {
+    case "admin":
+      return "/dashboard/superadmin";
+
+    case "bod":
+      return "/dashboard/bod";
+
+    case "om":
+      return "/dashboard/om";
+
+    case "tl":
+      return "/dashboard/tl";
+
+    case "wfm":
+      return "/dashboard/wfm";
+
+    case "som":
+      return "/dashboard/som";
+
+    default:
+      return "/dashboard/agent";
+  }
+}
+
+/* ================================
+   SAVE USER SESSION
+================================ */
+function saveAuthenticatedUser(
+  user,
+  expiresAt,
+  expiresInMs,
+) {
   sessionStorage.setItem(
     "sibsAuthenticatedUser",
     JSON.stringify(user),
@@ -171,10 +318,18 @@ function saveAuthenticatedUser(user, expiresAt, expiresInMs) {
   let finalExpiresAt = expiresAt;
 
   if (!finalExpiresAt && expiresInMs) {
-    const numericExpiresIn = Number(expiresInMs);
+    const numericExpiresIn =
+      Number(expiresInMs);
 
-    if (Number.isFinite(numericExpiresIn) && numericExpiresIn > 0) {
-      finalExpiresAt = Date.now() + numericExpiresIn;
+    if (
+      Number.isFinite(
+        numericExpiresIn,
+      ) &&
+      numericExpiresIn > 0
+    ) {
+      finalExpiresAt =
+        Date.now() +
+        numericExpiresIn;
     }
   }
 
@@ -189,18 +344,39 @@ function saveAuthenticatedUser(user, expiresAt, expiresInMs) {
       String(finalExpiresAt),
     );
   } else {
-    sessionStorage.removeItem("accessTokenExpiresAt");
-    localStorage.removeItem("token_expires_at");
+    sessionStorage.removeItem(
+      "accessTokenExpiresAt",
+    );
+
+    localStorage.removeItem(
+      "token_expires_at",
+    );
   }
 }
 
+/* ================================
+   CLEAR AUTH STORAGE
+================================ */
 function clearAuthenticationStorage() {
-  sessionStorage.removeItem("sibsAuthenticatedUser");
-  sessionStorage.removeItem("accessTokenExpiresAt");
-  localStorage.removeItem("token_expires_at");
+  sessionStorage.removeItem(
+    "sibsAuthenticatedUser",
+  );
+
+  sessionStorage.removeItem(
+    "accessTokenExpiresAt",
+  );
+
+  localStorage.removeItem(
+    "token_expires_at",
+  );
 }
 
-function getLoginFailureMessage(result = {}) {
+/* ================================
+   LOGIN FAILURE MESSAGES
+================================ */
+function getLoginFailureMessage(
+  result = {},
+) {
   switch (result?.code) {
     case "USER_NOT_FOUND_OR_INACTIVE":
       return "The SIBS ID was not found or the account is inactive.";
@@ -228,66 +404,129 @@ function getLoginFailureMessage(result = {}) {
   }
 }
 
+/* ================================
+   LOGIN COMPONENT
+================================ */
 const Login = () => {
   const navigate = useNavigate();
 
-  const [showPassword, setShowPassword] = useState(false);
-  const [sibsId, setSibsId] = useState("");
-  const [password, setPassword] = useState("");
-  const [loginStatus, setLoginStatus] = useState("idle");
-  const [loginMessage, setLoginMessage] = useState("");
-  const [redirectPath, setRedirectPath] = useState("");
-  const [authenticatedRoleLabel, setAuthenticatedRoleLabel] =
-    useState("");
+  const [
+    showPassword,
+    setShowPassword,
+  ] = useState(false);
 
-  const isLoading = loginStatus === "loading";
+  const [
+    sibsId,
+    setSibsId,
+  ] = useState("");
+
+  const [
+    password,
+    setPassword,
+  ] = useState("");
+
+  const [
+    loginStatus,
+    setLoginStatus,
+  ] = useState("idle");
+
+  const [
+    loginMessage,
+    setLoginMessage,
+  ] = useState("");
+
+  const [
+    authenticatedRoleLabel,
+    setAuthenticatedRoleLabel,
+  ] = useState("");
+
+  const isLoading =
+    loginStatus === "loading";
 
   const resetInvalidLogin = () => {
     setLoginMessage("");
     setLoginStatus("idle");
   };
 
-  const handleSubmit = async (event) => {
+  /* ================================
+     LOGIN SUBMIT
+  ================================ */
+  const handleSubmit = async (
+    event,
+  ) => {
     event.preventDefault();
 
     if (isLoading) {
       return;
     }
 
-    const finalSibsId = sibsId.trim();
-    const finalPassword = password;
+    const finalSibsId =
+      sibsId.trim();
 
-    if (!finalSibsId || !finalPassword) {
+    const finalPassword =
+      password;
+
+    if (
+      !finalSibsId ||
+      !finalPassword
+    ) {
       setPassword("");
+
       setLoginMessage(
         "Please enter your SIBS ID and password.",
       );
-      setLoginStatus("invalid");
+
+      setLoginStatus(
+        "invalid",
+      );
+
       return;
     }
 
     setLoginMessage("");
     setLoginStatus("loading");
 
-    const loadingStartedAt = Date.now();
+    const loadingStartedAt =
+      Date.now();
 
     try {
-      const result = await getLogin(
-        finalSibsId,
-        finalPassword,
-      );
+      /*
+        Expected backend endpoint:
 
-      await waitForMinimumLoading(loadingStartedAt);
+        POST /api/users/login
+      */
+      const result =
+        await getLogin(
+          finalSibsId,
+          finalPassword,
+        );
+
+      await waitForMinimumLoading(
+        loadingStartedAt,
+      );
 
       if (!result?.success) {
         clearAuthenticationStorage();
+
         setPassword("");
-        setLoginMessage(getLoginFailureMessage(result));
-        setLoginStatus("invalid");
+
+        setLoginMessage(
+          getLoginFailureMessage(
+            result,
+          ),
+        );
+
+        setLoginStatus(
+          "invalid",
+        );
+
         return;
       }
 
-      const responseUser = getResponseUser(result);
+      const responseUser =
+        getResponseUser(
+          result,
+        );
 
       if (!responseUser) {
         console.error(
@@ -296,32 +535,81 @@ const Login = () => {
         );
 
         clearAuthenticationStorage();
+
         setPassword("");
+
         setLoginMessage(
           "Login succeeded, but the server did not return user details.",
         );
-        setLoginStatus("invalid");
+
+        setLoginStatus(
+          "invalid",
+        );
+
         return;
       }
 
-      const resolvedRole = getUserRole(responseUser);
-      const dashboardPath = getDashboardPath(
-        responseUser,
-        result,
-      );
+      /*
+        Expected HRIS admin_access:
+
+        7  = Admin
+        6  = BOD
+        5  = OM
+        8  = TL
+        9  = WFM
+        10 = SOM
+
+        otherwise = Employee
+      */
+      const resolvedRole =
+        getUserRole(
+          responseUser,
+        );
+
+      /*
+        Backend redirectTo/dashboard
+        takes priority.
+      */
+      const dashboardPath =
+        getDashboardPath(
+          responseUser,
+          result,
+        );
 
       const authUser = {
         ...responseUser,
+
         resolvedRole,
-        role: resolvedRole,
+
+        role:
+          resolvedRole,
+
         roleLabel:
           responseUser?.roleLabel ||
-          getRoleLabel(resolvedRole),
+          getRoleLabel(
+            resolvedRole,
+          ),
+
         dashboardPath,
+
+        dashboard:
+          responseUser?.dashboard ||
+          dashboardPath,
+
+        redirectTo:
+          responseUser?.redirectTo ||
+          dashboardPath,
       };
 
-      const expiresAt = getResponseExpiry(result);
-      const expiresInMs = getResponseExpiresInMs(result);
+      const expiresAt =
+        getResponseExpiry(
+          result,
+        );
+
+      const expiresInMs =
+        getResponseExpiresInMs(
+          result,
+        );
 
       saveAuthenticatedUser(
         authUser,
@@ -330,32 +618,49 @@ const Login = () => {
       );
 
       saveAuthSession({
-        user: authUser,
+        user:
+          authUser,
+
         expiresAt,
+
         expiresInMs,
       });
 
-      setAuthenticatedRoleLabel(authUser.roleLabel);
-      setRedirectPath(dashboardPath);
-      setLoginStatus("success");
+      setAuthenticatedRoleLabel(
+        authUser.roleLabel,
+      );
+
+      setLoginStatus(
+        "success",
+      );
 
       window.setTimeout(() => {
-        navigate(dashboardPath, {
-          replace: true,
-          state: {
-            authenticatedUser: authUser,
+        navigate(
+          dashboardPath,
+          {
+            replace: true,
+
+            state: {
+              authenticatedUser:
+                authUser,
+            },
           },
-        });
+        );
       }, SUCCESS_REDIRECT_DELAY_MS);
     } catch (error) {
-      await waitForMinimumLoading(loadingStartedAt);
+      await waitForMinimumLoading(
+        loadingStartedAt,
+      );
 
       console.error(
         "Login error:",
-        error?.response?.data || error?.message || error,
+        error?.response?.data ||
+          error?.message ||
+          error,
       );
 
       clearAuthenticationStorage();
+
       setPassword("");
 
       setLoginMessage(
@@ -365,7 +670,9 @@ const Login = () => {
           "Unable to sign in. Please check your SIBS ID and password.",
       );
 
-      setLoginStatus("invalid");
+      setLoginStatus(
+        "invalid",
+      );
     }
   };
 
@@ -399,7 +706,9 @@ const Login = () => {
 
           <form
             className="space-y-4 sm:space-y-5"
-            onSubmit={handleSubmit}
+            onSubmit={
+              handleSubmit
+            }
           >
             <div>
               <label
@@ -420,16 +729,28 @@ const Login = () => {
                   name="sibsId"
                   type="text"
                   autoComplete="username"
-                  value={sibsId}
-                  onChange={(event) => {
-                    setSibsId(event.target.value);
+                  value={
+                    sibsId
+                  }
+                  onChange={(
+                    event,
+                  ) => {
+                    setSibsId(
+                      event.target
+                        .value,
+                    );
 
-                    if (loginStatus === "invalid") {
+                    if (
+                      loginStatus ===
+                      "invalid"
+                    ) {
                       resetInvalidLogin();
                     }
                   }}
                   className="h-11 w-full rounded-lg border border-white/30 bg-white/15 px-4 pl-11 text-sm text-white outline-none transition placeholder:text-white/45 focus:border-[#ff7a30] focus:bg-white/20 focus:shadow-[0_0_0_4px_rgba(240,90,40,0.16)] disabled:cursor-not-allowed disabled:opacity-60 sm:h-12"
-                  disabled={isLoading}
+                  disabled={
+                    isLoading
+                  }
                 />
               </div>
             </div>
@@ -451,18 +772,34 @@ const Login = () => {
                 <input
                   id="password"
                   name="password"
-                  type={showPassword ? "text" : "password"}
+                  type={
+                    showPassword
+                      ? "text"
+                      : "password"
+                  }
                   autoComplete="current-password"
-                  value={password}
-                  onChange={(event) => {
-                    setPassword(event.target.value);
+                  value={
+                    password
+                  }
+                  onChange={(
+                    event,
+                  ) => {
+                    setPassword(
+                      event.target
+                        .value,
+                    );
 
-                    if (loginStatus === "invalid") {
+                    if (
+                      loginStatus ===
+                      "invalid"
+                    ) {
                       resetInvalidLogin();
                     }
                   }}
                   className="h-11 w-full rounded-lg border border-white/30 bg-white/15 px-4 pl-11 pr-11 text-sm text-white outline-none transition placeholder:text-white/45 focus:border-[#ff7a30] focus:bg-white/20 focus:shadow-[0_0_0_4px_rgba(240,90,40,0.16)] disabled:cursor-not-allowed disabled:opacity-60 sm:h-12"
-                  disabled={isLoading}
+                  disabled={
+                    isLoading
+                  }
                 />
 
                 <button
@@ -473,10 +810,15 @@ const Login = () => {
                       : "Show password"
                   }
                   onClick={() =>
-                    setShowPassword((value) => !value)
+                    setShowPassword(
+                      (value) =>
+                        !value,
+                    )
                   }
                   className="absolute right-3 top-1/2 inline-flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-lg border-0 bg-transparent text-[#dbe8f3] transition hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
-                  disabled={isLoading}
+                  disabled={
+                    isLoading
+                  }
                 >
                   {showPassword ? (
                     <EyeOff
@@ -497,9 +839,13 @@ const Login = () => {
               type="submit"
               size="lg"
               className="mt-5 h-11 w-full rounded-lg bg-[#f05a28] text-base font-bold text-white shadow-sm hover:bg-[#ff7a30] sm:mt-6 sm:h-12"
-              disabled={isLoading}
+              disabled={
+                isLoading
+              }
             >
-              {isLoading ? "Signing in..." : "Login"}
+              {isLoading
+                ? "Signing in..."
+                : "Login"}
             </Button>
           </form>
         </div>
@@ -507,12 +853,15 @@ const Login = () => {
 
       <AppModal
         isOpen={
-          loginStatus === "success" ||
-          loginStatus === "invalid"
+          loginStatus ===
+            "success" ||
+          loginStatus ===
+            "invalid"
         }
         textAlign="center"
       >
-        {loginStatus === "success" && (
+        {loginStatus ===
+          "success" && (
           <>
             <CheckCircle2
               className="mx-auto h-11 w-11 text-sibs-success"
@@ -533,7 +882,8 @@ const Login = () => {
           </>
         )}
 
-        {loginStatus === "invalid" && (
+        {loginStatus ===
+          "invalid" && (
           <>
             <XCircle
               className="mx-auto h-11 w-11 text-sibs-danger"
@@ -552,7 +902,9 @@ const Login = () => {
             <Button
               type="button"
               size="lg"
-              onClick={resetInvalidLogin}
+              onClick={
+                resetInvalidLogin
+              }
               className="mt-5 h-10 w-full rounded-xl bg-sibs-primary-1 text-white hover:bg-sibs-tertiary-4"
             >
               Try again
@@ -562,7 +914,10 @@ const Login = () => {
       </AppModal>
 
       <LoadingModal
-        isOpen={loginStatus === "loading"}
+        isOpen={
+          loginStatus ===
+          "loading"
+        }
         title="Signing in"
         message="Please wait while we verify your account."
       />
