@@ -11,13 +11,13 @@ import { Button } from "@/components/ui/button";
 import useDashboardPage from "@/hooks/useDashboardPage";
 import {
   generateWfmGraphReports,
-  saveWfmGraphReportSet,
 } from "@/lib/wfm-graph-reports";
 import { addWfmHistoryLog } from "@/lib/wfm-history-logs";
 import {
   accountOptions,
   getRawDataCards,
 } from "@/lib/wfm-raw-data-cards";
+import { markWfmImportedFileGraphReady } from "@/lib/axios/wfm-imported-files";
 
 const knownWfmRawDataColumns = [
   "Employee ID",
@@ -473,6 +473,11 @@ function WfmDashboardContent() {
       return;
     }
 
+    if (!selectedUploadedFile?.id) {
+      setGraphError("Select one imported uploaded file before making a graph.");
+      return;
+    }
+
     setShowMakeGraphConfirm(false);
     setGraphError("");
     setIsMakingGraph(true);
@@ -497,11 +502,20 @@ function WfmDashboardContent() {
       return;
     }
 
-    saveWfmGraphReportSet(graphSet);
+    try {
+      await markWfmImportedFileGraphReady(selectedUploadedFile.id);
+    } catch (error) {
+      setIsMakingGraph(false);
+      setGraphError(
+        error?.response?.data?.message || "The graph was prepared, but it was not saved to View Graphs.",
+      );
+      return;
+    }
+
     addWfmHistoryLog({
       action: "graph-generated",
       fileName: graphSet.sourceFile,
-      message: `Generated graphs from Work Force Management Dashboard: ${graphSet.sourceFile}`,
+      message: `Prepared graph reports from Work Force Management Dashboard: ${graphSet.sourceFile}`,
     });
     setIsMakingGraph(false);
     setMadeGraphSet(graphSet);
@@ -858,14 +872,14 @@ function WfmDashboardContent() {
 
       <LoadingModal
         isOpen={isMakingGraph}
-        title="Converting to graph"
-        message="Please wait while we convert the imported dashboard data into graph reports."
+        title="Checking graph data"
+        message="Please wait while we check the imported dashboard data."
       />
 
       <ConfirmationModal
         isOpen={showMakeGraphConfirm}
         title="Make graph"
-        message="Convert the current Work Force Management Dashboard table data into graph reports?"
+        message="Check if the current Work Force Management Dashboard table data can be graphed?"
         cancelText="Cancel"
         confirmText="Make graph"
         onCancel={() => setShowMakeGraphConfirm(false)}
@@ -875,10 +889,10 @@ function WfmDashboardContent() {
 
       <AppModal isOpen={Boolean(madeGraphSet)} className="max-w-sm" textAlign="center">
         <p className="m-0 text-lg font-bold text-sibs-primary-1">
-          Graphs generated
+          Graphs ready
         </p>
         <p className="mt-2 mb-0 text-sm text-sibs-tertiary-5">
-          {madeGraphSet?.summary?.reports || 0} graph(s) are now available in View Graphs.
+          {madeGraphSet?.summary?.reports || 0} graph(s) can be viewed from the database-backed View Graphs page.
         </p>
         <Button
           type="button"

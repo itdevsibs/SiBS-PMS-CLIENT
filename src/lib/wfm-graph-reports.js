@@ -1251,3 +1251,18 @@ export function removeWfmGraphReportSet(reportSetId) {
 
   return nextReports;
 }
+
+export function removeWfmGraphReportsForUpload(uploadId) {
+  if (typeof window === "undefined") return [];
+
+  const safeUploadId = String(uploadId || "");
+
+  if (!safeUploadId) {
+    return readWfmGraphReports();
+  }
+
+  window.localStorage.removeItem(WFM_GRAPH_REPORTS_KEY);
+  window.dispatchEvent(new Event(WFM_GRAPH_REPORTS_UPDATED_EVENT));
+
+  return [];
+}

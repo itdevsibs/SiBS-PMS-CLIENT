@@ -1,20 +1,19 @@
 // WFM page for viewing generated graph cards and report windows.
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Trash2 } from "lucide-react";
+import { AlertCircle, BarChart3, Database, RefreshCw, Table2 } from "lucide-react";
 
 import AdminSidebar from "@/components/layout/AdminSidebar";
 import AppHeader from "@/components/layout/AppHeader";
-import AppModal from "@/components/ui/app-modal";
 import ConfirmationModal from "@/components/ui/confirmation-modal";
 import LoadingModal from "@/components/ui/loading-modal";
-import { Button } from "@/components/ui/button";
 import useDashboardPage from "@/hooks/useDashboardPage";
 import {
-  removeWfmGraphReportSet,
-  readWfmGraphReports,
-  WFM_GRAPH_REPORTS_UPDATED_EVENT,
+  generateWfmGraphReports,
 } from "@/lib/wfm-graph-reports";
-import { getRawDataTitleFromCardId } from "@/lib/wfm-raw-data-cards";
+import {
+  getWfmImportedFileReport,
+  getWfmImportedFiles,
+} from "@/lib/axios/wfm-imported-files";
 
 const gridColor = "#e5e7eb";
 const graphWindowSize = 6;
@@ -92,10 +91,6 @@ function formatMetricValue(value, unit, type) {
   return unit ? `${roundedValue}${unit === "%" ? "%" : ` ${unit}`}` : roundedValue;
 }
 
-function getGraphSetLabel(graphSet) {
-  return graphSet?.sourceFile || "Uploaded graph data";
-}
-
 function isGroupedReport(report) {
   return Array.isArray(report?.series) && report.series.length > 0;
 }
@@ -114,19 +109,6 @@ function getGraphDateLabel(graphSet) {
   return firstLabel === lastLabel ? firstLabel : `${firstLabel} - ${lastLabel}`;
 }
 
-function formatGeneratedAt(value) {
-  if (!value) return "-";
-
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) return "-";
-
-  return new Intl.DateTimeFormat("en-US", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(date);
-}
-
 function SummaryCard({ label, value }) {
   return (
     <div className="sibs-card min-w-0 p-3">
@@ -138,10 +120,6 @@ function SummaryCard({ label, value }) {
       </p>
     </div>
   );
-}
-
-function getDisplayRawDataTitle(graphSet) {
-  return getRawDataTitleFromCardId(graphSet?.sourceCardId, graphSet?.rawDataTitle);
 }
 
 function getSeriesData(metric, period) {
@@ -627,84 +605,222 @@ function GraphCard({ period, report, windowStart }) {
   );
 }
 
+function ReportStatus({ icon: Icon, title, message }) {
+  return (
+    <section className="sibs-card p-8 text-center">
+      <Icon className="mx-auto h-8 w-8 text-sibs-tertiary-5" aria-hidden="true" />
+      <h2 className="mt-3 mb-0 text-lg font-bold text-sibs-primary-1">
+        {title}
+      </h2>
+      <p className="mt-2 mb-0 text-sm text-sibs-tertiary-5">
+        {message}
+      </p>
+    </section>
+  );
+}
+
+function FieldSummaryPanel({ fields }) {
+  const visibleFields = (fields || []).filter((field) => field.visualizable).slice(0, 10);
+
+  if (!visibleFields.length) return null;
+
+  return (
+    <section className="sibs-card overflow-hidden">
+      <div className="flex items-center gap-2 border-b border-sibs-tertiary-10 px-4 py-3">
+        <Table2 className="h-4 w-4 text-sibs-primary-1" aria-hidden="true" />
+        <h3 className="m-0 text-sm font-bold text-sibs-primary-1">
+          Data Fields Used
+        </h3>
+      </div>
+      <div className="sibs-scrollbar overflow-x-auto">
+        <table className="w-full min-w-[760px] border-collapse text-left text-xs">
+          <thead className="bg-white text-sibs-tertiary-6">
+            <tr>
+              <th className="px-4 py-3 font-bold uppercase">Field</th>
+              <th className="px-4 py-3 font-bold uppercase">Role</th>
+              <th className="px-4 py-3 font-bold uppercase">Filled</th>
+              <th className="px-4 py-3 font-bold uppercase">Unique</th>
+              <th className="px-4 py-3 font-bold uppercase">Sample</th>
+            </tr>
+          </thead>
+          <tbody>
+            {visibleFields.map((field) => (
+              <tr key={field.column} className="border-t border-sibs-tertiary-10">
+                <td className="px-4 py-3 font-bold text-sibs-primary-1">{field.label}</td>
+                <td className="px-4 py-3 text-sibs-tertiary-5">{field.role}</td>
+                <td className="px-4 py-3 text-sibs-tertiary-5">
+                  {Number(field.filled || 0).toLocaleString()} / {Number(field.total || 0).toLocaleString()}
+                </td>
+                <td className="px-4 py-3 text-sibs-tertiary-5">
+                  {Number(field.unique || 0).toLocaleString()}
+                </td>
+                <td className="max-w-[24rem] truncate px-4 py-3 text-sibs-tertiary-5">
+                  {(field.sampleValues || []).join(", ") || "-"}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
+function RawDataPreview({ columns, rows }) {
+  const visibleColumns = (columns || []).slice(0, 8);
+  const visibleRows = (rows || []).slice(0, 12);
+
+  if (!visibleColumns.length || !visibleRows.length) return null;
+
+  return (
+    <section className="sibs-card overflow-hidden">
+      <div className="flex items-center gap-2 border-b border-sibs-tertiary-10 px-4 py-3">
+        <Database className="h-4 w-4 text-sibs-primary-1" aria-hidden="true" />
+        <h3 className="m-0 text-sm font-bold text-sibs-primary-1">
+          Raw Data Preview
+        </h3>
+      </div>
+      <div className="sibs-scrollbar overflow-x-auto">
+        <table className="w-full min-w-[860px] border-collapse text-left text-xs">
+          <thead className="bg-white text-sibs-tertiary-6">
+            <tr>
+              {visibleColumns.map((column) => (
+                <th key={column} className="whitespace-nowrap px-4 py-3 font-bold uppercase">
+                  {column}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {visibleRows.map((row, rowIndex) => (
+              <tr key={rowIndex} className="border-t border-sibs-tertiary-10">
+                {visibleColumns.map((column) => (
+                  <td key={column} className="max-w-[18rem] truncate px-4 py-3 text-sibs-tertiary-5">
+                    {row?.[column] ?? "-"}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
 function WfmViewGraphsPage() {
   const dashboard = useDashboardPage();
   const userName = dashboard.authUser?.name || dashboard.authUser?.username || "User";
-  const [graphSets, setGraphSets] = useState(() => readWfmGraphReports());
-  const [selectedGraphSetId, setSelectedGraphSetId] = useState(graphSets[0]?.id || "");
-  const [graphSetToRemove, setGraphSetToRemove] = useState(null);
-  const [removedGraphSet, setRemovedGraphSet] = useState(null);
+  const [importedFiles, setImportedFiles] = useState([]);
+  const [selectedImportId, setSelectedImportId] = useState("");
+  const [reportData, setReportData] = useState(null);
+  const [selectedGraphSet, setSelectedGraphSet] = useState(null);
+  const [isLoadingFiles, setIsLoadingFiles] = useState(true);
+  const [isLoadingReport, setIsLoadingReport] = useState(false);
+  const [reportError, setReportError] = useState("");
   const [reportPeriod, setReportPeriod] = useState("weekly");
   const [weeklyWindowOffset, setWeeklyWindowOffset] = useState(0);
-  const refreshGraphSets = useCallback(() => {
-    const nextGraphSets = readWfmGraphReports();
+  const refreshImportedFiles = useCallback(async () => {
+    setIsLoadingFiles(true);
+    setReportError("");
 
-    setGraphSets(nextGraphSets);
-    setSelectedGraphSetId((currentId) => {
-      if (nextGraphSets.some((graphSet) => graphSet.id === currentId)) {
-        return currentId;
-      }
+    try {
+      const response = await getWfmImportedFiles({ graphReady: true });
+      const nextFiles = Array.isArray(response?.data) ? response.data : [];
 
-      return nextGraphSets[0]?.id || "";
-    });
+      setImportedFiles(nextFiles);
+      setSelectedImportId((currentId) => {
+        if (nextFiles.some((file) => file.uploadId === currentId)) {
+          return currentId;
+        }
+
+        return nextFiles[0]?.uploadId || "";
+      });
+    } catch (error) {
+      setReportError(
+        error?.response?.data?.message || "Unable to load imported WFM files.",
+      );
+    } finally {
+      setIsLoadingFiles(false);
+    }
   }, []);
 
   useEffect(() => {
-    refreshGraphSets();
+    refreshImportedFiles();
+  }, [refreshImportedFiles]);
 
-    const handleVisibilityChange = () => {
-      if (!document.hidden) {
-        refreshGraphSets();
-      }
-    };
-
-    window.addEventListener("focus", refreshGraphSets);
-    window.addEventListener("pageshow", refreshGraphSets);
-    window.addEventListener("storage", refreshGraphSets);
-    window.addEventListener(WFM_GRAPH_REPORTS_UPDATED_EVENT, refreshGraphSets);
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-
-    return () => {
-      window.removeEventListener("focus", refreshGraphSets);
-      window.removeEventListener("pageshow", refreshGraphSets);
-      window.removeEventListener("storage", refreshGraphSets);
-      window.removeEventListener(WFM_GRAPH_REPORTS_UPDATED_EVENT, refreshGraphSets);
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-    };
-  }, [refreshGraphSets]);
-
-  const selectedGraphSet = useMemo(
-    () => graphSets.find((graphSet) => graphSet.id === selectedGraphSetId),
-    [graphSets, selectedGraphSetId],
-  );
   useEffect(() => {
-    if (!selectedGraphSet) {
+    if (!selectedImportId) {
+      setReportData(null);
+      setSelectedGraphSet(null);
       return;
     }
 
-    setReportPeriod(getPeriodFromGranularity(selectedGraphSet.datasetProfile?.periodGranularity));
-    setWeeklyWindowOffset(0);
-  }, [selectedGraphSet]);
+    let isActive = true;
 
-  const selectedGraphSetLabel = getGraphSetLabel(selectedGraphSet);
+    async function loadReport() {
+      setIsLoadingReport(true);
+      setReportError("");
+      setReportData(null);
+      setSelectedGraphSet(null);
+
+      try {
+        const response = await getWfmImportedFileReport(selectedImportId);
+        const importedReport = response?.data;
+        const graphSet = generateWfmGraphReports({
+          columns: importedReport?.columns || [],
+          rows: importedReport?.rows || [],
+          sourceFile: importedReport?.displayName || importedReport?.fileTitle,
+          sourceUploadId: importedReport?.uploadId,
+          sourceCardId: importedReport?.cardId,
+          sourceUploadedAtMs: importedReport?.uploadedAtMs,
+          rawDataTitle: importedReport?.taskOrder,
+        });
+
+        if (!isActive) return;
+
+        if (!graphSet) {
+          setReportError("No graphable fields were found in this imported file.");
+          setReportData(importedReport);
+          return;
+        }
+
+        setReportData(importedReport);
+        setSelectedGraphSet(graphSet);
+        setReportPeriod(getPeriodFromGranularity(graphSet.datasetProfile?.periodGranularity));
+        setWeeklyWindowOffset(0);
+      } catch (error) {
+        if (!isActive) return;
+
+        setReportError(
+          error?.response?.data?.message || "Unable to build graphs from this imported file.",
+        );
+      } finally {
+        if (isActive) {
+          setIsLoadingReport(false);
+        }
+      }
+    }
+
+    loadReport();
+
+    return () => {
+      isActive = false;
+    };
+  }, [selectedImportId]);
+
+  const selectedImport = useMemo(
+    () => importedFiles.find((file) => file.uploadId === selectedImportId),
+    [importedFiles, selectedImportId],
+  );
+  const selectedGraphSetLabel = selectedGraphSet?.sourceFile || selectedImport?.displayName || "-";
   const selectedDateLabel = getGraphDateLabel(selectedGraphSet);
   const selectedReports = useMemo(
     () =>
       (selectedGraphSet?.reports || []).filter((report) => isGroupedReport(report)),
     [selectedGraphSet],
   );
-  const handleRemoveGraphSet = () => {
-    if (!graphSetToRemove) {
-      return;
-    }
-
-    const nextGraphSets = removeWfmGraphReportSet(graphSetToRemove.id);
-
-    setGraphSets(nextGraphSets);
-    setSelectedGraphSetId(nextGraphSets[0]?.id || "");
-    setRemovedGraphSet(graphSetToRemove);
-    setGraphSetToRemove(null);
-  };
+  const isBusy = isLoadingFiles || isLoadingReport;
 
   return (
     <section className="font-jakarta flex min-h-screen bg-[#eef3f7] text-sibs-primary-1">
@@ -726,136 +842,149 @@ function WfmViewGraphsPage() {
         />
 
         <div className="sibs-scrollbar max-h-[calc(100vh-74px)] overflow-y-auto p-3 sm:p-4 lg:p-5">
-          {graphSets.length ? (
-            <div className="space-y-4">
-              <section className="sibs-card p-4">
-                <div className="grid gap-4 xl:grid-cols-[minmax(16rem,1fr)_minmax(0,54rem)] xl:items-end">
-                  <div className="min-w-0">
+          <div className="space-y-4">
+            <section className="sibs-card p-4">
+              <div className="grid gap-4 xl:grid-cols-[minmax(16rem,1fr)_minmax(0,52rem)] xl:items-end">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <BarChart3 className="h-5 w-5 text-sibs-primary-1" aria-hidden="true" />
                     <h2 className="m-0 text-lg font-bold text-sibs-primary-1">
                       View Graphs
                     </h2>
-                    <p className="mt-1 mb-0 text-sm text-sibs-tertiary-5">
-                      Generated from WFM dashboard imported data.
-                    </p>
                   </div>
-                  <div className="grid min-w-0 gap-3 md:grid-cols-[minmax(24rem,1fr)_minmax(17.5rem,18.5rem)_10rem] md:items-end">
-                    <div className="min-w-0">
-                      <label className="mb-1 block truncate text-xs font-bold uppercase text-sibs-tertiary-5">
-                        Uploaded Graph Data
-                      </label>
-                      <select
-                        value={selectedGraphSetId}
-                        onChange={(event) => setSelectedGraphSetId(event.target.value)}
-                        className="form-input h-10 w-full rounded-lg py-0 pr-8 text-xs"
-                        aria-label="Uploaded graph data"
-                        title={selectedGraphSetLabel}
-                      >
-                        {graphSets.map((graphSet) => (
-                          <option key={graphSet.id} value={graphSet.id}>
-                            {getGraphSetLabel(graphSet)}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="grid min-w-0 grid-cols-[6.75rem_2.5rem_5rem_2.5rem] gap-2">
-                      <select
-                        value={reportPeriod}
-                        onChange={(event) => {
-                          setReportPeriod(event.target.value);
-                          setWeeklyWindowOffset(0);
-                        }}
-                        className="form-input h-10 rounded-lg py-0"
-                        aria-label="Reporting period"
-                      >
-                        {periodOptions.map((option) => (
-                          <option key={option.value} value={option.value}>
-                            {option.label}
-                          </option>
-                        ))}
-                      </select>
-                      <button
-                        type="button"
-                        className="h-10 w-10 rounded-lg border border-sibs-tertiary-9 bg-white text-lg font-bold text-sibs-primary-1 transition hover:bg-[#eef3f7] disabled:cursor-not-allowed disabled:opacity-40"
-                        disabled={reportPeriod !== "weekly"}
-                        onClick={() =>
-                          setWeeklyWindowOffset((offset) => offset - weeklyNavigationStep)
-                        }
-                        aria-label="Previous reporting week"
-                      >
-                        {"<"}
-                      </button>
-                      <button
-                        type="button"
-                        className="h-10 rounded-lg border border-sibs-tertiary-9 bg-white px-2 text-sm font-bold text-sibs-primary-1 transition hover:bg-[#eef3f7] disabled:cursor-not-allowed disabled:opacity-40"
-                        disabled={reportPeriod !== "weekly"}
-                        onClick={() => setWeeklyWindowOffset(0)}
-                      >
-                        Latest
-                      </button>
-                      <button
-                        type="button"
-                        className="h-10 w-10 rounded-lg border border-sibs-tertiary-9 bg-white text-lg font-bold text-sibs-primary-1 transition hover:bg-[#eef3f7] disabled:cursor-not-allowed disabled:opacity-40"
-                        disabled={reportPeriod !== "weekly"}
-                        onClick={() =>
-                          setWeeklyWindowOffset((offset) => offset + weeklyNavigationStep)
-                        }
-                        aria-label="Next reporting week"
-                      >
-                        {">"}
-                      </button>
-                    </div>
+                  <p className="mt-1 mb-0 text-sm text-sibs-tertiary-5">
+                    Reports generated from imported raw data in PMS database.
+                  </p>
+                </div>
+                <div className="grid min-w-0 gap-3 md:grid-cols-[minmax(22rem,1fr)_minmax(17.5rem,18.5rem)_2.5rem] md:items-end">
+                  <div className="min-w-0">
+                    <label className="mb-1 block truncate text-xs font-bold uppercase text-sibs-tertiary-5">
+                      Imported Raw Data
+                    </label>
+                    <select
+                      value={selectedImportId}
+                      onChange={(event) => setSelectedImportId(event.target.value)}
+                      className="form-input h-10 w-full rounded-lg py-0 pr-8 text-xs"
+                      disabled={isBusy || !importedFiles.length}
+                      aria-label="Imported raw data"
+                      title={selectedGraphSetLabel}
+                    >
+                      {importedFiles.map((file) => (
+                        <option key={file.uploadId} value={file.uploadId}>
+                          {file.displayName || file.fileTitle}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="grid min-w-0 grid-cols-[6.75rem_2.5rem_5rem_2.5rem] gap-2">
+                    <select
+                      value={reportPeriod}
+                      onChange={(event) => {
+                        setReportPeriod(event.target.value);
+                        setWeeklyWindowOffset(0);
+                      }}
+                      className="form-input h-10 rounded-lg py-0"
+                      disabled={!selectedGraphSet}
+                      aria-label="Reporting period"
+                    >
+                      {periodOptions.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
                     <button
                       type="button"
-                      onClick={() => setGraphSetToRemove(selectedGraphSet)}
-                      disabled={!selectedGraphSet}
-                      className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg border border-sibs-danger/30 bg-white px-3 text-sm font-semibold text-sibs-danger transition hover:border-sibs-danger hover:bg-sibs-danger hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+                      className="h-10 w-10 rounded-lg border border-sibs-tertiary-9 bg-white text-lg font-bold text-sibs-primary-1 transition hover:bg-[#eef3f7] disabled:cursor-not-allowed disabled:opacity-40"
+                      disabled={reportPeriod !== "weekly" || !selectedGraphSet}
+                      onClick={() =>
+                        setWeeklyWindowOffset((offset) => offset - weeklyNavigationStep)
+                      }
+                      aria-label="Previous reporting week"
                     >
-                      <Trash2 className="h-4 w-4" aria-hidden="true" />
-                      Remove Graph
+                      {"<"}
+                    </button>
+                    <button
+                      type="button"
+                      className="h-10 rounded-lg border border-sibs-tertiary-9 bg-white px-2 text-sm font-bold text-sibs-primary-1 transition hover:bg-[#eef3f7] disabled:cursor-not-allowed disabled:opacity-40"
+                      disabled={reportPeriod !== "weekly" || !selectedGraphSet}
+                      onClick={() => setWeeklyWindowOffset(0)}
+                    >
+                      Latest
+                    </button>
+                    <button
+                      type="button"
+                      className="h-10 w-10 rounded-lg border border-sibs-tertiary-9 bg-white text-lg font-bold text-sibs-primary-1 transition hover:bg-[#eef3f7] disabled:cursor-not-allowed disabled:opacity-40"
+                      disabled={reportPeriod !== "weekly" || !selectedGraphSet}
+                      onClick={() =>
+                        setWeeklyWindowOffset((offset) => offset + weeklyNavigationStep)
+                      }
+                      aria-label="Next reporting week"
+                    >
+                      {">"}
                     </button>
                   </div>
+                  <button
+                    type="button"
+                    className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-sibs-tertiary-9 bg-white text-sibs-primary-1 transition hover:bg-[#eef3f7] disabled:cursor-not-allowed disabled:opacity-40"
+                    disabled={isBusy}
+                    onClick={refreshImportedFiles}
+                    aria-label="Refresh imported files"
+                    title="Refresh imported files"
+                  >
+                    <RefreshCw className="h-4 w-4" aria-hidden="true" />
+                  </button>
                 </div>
-              </section>
-
-              {selectedGraphSet ? (
-                <>
-                  <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                    <SummaryCard label="Source File" value={selectedGraphSet.sourceFile} />
-                    <SummaryCard label="Raw Data" value={getDisplayRawDataTitle(selectedGraphSet)} />
-                    <SummaryCard label="Date Range" value={selectedDateLabel} />
-                    <SummaryCard
-                      label="Generated"
-                      value={formatGeneratedAt(selectedGraphSet.generatedAt)}
-                    />
-                    <SummaryCard label="Records" value={selectedGraphSet.summary.records} />
-                    <SummaryCard label="Columns" value={selectedGraphSet.summary.columns || 0} />
-                    <SummaryCard label="Metrics" value={selectedGraphSet.summary.metrics || 0} />
-                    <SummaryCard label="Graphs" value={selectedReports.length} />
-                  </section>
-
-                  <section className="grid gap-4 xl:grid-cols-2">
-                    {selectedReports.map((report) => (
-                      <GraphCard
-                        key={report.id}
-                        period={reportPeriod}
-                        report={report}
-                        windowStart={weeklyWindowOffset}
-                      />
-                    ))}
-                  </section>
-                </>
-              ) : null}
-            </div>
-          ) : (
-            <section className="sibs-card p-8 text-center">
-              <h2 className="m-0 text-lg font-bold text-sibs-primary-1">
-                View Graphs
-              </h2>
-              <p className="mt-2 mb-0 text-sm text-sibs-tertiary-5">
-                No generated graphs yet.
-              </p>
+              </div>
             </section>
-          )}
+
+            {isBusy ? (
+              <ReportStatus
+                icon={Database}
+                title="Loading reports"
+                message="Reading imported rows from PMS database."
+              />
+            ) : reportError ? (
+              <ReportStatus
+                icon={AlertCircle}
+                title="Report unavailable"
+                message={reportError}
+              />
+            ) : !importedFiles.length ? (
+              <ReportStatus
+                icon={Database}
+                title="No graph reports yet"
+                message="Import uploaded data in the WFM dashboard, then click Make graph."
+              />
+            ) : selectedGraphSet ? (
+              <>
+                <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                  <SummaryCard label="Source File" value={selectedGraphSet.sourceFile} />
+                  <SummaryCard label="Account" value={reportData?.account} />
+                  <SummaryCard label="Task Order" value={reportData?.taskOrder} />
+                  <SummaryCard label="Date Range" value={selectedDateLabel} />
+                  <SummaryCard label="Records" value={selectedGraphSet.summary.records} />
+                  <SummaryCard label="Columns" value={selectedGraphSet.summary.columns || 0} />
+                  <SummaryCard label="Metrics" value={selectedGraphSet.summary.metrics || 0} />
+                  <SummaryCard label="Graphs" value={selectedReports.length} />
+                </section>
+
+                <section className="grid gap-4 xl:grid-cols-2">
+                  {selectedReports.map((report) => (
+                    <GraphCard
+                      key={report.id}
+                      period={reportPeriod}
+                      report={report}
+                      windowStart={weeklyWindowOffset}
+                    />
+                  ))}
+                </section>
+
+                <FieldSummaryPanel fields={selectedGraphSet.fieldSummaries} />
+                <RawDataPreview columns={reportData?.columns} rows={reportData?.rows} />
+              </>
+            ) : null}
+          </div>
         </div>
       </main>
 
@@ -875,35 +1004,10 @@ function WfmViewGraphsPage() {
         title="Logging out"
         message="Please wait while we end your session."
       />
-
-      <ConfirmationModal
-        isOpen={Boolean(graphSetToRemove)}
-        title="Remove graph"
-        message={`Remove ${graphSetToRemove?.sourceFile || "this graph"} from View Graphs? This will delete it completely.`}
-        cancelText="Cancel"
-        confirmText="Remove"
-        onCancel={() => setGraphSetToRemove(null)}
-        onConfirm={handleRemoveGraphSet}
-        tone="neutral"
-      />
-
-      <AppModal isOpen={Boolean(removedGraphSet)} className="max-w-sm" textAlign="center">
-        <p className="m-0 text-lg font-bold text-sibs-primary-1">
-          Graph removed
-        </p>
-        <p className="mt-2 mb-0 text-sm text-sibs-tertiary-5">
-          {removedGraphSet?.sourceFile || "The graph"} was deleted from View Graphs.
-        </p>
-        <Button
-          type="button"
-          onClick={() => setRemovedGraphSet(null)}
-          className="mt-5 h-10 w-full rounded-lg bg-sibs-primary-1 text-white hover:bg-sibs-tertiary-4"
-        >
-          Done
-        </Button>
-      </AppModal>
     </section>
   );
 }
 
+
 export default WfmViewGraphsPage;
+
