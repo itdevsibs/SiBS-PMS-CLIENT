@@ -2,11 +2,6 @@
 export const accountOptions = [
   "US VISA",
   "YUM-DEL",
-  "Account 1",
-  "Account 2",
-  "Account 3",
-  "Account 4",
-  "Account 5",
 ];
 
 const defaultRawDataTitles = Array.from(
@@ -14,24 +9,26 @@ const defaultRawDataTitles = Array.from(
   (_, index) => `Raw Data ${index + 1}`,
 );
 
-// Account-specific labels shown on the WFM raw data upload cards.
-const accountRawDataTitles = {
+// Account-specific cards shown on the WFM raw data upload cards.
+const accountRawDataCards = {
   "US VISA": [
-    "PMIS",
-    "ESWA",
-    "Mongolia",
-    "PAC",
-    "EURECA",
-    "SEURECA",
-    "NEA",
-    "NICE",
-    "SEA",
-    "SAMI",
-    "CHIPS",
-    "SEASIA",
-    "CESCAN",
-    "NESAMI",
-    "Raw Data 15",
+    {
+      title: "Fusecom",
+      taskOrders: ["Seurica", "Nice"],
+    },
+    {
+      title: "Herodash",
+      taskOrders: ["Seasia", "Pac"],
+    },
+    {
+      title: "Fusenet",
+      taskOrders: ["Nesami"],
+    },
+  ],
+  "YUM-DEL": [
+    "Raw Data 1",
+    "Raw Data 2",
+    "Raw Data 3",
   ],
 };
 
@@ -40,7 +37,9 @@ function slugifyAccount(account) {
 }
 
 function getAccountTitles(account) {
-  return accountRawDataTitles[account] || defaultRawDataTitles;
+  return (accountRawDataCards[account] || defaultRawDataTitles).map((card) =>
+    typeof card === "string" ? card : card.title,
+  );
 }
 
 // Builds stable card IDs used to connect uploads, dashboard imports, and graphs.
@@ -49,12 +48,17 @@ export function getRawDataCards(account) {
     return [];
   }
 
-  return getAccountTitles(account).map((title, index) => ({
+  return (accountRawDataCards[account] || defaultRawDataTitles).map((card, index) => {
+    const title = typeof card === "string" ? card : card.title;
+
+    return {
     key: `raw-data-${index + 1}`,
     title,
     id: `${slugifyAccount(account)}-raw-data-${index + 1}`,
     account,
-  }));
+    taskOrders: Array.isArray(card.taskOrders) ? card.taskOrders : [],
+    };
+  });
 }
 
 // Resolves old saved graph card IDs back into the visible raw data title.

@@ -1,6 +1,13 @@
 // WFM page for uploading and managing raw data files.
 import { useEffect, useMemo, useState } from "react";
-import { CloudUpload, FolderOpen, Search, Trash2 } from "lucide-react";
+import {
+  AlertCircle,
+  CloudUpload,
+  FileSpreadsheet,
+  FolderOpen,
+  Search,
+  Trash2,
+} from "lucide-react";
 
 import AdminSidebar from "@/components/layout/AdminSidebar";
 import AppHeader from "@/components/layout/AppHeader";
@@ -9,13 +16,33 @@ import { Button } from "@/components/ui/button";
 import ConfirmationModal from "@/components/ui/confirmation-modal";
 import LoadingModal from "@/components/ui/loading-modal";
 import useDashboardPage from "@/hooks/useDashboardPage";
+import { removeWfmGraphReportsForUpload } from "@/lib/wfm-graph-reports";
 import { addWfmHistoryLog } from "@/lib/wfm-history-logs";
 import {
   accountOptions,
   getRawDataCards,
 } from "@/lib/wfm-raw-data-cards";
+import {
+  deleteWfmImportedFile,
+  saveWfmImportedFile,
+} from "@/lib/axios/wfm-imported-files";
+import {
+  getUsVisaImportBatchErrors,
+  uploadUsVisaImport,
+} from "@/lib/axios/us-visa-imports";
 
 const RAW_DATA_UPLOADS_KEY = "sibs-wfm-raw-data-uploads";
+
+const usVisaImportProfiles = [
+  {
+    id: "HERO_SKILL_STATISTICS_INBOUND",
+    label: "HeroDash Skill Statistics Inbound",
+  },
+  {
+    id: "FUSECOM_SKILL_STATISTICS_INBOUND",
+    label: "Fusecom Skill Statistics Inbound",
+  },
+];
 
 const accountFilters = [
   "All Accounts",
@@ -27,6 +54,44 @@ function formatUploadTimestamp(date = new Date()) {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(date);
+}
+
+function getApiErrorMessage(error) {
+  return (
+    error?.response?.data?.message ||
+    error?.message ||
+    "The upload could not be completed."
+  );
+}
+
+function getApiErrorCode(error) {
+  return error?.response?.data?.code || error?.code || "UPLOAD_FAILED";
+}
+
+function formatBatchDateTime(value) {
+  if (!value) return "-";
+
+  return new Intl.DateTimeFormat("en-US", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(new Date(value));
+}
+
+function formatImportStatus(status) {
+  return String(status || "").replace(/_/g, " ");
+}
+
+function BatchStat({ label, value }) {
+  return (
+    <div className="rounded-lg border border-sibs-tertiary-10 bg-[#f8fbfd] px-3 py-2">
+      <p className="m-0 text-[11px] font-bold uppercase text-sibs-tertiary-5">
+        {label}
+      </p>
+      <p className="mt-1 mb-0 text-xl font-extrabold text-sibs-primary-1">
+        {Number(value || 0).toLocaleString()}
+      </p>
+    </div>
+  );
 }
 
 function getUploadTimeMs(upload) {
@@ -273,9 +338,18 @@ async function readSelectedFile(file) {
 function WfmImportDataPage() {
   const dashboard = useDashboardPage();
   const userName = dashboard.authUser?.name || dashboard.authUser?.username || "User";
+  const isWfmUser = dashboard.authUser?.role === "wfm" || Number(dashboard.authUser?.adminAccess || 0) === 9;
   const [uploadsByCard, setUploadsByCard] = useState(() =>
     normalizeUploadsByCard(readJsonCache(RAW_DATA_UPLOADS_KEY, {})),
   );
+  const [usVisaProfileId, setUsVisaProfileId] = useState(usVisaImportProfiles[0].id);
+  const [usVisaFile, setUsVisaFile] = useState(null);
+  const [usVisaUploadProgress, setUsVisaUploadProgress] = useState(0);
+  const [isUsVisaProcessing, setIsUsVisaProcessing] = useState(false);
+  const [usVisaBatchResult, setUsVisaBatchResult] = useState(null);
+  const [usVisaUploadError, setUsVisaUploadError] = useState(null);
+  const [isLoadingUsVisaErrors, setIsLoadingUsVisaErrors] = useState(false);
+  const [usVisaErrorDetails, setUsVisaErrorDetails] = useState(null);
   const [activeUploadCard, setActiveUploadCard] = useState(null);
   const [activeOpenCard, setActiveOpenCard] = useState(null);
   const [selectedFiles, setSelectedFiles] = useState([]);
@@ -285,6 +359,7 @@ function WfmImportDataPage() {
   const [addedUpload, setAddedUpload] = useState(null);
   const [removedUpload, setRemovedUpload] = useState(null);
   const [duplicateUploadAlert, setDuplicateUploadAlert] = useState(null);
+  const [syncError, setSyncError] = useState("");
   const [rawDataSearch, setRawDataSearch] = useState("");
   const [uploadedDataSearch, setUploadedDataSearch] = useState("");
   const [selectedAccount, setSelectedAccount] = useState("All Accounts");
@@ -316,7 +391,10 @@ function WfmImportDataPage() {
     }
 
     return accountFilteredCards.filter((card) =>
-      [card.title, card.account].join(" ").toLowerCase().includes(searchValue),
+      [card.title, card.account, ...(card.taskOrders || [])]
+        .join(" ")
+        .toLowerCase()
+        .includes(searchValue),
     );
   }, [rawDataSearch, selectedAccount]);
   const filteredAccountOptions = useMemo(() => {
@@ -344,10 +422,92 @@ function WfmImportDataPage() {
       ),
     [uploadsByCard],
   );
+  const taskOrderCounts = useMemo(
+    () =>
+      Object.fromEntries(
+        accountFilters.map((account) => {
+          if (account === "All Accounts") {
+            return [account, accountOptions.length];
+          }
+
+          const accountCards =
+            getRawDataCards(account);
+          const taskOrderCount = accountCards.reduce(
+            (total, card) => total + Math.max(card.taskOrders?.length || 0, 1),
+            0,
+          );
+
+          return [account, taskOrderCount];
+        }),
+      ),
+    [],
+  );
 
   useEffect(() => {
     writeJsonCache(RAW_DATA_UPLOADS_KEY, uploadsByCard);
   }, [uploadsByCard]);
+
+  const handleUsVisaFileChange = (event) => {
+    const [file] = Array.from(event.target.files || []);
+
+    setUsVisaFile(file || null);
+    setUsVisaBatchResult(null);
+    setUsVisaUploadError(null);
+    setUsVisaUploadProgress(0);
+  };
+
+  const handleUsVisaUpload = async () => {
+    if (!usVisaFile || isUsVisaProcessing) {
+      return;
+    }
+
+    setIsUsVisaProcessing(true);
+    setUsVisaUploadError(null);
+    setUsVisaBatchResult(null);
+    setUsVisaUploadProgress(0);
+
+    try {
+      const result = await uploadUsVisaImport({
+        file: usVisaFile,
+        importProfileId: usVisaProfileId,
+        onProgress: setUsVisaUploadProgress,
+      });
+
+      setUsVisaBatchResult(result.batch);
+      setUsVisaFile(null);
+    } catch (error) {
+      setUsVisaUploadError({
+        code: getApiErrorCode(error),
+        message: getApiErrorMessage(error),
+        batch: error?.response?.data?.batch,
+      });
+    } finally {
+      setIsUsVisaProcessing(false);
+    }
+  };
+
+  const handleOpenUsVisaErrors = async () => {
+    if (!usVisaBatchResult?.id || isLoadingUsVisaErrors) {
+      return;
+    }
+
+    setIsLoadingUsVisaErrors(true);
+
+    try {
+      const result = await getUsVisaImportBatchErrors(usVisaBatchResult.id, {
+        limit: 100,
+      });
+
+      setUsVisaErrorDetails(result);
+    } catch (error) {
+      setUsVisaUploadError({
+        code: getApiErrorCode(error),
+        message: getApiErrorMessage(error),
+      });
+    } finally {
+      setIsLoadingUsVisaErrors(false);
+    }
+  };
 
   const closeUploadModal = () => {
     setActiveUploadCard(null);
@@ -383,15 +543,19 @@ function WfmImportDataPage() {
     const [parsedUploads] = await Promise.all([
       Promise.all(filesToUpload.map(async (file) => {
         const importedData = await readSelectedFile(file);
+        const uploadedAtMs = Date.now();
 
         return {
-          id: `${uploadCard.id}-${file.name}-${Date.now()}-${Math.random()
+          id: `${uploadCard.id}-${file.name}-${uploadedAtMs}-${Math.random()
             .toString(36)
             .slice(2)}`,
           cardId: uploadCard.id,
+          account: uploadCard.account,
           rawDataTitle: uploadCard.title,
           fileName: file.name,
-          uploadedAtMs: Date.now(),
+          fileSize: file.size || 0,
+          filePath: `${uploadCard.account}/${uploadCard.title}/${file.name}`,
+          uploadedAtMs,
           uploadedAt: formatUploadTimestamp(),
           columns: importedData.columns || ["Source File"],
           rows: importedData.rows || [],
@@ -401,6 +565,39 @@ function WfmImportDataPage() {
         window.setTimeout(resolve, 1200);
       }),
     ]);
+
+    try {
+      await Promise.all(
+        parsedUploads.map((upload) =>
+          saveWfmImportedFile({
+            uploadId: upload.id,
+            account: upload.account,
+            taskOrder: upload.rawDataTitle,
+            cardId: upload.cardId,
+            fileTitle: upload.fileName,
+            filePath: upload.filePath,
+            fileSize: upload.fileSize,
+            rowCount: upload.rows.length,
+            columnCount: upload.columns.length,
+            columns: upload.columns,
+            rows: upload.rows,
+            uploadedAtMs: upload.uploadedAtMs,
+            uploadedAtLabel: upload.uploadedAt,
+            uploadedBy: userName,
+          }),
+        ),
+      );
+    } catch (error) {
+      console.error(
+        "Failed to save WFM imported file:",
+        error?.response?.data || error?.message || error,
+      );
+      setIsUploading(false);
+      setSyncError(
+        "The file was read, but it was not saved to the database. Please try again.",
+      );
+      return;
+    }
 
     setUploadsByCard((currentUploads) => {
       const currentCardUploads = currentUploads[uploadCard.id] || [];
@@ -439,6 +636,22 @@ function WfmImportDataPage() {
     await new Promise((resolve) => {
       window.setTimeout(resolve, 700);
     });
+
+    try {
+      await deleteWfmImportedFile(selectedUploadToRemove.id);
+    } catch (error) {
+      console.error(
+        "Failed to delete WFM imported file:",
+        error?.response?.data || error?.message || error,
+      );
+      setIsRemovingUpload(false);
+      setSyncError(
+        "The file was not removed from the database. Please try again.",
+      );
+      return;
+    }
+
+    removeWfmGraphReportsForUpload(selectedUploadToRemove.id);
 
     setUploadsByCard((currentUploads) => ({
       ...currentUploads,
@@ -482,20 +695,139 @@ function WfmImportDataPage() {
         />
 
         <div className="sibs-scrollbar max-h-[calc(100vh-74px)] overflow-y-auto p-3 sm:p-4 lg:p-5">
-          <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
-            <select
-              value={selectedAccount}
-              onChange={(event) => setSelectedAccount(event.target.value)}
-              className="form-input h-9 rounded-full py-0 sm:w-64"
-            >
-              {accountFilters.map((account) => (
-                <option key={account} value={account}>
-                  {account} ({uploadedCardCounts[account] || 0})
-                </option>
-              ))}
-            </select>
+          {isWfmUser ? (
+            <section className="sibs-card mb-4 overflow-hidden">
+              <div className="flex flex-col gap-4 border-b border-sibs-tertiary-10 bg-sibs-primary-3/30 px-5 py-4 lg:flex-row lg:items-center lg:justify-between">
+                <div className="flex items-start gap-3">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-white text-sibs-primary-2">
+                    <FileSpreadsheet className="h-5 w-5" aria-hidden="true" />
+                  </div>
+                  <div>
+                    <h2 className="m-0 text-base font-bold text-sibs-primary-1">
+                      US VISA Raw Excel Import
+                    </h2>
+                    <p className="mt-1 mb-0 text-sm text-sibs-tertiary-5">
+                      Upload the inbound skill statistics workbook for backend validation and staging.
+                    </p>
+                  </div>
+                </div>
 
-            <div className="relative w-full sm:w-80">
+                <div className="grid gap-2 sm:grid-cols-[260px_minmax(220px,1fr)_120px] lg:w-[min(100%,720px)]">
+                  <select
+                    value={usVisaProfileId}
+                    onChange={(event) => {
+                      setUsVisaProfileId(event.target.value);
+                      setUsVisaBatchResult(null);
+                      setUsVisaUploadError(null);
+                    }}
+                    disabled={isUsVisaProcessing}
+                    className="form-input h-10 rounded-lg py-0"
+                  >
+                    {usVisaImportProfiles.map((profile) => (
+                      <option key={profile.id} value={profile.id}>
+                        {profile.label}
+                      </option>
+                    ))}
+                  </select>
+
+                  <label className="flex h-10 min-w-0 cursor-pointer items-center gap-2 rounded-lg border border-sibs-tertiary-9 bg-white px-3 text-sm font-semibold text-sibs-primary-1">
+                    <CloudUpload className="h-4 w-4 shrink-0 text-sibs-primary-2" aria-hidden="true" />
+                    <span className="truncate">
+                      {usVisaFile?.name || "Choose .xlsx file"}
+                    </span>
+                    <input
+                      type="file"
+                      accept=".xlsx"
+                      disabled={isUsVisaProcessing}
+                      onChange={handleUsVisaFileChange}
+                      className="hidden"
+                    />
+                  </label>
+
+                  <Button
+                    type="button"
+                    disabled={!usVisaFile || isUsVisaProcessing}
+                    onClick={handleUsVisaUpload}
+                    className="h-10 rounded-lg bg-sibs-primary-1 px-4 text-white hover:bg-sibs-tertiary-4"
+                  >
+                    {isUsVisaProcessing ? "Processing" : "Upload"}
+                  </Button>
+                </div>
+              </div>
+
+              <div className="px-5 py-4">
+                {isUsVisaProcessing ? (
+                  <div className="rounded-lg border border-sibs-primary-2/20 bg-sibs-primary-2/5 px-4 py-3">
+                    <div className="flex items-center justify-between gap-3 text-sm font-bold text-sibs-primary-1">
+                      <span>Uploading and processing workbook</span>
+                      <span>{usVisaUploadProgress || 0}%</span>
+                    </div>
+                    <div className="mt-3 h-2 overflow-hidden rounded-full bg-white">
+                      <div
+                        className="h-full rounded-full bg-sibs-primary-2 transition-all"
+                        style={{ width: `${Math.min(usVisaUploadProgress || 8, 100)}%` }}
+                      />
+                    </div>
+                  </div>
+                ) : null}
+
+                {usVisaUploadError ? (
+                  <div className="mt-3 flex gap-3 rounded-lg border border-sibs-danger/20 bg-sibs-danger/5 px-4 py-3 text-sm">
+                    <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-sibs-danger" aria-hidden="true" />
+                    <div>
+                      <p className="m-0 font-bold text-sibs-danger">
+                        {usVisaUploadError.code}
+                      </p>
+                      <p className="mt-1 mb-0 text-sibs-tertiary-5">
+                        {usVisaUploadError.message}
+                      </p>
+                    </div>
+                  </div>
+                ) : null}
+
+                {usVisaBatchResult ? (
+                  <div className="mt-3">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <p className="m-0 text-sm font-bold text-sibs-primary-1">
+                          {usVisaBatchResult.batchCode}
+                        </p>
+                        <p className="mt-1 mb-0 text-xs font-semibold text-sibs-tertiary-5">
+                          {formatImportStatus(usVisaBatchResult.status)} - {formatBatchDateTime(usVisaBatchResult.completedAt)}
+                        </p>
+                      </div>
+                      {(usVisaBatchResult.invalidRows || usVisaBatchResult.duplicateRows || usVisaBatchResult.warningRows) ? (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          disabled={isLoadingUsVisaErrors}
+                          onClick={handleOpenUsVisaErrors}
+                          className="h-9 rounded-lg px-3 text-sm"
+                        >
+                          Open Error Details
+                        </Button>
+                      ) : null}
+                    </div>
+
+                    <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+                      <BatchStat label="Total Rows" value={usVisaBatchResult.totalRows} />
+                      <BatchStat label="Valid Rows" value={usVisaBatchResult.validRows} />
+                      <BatchStat label="Invalid Rows" value={usVisaBatchResult.invalidRows} />
+                      <BatchStat label="Duplicate Rows" value={usVisaBatchResult.duplicateRows} />
+                      <BatchStat label="Warning Rows" value={usVisaBatchResult.warningRows} />
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            </section>
+          ) : null}
+
+          <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-start">
+            <div className="flex h-9 w-full shrink-0 items-center justify-center truncate rounded-full border border-sibs-tertiary-9 bg-white px-4 text-sm font-extrabold text-sibs-primary-1 sm:w-32">
+              {selectedAccount === "All Accounts" ? "All Accounts" : selectedAccount}
+            </div>
+
+            <div className="relative w-full shrink-0 sm:w-80">
               <Search
                 className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-sibs-tertiary-6"
                 aria-hidden="true"
@@ -504,10 +836,22 @@ function WfmImportDataPage() {
                 value={rawDataSearch}
                 onChange={(event) => setRawDataSearch(event.target.value)}
                 className="h-9 w-full rounded-full border border-sibs-tertiary-9 bg-white pl-9 pr-4 text-sm outline-none focus:border-sibs-primary-2"
-                placeholder="Search raw data..."
+                placeholder="Search data..."
                 type="text"
               />
             </div>
+
+            <select
+              value={selectedAccount}
+              onChange={(event) => setSelectedAccount(event.target.value)}
+              className="form-input h-9 w-full shrink-0 rounded-full py-0 sm:w-64"
+            >
+              {accountFilters.map((account) => (
+                <option key={account} value={account}>
+                  {account} ({taskOrderCounts[account] || 0})
+                </option>
+              ))}
+            </select>
           </div>
 
           {selectedAccount === "All Accounts" ? (
@@ -559,9 +903,23 @@ function WfmImportDataPage() {
                       {uploads.length}
                     </span>
                   </div>
-                  <p className="mt-1 mb-0 truncate text-[11px] font-semibold uppercase text-sibs-tertiary-5">
-                    {card.account}
-                  </p>
+                  <div className="mt-2 flex min-w-0 flex-wrap items-center gap-2">
+                    <p className="m-0 truncate text-xs font-bold uppercase text-sibs-tertiary-5">
+                      {card.account}
+                    </p>
+                    {card.taskOrders?.length ? (
+                      <div className="flex min-w-0 flex-wrap gap-1.5">
+                        {card.taskOrders.map((taskOrder) => (
+                          <span
+                            key={taskOrder}
+                            className="rounded-md border border-sibs-tertiary-8 bg-white px-2.5 py-1 text-xs font-extrabold leading-none text-sibs-primary-1"
+                          >
+                            {taskOrder}
+                          </span>
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
 
                   <div className="mt-4 min-h-[170px] flex-1 space-y-1 rounded-lg border border-sibs-tertiary-10 bg-[#f8fbfd] px-3 py-2">
                     {latestUploads.length ? (
@@ -632,7 +990,7 @@ function WfmImportDataPage() {
           {activeUploadCard?.title} - Import Data
         </p>
         <p className="mt-1 mb-0 text-sm text-sibs-tertiary-5">
-          Upload raw data files for staging in the WFM dashboard.
+          Upload data files for staging in the WFM dashboard.
         </p>
 
         <label className="mt-5 flex cursor-pointer items-center gap-4 rounded-lg border border-dashed border-sibs-tertiary-9 bg-[#f8fbfd] p-5 text-left transition hover:border-sibs-primary-2 hover:bg-sibs-primary-2/5">
@@ -650,7 +1008,7 @@ function WfmImportDataPage() {
             <p className="m-0 text-sm font-bold text-sibs-primary-1">
               {selectedFiles.length
                 ? `${selectedFiles.length} file(s) selected`
-                : "Choose raw data file"}
+                : "Choose data file"}
             </p>
             <p className="mt-1 mb-0 text-xs text-sibs-tertiary-5">
               Accepted: .xlsx, .xls, .csv
@@ -759,6 +1117,97 @@ function WfmImportDataPage() {
         >
           Done
         </Button>
+      </AppModal>
+
+      <AppModal isOpen={Boolean(syncError)} className="max-w-sm" textAlign="center">
+        <p className="m-0 text-lg font-bold text-sibs-primary-1">
+          Database sync failed
+        </p>
+        <p className="mt-2 mb-0 text-sm text-sibs-tertiary-5">
+          {syncError}
+        </p>
+        <Button
+          type="button"
+          onClick={() => setSyncError("")}
+          className="mt-5 h-10 w-full rounded-lg bg-sibs-primary-1 text-white hover:bg-sibs-tertiary-4"
+        >
+          Done
+        </Button>
+      </AppModal>
+
+      <AppModal
+        isOpen={Boolean(usVisaErrorDetails)}
+        className="!max-w-none sm:!w-[min(92vw,1100px)]"
+      >
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="m-0 text-lg font-bold text-sibs-primary-1">
+              Import Error Details
+            </p>
+            <p className="mt-1 mb-0 text-sm text-sibs-tertiary-5">
+              {usVisaErrorDetails?.batch?.batchCode || usVisaBatchResult?.batchCode}
+            </p>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setUsVisaErrorDetails(null)}
+            className="h-9 rounded-lg px-4"
+          >
+            Close
+          </Button>
+        </div>
+
+        <div className="sibs-scrollbar mt-4 max-h-[65vh] overflow-auto rounded-lg border border-sibs-tertiary-10">
+          <table className="w-max min-w-full border-collapse text-left text-sm">
+            <thead className="bg-sibs-primary-3/50 text-xs uppercase text-sibs-tertiary-6">
+              <tr>
+                <th className="px-4 py-3 font-bold">Sheet</th>
+                <th className="px-4 py-3 font-bold">Row</th>
+                <th className="px-4 py-3 font-bold">Severity</th>
+                <th className="px-4 py-3 font-bold">Code</th>
+                <th className="px-4 py-3 font-bold">Column</th>
+                <th className="px-4 py-3 font-bold">Value</th>
+                <th className="px-4 py-3 font-bold">Message</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-sibs-tertiary-10">
+              {usVisaErrorDetails?.data?.length ? (
+                usVisaErrorDetails.data.map((error) => (
+                  <tr key={error.id} className="bg-[#f8fbfd]">
+                    <td className="whitespace-nowrap px-4 py-3 text-sibs-primary-1">
+                      {error.sheetName || "-"}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3 text-sibs-tertiary-5">
+                      {error.excelRowNumber || "-"}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3 font-bold text-sibs-primary-1">
+                      {error.severity || "-"}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3 text-sibs-tertiary-5">
+                      {error.errorCode || "-"}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3 text-sibs-tertiary-5">
+                      {error.columnName || "-"}
+                    </td>
+                    <td className="max-w-[220px] truncate px-4 py-3 text-sibs-tertiary-5" title={String(error.rawValue || "")}>
+                      {error.rawValue || "-"}
+                    </td>
+                    <td className="min-w-[320px] px-4 py-3 text-sibs-tertiary-5">
+                      {error.errorMessage || "-"}
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={7} className="bg-[#f8fbfd] px-5 py-8 text-center text-sm text-sibs-tertiary-5">
+                    No error details found.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </AppModal>
 
       <AppModal isOpen={Boolean(addedUpload)} className="max-w-sm" textAlign="center">
