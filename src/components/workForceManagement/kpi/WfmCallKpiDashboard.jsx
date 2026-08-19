@@ -223,15 +223,21 @@ export default function WfmCallKpiDashboard({ data }) {
       </div>
 
       <ChartShell title="Calls" subtitle="Volume, handled calls, and handled within SLA">
-        <VolumeChart series={series} />
+        <VolumeChart series={series.length ? series : data?.data?.series || []} />
       </ChartShell>
 
       <ChartShell title="Answer Rate & Service Level" subtitle="Answer % and service level performance against target">
-        <LineChart series={series} target={targets.serviceLevelPct} />
+        <LineChart
+          series={series.length ? series : data?.data?.series || []}
+          target={targets.serviceLevelPct || data?.data?.targets?.serviceLevelPct}
+        />
       </ChartShell>
 
       <ChartShell title="Average Handling Time" subtitle="Call AHT measured in seconds against the current target">
-        <AhtChart series={series} target={targets.ahtSeconds} />
+        <AhtChart
+          series={series.length ? series : data?.data?.series || []}
+          target={targets.ahtSeconds || data?.data?.targets?.ahtSeconds}
+        />
       </ChartShell>
     </div>
   );

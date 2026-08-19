@@ -3,5 +3,5 @@ import api from "./api-template";
 
 export async function getWfmCallKpis(params = {}) {
   const response = await api.get("/wfm/kpis/calls", { params });
-  return response.data;
+  return response;
 }

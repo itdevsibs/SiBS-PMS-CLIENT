@@ -4,6 +4,8 @@ import { AlertCircle, BarChart3, Database, RefreshCw } from "lucide-react";
 
 import AdminSidebar from "@/components/layout/AdminSidebar";
 import AppHeader from "@/components/layout/AppHeader";
+import ConfirmationModal from "@/components/ui/confirmation-modal";
+import LoadingModal from "@/components/ui/loading-modal";
 import WfmCallKpiDashboard from "@/components/workForceManagement/kpi/WfmCallKpiDashboard";
 import useDashboardPage from "@/hooks/useDashboardPage";
 import { getWfmCallKpis } from "@/lib/axios/wfm-kpis";
@@ -13,6 +15,11 @@ const PERIOD_OPTIONS = [
   { value: "monthly", label: "Monthly" },
   { value: "quarterly", label: "Quarterly" },
   { value: "annually", label: "Annually" },
+];
+
+const SOURCE_OPTIONS = [
+  { value: "FUSECOM", label: "Fusecom" },
+  { value: "HERODASH", label: "HeroDash" },
 ];
 
 function getErrorMessage(error) {
@@ -30,7 +37,7 @@ function formatGrain(value) {
     SKILL_30_MINUTE: "30-minute source",
     SKILL_REPORT_SUMMARY: "Report summary source",
   };
-  return labels[value] || value || "No source data";
+  return labels[value] || value || "No available data grain returned by backend";
 }
 
 export default function WfmViewGraphsPage() {
@@ -38,12 +45,13 @@ export default function WfmViewGraphsPage() {
   const userName = dashboard.authUser?.name || dashboard.authUser?.username || "User";
   const isWfmUser = dashboard.authUser?.role === "wfm" || Number(dashboard.authUser?.adminAccess || 0) === 9;
 
+  const [selectedSourceSystem, setSelectedSourceSystem] = useState("FUSECOM");
   const [period, setPeriod] = useState("weekly");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [draftDateFrom, setDraftDateFrom] = useState("");
   const [draftDateTo, setDraftDateTo] = useState("");
-  const [kpiData, setKpiData] = useState(null);
+  const [kpiResponse, setKpiResponse] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -54,27 +62,31 @@ export default function WfmViewGraphsPage() {
     setError("");
 
     try {
-      const response = await getWfmCallKpis({
+      const params = {
         period,
+        sourceSystem: selectedSourceSystem,
         ...(dateFrom ? { from: dateFrom } : {}),
         ...(dateTo ? { to: dateTo } : {}),
-      });
-      const data = response?.data || null;
-      setKpiData(data);
+      };
+      console.log("KPI request:", params);
+      const response = await getWfmCallKpis(params);
+      console.log("KPI response:", response.data);
+      setKpiResponse(response);
+      const dashboardData = response?.data?.data || null;
 
-      if (!dateFrom && data?.filters?.dateFrom) {
-        setDraftDateFrom(data.filters.dateFrom);
+      if (!dateFrom && dashboardData?.filters?.dateFrom) {
+        setDraftDateFrom(dashboardData.filters.dateFrom);
       }
-      if (!dateTo && data?.filters?.dateTo) {
-        setDraftDateTo(data.filters.dateTo);
+      if (!dateTo && dashboardData?.filters?.dateTo) {
+        setDraftDateTo(dashboardData.filters.dateTo);
       }
     } catch (loadError) {
       setError(getErrorMessage(loadError));
-      setKpiData(null);
+      setKpiResponse(null);
     } finally {
       setIsLoading(false);
     }
-  }, [dateFrom, dateTo, isWfmUser, period]);
+  }, [dateFrom, dateTo, isWfmUser, period, selectedSourceSystem]);
 
   useEffect(() => {
     loadKpis();
@@ -99,6 +111,17 @@ export default function WfmViewGraphsPage() {
     setDraftDateFrom("");
     setDraftDateTo("");
   };
+
+  const dashboardData = kpiResponse?.data?.data || {};
+  const availableGrains = Array.isArray(dashboardData.availableGrains)
+    ? dashboardData.availableGrains
+    : [];
+  const series = Array.isArray(dashboardData.series) ? dashboardData.series : [];
+  const emptyDataMessage = !availableGrains.length
+    ? "No validated Fusecom KPI data is available."
+    : !series.length
+      ? "No KPI data is available for the selected date range."
+      : "";
 
   return (
     <section className="font-jakarta flex min-h-screen bg-[#eef3f7] text-sibs-primary-1">
@@ -150,8 +173,16 @@ export default function WfmViewGraphsPage() {
 
                 <div className="grid grid-cols-1 gap-3 p-4 md:grid-cols-2 xl:grid-cols-5 xl:items-end">
                   <label className="block">
-                    <span className="mb-1.5 block text-[11px] font-extrabold uppercase text-sibs-tertiary-5">Account</span>
-                    <div className="flex h-10 items-center rounded-lg border border-sibs-tertiary-8 bg-sibs-tertiary-10/40 px-3 text-sm font-bold text-sibs-primary-1">US VISA</div>
+                    <span className="mb-1.5 block text-[11px] font-extrabold uppercase text-sibs-tertiary-5">Account / Source</span>
+                    <select
+                      value={selectedSourceSystem}
+                      onChange={(event) => setSelectedSourceSystem(event.target.value)}
+                      className="h-10 w-full rounded-lg border border-sibs-tertiary-8 bg-white px-3 text-sm font-semibold outline-none"
+                    >
+                      {SOURCE_OPTIONS.map((option) => (
+                        <option key={option.value} value={option.value}>{option.label}</option>
+                      ))}
+                    </select>
                   </label>
 
                   <label className="block">
@@ -178,10 +209,12 @@ export default function WfmViewGraphsPage() {
                 </div>
 
                 <div className="flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-sibs-tertiary-10 px-5 py-3 text-xs font-semibold text-sibs-tertiary-5">
-                  <span className="inline-flex items-center gap-1.5"><Database size={14} />{formatGrain(kpiData?.filters?.dataGrain)}</span>
-                  <span>Source: {kpiData?.filters?.sourceSystem || "FUSECOM"}</span>
+                  <span className="inline-flex items-center gap-1.5"><Database size={14} />{formatGrain(dashboardData.filters?.dataGrain)}</span>
+                  <span>Source: {dashboardData.filters?.sourceSystem || "No source returned"}</span>
                   <span>Task Order: Not configured yet</span>
-                  {kpiData?.filters?.dateFrom && kpiData?.filters?.dateTo ? <span>Range: {kpiData.filters.dateFrom} to {kpiData.filters.dateTo}</span> : null}
+                  <span>Range: {dashboardData.filters?.dateFrom || "Not available"} to {dashboardData.filters?.dateTo || "Not available"}</span>
+                  <span>Available grains: {availableGrains.length ? availableGrains.join(", ") : "None returned"}</span>
+                  <span>Available date range: {dashboardData.availableDateRange?.minDate || "Not available"} to {dashboardData.availableDateRange?.maxDate || "Not available"}</span>
                 </div>
               </section>
 
@@ -198,12 +231,36 @@ export default function WfmViewGraphsPage() {
                   <div><p className="m-0 font-bold text-sibs-primary-1">Loading Calls KPI data</p><p className="mt-1 mb-0 text-sm text-sibs-tertiary-5">Aggregating validated records from the PMS database.</p></div>
                 </div>
               ) : !error ? (
-                <WfmCallKpiDashboard data={kpiData} />
+                <>
+                  {emptyDataMessage ? (
+                    <div className="sibs-card p-4 text-sm font-semibold text-sibs-tertiary-5">
+                      {emptyDataMessage}
+                    </div>
+                  ) : null}
+                  <WfmCallKpiDashboard data={dashboardData} />
+                </>
               ) : null}
             </div>
           )}
         </div>
       </main>
+
+      <ConfirmationModal
+        isOpen={dashboard.showLogoutModal}
+        title="Confirm logout"
+        message="Are you sure you want to logout?"
+        cancelText="Cancel"
+        confirmText="Logout"
+        onCancel={() => dashboard.setShowLogoutModal(false)}
+        onConfirm={dashboard.handleLogout}
+        tone="neutral"
+      />
+
+      <LoadingModal
+        isOpen={dashboard.isLoggingOut}
+        title="Logging out"
+        message="Please wait while we end your session."
+      />
     </section>
   );
 }
