@@ -28,10 +28,30 @@ export function getAuthUser() {
   }
 }
 
-export function getAuthDisplayName() {
-  const user = getAuthUser();
+export function getAuthDisplayName(user = getAuthUser()) {
+  if (!user) {
+    return "User";
+  }
 
-  return user?.name || user?.fullName || user?.username || "User";
+  const fullNameFromParts = [
+    user.firstName || user.gy_emp_fname,
+    user.middleName || user.gy_emp_mname,
+    user.lastName || user.gy_emp_lname,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .trim();
+
+  return (
+    user.fullName ||
+    user.name ||
+    user.gy_emp_fullname ||
+    fullNameFromParts ||
+    user.username ||
+    user.sibs_id ||
+    user.email ||
+    "User"
+  );
 }
 
 export function isAuthenticated() {

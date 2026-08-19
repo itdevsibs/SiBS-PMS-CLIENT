@@ -1,5 +1,5 @@
 // Shows WFM import, graph, and removal history logs.
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import AdminSidebar from "@/components/layout/AdminSidebar";
 import AppHeader from "@/components/layout/AppHeader";
@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import ConfirmationModal from "@/components/ui/confirmation-modal";
 import LoadingModal from "@/components/ui/loading-modal";
 import useDashboardPage from "@/hooks/useDashboardPage";
+import { getAuthDisplayName } from "@/lib/auth";
+import { fetchWfmHistoryLogs } from "@/lib/axios/wfm-history-logs";
 import { readWfmHistoryLogs } from "@/lib/wfm-history-logs";
 
 function formatLogTime(timestamp) {
@@ -19,6 +21,10 @@ function formatLogTime(timestamp) {
 }
 
 function formatLogMessage(log) {
+  if (log?.message) {
+    return log.message;
+  }
+
   if (log?.action === "removed") {
     return `Removed ${log.fileName} from ${log.rawDataTitle}`;
   }
@@ -40,21 +46,56 @@ function formatLogMessage(log) {
 
 function WfmHistoryLogs() {
   const dashboard = useDashboardPage();
-  const userName = dashboard.authUser?.name || dashboard.authUser?.username || "User";
-  const [logs] = useState(() => readWfmHistoryLogs());
+  const currentUserName = dashboard.userName || getAuthDisplayName(dashboard.authUser);
+  const [localLogs] = useState(() => readWfmHistoryLogs());
+  const [serverLogs, setServerLogs] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
   const [dateFilter, setDateFilter] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  const [serverTotal, setServerTotal] = useState(0);
   const rowsPerPage = 10;
 
-  const filteredLogs = useMemo(
-    () => (dateFilter ? logs.filter((log) => log.date === dateFilter) : logs),
-    [dateFilter, logs],
+  useEffect(() => {
+    let isMounted = true;
+
+    fetchWfmHistoryLogs({
+      date: dateFilter || undefined,
+      page: currentPage,
+      limit: rowsPerPage,
+    })
+      .then((response) => {
+        if (!isMounted) return;
+        if (response?.data) {
+          setServerLogs(response.data);
+          setServerTotal(response.pagination?.total || response.data.length);
+        }
+      })
+      .catch((error) => {
+        if (!isMounted) return;
+        console.warn("Could not fetch server history logs, using local cache:", error?.message);
+      })
+      .finally(() => {
+        if (!isMounted) return;
+        setIsLoading(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [dateFilter, currentPage]);
+
+  const fallbackFilteredLogs = useMemo(
+    () => (dateFilter ? localLogs.filter((log) => log.date === dateFilter) : localLogs),
+    [dateFilter, localLogs],
   );
-  const totalPages = Math.max(1, Math.ceil(filteredLogs.length / rowsPerPage));
-  const paginatedLogs = filteredLogs.slice(
+
+  const displayLogs = serverLogs !== null ? serverLogs : fallbackFilteredLogs.slice(
     (currentPage - 1) * rowsPerPage,
     currentPage * rowsPerPage,
   );
+
+  const totalLogsCount = serverLogs !== null ? serverTotal : fallbackFilteredLogs.length;
+  const totalPages = Math.max(1, Math.ceil(totalLogsCount / rowsPerPage));
 
   const handleDateFilterChange = (value) => {
     setDateFilter(value);
@@ -68,7 +109,7 @@ function WfmHistoryLogs() {
         modules={dashboard.modules}
         onLogoutClick={() => dashboard.setShowLogoutModal(true)}
         onMobileClose={() => dashboard.setIsMobileSidebarOpen(false)}
-        userName={userName}
+        userName={currentUserName}
         userRole={dashboard.authUser?.email || dashboard.authUser?.roleLabel || "User"}
       />
 
@@ -88,7 +129,7 @@ function WfmHistoryLogs() {
                   History Logs
                 </h3>
                 <span className="rounded-full bg-white px-2.5 py-1 text-xs font-bold text-sibs-tertiary-5">
-                  {filteredLogs.length} logs
+                  {totalLogsCount} logs
                 </span>
               </div>
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -111,43 +152,56 @@ function WfmHistoryLogs() {
             </div>
 
             <div className="divide-y divide-sibs-tertiary-10">
-              {paginatedLogs.length > 0 ? (
-                paginatedLogs.map((log) => (
-                  <div
-                    key={log.id}
-                    className="grid gap-2 bg-[#f8fbfd] px-5 py-3 md:grid-cols-[1fr_190px] md:items-center"
-                  >
-                    <div className="min-w-0">
-                      <p className="m-0 truncate text-sm font-bold text-sibs-primary-1">
-                        {formatLogMessage(log)}
-                      </p>
-                      <p className="mt-1 mb-0 truncate text-xs text-sibs-tertiary-5">
-                        {[log.account, log.rawDataTitle].filter(Boolean).join(" - ")}
+              {displayLogs.length > 0 ? (
+                displayLogs.map((log) => {
+                  const targetLabel = [log.account, log.rawDataTitle].filter(Boolean).join(" - ");
+                  const actionUser = log.userName || currentUserName;
+
+                  return (
+                    <div
+                      key={log.id}
+                      className="grid gap-2 bg-[#f8fbfd] px-5 py-3 md:grid-cols-[1fr_210px] md:items-center"
+                    >
+                      <div className="min-w-0">
+                        <p className="m-0 truncate text-sm font-bold text-sibs-primary-1">
+                          {formatLogMessage(log)}
+                        </p>
+                        <p className="mt-1 mb-0 flex flex-wrap items-center gap-1 text-xs text-sibs-tertiary-5">
+                          {targetLabel ? (
+                            <>
+                              <span>{targetLabel}</span>
+                              <span className="text-sibs-tertiary-8">•</span>
+                            </>
+                          ) : null}
+                          <span>
+                            Action taken by <span className="font-semibold text-sibs-primary-1">{actionUser}</span>
+                          </span>
+                        </p>
+                      </div>
+                      <p className="m-0 text-sm text-sibs-tertiary-5 md:text-right">
+                        {formatLogTime(log.timestamp || log.createdAt)}
                       </p>
                     </div>
-                    <p className="m-0 text-sm text-sibs-tertiary-5 md:text-right">
-                      {formatLogTime(log.timestamp)}
-                    </p>
-                  </div>
-                ))
+                  );
+                })
               ) : (
                 <div className="bg-[#f8fbfd] px-5 py-8 text-center text-sm text-sibs-tertiary-5">
-                  No logs found.
+                  {isLoading ? "Loading logs..." : "No logs found."}
                 </div>
               )}
             </div>
 
-            {filteredLogs.length > 0 ? (
+            {totalLogsCount > 0 ? (
               <div className="flex flex-col gap-3 border-t border-sibs-tertiary-10 px-5 py-3 text-sm text-sibs-tertiary-6 sm:flex-row sm:items-center sm:justify-between">
                 <span>
-                  Showing {paginatedLogs.length} of {filteredLogs.length} logs
+                  Showing {displayLogs.length} of {totalLogsCount} logs
                 </span>
                 <div className="flex items-center gap-2">
                   <Button
                     type="button"
                     variant="outline"
                     className="h-9 rounded-lg px-4"
-                    disabled={currentPage === 1}
+                    disabled={currentPage === 1 || isLoading}
                     onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
                   >
                     Previous
@@ -159,7 +213,7 @@ function WfmHistoryLogs() {
                     type="button"
                     variant="outline"
                     className="h-9 rounded-lg px-4"
-                    disabled={currentPage === totalPages}
+                    disabled={currentPage === totalPages || isLoading}
                     onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
                   >
                     Next

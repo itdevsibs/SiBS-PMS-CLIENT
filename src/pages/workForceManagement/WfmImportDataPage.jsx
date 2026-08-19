@@ -19,6 +19,7 @@ import ConfirmationModal from "@/components/ui/confirmation-modal";
 import ImportProgressModal from "@/components/ui/import-progress-modal";
 import LoadingModal from "@/components/ui/loading-modal";
 import useDashboardPage from "@/hooks/useDashboardPage";
+import { getAuthDisplayName } from "@/lib/auth";
 import { removeWfmGraphReportsForUpload } from "@/lib/wfm-graph-reports";
 import { addWfmHistoryLog } from "@/lib/wfm-history-logs";
 import {
@@ -364,7 +365,7 @@ function getImportProfileForCard(card) {
 
 function WfmImportDataPage() {
   const dashboard = useDashboardPage();
-  const userName = dashboard.authUser?.name || dashboard.authUser?.username || "User";
+  const userName = dashboard.userName || getAuthDisplayName(dashboard.authUser);
   const [uploadsByCard, setUploadsByCard] = useState(() =>
     normalizeUploadsByCard(readJsonCache(RAW_DATA_UPLOADS_KEY, {})),
   );
@@ -611,6 +612,9 @@ function WfmImportDataPage() {
         fileName: file.name,
         rawDataTitle: card.title,
         message: `Imported ${file.name} to ${card.title}`,
+        userName,
+        userEmail: dashboard.authUser?.email || null,
+        userId: dashboard.authUser?.id || dashboard.authUser?.sibs_id || null,
       });
 
       if (batchResult) {
@@ -682,6 +686,9 @@ function WfmImportDataPage() {
       message: `Removed ${selectedUploadToRemove.fileName} from ${
         activeOpenCard?.title || selectedUploadToRemove.rawDataTitle
       }`,
+      userName,
+      userEmail: dashboard.authUser?.email || null,
+      userId: dashboard.authUser?.id || dashboard.authUser?.sibs_id || null,
     });
 
     setIsRemovingUpload(false);
