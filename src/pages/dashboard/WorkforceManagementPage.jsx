@@ -9,6 +9,7 @@ import ConfirmationModal from "@/components/ui/confirmation-modal";
 import LoadingModal from "@/components/ui/loading-modal";
 import { Button } from "@/components/ui/button";
 import useDashboardPage from "@/hooks/useDashboardPage";
+import { getAuthDisplayName } from "@/lib/auth";
 import {
   generateWfmGraphReports,
 } from "@/lib/wfm-graph-reports";
@@ -289,6 +290,10 @@ function WfmStatusPill({ status }) {
 
 
 function WfmDashboardContent() {
+  const dashboard = useDashboardPage();
+  const userName = dashboard.userName || getAuthDisplayName(dashboard.authUser);
+  const userEmail = dashboard.authUser?.email || null;
+  const userId = dashboard.authUser?.id || dashboard.authUser?.sibs_id || null;
   const cachedImportState = useMemo(() => readWfmImportCache(), []);
   const rawDataUploadCache = useMemo(() => readRawDataUploadCache(), []);
   const [selectedUpload, setSelectedUpload] = useState(cachedImportState.selectedUpload);
@@ -416,6 +421,9 @@ function WfmDashboardContent() {
       fileName: importedUpload.fileName,
       rawDataTitle: sourceCard?.title || importedUpload.rawDataTitle,
       message: `Imported to Work Force Management Dashboard: ${importedUpload.fileName}`,
+      userName,
+      userEmail,
+      userId,
     });
     setSelectedImportAccount("");
     setDashboardImportSearch("");
@@ -452,6 +460,9 @@ function WfmDashboardContent() {
       action: "dashboard-removed",
       fileName: removedFileName || "Dashboard table data",
       message: `Removed data from Work Force Management Dashboard table`,
+      userName,
+      userEmail,
+      userId,
     });
     setRemovedTableData({
       fileName: removedFileName,
@@ -516,6 +527,9 @@ function WfmDashboardContent() {
       action: "graph-generated",
       fileName: graphSet.sourceFile,
       message: `Prepared graph reports from Work Force Management Dashboard: ${graphSet.sourceFile}`,
+      userName,
+      userEmail,
+      userId,
     });
     setIsMakingGraph(false);
     setMadeGraphSet(graphSet);

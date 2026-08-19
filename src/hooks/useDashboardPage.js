@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
-import { clearAuthSession, getAuthUser, isAuthenticated } from "@/lib/auth";
+import { clearAuthSession, getAuthDisplayName, getAuthUser, isAuthenticated } from "@/lib/auth";
 
 const roleIcons = {
   admin: ShieldCheck,
@@ -95,6 +95,7 @@ function useDashboardPage() {
 
   return {
     authUser,
+    userName: getAuthDisplayName(authUser),
     handleLogout,
     isLoggingOut,
     isMobileSidebarOpen,
