@@ -11,6 +11,7 @@ const ConfirmationModal = ({
   onConfirm,
   tone = "primary",
   title,
+  zIndex = "z-[130]",
 }) => {
   const confirmClassName =
     tone === "neutral"
@@ -18,7 +19,7 @@ const ConfirmationModal = ({
       : "h-10 rounded-xl bg-sibs-primary-1 font-semibold text-white hover:bg-sibs-tertiary-4 hover:text-white sm:w-auto";
 
   return (
-    <AppModal isOpen={isOpen}>
+    <AppModal isOpen={isOpen} zIndex={zIndex}>
       <p className="m-0 text-lg font-bold text-sibs-primary-1">{title}</p>
       <p className="mt-2 mb-0 text-sm text-sibs-tertiary-5">{message}</p>
 

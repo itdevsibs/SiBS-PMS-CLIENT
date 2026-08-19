@@ -65,3 +65,12 @@ export async function getUsVisaImportBatchErrors(batchId, params) {
 
   return response.data;
 }
+
+export async function deleteUsVisaImportBatch(batchId) {
+  const response = await api.delete(
+    `/us-visa/imports/${encodeURIComponent(batchId)}`,
+  );
+
+  return response.data;
+}
+

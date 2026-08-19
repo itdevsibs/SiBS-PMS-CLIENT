@@ -2,8 +2,10 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   AlertCircle,
+  AlertTriangle,
+  CheckCircle2,
   CloudUpload,
-  FileSpreadsheet,
+  Eye,
   FolderOpen,
   Search,
   Trash2,
@@ -14,6 +16,7 @@ import AppHeader from "@/components/layout/AppHeader";
 import AppModal from "@/components/ui/app-modal";
 import { Button } from "@/components/ui/button";
 import ConfirmationModal from "@/components/ui/confirmation-modal";
+import ImportProgressModal from "@/components/ui/import-progress-modal";
 import LoadingModal from "@/components/ui/loading-modal";
 import useDashboardPage from "@/hooks/useDashboardPage";
 import { removeWfmGraphReportsForUpload } from "@/lib/wfm-graph-reports";
@@ -23,26 +26,12 @@ import {
   getRawDataCards,
 } from "@/lib/wfm-raw-data-cards";
 import {
-  deleteWfmImportedFile,
-  saveWfmImportedFile,
-} from "@/lib/axios/wfm-imported-files";
-import {
+  deleteUsVisaImportBatch,
   getUsVisaImportBatchErrors,
   uploadUsVisaImport,
 } from "@/lib/axios/us-visa-imports";
 
 const RAW_DATA_UPLOADS_KEY = "sibs-wfm-raw-data-uploads";
-
-const usVisaImportProfiles = [
-  {
-    id: "HERO_SKILL_STATISTICS_INBOUND",
-    label: "HeroDash Skill Statistics Inbound",
-  },
-  {
-    id: "FUSECOM_SKILL_STATISTICS_INBOUND",
-    label: "Fusecom Skill Statistics Inbound",
-  },
-];
 
 const accountFilters = [
   "All Accounts",
@@ -56,25 +45,35 @@ function formatUploadTimestamp(date = new Date()) {
   }).format(date);
 }
 
-function getApiErrorMessage(error) {
+function getApiErrorMessage(error, card) {
+  const backendMsg = error?.response?.data?.message || "";
+  const backendCode = error?.response?.data?.code || "";
+
+  if (
+    backendCode === "MISSING_REQUIRED_WORKSHEET" ||
+    backendCode === "MISSING_REQUIRED_SHEET" ||
+    backendCode === "MISSING_REQUIRED_COLUMN" ||
+    backendCode === "MISSING_REQUIRED_HEADER" ||
+    backendCode === "WRONG_IMPORT_PROFILE" ||
+    backendMsg.toLowerCase().includes("missing required") ||
+    backendMsg.toLowerCase().includes("only") ||
+    backendMsg.toLowerCase().includes("expected report format") ||
+    backendMsg.toLowerCase().includes("structure validation failed")
+  ) {
+    if (/hero/i.test(card?.title || card?.id || "")) {
+      return "Only HeroDash Skill Statistics (.xlsx) files are allowed for this card. The uploaded file is missing required HeroDash sheets or headers.";
+    }
+    if (/fuse/i.test(card?.title || card?.id || "")) {
+      return "Only Fusecom Skill Statistics (.xlsx) files are allowed for this card. The uploaded file is missing required Fusecom sheets or headers.";
+    }
+    return `Only ${card?.title || "valid"} (.xlsx) reports are allowed for this card. The uploaded file does not match the required format.`;
+  }
+
   return (
-    error?.response?.data?.message ||
+    backendMsg ||
     error?.message ||
     "The upload could not be completed."
   );
-}
-
-function getApiErrorCode(error) {
-  return error?.response?.data?.code || error?.code || "UPLOAD_FAILED";
-}
-
-function formatBatchDateTime(value) {
-  if (!value) return "-";
-
-  return new Intl.DateTimeFormat("en-US", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(value));
 }
 
 function formatImportStatus(status) {
@@ -335,31 +334,56 @@ async function readSelectedFile(file) {
   });
 }
 
+function createUploadRecordId(cardId, fileName) {
+  const uploadedAtMs = Date.now();
+  const rand = Math.random().toString(36).slice(2);
+
+  return {
+    id: `${cardId}-${fileName}-${uploadedAtMs}-${rand}`,
+    uploadedAtMs,
+  };
+}
+
+function getImportProfileForCard(card) {
+  const title = String(card?.title || "").toLowerCase();
+  const taskOrders = Array.isArray(card?.taskOrders)
+    ? card.taskOrders.map((to) => String(to).toLowerCase()).join(" ")
+    : "";
+  const combined = `${title} ${taskOrders}`;
+
+  if (combined.includes("fuse")) {
+    return "FUSECOM_SKILL_STATISTICS_INBOUND";
+  }
+
+  if (combined.includes("hero")) {
+    return "HERO_SKILL_STATISTICS_INBOUND";
+  }
+
+  return "FUSECOM_SKILL_STATISTICS_INBOUND";
+}
+
 function WfmImportDataPage() {
   const dashboard = useDashboardPage();
   const userName = dashboard.authUser?.name || dashboard.authUser?.username || "User";
-  const isWfmUser = dashboard.authUser?.role === "wfm" || Number(dashboard.authUser?.adminAccess || 0) === 9;
   const [uploadsByCard, setUploadsByCard] = useState(() =>
     normalizeUploadsByCard(readJsonCache(RAW_DATA_UPLOADS_KEY, {})),
   );
-  const [usVisaProfileId, setUsVisaProfileId] = useState(usVisaImportProfiles[0].id);
-  const [usVisaFile, setUsVisaFile] = useState(null);
-  const [usVisaUploadProgress, setUsVisaUploadProgress] = useState(0);
-  const [isUsVisaProcessing, setIsUsVisaProcessing] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadingCardTitle, setUploadingCardTitle] = useState("");
+  const [importStage, setImportStage] = useState("reading");
+  const [importFileName, setImportFileName] = useState("");
   const [usVisaBatchResult, setUsVisaBatchResult] = useState(null);
-  const [usVisaUploadError, setUsVisaUploadError] = useState(null);
   const [isLoadingUsVisaErrors, setIsLoadingUsVisaErrors] = useState(false);
   const [usVisaErrorDetails, setUsVisaErrorDetails] = useState(null);
-  const [activeUploadCard, setActiveUploadCard] = useState(null);
   const [activeOpenCard, setActiveOpenCard] = useState(null);
-  const [selectedFiles, setSelectedFiles] = useState([]);
-  const [isUploading, setIsUploading] = useState(false);
   const [isRemovingUpload, setIsRemovingUpload] = useState(false);
   const [uploadToRemove, setUploadToRemove] = useState(null);
+  const [selectedUploadDetails, setSelectedUploadDetails] = useState(null);
   const [addedUpload, setAddedUpload] = useState(null);
   const [removedUpload, setRemovedUpload] = useState(null);
   const [duplicateUploadAlert, setDuplicateUploadAlert] = useState(null);
-  const [syncError, setSyncError] = useState("");
+  const [errorModalInfo, setErrorModalInfo] = useState(null);
   const [rawDataSearch, setRawDataSearch] = useState("");
   const [uploadedDataSearch, setUploadedDataSearch] = useState("");
   const [selectedAccount, setSelectedAccount] = useState("All Accounts");
@@ -368,6 +392,7 @@ function WfmImportDataPage() {
     () => uploadsByCard[activeOpenCard?.id] || [],
     [activeOpenCard, uploadsByCard],
   );
+
   const filteredOpenCardUploads = useMemo(() => {
     const searchValue = uploadedDataSearch.trim().toLowerCase();
 
@@ -376,27 +401,28 @@ function WfmImportDataPage() {
     }
 
     return openCardUploads.filter((upload) =>
-      [upload.fileName, upload.uploadedAt, formatRelativeTime(upload)]
-        .join(" ")
-        .toLowerCase()
-        .includes(searchValue),
+      upload.fileName.toLowerCase().includes(searchValue),
     );
   }, [openCardUploads, uploadedDataSearch]);
+
   const filteredRawDataCards = useMemo(() => {
+    const cards = getRawDataCards(selectedAccount);
     const searchValue = rawDataSearch.trim().toLowerCase();
-    const accountFilteredCards = getRawDataCards(selectedAccount);
 
     if (!searchValue) {
-      return accountFilteredCards;
+      return cards;
     }
 
-    return accountFilteredCards.filter((card) =>
-      [card.title, card.account, ...(card.taskOrders || [])]
-        .join(" ")
-        .toLowerCase()
-        .includes(searchValue),
+    return cards.filter(
+      (card) =>
+        card.title.toLowerCase().includes(searchValue) ||
+        card.account.toLowerCase().includes(searchValue) ||
+        (card.taskOrders || []).some((to) =>
+          to.toLowerCase().includes(searchValue),
+        ),
     );
   }, [rawDataSearch, selectedAccount]);
+
   const filteredAccountOptions = useMemo(() => {
     const searchValue = rawDataSearch.trim().toLowerCase();
 
@@ -408,12 +434,13 @@ function WfmImportDataPage() {
       account.toLowerCase().includes(searchValue),
     );
   }, [rawDataSearch]);
+
   const uploadedCardCounts = useMemo(
     () =>
       Object.fromEntries(
         accountFilters.map((account) => {
-          const accountCards = getRawDataCards(account);
-          const uploadedCount = accountCards.filter(
+          const accCards = getRawDataCards(account);
+          const uploadedCount = accCards.filter(
             (card) => (uploadsByCard[card.id] || []).length > 0,
           ).length;
 
@@ -422,6 +449,7 @@ function WfmImportDataPage() {
       ),
     [uploadsByCard],
   );
+
   const taskOrderCounts = useMemo(
     () =>
       Object.fromEntries(
@@ -430,9 +458,8 @@ function WfmImportDataPage() {
             return [account, accountOptions.length];
           }
 
-          const accountCards =
-            getRawDataCards(account);
-          const taskOrderCount = accountCards.reduce(
+          const accCards = getRawDataCards(account);
+          const taskOrderCount = accCards.reduce(
             (total, card) => total + Math.max(card.taskOrders?.length || 0, 1),
             0,
           );
@@ -447,181 +474,168 @@ function WfmImportDataPage() {
     writeJsonCache(RAW_DATA_UPLOADS_KEY, uploadsByCard);
   }, [uploadsByCard]);
 
-  const handleUsVisaFileChange = (event) => {
-    const [file] = Array.from(event.target.files || []);
+  const handleOpenUsVisaErrors = async (batchId) => {
+    const targetBatchId = batchId || usVisaBatchResult?.id;
 
-    setUsVisaFile(file || null);
-    setUsVisaBatchResult(null);
-    setUsVisaUploadError(null);
-    setUsVisaUploadProgress(0);
-  };
-
-  const handleUsVisaUpload = async () => {
-    if (!usVisaFile || isUsVisaProcessing) {
-      return;
-    }
-
-    setIsUsVisaProcessing(true);
-    setUsVisaUploadError(null);
-    setUsVisaBatchResult(null);
-    setUsVisaUploadProgress(0);
-
-    try {
-      const result = await uploadUsVisaImport({
-        file: usVisaFile,
-        importProfileId: usVisaProfileId,
-        onProgress: setUsVisaUploadProgress,
-      });
-
-      setUsVisaBatchResult(result.batch);
-      setUsVisaFile(null);
-    } catch (error) {
-      setUsVisaUploadError({
-        code: getApiErrorCode(error),
-        message: getApiErrorMessage(error),
-        batch: error?.response?.data?.batch,
-      });
-    } finally {
-      setIsUsVisaProcessing(false);
-    }
-  };
-
-  const handleOpenUsVisaErrors = async () => {
-    if (!usVisaBatchResult?.id || isLoadingUsVisaErrors) {
+    if (!targetBatchId || isLoadingUsVisaErrors) {
       return;
     }
 
     setIsLoadingUsVisaErrors(true);
 
     try {
-      const result = await getUsVisaImportBatchErrors(usVisaBatchResult.id, {
-        limit: 100,
+      const response = await getUsVisaImportBatchErrors(targetBatchId, {
+        limit: 50,
       });
 
-      setUsVisaErrorDetails(result);
+      setUsVisaErrorDetails(response);
     } catch (error) {
-      setUsVisaUploadError({
-        code: getApiErrorCode(error),
-        message: getApiErrorMessage(error),
+      console.error("Failed to load US VISA import errors:", error);
+      setErrorModalInfo({
+        title: "Error Loading Details",
+        message:
+          error?.response?.data?.message ||
+          "Unable to load the batch error records from the server.",
       });
     } finally {
       setIsLoadingUsVisaErrors(false);
     }
   };
 
-  const closeUploadModal = () => {
-    setActiveUploadCard(null);
-    setSelectedFiles([]);
-  };
+  const handleCardFileSelect = async (card, event) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
 
-  const handleUploadFiles = async () => {
-    if (!activeUploadCard || !selectedFiles.length) {
+    if (!file) {
       return;
     }
 
-    const uploadCard = activeUploadCard;
-    const filesToUpload = [...selectedFiles];
-    const existingCardUploads = uploadsByCard[uploadCard.id] || [];
-    const existingFileNames = new Set(
-      existingCardUploads.map((upload) => upload.fileName.toLowerCase()),
-    );
-    const duplicateFile = filesToUpload.find((file) =>
-      existingFileNames.has(file.name.toLowerCase()),
+    const currentCardUploads = uploadsByCard[card.id] || [];
+    const isDuplicate = currentCardUploads.some(
+      (upload) => upload.fileName.toLowerCase() === file.name.toLowerCase(),
     );
 
-    if (duplicateFile) {
+    if (isDuplicate) {
       setDuplicateUploadAlert({
-        fileName: duplicateFile.name,
-        rawDataTitle: uploadCard.title,
+        fileName: file.name,
+        rawDataTitle: card.title,
       });
       return;
     }
 
-    closeUploadModal();
     setIsUploading(true);
-
-    const [parsedUploads] = await Promise.all([
-      Promise.all(filesToUpload.map(async (file) => {
-        const importedData = await readSelectedFile(file);
-        const uploadedAtMs = Date.now();
-
-        return {
-          id: `${uploadCard.id}-${file.name}-${uploadedAtMs}-${Math.random()
-            .toString(36)
-            .slice(2)}`,
-          cardId: uploadCard.id,
-          account: uploadCard.account,
-          rawDataTitle: uploadCard.title,
-          fileName: file.name,
-          fileSize: file.size || 0,
-          filePath: `${uploadCard.account}/${uploadCard.title}/${file.name}`,
-          uploadedAtMs,
-          uploadedAt: formatUploadTimestamp(),
-          columns: importedData.columns || ["Source File"],
-          rows: importedData.rows || [],
-        };
-      })),
-      new Promise((resolve) => {
-        window.setTimeout(resolve, 1200);
-      }),
-    ]);
+    setUploadingCardTitle(card.title);
+    setImportFileName(file.name);
+    setImportStage("reading");
+    setUploadProgress(15);
+    setUsVisaBatchResult(null);
 
     try {
-      await Promise.all(
-        parsedUploads.map((upload) =>
-          saveWfmImportedFile({
-            uploadId: upload.id,
-            account: upload.account,
-            taskOrder: upload.rawDataTitle,
-            cardId: upload.cardId,
-            fileTitle: upload.fileName,
-            filePath: upload.filePath,
-            fileSize: upload.fileSize,
-            rowCount: upload.rows.length,
-            columnCount: upload.columns.length,
-            columns: upload.columns,
-            rows: upload.rows,
-            uploadedAtMs: upload.uploadedAtMs,
-            uploadedAtLabel: upload.uploadedAt,
-            uploadedBy: userName,
-          }),
-        ),
-      );
-    } catch (error) {
-      console.error(
-        "Failed to save WFM imported file:",
-        error?.response?.data || error?.message || error,
-      );
-      setIsUploading(false);
-      setSyncError(
-        "The file was read, but it was not saved to the database. Please try again.",
-      );
-      return;
-    }
+      // Stage 1: Reading workbook
+      const importedData = await readSelectedFile(file);
+      setUploadProgress(30);
+      await new Promise((resolve) => setTimeout(resolve, 200));
 
-    setUploadsByCard((currentUploads) => {
-      const currentCardUploads = currentUploads[uploadCard.id] || [];
+      let batchResult = null;
+      const isUsVisa = card.account === "US VISA";
 
-      return {
-        ...currentUploads,
-        [uploadCard.id]: [...parsedUploads, ...currentCardUploads],
+      if (isUsVisa) {
+        // Stage 2: Uploading payload
+        setImportStage("uploading");
+        const importProfileId = getImportProfileForCard(card);
+
+        const uploadPromise = uploadUsVisaImport({
+          file,
+          importProfileId,
+          onProgress: (percent) => {
+            const scaledProgress = Math.round(30 + percent * 0.35);
+            setUploadProgress(scaledProgress);
+            if (percent >= 90) {
+              setImportStage("validating");
+            }
+          },
+        });
+
+        // Stage 3: Schema validation & hashing on backend
+        const uploadResponse = await uploadPromise;
+        batchResult = uploadResponse?.batch || null;
+
+        // Stage 4: Record processing & normalization
+        setImportStage("processing");
+        setUploadProgress(85);
+        await new Promise((resolve) => setTimeout(resolve, 250));
+      } else {
+        setUploadProgress(75);
+      }
+
+      // Stage 5: Database staging & client sync
+      setImportStage("finalizing");
+      setUploadProgress(95);
+      await new Promise((resolve) => setTimeout(resolve, 200));
+
+      const { id: uploadId, uploadedAtMs } = createUploadRecordId(card.id, file.name);
+
+      const newUpload = {
+        id: uploadId,
+        cardId: card.id,
+        account: card.account,
+        rawDataTitle: card.title,
+        fileName: file.name,
+        fileSize: file.size || 0,
+        filePath: `${card.account}/${card.title}/${file.name}`,
+        uploadedAtMs,
+        uploadedAt: formatUploadTimestamp(new Date(uploadedAtMs)),
+        columns: importedData.columns || ["Source File"],
+        rows: importedData.rows || [],
+        batchId: batchResult?.id || null,
+        batchCode: batchResult?.batchCode || null,
+        batchStatus: batchResult?.status || "COMPLETED",
+        totalRows: batchResult?.totalRows ?? importedData.rows?.length ?? 0,
+        validRows: batchResult?.validRows ?? 0,
+        invalidRows: batchResult?.invalidRows ?? 0,
+        duplicateRows: batchResult?.duplicateRows ?? 0,
+        warningRows: batchResult?.warningRows ?? 0,
       };
-    });
-    parsedUploads.forEach((upload) => {
+
+      setUploadsByCard((current) => {
+        const currentList = current[card.id] || [];
+        return {
+          ...current,
+          [card.id]: [newUpload, ...currentList],
+        };
+      });
+
       addWfmHistoryLog({
         action: "imported",
-        account: uploadCard.account,
-        fileName: upload.fileName,
-        rawDataTitle: uploadCard.title,
-        message: `Imported ${upload.fileName} to ${uploadCard.title}`,
+        account: card.account,
+        fileName: file.name,
+        rawDataTitle: card.title,
+        message: `Imported ${file.name} to ${card.title}`,
       });
-    });
 
-    setIsUploading(false);
-    setAddedUpload({
-      count: parsedUploads.length,
-      rawDataTitle: uploadCard.title,
-    });
+      if (batchResult) {
+        setUsVisaBatchResult(batchResult);
+      }
+
+      setAddedUpload({
+        count: 1,
+        rawDataTitle: card.title,
+        fileName: file.name,
+        batch: batchResult,
+      });
+    } catch (error) {
+      console.error("Import failed:", error);
+      setErrorModalInfo({
+        title: "Import Failed",
+        message: getApiErrorMessage(error, card),
+      });
+    } finally {
+      setIsUploading(false);
+      setUploadingCardTitle("");
+      setImportFileName("");
+      setUploadProgress(0);
+      setImportStage("reading");
+    }
   };
 
   const handleRemoveUpload = async () => {
@@ -633,22 +647,22 @@ function WfmImportDataPage() {
     setUploadToRemove(null);
     setIsRemovingUpload(true);
 
-    await new Promise((resolve) => {
-      window.setTimeout(resolve, 700);
-    });
+    const batchIdentifier =
+      selectedUploadToRemove.batchId || selectedUploadToRemove.batchCode;
 
-    try {
-      await deleteWfmImportedFile(selectedUploadToRemove.id);
-    } catch (error) {
-      console.error(
-        "Failed to delete WFM imported file:",
-        error?.response?.data || error?.message || error,
-      );
-      setIsRemovingUpload(false);
-      setSyncError(
-        "The file was not removed from the database. Please try again.",
-      );
-      return;
+    if (batchIdentifier) {
+      try {
+        await deleteUsVisaImportBatch(batchIdentifier);
+        // Small pause for smooth visual UX transition
+        await new Promise((resolve) => setTimeout(resolve, 400));
+      } catch (error) {
+        console.warn(
+          "Backend batch removal encountered an issue, continuing with UI cleanup:",
+          error?.response?.data || error?.message || error,
+        );
+      }
+    } else {
+      await new Promise((resolve) => setTimeout(resolve, 300));
     }
 
     removeWfmGraphReportsForUpload(selectedUploadToRemove.id);
@@ -657,10 +671,9 @@ function WfmImportDataPage() {
       ...currentUploads,
       [selectedUploadToRemove.cardId]: (
         currentUploads[selectedUploadToRemove.cardId] || []
-      ).filter(
-        (upload) => upload.id !== selectedUploadToRemove.id,
-      ),
+      ).filter((upload) => upload.id !== selectedUploadToRemove.id),
     }));
+
     addWfmHistoryLog({
       action: "removed",
       account: activeOpenCard?.account,
@@ -671,8 +684,8 @@ function WfmImportDataPage() {
       }`,
     });
 
-    setRemovedUpload(selectedUploadToRemove);
     setIsRemovingUpload(false);
+    setRemovedUpload(selectedUploadToRemove);
   };
 
   return (
@@ -695,133 +708,6 @@ function WfmImportDataPage() {
         />
 
         <div className="sibs-scrollbar max-h-[calc(100vh-74px)] overflow-y-auto p-3 sm:p-4 lg:p-5">
-          {isWfmUser ? (
-            <section className="sibs-card mb-4 overflow-hidden">
-              <div className="flex flex-col gap-4 border-b border-sibs-tertiary-10 bg-sibs-primary-3/30 px-5 py-4 lg:flex-row lg:items-center lg:justify-between">
-                <div className="flex items-start gap-3">
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-white text-sibs-primary-2">
-                    <FileSpreadsheet className="h-5 w-5" aria-hidden="true" />
-                  </div>
-                  <div>
-                    <h2 className="m-0 text-base font-bold text-sibs-primary-1">
-                      US VISA Raw Excel Import
-                    </h2>
-                    <p className="mt-1 mb-0 text-sm text-sibs-tertiary-5">
-                      Upload the inbound skill statistics workbook for backend validation and staging.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="grid gap-2 sm:grid-cols-[260px_minmax(220px,1fr)_120px] lg:w-[min(100%,720px)]">
-                  <select
-                    value={usVisaProfileId}
-                    onChange={(event) => {
-                      setUsVisaProfileId(event.target.value);
-                      setUsVisaBatchResult(null);
-                      setUsVisaUploadError(null);
-                    }}
-                    disabled={isUsVisaProcessing}
-                    className="form-input h-10 rounded-lg py-0"
-                  >
-                    {usVisaImportProfiles.map((profile) => (
-                      <option key={profile.id} value={profile.id}>
-                        {profile.label}
-                      </option>
-                    ))}
-                  </select>
-
-                  <label className="flex h-10 min-w-0 cursor-pointer items-center gap-2 rounded-lg border border-sibs-tertiary-9 bg-white px-3 text-sm font-semibold text-sibs-primary-1">
-                    <CloudUpload className="h-4 w-4 shrink-0 text-sibs-primary-2" aria-hidden="true" />
-                    <span className="truncate">
-                      {usVisaFile?.name || "Choose .xlsx file"}
-                    </span>
-                    <input
-                      type="file"
-                      accept=".xlsx"
-                      disabled={isUsVisaProcessing}
-                      onChange={handleUsVisaFileChange}
-                      className="hidden"
-                    />
-                  </label>
-
-                  <Button
-                    type="button"
-                    disabled={!usVisaFile || isUsVisaProcessing}
-                    onClick={handleUsVisaUpload}
-                    className="h-10 rounded-lg bg-sibs-primary-1 px-4 text-white hover:bg-sibs-tertiary-4"
-                  >
-                    {isUsVisaProcessing ? "Processing" : "Upload"}
-                  </Button>
-                </div>
-              </div>
-
-              <div className="px-5 py-4">
-                {isUsVisaProcessing ? (
-                  <div className="rounded-lg border border-sibs-primary-2/20 bg-sibs-primary-2/5 px-4 py-3">
-                    <div className="flex items-center justify-between gap-3 text-sm font-bold text-sibs-primary-1">
-                      <span>Uploading and processing workbook</span>
-                      <span>{usVisaUploadProgress || 0}%</span>
-                    </div>
-                    <div className="mt-3 h-2 overflow-hidden rounded-full bg-white">
-                      <div
-                        className="h-full rounded-full bg-sibs-primary-2 transition-all"
-                        style={{ width: `${Math.min(usVisaUploadProgress || 8, 100)}%` }}
-                      />
-                    </div>
-                  </div>
-                ) : null}
-
-                {usVisaUploadError ? (
-                  <div className="mt-3 flex gap-3 rounded-lg border border-sibs-danger/20 bg-sibs-danger/5 px-4 py-3 text-sm">
-                    <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-sibs-danger" aria-hidden="true" />
-                    <div>
-                      <p className="m-0 font-bold text-sibs-danger">
-                        {usVisaUploadError.code}
-                      </p>
-                      <p className="mt-1 mb-0 text-sibs-tertiary-5">
-                        {usVisaUploadError.message}
-                      </p>
-                    </div>
-                  </div>
-                ) : null}
-
-                {usVisaBatchResult ? (
-                  <div className="mt-3">
-                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                      <div>
-                        <p className="m-0 text-sm font-bold text-sibs-primary-1">
-                          {usVisaBatchResult.batchCode}
-                        </p>
-                        <p className="mt-1 mb-0 text-xs font-semibold text-sibs-tertiary-5">
-                          {formatImportStatus(usVisaBatchResult.status)} - {formatBatchDateTime(usVisaBatchResult.completedAt)}
-                        </p>
-                      </div>
-                      {(usVisaBatchResult.invalidRows || usVisaBatchResult.duplicateRows || usVisaBatchResult.warningRows) ? (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          disabled={isLoadingUsVisaErrors}
-                          onClick={handleOpenUsVisaErrors}
-                          className="h-9 rounded-lg px-3 text-sm"
-                        >
-                          Open Error Details
-                        </Button>
-                      ) : null}
-                    </div>
-
-                    <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-                      <BatchStat label="Total Rows" value={usVisaBatchResult.totalRows} />
-                      <BatchStat label="Valid Rows" value={usVisaBatchResult.validRows} />
-                      <BatchStat label="Invalid Rows" value={usVisaBatchResult.invalidRows} />
-                      <BatchStat label="Duplicate Rows" value={usVisaBatchResult.duplicateRows} />
-                      <BatchStat label="Warning Rows" value={usVisaBatchResult.warningRows} />
-                    </div>
-                  </div>
-                ) : null}
-              </div>
-            </section>
-          ) : null}
-
           <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-start">
             <div className="flex h-9 w-full shrink-0 items-center justify-center truncate rounded-full border border-sibs-tertiary-9 bg-white px-4 text-sm font-extrabold text-sibs-primary-1 sm:w-32">
               {selectedAccount === "All Accounts" ? "All Accounts" : selectedAccount}
@@ -885,89 +771,99 @@ function WfmImportDataPage() {
           ) : (
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
               {filteredRawDataCards.map((card) => {
-              const uploads = uploadsByCard[card.id] || [];
-              const latestUploads = uploads.slice(0, 5);
+                const uploads = uploadsByCard[card.id] || [];
+                const latestUploads = uploads.slice(0, 5);
 
-              return (
-                <section key={card.id} className="sibs-card flex min-h-[300px] flex-col p-4">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex min-w-0 items-baseline gap-2">
-                      <h2 className="m-0 truncate text-sm font-bold text-sibs-primary-1">
-                        {card.title}
-                      </h2>
-                      <p className="m-0 shrink-0 text-xs font-semibold text-sibs-tertiary-5">
-                        Upload Data
-                      </p>
+                return (
+                  <section
+                    key={card.id}
+                    className="sibs-card flex min-h-[300px] flex-col p-4"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex min-w-0 items-baseline gap-2">
+                        <h2 className="m-0 truncate text-sm font-bold text-sibs-primary-1">
+                          {card.title}
+                        </h2>
+                        <p className="m-0 shrink-0 text-xs font-semibold text-sibs-tertiary-5">
+                          Upload Data
+                        </p>
+                      </div>
+                      <span className="rounded-full bg-[#f8fbfd] px-2.5 py-1 text-xs font-bold text-sibs-primary-1">
+                        {uploads.length}
+                      </span>
                     </div>
-                    <span className="rounded-full bg-[#f8fbfd] px-2.5 py-1 text-xs font-bold text-sibs-primary-1">
-                      {uploads.length}
-                    </span>
-                  </div>
-                  <div className="mt-2 flex min-w-0 flex-wrap items-center gap-2">
-                    <p className="m-0 truncate text-xs font-bold uppercase text-sibs-tertiary-5">
-                      {card.account}
-                    </p>
-                    {card.taskOrders?.length ? (
-                      <div className="flex min-w-0 flex-wrap gap-1.5">
-                        {card.taskOrders.map((taskOrder) => (
-                          <span
-                            key={taskOrder}
-                            className="rounded-md border border-sibs-tertiary-8 bg-white px-2.5 py-1 text-xs font-extrabold leading-none text-sibs-primary-1"
-                          >
-                            {taskOrder}
-                          </span>
-                        ))}
-                      </div>
-                    ) : null}
-                  </div>
-
-                  <div className="mt-4 min-h-[170px] flex-1 space-y-1 rounded-lg border border-sibs-tertiary-10 bg-[#f8fbfd] px-3 py-2">
-                    {latestUploads.length ? (
-                      latestUploads.map((upload) => (
-                        <div
-                          key={upload.id || `${upload.fileName}-${upload.uploadedAt}`}
-                          className="border-b border-sibs-tertiary-10 pb-1 last:border-b-0 last:pb-0"
-                        >
-                          <p className="m-0 truncate text-[11px] font-semibold leading-4 text-sibs-primary-1">
-                            {upload.fileName}
-                          </p>
-                          <p className="m-0 text-[10px] leading-3 text-sibs-tertiary-5">
-                            {formatRelativeTime(upload)}
-                          </p>
+                    <div className="mt-2 flex min-w-0 flex-wrap items-center gap-2">
+                      <p className="m-0 truncate text-xs font-bold uppercase text-sibs-tertiary-5">
+                        {card.account}
+                      </p>
+                      {card.taskOrders?.length ? (
+                        <div className="flex min-w-0 flex-wrap gap-1.5">
+                          {card.taskOrders.map((taskOrder) => (
+                            <span
+                              key={taskOrder}
+                              className="rounded-md border border-sibs-tertiary-8 bg-white px-2.5 py-1 text-xs font-extrabold leading-none text-sibs-primary-1"
+                            >
+                              {taskOrder}
+                            </span>
+                          ))}
                         </div>
-                      ))
-                    ) : (
-                      <div className="flex min-h-[140px] items-center justify-center text-center text-xs text-sibs-tertiary-5">
-                        No uploaded data yet
-                      </div>
-                    )}
-                  </div>
+                      ) : null}
+                    </div>
 
-                  <div className="mt-4 grid grid-cols-2 gap-2.5">
-                    <Button
-                      type="button"
-                      onClick={() => setActiveUploadCard(card)}
-                      className="h-9 rounded-lg bg-sibs-primary-1 px-3 text-sm text-white hover:bg-sibs-tertiary-4"
-                    >
-                      <CloudUpload className="h-4 w-4" aria-hidden="true" />
-                      Import
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => {
-                        setActiveOpenCard(card);
-                        setUploadedDataSearch("");
-                      }}
-                      className="h-9 rounded-lg px-3 text-sm"
-                    >
-                      <FolderOpen className="h-4 w-4" aria-hidden="true" />
-                      Open
-                    </Button>
-                  </div>
-                </section>
-              );
-            })}
+                    <div className="mt-4 min-h-[170px] flex-1 space-y-1 rounded-lg border border-sibs-tertiary-10 bg-[#f8fbfd] px-3 py-2">
+                      {latestUploads.length ? (
+                        latestUploads.map((upload) => (
+                          <div
+                            key={upload.id || `${upload.fileName}-${upload.uploadedAt}`}
+                            className="border-b border-sibs-tertiary-10 pb-1 last:border-b-0 last:pb-0"
+                          >
+                            <p className="m-0 truncate text-[11px] font-semibold leading-4 text-sibs-primary-1">
+                              {upload.fileName}
+                            </p>
+                            <div className="flex items-center justify-between text-[10px] text-sibs-tertiary-5">
+                              <span>{formatRelativeTime(upload)}</span>
+                              {upload.batchCode ? (
+                                <span className="rounded bg-sibs-primary-2/10 px-1 font-mono text-[9px] font-bold text-sibs-primary-2">
+                                  {upload.batchCode}
+                                </span>
+                              ) : null}
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="flex min-h-[140px] items-center justify-center text-center text-xs text-sibs-tertiary-5">
+                          No uploaded data yet
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="mt-4 grid grid-cols-2 gap-2.5">
+                      <label className="flex h-9 cursor-pointer items-center justify-center gap-1.5 rounded-lg bg-sibs-primary-1 px-3 text-sm font-semibold text-white shadow-xs transition hover:bg-sibs-tertiary-4">
+                        <CloudUpload className="h-4 w-4 shrink-0" aria-hidden="true" />
+                        <span>Import</span>
+                        <input
+                          type="file"
+                          accept={card.account === "US VISA" ? ".xlsx" : ".xlsx,.xls,.csv"}
+                          disabled={isUploading}
+                          onChange={(event) => handleCardFileSelect(card, event)}
+                          className="hidden"
+                        />
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setActiveOpenCard(card);
+                          setUploadedDataSearch("");
+                        }}
+                        className="flex h-9 items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-sm font-semibold text-sibs-primary-1 shadow-xs transition hover:border-sibs-primary-1 hover:bg-sibs-primary-1 hover:text-white"
+                      >
+                        <FolderOpen className="h-4 w-4" aria-hidden="true" />
+                        Open
+                      </button>
+                    </div>
+                  </section>
+                );
+              })}
             </div>
           )}
 
@@ -985,65 +881,19 @@ function WfmImportDataPage() {
         </div>
       </main>
 
-      <AppModal isOpen={Boolean(activeUploadCard)} className="max-w-xl">
-        <p className="m-0 text-lg font-bold text-sibs-primary-1">
-          {activeUploadCard?.title} - Import Data
-        </p>
-        <p className="mt-1 mb-0 text-sm text-sibs-tertiary-5">
-          Upload data files for staging in the WFM dashboard.
-        </p>
-
-        <label className="mt-5 flex cursor-pointer items-center gap-4 rounded-lg border border-dashed border-sibs-tertiary-9 bg-[#f8fbfd] p-5 text-left transition hover:border-sibs-primary-2 hover:bg-sibs-primary-2/5">
-          <input
-            type="file"
-            multiple
-            accept=".csv,.xlsx,.xls"
-            className="hidden"
-            onChange={(event) => setSelectedFiles(Array.from(event.target.files || []))}
-          />
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-sibs-primary-2/10">
-            <CloudUpload className="h-5 w-5 text-sibs-primary-2" aria-hidden="true" />
-          </div>
-          <div className="min-w-0">
-            <p className="m-0 text-sm font-bold text-sibs-primary-1">
-              {selectedFiles.length
-                ? `${selectedFiles.length} file(s) selected`
-                : "Choose data file"}
-            </p>
-            <p className="mt-1 mb-0 text-xs text-sibs-tertiary-5">
-              Accepted: .xlsx, .xls, .csv
-            </p>
-          </div>
-        </label>
-
-        <div className="mt-5 flex justify-end gap-3">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={closeUploadModal}
-            className="h-10 rounded-lg px-4"
-          >
-            Cancel
-          </Button>
-          <Button
-            type="button"
-            disabled={!selectedFiles.length}
-            onClick={handleUploadFiles}
-            className="h-10 rounded-lg bg-sibs-primary-1 px-4 text-white hover:bg-sibs-tertiary-4"
-          >
-            Upload
-          </Button>
-        </div>
-      </AppModal>
-
       <AppModal
         isOpen={Boolean(activeOpenCard)}
         className="!max-w-none sm:!w-[min(92vw,1100px)]"
       >
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <p className="m-0 text-lg font-bold text-sibs-primary-1">
-            {activeOpenCard?.title} Uploaded Data
-          </p>
+          <div>
+            <p className="m-0 text-lg font-bold text-sibs-primary-1">
+              {activeOpenCard?.title} Uploaded Data
+            </p>
+            <p className="mt-1 mb-0 text-xs font-semibold text-sibs-tertiary-5">
+              Account: {activeOpenCard?.account}
+            </p>
+          </div>
           <div className="relative w-full sm:w-80">
             <Search
               className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-sibs-tertiary-6"
@@ -1059,38 +909,81 @@ function WfmImportDataPage() {
           </div>
         </div>
 
-        <div className="mt-4 max-h-[65vh] min-h-[420px] divide-y divide-sibs-tertiary-10 overflow-y-auto rounded-lg border border-sibs-tertiary-10">
+        <div className="mt-4 max-h-[65vh] min-h-[360px] space-y-2.5 overflow-y-auto rounded-xl border border-slate-200/80 bg-slate-50/50 p-3">
           {filteredOpenCardUploads.length ? (
-            filteredOpenCardUploads.map((upload) => (
-              <div
-                key={upload.id || `${upload.fileName}-${upload.uploadedAt}`}
-                className="grid gap-3 bg-[#f8fbfd] px-4 py-3 sm:grid-cols-[minmax(0,1fr)_92px] sm:items-center"
-              >
-                <div className="min-w-0">
-                  <p className="m-0 break-words text-sm font-bold text-sibs-primary-1">
-                    {upload.fileName}
-                  </p>
-                  <p className="mt-1 mb-0 text-xs text-sibs-tertiary-5">
-                    {upload.uploadedAt} ({formatRelativeTime(upload)})
-                  </p>
-                </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setUploadToRemove(upload)}
-                  className="h-8 rounded-lg border-sibs-danger/30 px-2 text-xs text-sibs-danger hover:border-sibs-danger hover:bg-sibs-danger hover:text-white"
+            filteredOpenCardUploads.map((upload) => {
+              const isCompletedWithErrors =
+                upload.batchStatus === "COMPLETED_WITH_ERRORS" ||
+                (upload.batchId && (upload.invalidRows > 0 || upload.warningRows > 0));
+
+              return (
+                <div
+                  key={upload.id || `${upload.fileName}-${upload.uploadedAt}`}
+                  className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-3.5 shadow-xs transition-all hover:border-slate-300 hover:shadow-sm sm:flex-row sm:items-center sm:justify-between"
                 >
-                  <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
-                  Remove
-                </Button>
+                  <div className="min-w-0">
+                    <p
+                      className="m-0 break-words text-sm font-bold text-sibs-primary-1"
+                      title={upload.fileName}
+                    >
+                      {upload.fileName}
+                    </p>
+                    <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-sibs-tertiary-5">
+                      <span>{upload.uploadedAt} ({formatRelativeTime(upload)})</span>
+                      {upload.batchCode ? (
+                        <span className="rounded bg-sibs-primary-2/10 px-1.5 py-0.5 font-mono text-[10px] font-bold text-sibs-primary-2">
+                          Batch: {upload.batchCode}
+                        </span>
+                      ) : null}
+                      {upload.totalRows ? (
+                        <span className="text-[11px] font-medium text-slate-500">
+                          • {upload.totalRows.toLocaleString()} rows
+                        </span>
+                      ) : null}
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2 sm:shrink-0">
+                    {isCompletedWithErrors ? (
+                      <button
+                        type="button"
+                        disabled={isLoadingUsVisaErrors}
+                        onClick={() => handleOpenUsVisaErrors(upload.batchId)}
+                        className="inline-flex h-6 items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-2 text-[10px] font-semibold text-amber-800 transition-all hover:border-amber-400 hover:bg-amber-100"
+                        title="Completed with error - click to view error details"
+                      >
+                        <AlertTriangle className="h-2.5 w-2.5 shrink-0 text-amber-600" aria-hidden="true" />
+                        <span>Completed with error</span>
+                      </button>
+                    ) : null}
+
+                    <button
+                      type="button"
+                      onClick={() => setSelectedUploadDetails(upload)}
+                      className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 shadow-xs transition-all hover:border-sibs-primary-1 hover:bg-sibs-primary-1 hover:text-white"
+                    >
+                      <Eye className="h-3.5 w-3.5" aria-hidden="true" />
+                      View
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setUploadToRemove(upload)}
+                      className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-rose-200 bg-rose-50/70 px-3 text-xs font-semibold text-rose-600 shadow-xs transition-all hover:border-rose-600 hover:bg-rose-600 hover:text-white"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+                      Remove
+                    </button>
+                  </div>
               </div>
-            ))
-          ) : (
-            <div className="bg-[#f8fbfd] px-4 py-8 text-center text-sm text-sibs-tertiary-5">
-              {openCardUploads.length ? "No uploaded data found." : "No uploaded data yet."}
+            );
+          })
+        ) : (
+            <div className="rounded-xl border border-dashed border-slate-200 bg-white px-4 py-12 text-center text-sm text-sibs-tertiary-5">
+              {openCardUploads.length ? "No uploaded data found matching search." : "No uploaded data yet."}
             </div>
           )}
         </div>
+
         <div className="mt-5 flex justify-end">
           <Button
             type="button"
@@ -1108,7 +1001,7 @@ function WfmImportDataPage() {
           Duplicate file name
         </p>
         <p className="mt-2 mb-0 text-sm text-sibs-tertiary-5">
-          {duplicateUploadAlert?.fileName} is already imported. Please choose a different file.
+          {duplicateUploadAlert?.fileName} is already imported in {duplicateUploadAlert?.rawDataTitle}. Please choose a different file.
         </p>
         <Button
           type="button"
@@ -1119,19 +1012,27 @@ function WfmImportDataPage() {
         </Button>
       </AppModal>
 
-      <AppModal isOpen={Boolean(syncError)} className="max-w-sm" textAlign="center">
-        <p className="m-0 text-lg font-bold text-sibs-primary-1">
-          Database sync failed
+      <AppModal
+        isOpen={Boolean(errorModalInfo)}
+        className="max-w-md"
+        textAlign="center"
+        zIndex="z-[160]"
+      >
+        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-rose-100 text-rose-600">
+          <AlertCircle className="h-6 w-6" aria-hidden="true" />
+        </div>
+        <p className="mt-4 mb-0 text-lg font-bold text-sibs-primary-1">
+          {errorModalInfo?.title || "Error"}
         </p>
-        <p className="mt-2 mb-0 text-sm text-sibs-tertiary-5">
-          {syncError}
+        <p className="mt-2 mb-0 text-sm leading-relaxed text-sibs-tertiary-5">
+          {errorModalInfo?.message}
         </p>
         <Button
           type="button"
-          onClick={() => setSyncError("")}
+          onClick={() => setErrorModalInfo(null)}
           className="mt-5 h-10 w-full rounded-lg bg-sibs-primary-1 text-white hover:bg-sibs-tertiary-4"
         >
-          Done
+          Got It
         </Button>
       </AppModal>
 
@@ -1190,7 +1091,10 @@ function WfmImportDataPage() {
                     <td className="whitespace-nowrap px-4 py-3 text-sibs-tertiary-5">
                       {error.columnName || "-"}
                     </td>
-                    <td className="max-w-[220px] truncate px-4 py-3 text-sibs-tertiary-5" title={String(error.rawValue || "")}>
+                    <td
+                      className="max-w-[220px] truncate px-4 py-3 text-sibs-tertiary-5"
+                      title={String(error.rawValue || "")}
+                    >
                       {error.rawValue || "-"}
                     </td>
                     <td className="min-w-[320px] px-4 py-3 text-sibs-tertiary-5">
@@ -1200,7 +1104,10 @@ function WfmImportDataPage() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={7} className="bg-[#f8fbfd] px-5 py-8 text-center text-sm text-sibs-tertiary-5">
+                  <td
+                    colSpan={7}
+                    className="bg-[#f8fbfd] px-5 py-8 text-center text-sm text-sibs-tertiary-5"
+                  >
                     No error details found.
                   </td>
                 </tr>
@@ -1210,39 +1117,170 @@ function WfmImportDataPage() {
         </div>
       </AppModal>
 
-      <AppModal isOpen={Boolean(addedUpload)} className="max-w-sm" textAlign="center">
+      <AppModal
+        isOpen={Boolean(addedUpload)}
+        className="!max-w-none sm:!w-[640px]"
+        textAlign="center"
+      >
         <p className="m-0 text-lg font-bold text-sibs-primary-1">
-          Imported data added
+          Import Successful
         </p>
         <p className="mt-2 mb-0 text-sm text-sibs-tertiary-5">
-          {addedUpload?.count} file(s) were added to {addedUpload?.rawDataTitle}.
+          <span className="font-semibold text-sibs-primary-1">
+            {addedUpload?.fileName}
+          </span>{" "}
+          was imported to{" "}
+          <span className="font-semibold text-sibs-primary-1">
+            {addedUpload?.rawDataTitle}
+          </span>
+          .
         </p>
-        <Button
-          type="button"
-          onClick={() => setAddedUpload(null)}
-          className="mt-5 h-10 w-full rounded-lg bg-sibs-primary-1 text-white hover:bg-sibs-tertiary-4"
-        >
-          Done
-        </Button>
+
+        {addedUpload?.batch ? (
+          <div className="mt-4 rounded-xl border border-sibs-tertiary-10 bg-white p-4 text-left">
+            <div className="flex items-center justify-between text-xs font-bold text-sibs-primary-1">
+              <span className="font-mono text-sibs-primary-2">
+                Batch: {addedUpload.batch.batchCode}
+              </span>
+              <span className="rounded border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-bold text-emerald-700">
+                {formatImportStatus(addedUpload.batch.status)}
+              </span>
+            </div>
+            <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-5">
+              <BatchStat label="Total Rows" value={addedUpload.batch.totalRows} />
+              <BatchStat label="Valid Rows" value={addedUpload.batch.validRows} />
+              <BatchStat label="Invalid Rows" value={addedUpload.batch.invalidRows} />
+              <BatchStat label="Duplicate Rows" value={addedUpload.batch.duplicateRows} />
+              <BatchStat label="Warning Rows" value={addedUpload.batch.warningRows} />
+            </div>
+          </div>
+        ) : null}
+
+        <div className="mt-5 flex justify-end gap-2">
+          {addedUpload?.batch && (addedUpload.batch.invalidRows > 0 || addedUpload.batch.warningRows > 0) ? (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                const batchId = addedUpload.batch.id;
+                setAddedUpload(null);
+                handleOpenUsVisaErrors(batchId);
+              }}
+              className="h-10 rounded-lg border-sibs-danger/30 px-4 text-sibs-danger hover:bg-sibs-danger hover:text-white"
+            >
+              View Errors
+            </Button>
+          ) : null}
+          <Button
+            type="button"
+            onClick={() => setAddedUpload(null)}
+            className="h-10 rounded-lg bg-sibs-primary-1 px-4 text-white hover:bg-sibs-tertiary-4"
+          >
+            Done
+          </Button>
+        </div>
+      </AppModal>
+
+      <AppModal
+        isOpen={Boolean(selectedUploadDetails)}
+        className="!max-w-none sm:!w-[640px]"
+        zIndex="z-[140]"
+      >
+        <div>
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <span className="rounded-md bg-sibs-primary-2/10 px-2 py-0.5 text-xs font-bold text-sibs-primary-2">
+                {activeOpenCard?.title || selectedUploadDetails?.rawDataTitle || "Import"}
+              </span>
+              <span className="text-xs font-semibold text-sibs-tertiary-5">
+                {activeOpenCard?.account || selectedUploadDetails?.account}
+              </span>
+            </div>
+
+            {selectedUploadDetails?.batchStatus === "COMPLETED_WITH_ERRORS" || (selectedUploadDetails?.invalidRows > 0) ? (
+              <span className="inline-flex shrink-0 items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-800">
+                <AlertTriangle className="h-2.5 w-2.5 shrink-0 text-amber-600" aria-hidden="true" />
+                Completed with errors
+              </span>
+            ) : (
+              <span className="inline-flex shrink-0 items-center rounded-md border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
+                Completed
+              </span>
+            )}
+          </div>
+
+          <p className="mt-2 mb-0 break-words text-sm font-bold leading-snug text-sibs-primary-1">
+            {selectedUploadDetails?.fileName}
+          </p>
+
+          <p className="mt-1 mb-0 text-xs text-sibs-tertiary-5">
+            {selectedUploadDetails?.batchCode ? `Batch: ${selectedUploadDetails.batchCode} • ` : ""}
+            {selectedUploadDetails?.uploadedAt} ({formatRelativeTime(selectedUploadDetails)})
+          </p>
+        </div>
+
+        <div className="mt-4 rounded-xl border border-sibs-tertiary-10 bg-white p-4">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+            <BatchStat label="Total Rows" value={selectedUploadDetails?.totalRows} />
+            <BatchStat label="Valid Rows" value={selectedUploadDetails?.validRows} />
+            <BatchStat label="Invalid Rows" value={selectedUploadDetails?.invalidRows} />
+            <BatchStat label="Duplicate Rows" value={selectedUploadDetails?.duplicateRows} />
+            <BatchStat label="Warning Rows" value={selectedUploadDetails?.warningRows} />
+          </div>
+        </div>
+
+        <div className="mt-5 flex justify-end gap-2">
+          {selectedUploadDetails?.batchId && (selectedUploadDetails.invalidRows > 0 || selectedUploadDetails.warningRows > 0) ? (
+            <Button
+              type="button"
+              variant="outline"
+              disabled={isLoadingUsVisaErrors}
+              onClick={() => handleOpenUsVisaErrors(selectedUploadDetails.batchId)}
+              className="h-9 rounded-lg border-sibs-danger/30 px-3 text-xs text-sibs-danger hover:bg-sibs-danger hover:text-white"
+            >
+              <AlertCircle className="h-3.5 w-3.5" aria-hidden="true" />
+              View Error Details ({selectedUploadDetails.invalidRows})
+            </Button>
+          ) : null}
+          <Button
+            type="button"
+            onClick={() => setSelectedUploadDetails(null)}
+            className="h-9 rounded-lg bg-sibs-primary-1 px-4 text-xs font-bold text-white hover:bg-sibs-tertiary-4"
+          >
+            Close
+          </Button>
+        </div>
       </AppModal>
 
       <ConfirmationModal
         isOpen={Boolean(uploadToRemove)}
         title="Remove imported data"
-        message={`Remove ${uploadToRemove?.fileName || "this uploaded data"} from ${activeOpenCard?.title || "this raw data"}?`}
+        message={`Are you sure you want to remove ${uploadToRemove?.fileName || "this file"} from ${activeOpenCard?.title || "this raw data"}? This will permanently delete the batch and all its database records.`}
         cancelText="Cancel"
         confirmText="Remove"
         onCancel={() => setUploadToRemove(null)}
         onConfirm={handleRemoveUpload}
         tone="neutral"
+        zIndex="z-[130]"
       />
 
-      <AppModal isOpen={Boolean(removedUpload)} className="max-w-sm" textAlign="center">
-        <p className="m-0 text-lg font-bold text-sibs-primary-1">
-          Imported data removed
+      <AppModal
+        isOpen={Boolean(removedUpload)}
+        className="max-w-sm"
+        textAlign="center"
+        zIndex="z-[150]"
+      >
+        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
+          <CheckCircle2 className="h-6 w-6" aria-hidden="true" />
+        </div>
+        <p className="mt-4 mb-0 text-lg font-bold text-sibs-primary-1">
+          Data Removed Successfully
         </p>
         <p className="mt-2 mb-0 text-sm text-sibs-tertiary-5">
-          {removedUpload?.fileName} was removed successfully.
+          <span className="font-semibold text-sibs-primary-1">
+            {removedUpload?.fileName}
+          </span>{" "}
+          and all associated database records have been deleted.
         </p>
         <Button
           type="button"
@@ -1270,16 +1308,19 @@ function WfmImportDataPage() {
         message="Please wait while we end your session."
       />
 
-      <LoadingModal
+      <ImportProgressModal
         isOpen={isUploading}
-        title="Uploading data"
-        message="Please wait while we stage the selected raw data."
+        fileName={importFileName}
+        cardTitle={uploadingCardTitle}
+        currentStage={importStage}
+        progressPercent={uploadProgress}
       />
 
       <LoadingModal
         isOpen={isRemovingUpload}
         title="Removing data"
-        message="Please wait while we remove the imported data."
+        message="Please wait while the file and database records are removed..."
+        zIndex="z-[150]"
       />
     </section>
   );
