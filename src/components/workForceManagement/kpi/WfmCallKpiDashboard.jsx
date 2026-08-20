@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from "react";
 import { CheckCircle2, Clock3, Gauge, PhoneCall } from "lucide-react";
 import {
   buildVolumeBarItems,
@@ -26,70 +27,80 @@ function formatDuration(seconds) {
 
 function KpiCard({ icon: Icon, label, value, hint, status }) {
   return (
-    <article className="sibs-card min-w-0 p-4">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="m-0 text-[11px] font-extrabold uppercase tracking-wide text-sibs-tertiary-5">
-            {label}
-          </p>
-
-          <p className="mt-2 mb-0 text-2xl font-extrabold text-sibs-primary-1">
-            {value}
-          </p>
-
-          {hint ? (
-            <p className="mt-1 mb-0 text-xs font-medium text-sibs-tertiary-5">
-              {hint}
-            </p>
-          ) : null}
-        </div>
-
-        <div className="rounded-xl bg-sibs-primary-3/50 p-2.5 text-sibs-primary-1">
-          <Icon size={20} />
+    <article className="sibs-card min-w-0 px-3.5 py-2.5 shadow-xs flex flex-col justify-center gap-1">
+      <div className="flex items-center justify-between gap-1.5">
+        <p className="m-0 text-[10.5px] font-extrabold uppercase tracking-wider text-sibs-tertiary-5 truncate">
+          {label}
+        </p>
+        <div className="rounded-md bg-sibs-primary-3/50 p-1.5 text-sibs-primary-1 shrink-0">
+          <Icon size={14} />
         </div>
       </div>
 
-      {status ? (
-        <div
-          className={`mt-3 inline-flex rounded-full px-2.5 py-1 text-[11px] font-bold ${status.className}`}
-        >
-          {status.label}
-        </div>
-      ) : null}
+      <div className="flex flex-wrap items-baseline gap-1.5 min-w-0">
+        <span className="text-2xl font-black text-sibs-primary-1 leading-none">
+          {value}
+        </span>
+
+        {hint ? (
+          <span className="truncate text-[11px] font-medium text-sibs-tertiary-5">
+            {hint}
+          </span>
+        ) : null}
+
+        {status ? (
+          <span
+            className={`inline-flex rounded-full px-2 py-0.5 text-[9px] font-bold ${status.className} ml-auto`}
+          >
+            {status.label}
+          </span>
+        ) : null}
+      </div>
     </article>
   );
 }
 
 function ChartShell({ title, subtitle, children }) {
   return (
-    <article className="sibs-card overflow-hidden">
-      <div className="border-b border-sibs-tertiary-10 bg-sibs-primary-3/30 px-4 py-3 sm:px-5">
-        <h3 className="m-0 text-sm font-extrabold uppercase tracking-[0.18em] text-sibs-primary-1">
+    <article className="sibs-card overflow-hidden flex flex-col h-full shadow-xs">
+      <div className="border-b border-sibs-tertiary-10 bg-sibs-primary-3/30 px-4 py-2.5">
+        <h3 className="m-0 text-xs font-extrabold uppercase tracking-[0.14em] text-sibs-primary-1">
           {title}
         </h3>
 
         {subtitle ? (
-          <p className="mt-1 mb-0 text-xs text-sibs-tertiary-5">
+          <p className="mt-0.5 mb-0 text-[10.5px] text-sibs-tertiary-5 truncate">
             {subtitle}
           </p>
         ) : null}
       </div>
 
-      <div className="overflow-x-auto p-4 sm:p-5">{children}</div>
+      <div className="p-3.5 flex-1 flex flex-col justify-between overflow-x-auto">
+        {children}
+      </div>
     </article>
   );
 }
 
-function EmptyChart() {
+function EmptyChart({ message = "No KPI data is available for this reporting range." }) {
   return (
-    <div className="flex min-h-56 items-center justify-center rounded-xl border border-dashed border-sibs-tertiary-8 bg-sibs-tertiary-10/30 px-4 text-center text-sm font-semibold text-sibs-tertiary-5">
-      No KPI data is available for this reporting range.
+    <div className="flex min-h-64 items-center justify-center rounded-xl border border-dashed border-sibs-tertiary-8 bg-sibs-tertiary-10/30 px-3 text-center text-xs font-semibold text-sibs-tertiary-5">
+      {message}
     </div>
   );
 }
 
 function VolumeChart({ series }) {
-  if (!series.length) return <EmptyChart />;
+  if (!series.length) return <EmptyChart message="No call volume recorded for this reporting range." />;
+
+  const totalVolume = series.reduce(
+    (acc, item) => acc + Number(item.callsOffered || 0),
+    0,
+  );
+
+  if (totalVolume === 0) {
+    return <EmptyChart message="No call volume recorded for this reporting range." />;
+  }
 
   const maxValue = Math.max(
     1,
@@ -105,29 +116,29 @@ function VolumeChart({ series }) {
 
   return (
     <div className="w-full min-w-0">
-      <div className="mb-4 flex flex-wrap gap-4 text-xs font-bold text-sibs-tertiary-5">
-        <span>
-          <i className="mr-1.5 inline-block h-2.5 w-2.5 rounded-full bg-[#0b3b68]" />
+      <div className="mb-3 flex flex-wrap gap-3 text-xs font-bold text-sibs-tertiary-5">
+        <span className="inline-flex items-center gap-1.5">
+          <i className="inline-block h-2.5 w-2.5 rounded-full bg-[#0b3b68]" />
           Volume
         </span>
 
-        <span>
-          <i className="mr-1.5 inline-block h-2.5 w-2.5 rounded-full bg-[#2f6f9f]" />
+        <span className="inline-flex items-center gap-1.5">
+          <i className="inline-block h-2.5 w-2.5 rounded-full bg-[#2f6f9f]" />
           Handled
         </span>
 
-        <span>
-          <i className="mr-1.5 inline-block h-2.5 w-2.5 rounded-full bg-[#4c9aca]" />
+        <span className="inline-flex items-center gap-1.5">
+          <i className="inline-block h-2.5 w-2.5 rounded-full bg-[#4c9aca]" />
           Handled w/SLA
         </span>
       </div>
 
-      <div className="flex h-64 w-full min-w-0">
-        <div className="relative h-52 w-14 shrink-0 border-r border-sibs-tertiary-8 pr-2">
+      <div className="flex h-[340px] w-full min-w-0">
+        <div className="relative h-[270px] w-12 shrink-0 border-r border-sibs-tertiary-8 pr-1.5">
           {axisTicks.map((tick, index) => (
             <span
               key={`${tick}-${index}`}
-              className="absolute right-2 -translate-y-1/2 text-[10px] font-semibold text-sibs-tertiary-5"
+              className="absolute right-1.5 -translate-y-1/2 text-[10px] font-semibold text-sibs-tertiary-5"
               style={{
                 top: `${(index / (axisTicks.length - 1)) * 100}%`,
               }}
@@ -138,7 +149,7 @@ function VolumeChart({ series }) {
         </div>
 
         <div className="relative min-w-0 flex-1">
-          <div className="pointer-events-none absolute inset-x-0 top-0 h-52">
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-[270px]">
             {axisTicks.map((tick, index) => (
               <div
                 key={`${tick}-${index}`}
@@ -150,13 +161,13 @@ function VolumeChart({ series }) {
             ))}
           </div>
 
-          <div className="relative flex h-64 min-w-0 items-end gap-3 border-b border-sibs-tertiary-8 px-2 sm:gap-4 md:gap-5 xl:gap-7">
+          <div className="relative flex h-[340px] min-w-0 items-end gap-1.5 border-b border-sibs-tertiary-8 px-1 sm:gap-2.5">
             {series.map((item, periodIndex) => (
               <div
                 key={item.key}
-                className="group/period flex min-w-0 flex-1 flex-col items-center justify-end px-0.5 sm:px-1"
+                className="group/period flex min-w-0 flex-1 flex-col items-center justify-end px-0.5"
               >
-                <div className="flex h-52 w-full min-w-0 items-end justify-center gap-1 sm:gap-1.5 md:gap-2">
+                <div className="flex h-[270px] w-full min-w-0 items-end justify-center gap-1 sm:gap-1.5">
                   {buildVolumeBarItems(item).map(
                     ({ metric, value, className }) => {
                       const numericValue = Number(value || 0);
@@ -166,7 +177,7 @@ function VolumeChart({ series }) {
                           ? Math.max(2, (numericValue / axisMax) * 100)
                           : 0;
 
-                      const tooltipIsNearTop = heightPercent >= 72;
+                      const tooltipIsNearTop = heightPercent >= 70;
 
                       return (
                         <div
@@ -174,47 +185,89 @@ function VolumeChart({ series }) {
                           className="group/bar flex h-full min-w-0 flex-1 items-end justify-center"
                         >
                           <div
-                            className="relative flex h-full w-full max-w-[44px] items-end justify-center"
+                            className="relative flex h-full w-full max-w-[22px] items-end justify-center"
                             aria-label={`${item.label} ${metric}: ${formatNumber(
                               numericValue,
                             )}`}
                           >
-                            <span
-                              className="pointer-events-none absolute left-1/2 z-10 -translate-x-1/2 whitespace-nowrap text-[10px] font-extrabold text-sibs-primary-1 transition-all duration-200 group-hover/bar:-translate-y-1"
-                              style={{
-                                bottom: `calc(${heightPercent}% + 5px)`,
-                              }}
-                            >
-                              {formatNumber(numericValue)}
-                            </span>
+                            {numericValue > 0 ? (
+                              <span
+                                className="pointer-events-none absolute left-1/2 z-10 -translate-x-1/2 whitespace-nowrap text-[10px] font-black text-sibs-primary-1 transition-all duration-200 group-hover/bar:-translate-y-0.5"
+                                style={{
+                                  bottom: `calc(${heightPercent}% + 4px)`,
+                                }}
+                              >
+                                {numericValue >= 1000
+                                  ? `${(numericValue / 1000).toFixed(1)}k`
+                                  : numericValue}
+                              </span>
+                            ) : null}
 
+                            {/* Tooltip */}
                             <div
-                              className="pointer-events-none absolute left-1/2 z-30 hidden w-max -translate-x-1/2 rounded-lg bg-sibs-primary-1 px-2.5 py-1.5 text-[10px] font-semibold text-white shadow-lg group-hover/bar:block"
+                              className={`pointer-events-none absolute z-30 hidden min-w-[160px] rounded-xl border border-sibs-tertiary-10/80 bg-white/95 p-2.5 shadow-xl backdrop-blur-md group-hover/bar:block ${
+                                periodIndex >= series.length - 1
+                                  ? "right-0 translate-x-0"
+                                  : periodIndex === 0
+                                  ? "left-0 translate-x-0"
+                                  : "left-1/2 -translate-x-1/2"
+                              }`}
                               style={
                                 tooltipIsNearTop
                                   ? {
-                                      top: "8px",
+                                      top: "6px",
                                     }
                                   : {
-                                      bottom: `calc(${heightPercent}% + 27px)`,
+                                      bottom: `calc(${heightPercent}% + 28px)`,
                                     }
                               }
                             >
-                              <span className="block font-extrabold">
-                                {metric}
-                              </span>
+                              <div className="flex items-center justify-between border-b border-slate-100 pb-1">
+                                <span className="text-xs font-black text-sibs-primary-1">
+                                  {item.label}
+                                </span>
+                                <span className="text-[10px] font-bold text-sibs-tertiary-5">
+                                  {metric}
+                                </span>
+                              </div>
 
-                              <span className="block opacity-90">
-                                {item.label}
-                              </span>
+                              <div className="mt-1.5 flex items-center justify-between text-xs">
+                                <span className="flex items-center gap-1.5 font-bold text-slate-600">
+                                  <span
+                                    className={`h-2.5 w-2.5 rounded-full ${
+                                      metric === "Volume"
+                                        ? "bg-[#0b3b68]"
+                                        : metric === "Handled"
+                                        ? "bg-[#2f6f9f]"
+                                        : "bg-[#4c9aca]"
+                                    }`}
+                                  />
+                                  Calls:
+                                </span>
+                                <span className="font-extrabold text-sibs-primary-1">
+                                  {formatNumber(numericValue)}
+                                </span>
+                              </div>
 
-                              <span className="block text-[11px] font-extrabold">
-                                {formatNumber(numericValue)} calls
-                              </span>
+                              {metric !== "Volume" &&
+                                Number(item.callsOffered || 0) > 0 && (
+                                  <div className="mt-1 flex items-center justify-between border-t border-slate-100 pt-1 text-[11px]">
+                                    <span className="font-semibold text-slate-500">
+                                      Rate:
+                                    </span>
+                                    <span className="font-extrabold text-sibs-primary-1">
+                                      {formatPercent(
+                                        (numericValue /
+                                          Number(item.callsOffered)) *
+                                          100,
+                                      )}
+                                    </span>
+                                  </div>
+                                )}
                             </div>
 
                             <div
-                              className={`w-full max-w-[40px] rounded-t-md shadow-sm transition-all duration-200 ease-out group-hover/bar:-translate-y-1 group-hover/bar:brightness-110 group-hover/bar:shadow-md ${className}`}
+                              className={`w-full rounded-t-sm shadow-xs transition-all duration-200 ease-out group-hover/bar:-translate-y-0.5 group-hover/bar:brightness-110 ${className}`}
                               style={{
                                 height: `${heightPercent}%`,
                               }}
@@ -226,15 +279,15 @@ function VolumeChart({ series }) {
                   )}
                 </div>
 
-                <div className="mt-2 w-full px-0.5 py-1.5 text-center">
+                <div className="mt-2 w-full px-0.5 text-center">
                   <p
-                    className="m-0 truncate text-[11px] font-extrabold text-sibs-primary-1"
+                    className="m-0 truncate text-[10.5px] font-extrabold text-sibs-primary-1 leading-tight"
                     title={item.label}
                   >
                     {item.label}
                   </p>
 
-                  <p className="mt-0.5 mb-0 text-[9px] font-bold uppercase tracking-[0.12em] text-sibs-tertiary-5">
+                  <p className="m-0 text-[9px] font-semibold uppercase text-sibs-tertiary-5">
                     Period {periodIndex + 1}
                   </p>
                 </div>
@@ -247,141 +300,401 @@ function VolumeChart({ series }) {
   );
 }
 
-function LineChart({ series, target }) {
-  if (!series.length) return <EmptyChart />;
+function LineChart({ series, target = 90 }) {
+  const containerRef = useRef(null);
+  const [containerWidth, setContainerWidth] = useState(0);
+  const [hoveredIndex, setHoveredIndex] = useState(null);
 
-  const width = Math.max(720, series.length * 120);
-  const height = 250;
-  const chartTop = 20;
-  const chartBottom = 195;
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const updateWidth = () => {
+      if (containerRef.current) {
+        setContainerWidth(containerRef.current.clientWidth);
+      }
+    };
+    updateWidth();
+    const observer = new ResizeObserver(updateWidth);
+    observer.observe(containerRef.current);
+    return () => observer.disconnect();
+  }, []);
 
-  const xStep =
-    series.length > 1 ? (width - 80) / (series.length - 1) : 0;
+  if (!series.length) return <EmptyChart message="No answer rate or service level data available for this reporting range." />;
 
-  const y = (value) =>
-    chartBottom -
-    (Math.max(0, Math.min(100, Number(value || 0))) / 100) *
-      (chartBottom - chartTop);
+  const activeSeries = series.filter(
+    (item) => Number(item.callsOffered || 0) > 0,
+  );
 
-  const points = (key) =>
-    series
-      .map(
-        (item, index) =>
-          `${40 + index * xStep},${y(item[key])}`,
-      )
-      .join(" ");
+  if (activeSeries.length === 0) {
+    return (
+      <EmptyChart message="No answer rate or service level data available for this reporting range." />
+    );
+  }
+
+  const numericTarget = Number(target || 90);
+  const width = Math.max(340, containerWidth || 400);
+  const height = 340;
+  const paddingLeft = 36;
+  const paddingRight = 50;
+  const chartTop = 26;
+  const chartBottom = 275;
+  const usableWidth = width - paddingLeft - paddingRight;
+
+  const getX = (index) =>
+    series.length > 1
+      ? paddingLeft + (index / (series.length - 1)) * usableWidth
+      : paddingLeft + usableWidth / 2;
+
+  const getY = (val) => {
+    const clamped = Math.max(0, Math.min(100, Number(val || 0)));
+    return chartBottom - (clamped / 100) * (chartBottom - chartTop);
+  };
+
+  const answerPts = series.map((item, index) => ({
+    x: getX(index),
+    y: getY(item.answerRatePct),
+  }));
+
+  const slPts = series.map((item, index) => ({
+    x: getX(index),
+    y: getY(item.serviceLevelPct),
+  }));
+
+  const getCurvedPath = (pts) => {
+    if (!pts || pts.length === 0) return "";
+    if (pts.length === 1) return `M ${pts[0].x},${pts[0].y}`;
+    if (pts.length === 2) {
+      return `M ${pts[0].x},${pts[0].y} L ${pts[1].x},${pts[1].y}`;
+    }
+
+    let d = `M ${pts[0].x.toFixed(1)},${pts[0].y.toFixed(1)}`;
+    for (let i = 0; i < pts.length - 1; i += 1) {
+      const p0 = pts[Math.max(0, i - 1)];
+      const p1 = pts[i];
+      const p2 = pts[i + 1];
+      const p3 = pts[Math.min(pts.length - 1, i + 2)];
+
+      if (Math.abs(p1.y - p2.y) < 0.1) {
+        d += ` L ${p2.x.toFixed(1)},${p2.y.toFixed(1)}`;
+        continue;
+      }
+
+      const tension = 0.2;
+      let cp1x = p1.x + (p2.x - p0.x) * tension;
+      let cp1y = p1.y + (p2.y - p0.y) * tension;
+      let cp2x = p2.x - (p3.x - p1.x) * tension;
+      let cp2y = p2.y - (p3.y - p1.y) * tension;
+
+      const minY = Math.min(p1.y, p2.y);
+      const maxY = Math.max(p1.y, p2.y);
+      cp1y = Math.max(minY, Math.min(maxY, cp1y));
+      cp2y = Math.max(minY, Math.min(maxY, cp2y));
+
+      d += ` C ${cp1x.toFixed(1)},${cp1y.toFixed(1)} ${cp2x.toFixed(1)},${cp2y.toFixed(1)} ${p2.x.toFixed(1)},${p2.y.toFixed(1)}`;
+    }
+    return d;
+  };
+
+  const answerCurve = getCurvedPath(answerPts);
+  const slCurve = getCurvedPath(slPts);
+
+  const firstX = answerPts[0]?.x || paddingLeft;
+  const lastX = answerPts[answerPts.length - 1]?.x || width - paddingRight;
+
+  const answerArea = `${answerCurve} L ${lastX.toFixed(1)},${chartBottom} L ${firstX.toFixed(1)},${chartBottom} Z`;
+  const slArea = `${slCurve} L ${lastX.toFixed(1)},${chartBottom} L ${firstX.toFixed(1)},${chartBottom} Z`;
+
+  const targetY = getY(numericTarget);
+
+  const activeItem =
+    hoveredIndex !== null ? series[hoveredIndex] : series[series.length - 1];
+
+  const activeAnswer = Number(activeItem?.answerRatePct || 0);
+  const activeSl = Number(activeItem?.serviceLevelPct || 0);
+  const isTargetMet = activeSl >= numericTarget;
 
   return (
-    <div style={{ minWidth: width }}>
-      <div className="mb-3 flex flex-wrap gap-4 text-xs font-bold text-sibs-tertiary-5">
-        <span>
-          <i className="mr-1.5 inline-block h-2.5 w-2.5 rounded-full bg-[#0b3b68]" />
-          Answer %
-        </span>
+    <div ref={containerRef} className="w-full min-w-0 select-none">
+      {/* Legends */}
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2 text-xs font-bold text-sibs-tertiary-5">
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="inline-flex items-center gap-1.5 text-[#0b3b68]">
+            <i className="h-2.5 w-2.5 rounded-full bg-[#0b3b68]" />
+            Answer: {Number(activeItem?.callsOffered || 0) > 0 ? formatPercent(activeAnswer) : "--"}
+          </span>
 
-        <span>
-          <i className="mr-1.5 inline-block h-2.5 w-2.5 rounded-full bg-[#4c9aca]" />
-          SL %
-        </span>
+          <span className="inline-flex items-center gap-1.5 text-[#0284c7]">
+            <i className="h-2.5 w-2.5 rounded-full bg-[#0284c7]" />
+            SL: {Number(activeItem?.callsOffered || 0) > 0 ? formatPercent(activeSl) : "--"}
+          </span>
 
-        <span>
-          <i className="mr-1.5 inline-block h-0.5 w-4 align-middle bg-red-500" />
-          SL Target
+          <span className="inline-flex items-center gap-1 text-red-500">
+            <i className="inline-block h-0.5 w-3.5 bg-red-500" />
+            Tgt: {numericTarget}%
+          </span>
+        </div>
+
+        <span
+          className={`inline-flex rounded-full px-2.5 py-0.5 text-[9.5px] font-bold ${
+            Number(activeItem?.callsOffered || 0) === 0
+              ? "bg-slate-100 text-slate-600"
+              : isTargetMet
+              ? "bg-emerald-100 text-emerald-800"
+              : "bg-amber-100 text-amber-800"
+          }`}
+        >
+          {isTargetMet ? "✓ Target Met" : "Below Target"}
         </span>
       </div>
 
-      <svg
-        width={width}
-        height={height}
-        role="img"
-        aria-label="Answer rate and service level trend"
+      <div
+        className="relative overflow-x-auto"
+        onMouseLeave={() => setHoveredIndex(null)}
       >
-        {[0, 25, 50, 75, 100].map((tick) => (
-          <g key={tick}>
-            <line
-              x1="40"
-              x2={width - 20}
-              y1={y(tick)}
-              y2={y(tick)}
-              stroke="#e5e7eb"
-            />
-
-            <text
-              x="4"
-              y={y(tick) + 4}
-              fontSize="10"
-              fill="#64748b"
-            >
-              {tick}%
-            </text>
-          </g>
-        ))}
-
-        <line
-          x1="40"
-          x2={width - 20}
-          y1={y(target)}
-          y2={y(target)}
-          stroke="#ef4444"
-          strokeWidth="2"
-          strokeDasharray="6 5"
-        />
-
-        <polyline
-          fill="none"
-          stroke="#0b3b68"
-          strokeWidth="3"
-          points={points("answerRatePct")}
-        />
-
-        <polyline
-          fill="none"
-          stroke="#4c9aca"
-          strokeWidth="3"
-          points={points("serviceLevelPct")}
-        />
-
-        {series.map((item, index) => {
-          const x = 40 + index * xStep;
-
-          return (
-            <g key={item.key}>
-              <circle
-                cx={x}
-                cy={y(item.answerRatePct)}
-                r="4"
-                fill="#0b3b68"
-              />
-
-              <circle
-                cx={x}
-                cy={y(item.serviceLevelPct)}
-                r="4"
-                fill="#4c9aca"
-              />
-
-              <text
-                x={x}
-                y="226"
-                textAnchor="middle"
-                fontSize="10"
-                fontWeight="700"
-                fill="#183153"
+        <div style={{ minWidth: width, position: "relative" }}>
+          <svg
+            width={width}
+            height={height}
+            className="overflow-visible"
+            role="img"
+            aria-label="Answer rate and service level trend"
+          >
+            <defs>
+              <linearGradient
+                id="answerRateGradient"
+                x1="0"
+                y1="0"
+                x2="0"
+                y2="1"
               >
-                {item.label}
+                <stop offset="0%" stopColor="#0b3b68" stopOpacity="0.25" />
+                <stop offset="100%" stopColor="#0b3b68" stopOpacity="0.0" />
+              </linearGradient>
+
+              <linearGradient id="slGradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#0284c7" stopOpacity="0.30" />
+                <stop offset="100%" stopColor="#0284c7" stopOpacity="0.0" />
+              </linearGradient>
+            </defs>
+
+            {/* Gridlines */}
+            {[0, 25, 50, 75, 100].map((tick) => {
+              const tickY = getY(tick);
+              return (
+                <g key={tick}>
+                  <line
+                    x1={paddingLeft}
+                    x2={width - 24}
+                    y1={tickY}
+                    y2={tickY}
+                    stroke="#e2e8f0"
+                    strokeDasharray={tick === 0 ? "none" : "3 3"}
+                    strokeWidth={tick === 0 ? "1.5" : "1"}
+                  />
+                  <text
+                    x={paddingLeft - 8}
+                    y={tickY + 4}
+                    textAnchor="end"
+                    fontSize="10"
+                    fontWeight="600"
+                    fill="#64748b"
+                  >
+                    {tick}%
+                  </text>
+                </g>
+              );
+            })}
+
+            {/* Target Line */}
+            <g>
+              <line
+                x1={paddingLeft}
+                x2={width - paddingRight + 4}
+                y1={targetY}
+                y2={targetY}
+                stroke="#ef4444"
+                strokeWidth="1.5"
+                strokeDasharray="5 3"
+              />
+              <rect
+                x={width - paddingRight + 5}
+                y={targetY - 9}
+                width={44}
+                height={18}
+                rx={3}
+                fill="#fee2e2"
+                stroke="#fca5a5"
+                strokeWidth="1"
+              />
+              <text
+                x={width - paddingRight + 27}
+                y={targetY + 4}
+                textAnchor="middle"
+                fontSize="9.5"
+                fontWeight="800"
+                fill="#b91c1c"
+              >
+                {numericTarget}%
               </text>
             </g>
-          );
-        })}
-      </svg>
+
+            {/* Fills */}
+            <path
+              d={answerArea}
+              fill="url(#answerRateGradient)"
+              className="pointer-events-none"
+            />
+            <path
+              d={slArea}
+              fill="url(#slGradient)"
+              className="pointer-events-none"
+            />
+
+            {/* Lines */}
+            <path
+              d={answerCurve}
+              fill="none"
+              stroke="#0b3b68"
+              strokeWidth="2.75"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+            <path
+              d={slCurve}
+              fill="none"
+              stroke="#0284c7"
+              strokeWidth="2.75"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+
+            {/* Data Points */}
+            {series.map((item, index) => {
+              const ptAnswer = answerPts[index];
+              const ptSl = slPts[index];
+              const hasData = Number(item.callsOffered || 0) > 0;
+              const isHovered = hoveredIndex === index;
+
+              return (
+                <g key={item.key || index}>
+                  {isHovered ? (
+                    <line
+                      x1={ptAnswer.x}
+                      x2={ptAnswer.x}
+                      y1={chartTop}
+                      y2={chartBottom}
+                      stroke="#94a3b8"
+                      strokeWidth="1"
+                      strokeDasharray="2 2"
+                    />
+                  ) : null}
+
+                  {hasData ? (
+                    <>
+                      <circle
+                        cx={ptAnswer.x}
+                        cy={ptAnswer.y}
+                        r={isHovered ? 5.5 : 4}
+                        fill="#0b3b68"
+                        stroke="#ffffff"
+                        strokeWidth="1.5"
+                      />
+                      <circle
+                        cx={ptSl.x}
+                        cy={ptSl.y}
+                        r={isHovered ? 5.5 : 4}
+                        fill="#0284c7"
+                        stroke="#ffffff"
+                        strokeWidth="1.5"
+                      />
+                    </>
+                  ) : null}
+
+                  <rect
+                    x={ptAnswer.x - usableWidth / (series.length * 2)}
+                    y={chartTop}
+                    width={usableWidth / series.length}
+                    height={chartBottom - chartTop + 30}
+                    fill="transparent"
+                    className="cursor-pointer"
+                    onMouseEnter={() => setHoveredIndex(index)}
+                  />
+
+                  {/* X Axis Label */}
+                  <text
+                    x={ptAnswer.x}
+                    y={chartBottom + 18}
+                    textAnchor="middle"
+                    fontSize="10.5"
+                    fontWeight="700"
+                    fill="#1e293b"
+                  >
+                    {item.label}
+                  </text>
+                  <text
+                    x={ptAnswer.x}
+                    y={chartBottom + 32}
+                    textAnchor="middle"
+                    fontSize="9"
+                    fontWeight="600"
+                    fill="#94a3b8"
+                  >
+                    Period {index + 1}
+                  </text>
+                </g>
+              );
+            })}
+          </svg>
+
+          {/* Hover Tooltip */}
+          {hoveredIndex !== null && series[hoveredIndex] && (
+            <div
+              className="pointer-events-none absolute z-30 min-w-[160px] rounded-xl border border-sibs-tertiary-10/80 bg-white/95 p-2.5 shadow-xl backdrop-blur-md"
+              style={{
+                left: `${Math.min(
+                  Math.max(10, answerPts[hoveredIndex]?.x - 80),
+                  width - 175,
+                )}px`,
+                top: "14px",
+              }}
+            >
+              <div className="flex items-center justify-between border-b border-slate-100 pb-1">
+                <span className="text-xs font-black text-sibs-primary-1">
+                  {series[hoveredIndex].label}
+                </span>
+                <span className="text-[10px] font-bold text-sibs-tertiary-5">
+                  Period {hoveredIndex + 1}
+                </span>
+              </div>
+
+              <div className="mt-1.5 space-y-1 text-[11px]">
+                <div className="flex items-center justify-between font-bold text-[#0b3b68]">
+                  <span>Answer %:</span>
+                  <span>{formatPercent(series[hoveredIndex].answerRatePct)}</span>
+                </div>
+                <div className="flex items-center justify-between font-bold text-[#0284c7]">
+                  <span>Service Level:</span>
+                  <span>{formatPercent(series[hoveredIndex].serviceLevelPct)}</span>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
 
 function AhtChart({ series, target }) {
-  if (!series.length) return <EmptyChart />;
+  if (!series.length) return <EmptyChart message="No average handling time data available for this reporting range." />;
 
   const normalizedTarget = convertDurationToSeconds(target);
+  const activeAhtSeries = series.filter(
+    (item) => convertDurationToSeconds(item.ahtSeconds) > 0,
+  );
+
+  if (activeAhtSeries.length === 0) {
+    return <EmptyChart message="No average handling time data available for this reporting range." />;
+  }
 
   const maxValue = Math.max(
     normalizedTarget,
@@ -397,60 +710,123 @@ function AhtChart({ series, target }) {
   );
 
   return (
-    <div className="min-w-[720px]">
-      <div className="mb-4 flex items-center gap-4 text-xs font-bold text-sibs-tertiary-5">
-        <span>
-          <i className="mr-1.5 inline-block h-2.5 w-2.5 rounded-full bg-[#0b3b68]" />
-          Call AHT
-        </span>
+    <div className="w-full min-w-0">
+      <div className="mb-3 flex items-center justify-between gap-2 text-xs font-bold text-sibs-tertiary-5">
+        <div className="flex items-center gap-3">
+          <span className="inline-flex items-center gap-1.5">
+            <i className="inline-block h-2.5 w-2.5 rounded-full bg-[#0b3b68]" />
+            Call AHT
+          </span>
 
-        <span>
-          <i className="mr-1.5 inline-block h-0.5 w-4 align-middle bg-red-500" />
-          Target ({formatNumber(normalizedTarget)} sec)
-        </span>
+          <span className="inline-flex items-center gap-1.5 text-red-500">
+            <i className="inline-block h-0.5 w-3.5 bg-red-500" />
+            Target: {formatNumber(normalizedTarget)}s
+          </span>
+        </div>
       </div>
 
-      <div className="relative flex h-64 items-end gap-5 border-b border-sibs-tertiary-8 px-3">
+      <div className="relative flex h-[340px] items-end gap-2 border-b border-sibs-tertiary-8 px-2">
         <div
-          className="pointer-events-none absolute right-3 left-3 border-t-2 border-dashed border-red-500"
+          className="pointer-events-none absolute right-2 left-2 border-t-2 border-dashed border-red-500"
           style={{
-            bottom: `calc(32px + ${targetPosition * 1.9}px)`,
+            bottom: `calc(34px + ${targetPosition * 2.35}px)`,
           }}
         />
 
-        {series.map((item) => (
-          <div
-            key={item.key}
-            className="relative z-10 flex min-w-[88px] flex-1 flex-col items-center justify-end"
-          >
-            <p className="mb-1 text-[10px] font-extrabold text-sibs-primary-1">
-              {formatNumber(
-                convertDurationToSeconds(item.ahtSeconds),
-                2,
+        {series.map((item, itemIndex) => {
+          const ahtSec = convertDurationToSeconds(item.ahtSeconds);
+          const hasAht = ahtSec > 0;
+          const heightPct = Math.max(2, (ahtSec / maxValue) * 100);
+
+          return (
+            <div
+              key={item.key}
+              className="group/aht relative z-10 flex min-w-0 flex-1 flex-col items-center justify-end"
+            >
+              {hasAht ? (
+                <p className="mb-1.5 text-[11px] font-black text-sibs-primary-1">
+                  {formatNumber(ahtSec, 0)}s
+                </p>
+              ) : (
+                <span className="mb-1.5 text-[10px] font-semibold text-slate-400">-</span>
               )}
-            </p>
 
-            <div className="flex h-48 w-full items-end justify-center">
-              <div
-                className="w-12 rounded-t bg-[#0b3b68]"
-                style={{
-                  height: `${Math.max(
-                    2,
-                    (convertDurationToSeconds(
-                      item.ahtSeconds,
-                    ) /
-                      maxValue) *
-                      100,
-                  )}%`,
-                }}
-              />
+              {/* Tooltip */}
+              {hasAht ? (
+                <div
+                  className={`pointer-events-none absolute z-30 hidden min-w-[160px] rounded-xl border border-sibs-tertiary-10/80 bg-white/95 p-2.5 shadow-xl backdrop-blur-md group-hover/aht:block ${
+                    itemIndex >= series.length - 1
+                      ? "right-0 translate-x-0"
+                      : itemIndex === 0
+                      ? "left-0 translate-x-0"
+                      : "left-1/2 -translate-x-1/2"
+                  }`}
+                  style={{
+                    bottom: `calc(${heightPct * 2.35}px + 42px)`,
+                  }}
+                >
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-1">
+                    <span className="text-xs font-black text-sibs-primary-1">
+                      {item.label}
+                    </span>
+                    <span className="text-[10px] font-bold text-sibs-tertiary-5">
+                      AHT
+                    </span>
+                  </div>
+
+                  <div className="mt-1.5 space-y-1 text-[11px]">
+                    <div className="flex items-center justify-between font-bold text-[#0b3b68]">
+                      <span>Average:</span>
+                      <span>{formatDuration(ahtSec)}</span>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold text-slate-500">Seconds:</span>
+                      <span className="font-bold text-slate-700">
+                        {formatNumber(ahtSec, 1)}s
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between pt-1 border-t border-slate-100 text-[10.5px]">
+                      <span className="font-semibold text-slate-500">Target ({formatNumber(normalizedTarget)}s):</span>
+                      <span
+                        className={`font-extrabold ${
+                          ahtSec <= normalizedTarget
+                            ? "text-emerald-600"
+                            : "text-amber-600"
+                        }`}
+                      >
+                        {ahtSec <= normalizedTarget ? "✓ On Target" : "✗ Over Target"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+
+              <div className="flex h-[270px] w-full items-end justify-center">
+                {hasAht ? (
+                  <div
+                    className="w-full max-w-[42px] rounded-t-sm bg-[#0b3b68] transition-all duration-200 group-hover/aht:brightness-110 group-hover/aht:-translate-y-0.5 shadow-xs"
+                    style={{
+                      height: `${heightPct}%`,
+                    }}
+                  />
+                ) : (
+                  <div className="h-0.5 w-6 rounded bg-slate-200" />
+                )}
+              </div>
+
+              <div className="mt-2 w-full px-0.5 text-center">
+                <p className="m-0 truncate text-[10.5px] font-extrabold text-sibs-primary-1 leading-tight">
+                  {item.label}
+                </p>
+                <p className="m-0 text-[9px] font-semibold uppercase text-sibs-tertiary-5">
+                  Period {itemIndex + 1}
+                </p>
+              </div>
             </div>
-
-            <p className="mt-2 mb-0 text-center text-[11px] font-bold text-sibs-primary-1">
-              {item.label}
-            </p>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
@@ -484,8 +860,9 @@ export default function WfmCallKpiDashboard({ data }) {
     summaryAhtSeconds > 0;
 
   return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
+    <div className="space-y-3">
+      {/* 6 Compact KPI Stat Cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-2.5">
         <KpiCard
           icon={PhoneCall}
           label="Call Volume"
@@ -537,9 +914,9 @@ export default function WfmCallKpiDashboard({ data }) {
           value={formatDuration(summaryAhtSeconds)}
           hint={`${formatNumber(
             summaryAhtSeconds,
-          )} sec • Target ${formatNumber(
+          )}s • Tgt ${formatNumber(
             targetAhtSeconds,
-          )} sec`}
+          )}s`}
           status={{
             label: ahtMet
               ? "Target met"
@@ -551,52 +928,55 @@ export default function WfmCallKpiDashboard({ data }) {
         />
       </div>
 
-      <ChartShell
-        title="Calls"
-        subtitle="Volume, handled calls, and handled within SLA"
-      >
-        <VolumeChart
-          series={
-            series.length
-              ? series
-              : data?.data?.series || []
-          }
-        />
-      </ChartShell>
+      {/* 3 Prominent Graphs Side-by-Side on Desktop */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+        <ChartShell
+          title="Calls"
+          subtitle="Volume, handled calls, and handled within SLA"
+        >
+          <VolumeChart
+            series={
+              series.length
+                ? series
+                : data?.data?.series || []
+            }
+          />
+        </ChartShell>
 
-      <ChartShell
-        title="Answer Rate & Service Level"
-        subtitle="Answer % and service level performance against target"
-      >
-        <LineChart
-          series={
-            series.length
-              ? series
-              : data?.data?.series || []
-          }
-          target={
-            targets.serviceLevelPct ||
-            data?.data?.targets?.serviceLevelPct
-          }
-        />
-      </ChartShell>
+        <ChartShell
+          title="Answer Rate & Service Level"
+          subtitle="Answer % and service level performance against target"
+        >
+          <LineChart
+            series={
+              series.length
+                ? series
+                : data?.data?.series || []
+            }
+            target={
+              targets.serviceLevelPct ||
+              data?.data?.targets?.serviceLevelPct
+            }
+          />
+        </ChartShell>
 
-      <ChartShell
-        title="Average Handling Time"
-        subtitle="Call AHT measured in seconds against the current target"
-      >
-        <AhtChart
-          series={
-            series.length
-              ? series
-              : data?.data?.series || []
-          }
-          target={
-            targets.ahtSeconds ||
-            data?.data?.targets?.ahtSeconds
-          }
-        />
-      </ChartShell>
+        <ChartShell
+          title="Average Handling Time"
+          subtitle="Call AHT measured in seconds against target"
+        >
+          <AhtChart
+            series={
+              series.length
+                ? series
+                : data?.data?.series || []
+            }
+            target={
+              targets.ahtSeconds ||
+              data?.data?.targets?.ahtSeconds
+            }
+          />
+        </ChartShell>
+      </div>
     </div>
   );
 }

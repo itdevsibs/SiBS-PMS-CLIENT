@@ -1,8 +1,8 @@
-// WFM Calls KPI dashboard. Data is aggregated by the backend from canonical PMS rows.
 import { useCallback, useEffect, useState } from "react";
 import {
   AlertCircle,
   BarChart3,
+  Clock,
   Database,
   RefreshCw,
 } from "lucide-react";
@@ -59,11 +59,57 @@ const DEFAULT_FILTERS = {
 };
 
 function getErrorMessage(error) {
-  return (
+  const raw =
     error?.response?.data?.message ||
     error?.message ||
-    "Unable to load Calls KPI data."
+    "";
+
+  if (!raw) {
+    return {
+      title: "No KPI Data Available",
+      message: "No call records were found for the selected filter criteria.",
+    };
+  }
+
+  const match = raw.match(
+    /Reference date must be between (\d{4}-\d{2}-\d{2}) and (\d{4}-\d{2}-\d{2})/i,
   );
+
+  if (match) {
+    const [, minDate, maxDate] = match;
+    return {
+      title: "No Call Records for This Date",
+      message: `There is no imported call data for the selected date. Call records are available from ${minDate} to ${maxDate}. Please choose a date within this range or click "Latest".`,
+      isDateRangeError: true,
+    };
+  }
+
+  if (/Reference date must be between/i.test(raw)) {
+    return {
+      title: "Date Outside Available Range",
+      message: "There is no imported call data for the selected date. Please choose an available date or click 'Latest'.",
+      isDateRangeError: true,
+    };
+  }
+
+  if (/Custom reporting requires both/i.test(raw)) {
+    return {
+      title: "Missing Date Range",
+      message: "Custom reporting requires both a 'From' and 'To' date.",
+    };
+  }
+
+  if (/start date cannot be later/i.test(raw)) {
+    return {
+      title: "Invalid Date Range",
+      message: "The start date cannot be later than the end date.",
+    };
+  }
+
+  return {
+    title: "Unable to Load KPI Data",
+    message: raw,
+  };
 }
 
 function formatGrain(value) {
@@ -126,80 +172,68 @@ export default function WfmViewGraphsPage() {
     dashboard.authUser?.role === "wfm" ||
     Number(dashboard.authUser?.adminAccess || 0) === 9;
 
-  const [draftFilters, setDraftFilters] =
-    useState(DEFAULT_FILTERS);
-
-  const [appliedFilters, setAppliedFilters] =
-    useState(DEFAULT_FILTERS);
-
-  const [kpiResponse, setKpiResponse] =
-    useState(null);
-
-  const [isLoading, setIsLoading] =
-    useState(true);
-
-  const [error, setError] =
-    useState("");
+  const [filters, setFilters] = useState(DEFAULT_FILTERS);
+  const [kpiResponse, setKpiResponse] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState("");
 
   const loadKpis = useCallback(async () => {
     if (!isWfmUser) {
       return;
     }
 
+    if (filters.period === "custom") {
+      if (!filters.from || !filters.to) {
+        return;
+      }
+
+      if (filters.from > filters.to) {
+        setError({
+          title: "Invalid Date Range",
+          message: "The start date cannot be later than the end date.",
+        });
+        return;
+      }
+    }
+
     setIsLoading(true);
     setError("");
 
     try {
-      const params = buildRequestParams(appliedFilters);
-
+      const params = buildRequestParams(filters);
       const response = await getWfmCallKpis(params);
 
       setKpiResponse(response);
-
-      const dashboardData =
-        response?.data?.data || null;
-
-      const returnedFilters =
-        dashboardData?.filters || {};
-
-      setDraftFilters((current) => {
-        if (
-          current.sourceSystem !== appliedFilters.sourceSystem ||
-          current.period !== appliedFilters.period
-        ) {
-          return current;
-        }
-
-        if (appliedFilters.period === "custom") {
-          return current;
-        }
-
-        if (appliedFilters.referenceDate) {
-          return current;
-        }
-
-        return {
-          ...current,
-          referenceDate:
-            returnedFilters.referenceDate || "",
-        };
-      });
     } catch (loadError) {
       setError(getErrorMessage(loadError));
       setKpiResponse(null);
     } finally {
       setIsLoading(false);
     }
-  }, [appliedFilters, isWfmUser]);
+  }, [filters, isWfmUser]);
 
   useEffect(() => {
     loadKpis();
   }, [loadKpis]);
 
+  useEffect(() => {
+    const returnedFilters = kpiResponse?.data?.data?.filters || {};
+    if (
+      returnedFilters.referenceDate &&
+      !filters.referenceDate &&
+      filters.period !== "custom"
+    ) {
+      setFilters((current) => ({
+        ...current,
+        referenceDate: returnedFilters.referenceDate,
+      }));
+    }
+  }, [kpiResponse, filters.referenceDate, filters.period]);
+
   const handleSourceChange = (event) => {
     const sourceSystem = event.target.value;
 
-    setDraftFilters((current) => ({
+    setFilters((current) => ({
       ...current,
       sourceSystem,
       referenceDate: "",
@@ -211,106 +245,33 @@ export default function WfmViewGraphsPage() {
   const handlePeriodChange = (event) => {
     const nextPeriod = event.target.value;
 
-    const currentDashboardFilters =
-      kpiResponse?.data?.data?.filters || {};
-
-    setDraftFilters((current) => {
-      const canReuseDashboardRange =
-        current.sourceSystem ===
-        currentDashboardFilters.sourceSystem;
-
-      return {
-        ...current,
-        period: nextPeriod,
-
-        referenceDate:
-          nextPeriod === "custom"
-            ? current.referenceDate
-            : current.referenceDate ||
-              (canReuseDashboardRange
-                ? currentDashboardFilters.referenceDate
-                : "") ||
-              "",
-
-        from:
-          nextPeriod === "custom"
-            ? current.from ||
-              (canReuseDashboardRange
-                ? currentDashboardFilters.dateFrom
-                : "") ||
-              ""
-            : "",
-
-        to:
-          nextPeriod === "custom"
-            ? current.to ||
-              (canReuseDashboardRange
-                ? currentDashboardFilters.dateTo
-                : "") ||
-              ""
-            : "",
-      };
-    });
-  };
-
-  const handleApplyFilters = () => {
-    if (draftFilters.period === "custom") {
-      if (!draftFilters.from || !draftFilters.to) {
-        setError(
-          "Custom reporting requires both From and To dates.",
-        );
-
-        return;
-      }
-
-      if (draftFilters.from > draftFilters.to) {
-        setError(
-          "The start date cannot be later than the end date.",
-        );
-
-        return;
-      }
-    }
-
-    setError("");
-
-    setAppliedFilters({
-      sourceSystem: draftFilters.sourceSystem,
-      period: draftFilters.period,
-
-      referenceDate:
-        draftFilters.period === "custom"
-          ? ""
-          : draftFilters.referenceDate,
-
-      from:
-        draftFilters.period === "custom"
-          ? draftFilters.from
-          : "",
-
-      to:
-        draftFilters.period === "custom"
-          ? draftFilters.to
-          : "",
-    });
-  };
-
-  const handleLatestRange = () => {
-    if (draftFilters.period === "custom") {
-      return;
-    }
-
-    const latestFilters = {
-      sourceSystem: draftFilters.sourceSystem,
-      period: draftFilters.period,
+    setFilters((current) => ({
+      ...current,
+      period: nextPeriod,
       referenceDate: "",
       from: "",
       to: "",
-    };
+    }));
+  };
 
-    setError("");
-    setDraftFilters(latestFilters);
-    setAppliedFilters(latestFilters);
+  const handleReferenceDateChange = (referenceDate) => {
+    setFilters((current) => ({
+      ...current,
+      referenceDate: referenceDate || "",
+    }));
+  };
+
+  const handleLatestRange = () => {
+    if (filters.period === "custom") {
+      return;
+    }
+
+    setFilters((current) => ({
+      ...current,
+      referenceDate: "",
+      from: "",
+      to: "",
+    }));
   };
 
   const dashboardData =
@@ -328,7 +289,7 @@ export default function WfmViewGraphsPage() {
 
   const activeSourceSystem =
     dashboardData.filters?.sourceSystem ||
-    appliedFilters.sourceSystem;
+    filters.sourceSystem;
 
   const emptyDataMessage =
     !availableGrains.length
@@ -340,7 +301,7 @@ export default function WfmViewGraphsPage() {
         : "";
 
   const isCustomPeriod =
-    draftFilters.period === "custom";
+    filters.period === "custom";
 
   return (
     <section className="font-jakarta flex min-h-screen bg-[#eef3f7] text-sibs-primary-1">
@@ -375,7 +336,7 @@ export default function WfmViewGraphsPage() {
           }
         />
 
-        <div className="sibs-scrollbar max-h-[calc(100vh-74px)] overflow-y-auto p-3 sm:p-4 lg:p-5">
+        <div className="sibs-scrollbar max-h-[calc(100vh-74px)] overflow-y-auto p-3 sm:p-3.5">
           {!isWfmUser ? (
             <div className="sibs-card p-6 text-center">
               <AlertCircle
@@ -393,60 +354,31 @@ export default function WfmViewGraphsPage() {
               </p>
             </div>
           ) : (
-            <div className="space-y-4">
-              <section className="sibs-card relative z-40 overflow-visible">
-                <div className="flex flex-col gap-3 border-b border-sibs-tertiary-10 bg-sibs-primary-3/30 px-5 py-4 lg:flex-row lg:items-center lg:justify-between">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <BarChart3
-                        size={20}
-                        className="text-sibs-primary-1"
-                      />
-
-                      <h1 className="m-0 text-lg font-extrabold text-sibs-primary-1">
-                        Calls KPI Performance
-                      </h1>
-                    </div>
-
-                    <p className="mt-1 mb-0 text-sm text-sibs-tertiary-5">
-                      Backend-aggregated KPI reporting from
-                      validated call data stored in PMS.
-                    </p>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={loadKpis}
-                    disabled={isLoading}
-                    className="inline-flex h-9 items-center justify-center gap-2 rounded-full border border-sibs-tertiary-8 bg-white px-4 text-sm font-bold text-sibs-primary-1 shadow-sm disabled:opacity-50"
-                  >
-                    <RefreshCw
-                      size={15}
-                      className={
-                        isLoading ? "animate-spin" : ""
-                      }
+            <div className="space-y-2">
+              <section className="sibs-card relative z-40 overflow-visible shadow-xs">
+                <div className="border-b border-sibs-tertiary-10 bg-sibs-primary-3/30 px-3.5 py-1.5">
+                  <div className="flex items-center gap-2">
+                    <BarChart3
+                      size={16}
+                      className="text-sibs-primary-1"
                     />
 
-                    Refresh
-                  </button>
+                    <h1 className="m-0 text-sm font-extrabold text-sibs-primary-1">
+                      Calls KPI Performance
+                    </h1>
+                  </div>
                 </div>
 
-                <div
-                  className={`grid grid-cols-1 gap-3 p-4 md:grid-cols-2 ${
-                    isCustomPeriod
-                      ? "xl:grid-cols-5"
-                      : "xl:grid-cols-4"
-                  } xl:items-end`}
-                >
+                <div className="grid grid-cols-1 gap-2 p-2.5 md:grid-cols-2 xl:grid-cols-4 xl:items-end">
                   <label className="block">
-                    <span className="mb-1.5 block text-[11px] font-extrabold uppercase text-sibs-tertiary-5">
+                    <span className="mb-0.5 block text-[9.5px] font-extrabold uppercase text-sibs-tertiary-5">
                       Account / Source
                     </span>
 
                     <select
-                      value={draftFilters.sourceSystem}
+                      value={filters.sourceSystem}
                       onChange={handleSourceChange}
-                      className="h-10 w-full rounded-lg border border-sibs-tertiary-8 bg-white px-3 text-sm font-semibold outline-none"
+                      className="h-8 w-full rounded-lg border border-sibs-tertiary-8 bg-white px-2.5 text-xs font-semibold outline-none"
                     >
                       {SOURCE_OPTIONS.map((option) => (
                         <option
@@ -460,14 +392,14 @@ export default function WfmViewGraphsPage() {
                   </label>
 
                   <label className="block">
-                    <span className="mb-1.5 block text-[11px] font-extrabold uppercase text-sibs-tertiary-5">
+                    <span className="mb-0.5 block text-[9.5px] font-extrabold uppercase text-sibs-tertiary-5">
                       Reporting Period
                     </span>
 
                     <select
-                      value={draftFilters.period}
+                      value={filters.period}
                       onChange={handlePeriodChange}
-                      className="h-10 w-full rounded-lg border border-sibs-tertiary-8 bg-white px-3 text-sm font-semibold outline-none"
+                      className="h-8 w-full rounded-lg border border-sibs-tertiary-8 bg-white px-2.5 text-xs font-semibold outline-none"
                     >
                       {PERIOD_OPTIONS.map((option) => (
                         <option
@@ -484,76 +416,53 @@ export default function WfmViewGraphsPage() {
                     <>
                       <WfmKpiDatePicker
                         label="From"
-                        value={draftFilters.from}
+                        value={filters.from}
                         onChange={(from) =>
-                          setDraftFilters(
-                            (current) => ({
-                              ...current,
-                              from,
-                            }),
-                          )
+                          setFilters((current) => ({
+                            ...current,
+                            from: from || "",
+                          }))
                         }
                       />
 
                       <WfmKpiDatePicker
                         label="To"
-                        value={draftFilters.to}
+                        value={filters.to}
                         onChange={(to) =>
-                          setDraftFilters(
-                            (current) => ({
-                              ...current,
-                              to,
-                            }),
-                          )
+                          setFilters((current) => ({
+                            ...current,
+                            to: to || "",
+                          }))
                         }
                       />
                     </>
                   ) : (
-                    <WfmKpiDatePicker
-                      label="Reference Date"
-                      value={draftFilters.referenceDate}
-                      onChange={(referenceDate) =>
-                        setDraftFilters(
-                          (current) => ({
-                            ...current,
-                            referenceDate,
-                          }),
-                        )
-                      }
-                    />
+                    <>
+                      <WfmKpiDatePicker
+                        label="Reference Date"
+                        value={filters.referenceDate}
+                        onChange={handleReferenceDateChange}
+                      />
+
+                      <div>
+                        <button
+                          type="button"
+                          onClick={handleLatestRange}
+                          disabled={isLoading}
+                          title="Use the latest available KPI date."
+                          className="inline-flex h-8 w-full cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-xs font-bold text-sibs-primary-1 shadow-xs transition hover:border-sibs-primary-1 hover:bg-sibs-primary-1 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+                        >
+                          <Clock size={12} className="shrink-0" />
+                          <span>Latest</span>
+                        </button>
+                      </div>
+                    </>
                   )}
-
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={handleApplyFilters}
-                      disabled={isLoading}
-                      className="h-10 flex-1 rounded-lg bg-sibs-primary-1 px-4 text-sm font-bold text-white disabled:opacity-50"
-                    >
-                      Apply
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={handleLatestRange}
-                      disabled={
-                        isLoading || isCustomPeriod
-                      }
-                      title={
-                        isCustomPeriod
-                          ? "Latest is available for weekly, monthly, quarterly, and annual reporting."
-                          : "Use the latest available KPI date."
-                      }
-                      className="h-10 rounded-lg border border-sibs-tertiary-8 bg-white px-3 text-xs font-bold text-sibs-primary-1 disabled:cursor-not-allowed disabled:opacity-40"
-                    >
-                      Latest
-                    </button>
-                  </div>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-sibs-tertiary-10 px-5 py-3 text-xs font-semibold text-sibs-tertiary-5">
-                  <span className="inline-flex items-center gap-1.5">
-                    <Database size={14} />
+                <div className="flex flex-wrap items-center gap-x-3.5 gap-y-1 border-t border-sibs-tertiary-10 px-3.5 py-1 text-[10px] font-semibold text-sibs-tertiary-5">
+                  <span className="inline-flex items-center gap-1">
+                    <Database size={11} />
 
                     {formatGrain(
                       dashboardData.filters?.dataGrain,
@@ -592,24 +501,16 @@ export default function WfmViewGraphsPage() {
                   {dashboardData.filters?.period !==
                   "custom" ? (
                     <span>
-                      Comparison: 6 periods including the
-                      selected/current period
+                      Comparison: 6 periods
                     </span>
                   ) : (
                     <span>
-                      Comparison: Custom daily range
+                      Comparison: Custom range
                     </span>
                   )}
 
                   <span>
-                    Available grains:{" "}
-                    {availableGrains.length
-                      ? availableGrains.join(", ")
-                      : "None returned"}
-                  </span>
-
-                  <span>
-                    Available date range:{" "}
+                    Available:{" "}
                     {dashboardData.availableDateRange
                       ?.minDate ||
                       "Not available"}{" "}
@@ -622,21 +523,33 @@ export default function WfmViewGraphsPage() {
               </section>
 
               {error ? (
-                <div className="sibs-card relative z-0 flex items-start gap-3 border border-red-200 p-4 text-sm text-red-700">
-                  <AlertCircle
-                    size={20}
-                    className="mt-0.5 shrink-0"
-                  />
+                <div className="sibs-card relative z-0 flex flex-col sm:flex-row sm:items-center justify-between gap-2 border border-red-200 bg-red-50/60 p-3 text-xs text-red-800 shadow-xs">
+                  <div className="flex items-start gap-3">
+                    <AlertCircle
+                      size={20}
+                      className="mt-0.5 shrink-0 text-red-600"
+                    />
 
-                  <div>
-                    <p className="m-0 font-bold">
-                      Unable to load KPI data
-                    </p>
+                    <div>
+                      <p className="m-0 font-bold text-red-900">
+                        {typeof error === "object" ? error.title : "No Call Records for This Date"}
+                      </p>
 
-                    <p className="mt-1 mb-0">
-                      {error}
-                    </p>
+                      <p className="mt-1 mb-0 text-xs sm:text-sm text-red-700">
+                        {typeof error === "object" ? error.message : error}
+                      </p>
+                    </div>
                   </div>
+
+                  {typeof error === "object" && error.isDateRangeError ? (
+                    <button
+                      type="button"
+                      onClick={handleLatestRange}
+                      className="inline-flex shrink-0 items-center justify-center rounded-lg border border-red-300 bg-white px-3.5 py-1.5 text-xs font-extrabold text-red-700 shadow-sm transition hover:bg-red-50"
+                    >
+                      Use Latest Available Date
+                    </button>
+                  ) : null}
                 </div>
               ) : null}
 
@@ -658,19 +571,19 @@ export default function WfmViewGraphsPage() {
                     </p>
                   </div>
                 </div>
-              ) : !error ? (
+              ) : (
                 <div className="relative z-0">
-                  {emptyDataMessage ? (
-                    <div className="sibs-card p-4 text-sm font-semibold text-sibs-tertiary-5">
+                  {emptyDataMessage && !error ? (
+                    <div className="sibs-card mb-4 p-4 text-sm font-semibold text-sibs-tertiary-5">
                       {emptyDataMessage}
                     </div>
                   ) : null}
 
                   <WfmCallKpiDashboard
-                    data={dashboardData}
+                    data={dashboardData || {}}
                   />
                 </div>
-              ) : null}
+              )}
             </div>
           )}
         </div>
