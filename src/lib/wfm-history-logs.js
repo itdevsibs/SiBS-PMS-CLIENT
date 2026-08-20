@@ -66,6 +66,7 @@ export function addWfmHistoryLog({
     userEmail: userEmail || null,
     userId: userId || null,
     logDate: nextLog.date,
+    createdAt: nextLog.timestamp,
   }).catch((error) => {
     console.warn("Failed to persist WFM history log to database:", error?.response?.data || error?.message || error);
   });

@@ -25,6 +25,7 @@ export async function recordWfmHistoryLog({
   userEmail,
   userId,
   logDate,
+  createdAt,
 }) {
   const response = await api.post("/wfm/history-logs", {
     action,
@@ -36,6 +37,7 @@ export async function recordWfmHistoryLog({
     userEmail,
     userId,
     logDate,
+    createdAt,
   });
 
   return response.data;
