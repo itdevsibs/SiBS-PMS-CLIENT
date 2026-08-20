@@ -20,8 +20,8 @@ import ImportProgressModal from "@/components/ui/import-progress-modal";
 import LoadingModal from "@/components/ui/loading-modal";
 import useDashboardPage from "@/hooks/useDashboardPage";
 import { getAuthDisplayName } from "@/lib/auth";
+import { recordWfmHistoryLogQuietly } from "@/lib/axios/wfm-history-logs";
 import { removeWfmGraphReportsForUpload } from "@/lib/wfm-graph-reports";
-import { addWfmHistoryLog } from "@/lib/wfm-history-logs";
 import {
   accountOptions,
   getRawDataCards,
@@ -29,6 +29,7 @@ import {
 import {
   deleteUsVisaImportBatch,
   getUsVisaImportBatchErrors,
+  getUsVisaImportHistory,
   uploadUsVisaImport,
 } from "@/lib/axios/us-visa-imports";
 
@@ -363,6 +364,40 @@ function getImportProfileForCard(card) {
   return "FUSECOM_SKILL_STATISTICS_INBOUND";
 }
 
+function mapBatchToUpload(batch) {
+  const isHerodash =
+    batch.importProfileId === 1 ||
+    batch.importProfileId === "HERO_SKILL_STATISTICS_INBOUND" ||
+    String(batch.sourceSystem).toUpperCase() === "HERODASH" ||
+    /hero/i.test(batch.sourceFilename || "");
+
+  const cardId = isHerodash ? "us-visa-raw-data-2" : "us-visa-raw-data-1";
+  const rawDataTitle = isHerodash ? "Herodash" : "Fusecom";
+  const account = "US VISA";
+  const uploadedAtMs = new Date(batch.createdAt).getTime() || Date.now();
+
+  return {
+    id: `batch-${batch.id}`,
+    batchId: batch.id,
+    batchCode: batch.batchCode,
+    cardId,
+    account,
+    rawDataTitle,
+    fileName: batch.sourceFilename,
+    fileSize: batch.fileSize || 0,
+    filePath: `${account}/${rawDataTitle}/${batch.sourceFilename}`,
+    uploadedAtMs,
+    uploadedAt: formatUploadTimestamp(new Date(uploadedAtMs)),
+    batchStatus: batch.status || "COMPLETED",
+    totalRows: batch.totalRows || 0,
+    validRows: batch.validRows || 0,
+    invalidRows: batch.invalidRows || 0,
+    duplicateRows: batch.duplicateRows || 0,
+    warningRows: batch.warningRows || 0,
+    uploadedBy: batch.uploadedBy || null,
+  };
+}
+
 function WfmImportDataPage() {
   const dashboard = useDashboardPage();
   const userName = dashboard.userName || getAuthDisplayName(dashboard.authUser);
@@ -474,6 +509,34 @@ function WfmImportDataPage() {
   useEffect(() => {
     writeJsonCache(RAW_DATA_UPLOADS_KEY, uploadsByCard);
   }, [uploadsByCard]);
+
+  const fetchDatabaseUploads = async () => {
+    try {
+      const response = await getUsVisaImportHistory({ limit: 100 });
+      if (response?.data && Array.isArray(response.data)) {
+        const dbUploads = response.data.map(mapBatchToUpload);
+
+        setUploadsByCard((current) => {
+          const updated = { ...current };
+
+          const heroUploads = dbUploads.filter((u) => u.cardId === "us-visa-raw-data-2");
+          const fuseUploads = dbUploads.filter((u) => u.cardId === "us-visa-raw-data-1");
+
+          updated["us-visa-raw-data-2"] = heroUploads;
+          updated["us-visa-raw-data-1"] = fuseUploads;
+
+          writeJsonCache(RAW_DATA_UPLOADS_KEY, updated);
+          return updated;
+        });
+      }
+    } catch (error) {
+      console.warn("Could not sync database import batches:", error?.message);
+    }
+  };
+
+  useEffect(() => {
+    fetchDatabaseUploads();
+  }, []);
 
   const handleOpenUsVisaErrors = async (batchId) => {
     const targetBatchId = batchId || usVisaBatchResult?.id;
@@ -606,16 +669,7 @@ function WfmImportDataPage() {
         };
       });
 
-      addWfmHistoryLog({
-        action: "imported",
-        account: card.account,
-        fileName: file.name,
-        rawDataTitle: card.title,
-        message: `Imported ${file.name} to ${card.title}`,
-        userName,
-        userEmail: dashboard.authUser?.email || null,
-        userId: dashboard.authUser?.id || dashboard.authUser?.sibs_id || null,
-      });
+      void fetchDatabaseUploads();
 
       if (batchResult) {
         setUsVisaBatchResult(batchResult);
@@ -626,6 +680,14 @@ function WfmImportDataPage() {
         rawDataTitle: card.title,
         fileName: file.name,
         batch: batchResult,
+      });
+
+      void recordWfmHistoryLogQuietly({
+        action: "imported",
+        account: card.account,
+        rawDataTitle: card.title,
+        fileName: file.name,
+        message: `Imported ${file.name} to ${card.account} - ${card.title}.`,
       });
     } catch (error) {
       console.error("Import failed:", error);
@@ -678,21 +740,27 @@ function WfmImportDataPage() {
       ).filter((upload) => upload.id !== selectedUploadToRemove.id),
     }));
 
-    addWfmHistoryLog({
-      action: "removed",
-      account: activeOpenCard?.account,
-      fileName: selectedUploadToRemove.fileName,
-      rawDataTitle: activeOpenCard?.title || selectedUploadToRemove.rawDataTitle,
-      message: `Removed ${selectedUploadToRemove.fileName} from ${
-        activeOpenCard?.title || selectedUploadToRemove.rawDataTitle
-      }`,
-      userName,
-      userEmail: dashboard.authUser?.email || null,
-      userId: dashboard.authUser?.id || dashboard.authUser?.sibs_id || null,
-    });
+    void fetchDatabaseUploads();
 
     setIsRemovingUpload(false);
     setRemovedUpload(selectedUploadToRemove);
+
+    void recordWfmHistoryLogQuietly({
+      action: "removed",
+      account: selectedUploadToRemove.account || activeOpenCard?.account,
+      rawDataTitle:
+        selectedUploadToRemove.rawDataTitle ||
+        activeOpenCard?.title ||
+        "Raw Data",
+      fileName: selectedUploadToRemove.fileName,
+      message: `Removed ${selectedUploadToRemove.fileName} from ${
+        selectedUploadToRemove.account || activeOpenCard?.account || "WFM"
+      } - ${
+        selectedUploadToRemove.rawDataTitle ||
+        activeOpenCard?.title ||
+        "Raw Data"
+      }.`,
+    });
   };
 
   return (
