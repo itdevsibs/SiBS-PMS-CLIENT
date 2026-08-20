@@ -17,6 +17,7 @@ function formatLogTime(timestamp) {
   return new Intl.DateTimeFormat("en-US", {
     dateStyle: "medium",
     timeStyle: "short",
+    timeZone: "Asia/Singapore",
   }).format(new Date(timestamp));
 }
 
