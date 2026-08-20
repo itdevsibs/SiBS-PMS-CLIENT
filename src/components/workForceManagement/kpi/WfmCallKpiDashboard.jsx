@@ -27,63 +27,64 @@ function formatDuration(seconds) {
 
 function KpiCard({ icon: Icon, label, value, hint, status }) {
   return (
-    <article className="sibs-card min-w-0 p-4">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="m-0 text-[11px] font-extrabold uppercase tracking-wide text-sibs-tertiary-5">
-            {label}
-          </p>
-
-          <p className="mt-2 mb-0 text-2xl font-extrabold text-sibs-primary-1">
-            {value}
-          </p>
-
-          {hint ? (
-            <p className="mt-1 mb-0 text-xs font-medium text-sibs-tertiary-5">
-              {hint}
-            </p>
-          ) : null}
-        </div>
-
-        <div className="rounded-xl bg-sibs-primary-3/50 p-2.5 text-sibs-primary-1">
-          <Icon size={20} />
+    <article className="sibs-card min-w-0 px-3.5 py-2.5 shadow-xs flex flex-col justify-center gap-1">
+      <div className="flex items-center justify-between gap-1.5">
+        <p className="m-0 text-[10.5px] font-extrabold uppercase tracking-wider text-sibs-tertiary-5 truncate">
+          {label}
+        </p>
+        <div className="rounded-md bg-sibs-primary-3/50 p-1.5 text-sibs-primary-1 shrink-0">
+          <Icon size={14} />
         </div>
       </div>
 
-      {status ? (
-        <div
-          className={`mt-3 inline-flex rounded-full px-2.5 py-1 text-[11px] font-bold ${status.className}`}
-        >
-          {status.label}
-        </div>
-      ) : null}
+      <div className="flex flex-wrap items-baseline gap-1.5 min-w-0">
+        <span className="text-2xl font-black text-sibs-primary-1 leading-none">
+          {value}
+        </span>
+
+        {hint ? (
+          <span className="truncate text-[11px] font-medium text-sibs-tertiary-5">
+            {hint}
+          </span>
+        ) : null}
+
+        {status ? (
+          <span
+            className={`inline-flex rounded-full px-2 py-0.5 text-[9px] font-bold ${status.className} ml-auto`}
+          >
+            {status.label}
+          </span>
+        ) : null}
+      </div>
     </article>
   );
 }
 
 function ChartShell({ title, subtitle, children }) {
   return (
-    <article className="sibs-card overflow-hidden">
-      <div className="border-b border-sibs-tertiary-10 bg-sibs-primary-3/30 px-4 py-3 sm:px-5">
-        <h3 className="m-0 text-sm font-extrabold uppercase tracking-[0.18em] text-sibs-primary-1">
+    <article className="sibs-card overflow-hidden flex flex-col h-full shadow-xs">
+      <div className="border-b border-sibs-tertiary-10 bg-sibs-primary-3/30 px-4 py-2.5">
+        <h3 className="m-0 text-xs font-extrabold uppercase tracking-[0.14em] text-sibs-primary-1">
           {title}
         </h3>
 
         {subtitle ? (
-          <p className="mt-1 mb-0 text-xs text-sibs-tertiary-5">
+          <p className="mt-0.5 mb-0 text-[10.5px] text-sibs-tertiary-5 truncate">
             {subtitle}
           </p>
         ) : null}
       </div>
 
-      <div className="overflow-x-auto p-4 sm:p-5">{children}</div>
+      <div className="p-3.5 flex-1 flex flex-col justify-between overflow-x-auto">
+        {children}
+      </div>
     </article>
   );
 }
 
 function EmptyChart({ message = "No KPI data is available for this reporting range." }) {
   return (
-    <div className="flex min-h-56 items-center justify-center rounded-xl border border-dashed border-sibs-tertiary-8 bg-sibs-tertiary-10/30 px-4 text-center text-sm font-semibold text-sibs-tertiary-5">
+    <div className="flex min-h-64 items-center justify-center rounded-xl border border-dashed border-sibs-tertiary-8 bg-sibs-tertiary-10/30 px-3 text-center text-xs font-semibold text-sibs-tertiary-5">
       {message}
     </div>
   );
@@ -115,29 +116,29 @@ function VolumeChart({ series }) {
 
   return (
     <div className="w-full min-w-0">
-      <div className="mb-4 flex flex-wrap gap-4 text-xs font-bold text-sibs-tertiary-5">
-        <span>
-          <i className="mr-1.5 inline-block h-2.5 w-2.5 rounded-full bg-[#0b3b68]" />
+      <div className="mb-3 flex flex-wrap gap-3 text-xs font-bold text-sibs-tertiary-5">
+        <span className="inline-flex items-center gap-1.5">
+          <i className="inline-block h-2.5 w-2.5 rounded-full bg-[#0b3b68]" />
           Volume
         </span>
 
-        <span>
-          <i className="mr-1.5 inline-block h-2.5 w-2.5 rounded-full bg-[#2f6f9f]" />
+        <span className="inline-flex items-center gap-1.5">
+          <i className="inline-block h-2.5 w-2.5 rounded-full bg-[#2f6f9f]" />
           Handled
         </span>
 
-        <span>
-          <i className="mr-1.5 inline-block h-2.5 w-2.5 rounded-full bg-[#4c9aca]" />
+        <span className="inline-flex items-center gap-1.5">
+          <i className="inline-block h-2.5 w-2.5 rounded-full bg-[#4c9aca]" />
           Handled w/SLA
         </span>
       </div>
 
-      <div className="flex h-64 w-full min-w-0">
-        <div className="relative h-52 w-14 shrink-0 border-r border-sibs-tertiary-8 pr-2">
+      <div className="flex h-[340px] w-full min-w-0">
+        <div className="relative h-[270px] w-12 shrink-0 border-r border-sibs-tertiary-8 pr-1.5">
           {axisTicks.map((tick, index) => (
             <span
               key={`${tick}-${index}`}
-              className="absolute right-2 -translate-y-1/2 text-[10px] font-semibold text-sibs-tertiary-5"
+              className="absolute right-1.5 -translate-y-1/2 text-[10px] font-semibold text-sibs-tertiary-5"
               style={{
                 top: `${(index / (axisTicks.length - 1)) * 100}%`,
               }}
@@ -148,7 +149,7 @@ function VolumeChart({ series }) {
         </div>
 
         <div className="relative min-w-0 flex-1">
-          <div className="pointer-events-none absolute inset-x-0 top-0 h-52">
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-[270px]">
             {axisTicks.map((tick, index) => (
               <div
                 key={`${tick}-${index}`}
@@ -160,13 +161,13 @@ function VolumeChart({ series }) {
             ))}
           </div>
 
-          <div className="relative flex h-64 min-w-0 items-end gap-3 border-b border-sibs-tertiary-8 px-2 sm:gap-4 md:gap-5 xl:gap-7">
+          <div className="relative flex h-[340px] min-w-0 items-end gap-1.5 border-b border-sibs-tertiary-8 px-1 sm:gap-2.5">
             {series.map((item, periodIndex) => (
               <div
                 key={item.key}
-                className="group/period flex min-w-0 flex-1 flex-col items-center justify-end px-0.5 sm:px-1"
+                className="group/period flex min-w-0 flex-1 flex-col items-center justify-end px-0.5"
               >
-                <div className="flex h-52 w-full min-w-0 items-end justify-center gap-1 sm:gap-1.5 md:gap-2">
+                <div className="flex h-[270px] w-full min-w-0 items-end justify-center gap-1 sm:gap-1.5">
                   {buildVolumeBarItems(item).map(
                     ({ metric, value, className }) => {
                       const numericValue = Number(value || 0);
@@ -176,7 +177,7 @@ function VolumeChart({ series }) {
                           ? Math.max(2, (numericValue / axisMax) * 100)
                           : 0;
 
-                      const tooltipIsNearTop = heightPercent >= 72;
+                      const tooltipIsNearTop = heightPercent >= 70;
 
                       return (
                         <div
@@ -184,23 +185,25 @@ function VolumeChart({ series }) {
                           className="group/bar flex h-full min-w-0 flex-1 items-end justify-center"
                         >
                           <div
-                            className="relative flex h-full w-full max-w-[44px] items-end justify-center"
+                            className="relative flex h-full w-full max-w-[22px] items-end justify-center"
                             aria-label={`${item.label} ${metric}: ${formatNumber(
                               numericValue,
                             )}`}
                           >
                             {numericValue > 0 ? (
                               <span
-                                className="pointer-events-none absolute left-1/2 z-10 -translate-x-1/2 whitespace-nowrap text-[10px] font-extrabold text-sibs-primary-1 transition-all duration-200 group-hover/bar:-translate-y-1"
+                                className="pointer-events-none absolute left-1/2 z-10 -translate-x-1/2 whitespace-nowrap text-[10px] font-black text-sibs-primary-1 transition-all duration-200 group-hover/bar:-translate-y-0.5"
                                 style={{
-                                  bottom: `calc(${heightPercent}% + 5px)`,
+                                  bottom: `calc(${heightPercent}% + 4px)`,
                                 }}
                               >
-                                {formatNumber(numericValue)}
+                                {numericValue >= 1000
+                                  ? `${(numericValue / 1000).toFixed(1)}k`
+                                  : numericValue}
                               </span>
                             ) : null}
 
-                            {/* White Card Tooltip (matches LineChart style, clamped to avoid scrollbar) */}
+                            {/* Tooltip */}
                             <div
                               className={`pointer-events-none absolute z-30 hidden min-w-[160px] rounded-xl border border-sibs-tertiary-10/80 bg-white/95 p-2.5 shadow-xl backdrop-blur-md group-hover/bar:block ${
                                 periodIndex >= series.length - 1
@@ -212,7 +215,7 @@ function VolumeChart({ series }) {
                               style={
                                 tooltipIsNearTop
                                   ? {
-                                      top: "8px",
+                                      top: "6px",
                                     }
                                   : {
                                       bottom: `calc(${heightPercent}% + 28px)`,
@@ -231,7 +234,7 @@ function VolumeChart({ series }) {
                               <div className="mt-1.5 flex items-center justify-between text-xs">
                                 <span className="flex items-center gap-1.5 font-bold text-slate-600">
                                   <span
-                                    className={`h-2 w-2 rounded-full ${
+                                    className={`h-2.5 w-2.5 rounded-full ${
                                       metric === "Volume"
                                         ? "bg-[#0b3b68]"
                                         : metric === "Handled"
@@ -248,7 +251,7 @@ function VolumeChart({ series }) {
 
                               {metric !== "Volume" &&
                                 Number(item.callsOffered || 0) > 0 && (
-                                  <div className="mt-1 flex items-center justify-between border-t border-slate-100 pt-1 text-[10.5px]">
+                                  <div className="mt-1 flex items-center justify-between border-t border-slate-100 pt-1 text-[11px]">
                                     <span className="font-semibold text-slate-500">
                                       Rate:
                                     </span>
@@ -264,7 +267,7 @@ function VolumeChart({ series }) {
                             </div>
 
                             <div
-                              className={`w-full max-w-[40px] rounded-t-md shadow-sm transition-all duration-200 ease-out group-hover/bar:-translate-y-1 group-hover/bar:brightness-110 group-hover/bar:shadow-md ${className}`}
+                              className={`w-full rounded-t-sm shadow-xs transition-all duration-200 ease-out group-hover/bar:-translate-y-0.5 group-hover/bar:brightness-110 ${className}`}
                               style={{
                                 height: `${heightPercent}%`,
                               }}
@@ -276,15 +279,15 @@ function VolumeChart({ series }) {
                   )}
                 </div>
 
-                <div className="mt-2 w-full px-0.5 py-1.5 text-center">
+                <div className="mt-2 w-full px-0.5 text-center">
                   <p
-                    className="m-0 truncate text-[11px] font-extrabold text-sibs-primary-1"
+                    className="m-0 truncate text-[10.5px] font-extrabold text-sibs-primary-1 leading-tight"
                     title={item.label}
                   >
                     {item.label}
                   </p>
 
-                  <p className="mt-0.5 mb-0 text-[9px] font-bold uppercase tracking-[0.12em] text-sibs-tertiary-5">
+                  <p className="m-0 text-[9px] font-semibold uppercase text-sibs-tertiary-5">
                     Period {periodIndex + 1}
                   </p>
                 </div>
@@ -328,12 +331,12 @@ function LineChart({ series, target = 90 }) {
   }
 
   const numericTarget = Number(target || 90);
-  const width = Math.max(680, containerWidth || 720);
-  const height = 270;
-  const paddingLeft = 56;
-  const paddingRight = 84;
-  const chartTop = 32;
-  const chartBottom = 205;
+  const width = Math.max(340, containerWidth || 400);
+  const height = 340;
+  const paddingLeft = 36;
+  const paddingRight = 50;
+  const chartTop = 26;
+  const chartBottom = 275;
   const usableWidth = width - paddingLeft - paddingRight;
 
   const getX = (index) =>
@@ -356,7 +359,6 @@ function LineChart({ series, target = 90 }) {
     y: getY(item.serviceLevelPct),
   }));
 
-  // Smooth Bezier path generator with clamping
   const getCurvedPath = (pts) => {
     if (!pts || pts.length === 0) return "";
     if (pts.length === 1) return `M ${pts[0].x},${pts[0].y}`;
@@ -403,7 +405,6 @@ function LineChart({ series, target = 90 }) {
 
   const targetY = getY(numericTarget);
 
-  // Active / Latest period for header summary
   const activeItem =
     hoveredIndex !== null ? series[hoveredIndex] : series[series.length - 1];
 
@@ -413,52 +414,38 @@ function LineChart({ series, target = 90 }) {
 
   return (
     <div ref={containerRef} className="w-full min-w-0 select-none">
-      {/* Chart Top Bar / Legends & Quick Status */}
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-sibs-tertiary-10/70 pb-3">
-        <div className="flex flex-wrap items-center gap-2.5 sm:gap-4 text-xs font-bold text-sibs-tertiary-5">
-          <div className="flex items-center gap-2 rounded-lg bg-blue-50/80 px-2.5 py-1 text-[#0b3b68] ring-1 ring-blue-100">
-            <span className="h-2.5 w-2.5 rounded-full bg-[#0b3b68] shadow-sm" />
-            <span className="font-extrabold">Answer Rate</span>
-            <span className="text-xs font-black text-sibs-primary-1">
-              {Number(activeItem?.callsOffered || 0) > 0 ? formatPercent(activeAnswer) : "--"}
-            </span>
-          </div>
+      {/* Legends */}
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2 text-xs font-bold text-sibs-tertiary-5">
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="inline-flex items-center gap-1.5 text-[#0b3b68]">
+            <i className="h-2.5 w-2.5 rounded-full bg-[#0b3b68]" />
+            Answer: {Number(activeItem?.callsOffered || 0) > 0 ? formatPercent(activeAnswer) : "--"}
+          </span>
 
-          <div className="flex items-center gap-2 rounded-lg bg-cyan-50/80 px-2.5 py-1 text-[#0284c7] ring-1 ring-cyan-100">
-            <span className="h-2.5 w-2.5 rounded-full bg-[#0284c7] shadow-sm" />
-            <span className="font-extrabold">Service Level (SL)</span>
-            <span className="text-xs font-black text-sibs-primary-1">
-              {Number(activeItem?.callsOffered || 0) > 0 ? formatPercent(activeSl) : "--"}
-            </span>
-          </div>
+          <span className="inline-flex items-center gap-1.5 text-[#0284c7]">
+            <i className="h-2.5 w-2.5 rounded-full bg-[#0284c7]" />
+            SL: {Number(activeItem?.callsOffered || 0) > 0 ? formatPercent(activeSl) : "--"}
+          </span>
 
-          <div className="flex items-center gap-1.5 rounded-lg bg-red-50/80 px-2.5 py-1 text-red-600 ring-1 ring-red-100">
-            <span className="inline-block h-0.5 w-3.5 bg-red-500 rounded" />
-            <span className="font-extrabold">SL Target ({numericTarget}%)</span>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2 text-xs">
-          <span
-            className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-bold ${
-              Number(activeItem?.callsOffered || 0) === 0
-                ? "bg-slate-100 text-slate-600"
-                : isTargetMet
-                ? "bg-emerald-100 text-emerald-800"
-                : "bg-amber-100 text-amber-800"
-            }`}
-          >
-            {activeItem?.label ? `${activeItem.label}: ` : ""}
-            {Number(activeItem?.callsOffered || 0) === 0
-              ? "No Call Volume"
-              : isTargetMet
-              ? "SL Target Met"
-              : "Below SL Target"}
+          <span className="inline-flex items-center gap-1 text-red-500">
+            <i className="inline-block h-0.5 w-3.5 bg-red-500" />
+            Tgt: {numericTarget}%
           </span>
         </div>
+
+        <span
+          className={`inline-flex rounded-full px-2.5 py-0.5 text-[9.5px] font-bold ${
+            Number(activeItem?.callsOffered || 0) === 0
+              ? "bg-slate-100 text-slate-600"
+              : isTargetMet
+              ? "bg-emerald-100 text-emerald-800"
+              : "bg-amber-100 text-amber-800"
+          }`}
+        >
+          {isTargetMet ? "✓ Target Met" : "Below Target"}
+        </span>
       </div>
 
-      {/* Interactive Chart Canvas */}
       <div
         className="relative overflow-x-auto"
         onMouseLeave={() => setHoveredIndex(null)}
@@ -472,7 +459,6 @@ function LineChart({ series, target = 90 }) {
             aria-label="Answer rate and service level trend"
           >
             <defs>
-              {/* Answer Rate Gradient Area */}
               <linearGradient
                 id="answerRateGradient"
                 x1="0"
@@ -480,34 +466,17 @@ function LineChart({ series, target = 90 }) {
                 x2="0"
                 y2="1"
               >
-                <stop offset="0%" stopColor="#0b3b68" stopOpacity="0.18" />
-                <stop offset="90%" stopColor="#0b3b68" stopOpacity="0.01" />
+                <stop offset="0%" stopColor="#0b3b68" stopOpacity="0.25" />
+                <stop offset="100%" stopColor="#0b3b68" stopOpacity="0.0" />
               </linearGradient>
 
-              {/* Service Level Gradient Area */}
               <linearGradient id="slGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#0284c7" stopOpacity="0.22" />
-                <stop offset="90%" stopColor="#0284c7" stopOpacity="0.01" />
+                <stop offset="0%" stopColor="#0284c7" stopOpacity="0.30" />
+                <stop offset="100%" stopColor="#0284c7" stopOpacity="0.0" />
               </linearGradient>
-
-              {/* Drop Shadow for active markers */}
-              <filter
-                id="markerShadow"
-                x="-30%"
-                y="-30%"
-                width="160%"
-                height="160%"
-              >
-                <feDropShadow
-                  dx="0"
-                  dy="1.5"
-                  stdDeviation="1.5"
-                  floodOpacity="0.25"
-                />
-              </filter>
             </defs>
 
-            {/* Horizontal Gridlines & Y-Axis Percentages */}
+            {/* Gridlines */}
             {[0, 25, 50, 75, 100].map((tick) => {
               const tickY = getY(tick);
               return (
@@ -523,7 +492,7 @@ function LineChart({ series, target = 90 }) {
                   />
                   <text
                     x={paddingLeft - 8}
-                    y={tickY + 3.5}
+                    y={tickY + 4}
                     textAnchor="end"
                     fontSize="10"
                     fontWeight="600"
@@ -535,7 +504,7 @@ function LineChart({ series, target = 90 }) {
               );
             })}
 
-            {/* SL Target Reference Line */}
+            {/* Target Line */}
             <g>
               <line
                 x1={paddingLeft}
@@ -543,33 +512,32 @@ function LineChart({ series, target = 90 }) {
                 y1={targetY}
                 y2={targetY}
                 stroke="#ef4444"
-                strokeWidth="1.75"
-                strokeDasharray="6 4"
+                strokeWidth="1.5"
+                strokeDasharray="5 3"
               />
-              {/* Target Badge on Right Axis */}
               <rect
-                x={width - paddingRight + 6}
+                x={width - paddingRight + 5}
                 y={targetY - 9}
-                width={70}
+                width={44}
                 height={18}
-                rx={4}
+                rx={3}
                 fill="#fee2e2"
                 stroke="#fca5a5"
                 strokeWidth="1"
               />
               <text
-                x={width - paddingRight + 41}
-                y={targetY + 3.5}
+                x={width - paddingRight + 27}
+                y={targetY + 4}
                 textAnchor="middle"
                 fontSize="9.5"
                 fontWeight="800"
                 fill="#b91c1c"
               >
-                Target {numericTarget}%
+                {numericTarget}%
               </text>
             </g>
 
-            {/* Gradient Area Fills */}
+            {/* Fills */}
             <path
               d={answerArea}
               fill="url(#answerRateGradient)"
@@ -581,254 +549,131 @@ function LineChart({ series, target = 90 }) {
               className="pointer-events-none"
             />
 
-            {/* Smooth Spline Lines */}
+            {/* Lines */}
             <path
               d={answerCurve}
               fill="none"
               stroke="#0b3b68"
-              strokeWidth="3"
+              strokeWidth="2.75"
               strokeLinecap="round"
               strokeLinejoin="round"
-              className="pointer-events-none"
             />
             <path
               d={slCurve}
               fill="none"
               stroke="#0284c7"
-              strokeWidth="3"
+              strokeWidth="2.75"
               strokeLinecap="round"
               strokeLinejoin="round"
-              className="pointer-events-none"
             />
 
-            {/* Vertical Guide Line on Hover */}
-            {hoveredIndex !== null && (
-              <line
-                x1={getX(hoveredIndex)}
-                x2={getX(hoveredIndex)}
-                y1={chartTop}
-                y2={chartBottom}
-                stroke="#94a3b8"
-                strokeWidth="1.5"
-                strokeDasharray="3 3"
-                className="pointer-events-none"
-              />
-            )}
-
-            {/* Data Points & X-Axis Labels */}
+            {/* Data Points */}
             {series.map((item, index) => {
-              const x = getX(index);
-              const answerY = getY(item.answerRatePct);
-              const slY = getY(item.serviceLevelPct);
+              const ptAnswer = answerPts[index];
+              const ptSl = slPts[index];
+              const hasData = Number(item.callsOffered || 0) > 0;
               const isHovered = hoveredIndex === index;
-              const isLatest = index === series.length - 1 && hoveredIndex === null;
-              const hasNoCalls = Number(item.callsOffered || 0) === 0;
 
               return (
-                <g key={item.key || index} className="transition-all duration-200">
-                  {/* Answer % Point */}
-                  <circle
-                    cx={x}
-                    cy={answerY}
-                    r={isHovered ? "6" : isLatest ? "5" : "4"}
-                    fill="#0b3b68"
-                    stroke="#ffffff"
-                    strokeWidth={isHovered ? "2.5" : "2"}
-                    filter="url(#markerShadow)"
-                    className="transition-all duration-150"
-                  />
+                <g key={item.key || index}>
+                  {isHovered ? (
+                    <line
+                      x1={ptAnswer.x}
+                      x2={ptAnswer.x}
+                      y1={chartTop}
+                      y2={chartBottom}
+                      stroke="#94a3b8"
+                      strokeWidth="1"
+                      strokeDasharray="2 2"
+                    />
+                  ) : null}
 
-                  {/* SL % Point */}
-                  <circle
-                    cx={x}
-                    cy={slY}
-                    r={isHovered ? "6" : isLatest ? "5" : "4"}
-                    fill="#0284c7"
-                    stroke="#ffffff"
-                    strokeWidth={isHovered ? "2.5" : "2"}
-                    filter="url(#markerShadow)"
-                    className="transition-all duration-150"
-                  />
-
-                  {/* Value Badges on Hovered / Latest Active Point */}
-                  {(isHovered || isLatest) && (
-                    <g className="pointer-events-none">
-                      <rect
-                        x={x - 22}
-                        y={Math.min(answerY, slY) === answerY ? answerY - 22 : answerY + 8}
-                        width={44}
-                        height={16}
-                        rx={3}
+                  {hasData ? (
+                    <>
+                      <circle
+                        cx={ptAnswer.x}
+                        cy={ptAnswer.y}
+                        r={isHovered ? 5.5 : 4}
                         fill="#0b3b68"
+                        stroke="#ffffff"
+                        strokeWidth="1.5"
                       />
-                      <text
-                        x={x}
-                        y={Math.min(answerY, slY) === answerY ? answerY - 11 : answerY + 19}
-                        textAnchor="middle"
-                        fontSize="9"
-                        fontWeight="800"
-                        fill="#ffffff"
-                      >
-                        {formatNumber(item.answerRatePct, 1)}%
-                      </text>
-
-                      <rect
-                        x={x - 22}
-                        y={Math.min(answerY, slY) === slY ? slY - 22 : slY + 8}
-                        width={44}
-                        height={16}
-                        rx={3}
+                      <circle
+                        cx={ptSl.x}
+                        cy={ptSl.y}
+                        r={isHovered ? 5.5 : 4}
                         fill="#0284c7"
+                        stroke="#ffffff"
+                        strokeWidth="1.5"
                       />
-                      <text
-                        x={x}
-                        y={Math.min(answerY, slY) === slY ? slY - 11 : slY + 19}
-                        textAnchor="middle"
-                        fontSize="9"
-                        fontWeight="800"
-                        fill="#ffffff"
-                      >
-                        {formatNumber(item.serviceLevelPct, 1)}%
-                      </text>
-                    </g>
-                  )}
+                    </>
+                  ) : null}
 
-                  {/* X-Axis Label */}
+                  <rect
+                    x={ptAnswer.x - usableWidth / (series.length * 2)}
+                    y={chartTop}
+                    width={usableWidth / series.length}
+                    height={chartBottom - chartTop + 30}
+                    fill="transparent"
+                    className="cursor-pointer"
+                    onMouseEnter={() => setHoveredIndex(index)}
+                  />
+
+                  {/* X Axis Label */}
                   <text
-                    x={x}
-                    y={chartBottom + 20}
+                    x={ptAnswer.x}
+                    y={chartBottom + 18}
                     textAnchor="middle"
-                    fontSize={isHovered || isLatest ? "11" : "10.5"}
-                    fontWeight={isHovered || isLatest ? "800" : "700"}
-                    fill={isHovered || isLatest ? "#0b3b68" : "#475569"}
+                    fontSize="10.5"
+                    fontWeight="700"
+                    fill="#1e293b"
                   >
                     {item.label}
                   </text>
-
-                  {/* Sub-label showing calls or "No calls" */}
                   <text
-                    x={x}
+                    x={ptAnswer.x}
                     y={chartBottom + 32}
                     textAnchor="middle"
                     fontSize="9"
                     fontWeight="600"
-                    fill={hasNoCalls ? "#94a3b8" : "#64748b"}
+                    fill="#94a3b8"
                   >
-                    {hasNoCalls ? "0 calls" : `${formatNumber(item.callsOffered)} calls`}
+                    Period {index + 1}
                   </text>
                 </g>
               );
             })}
-
-            {/* Mathematically precise SVG hover capture columns */}
-            {series.map((item, index) => {
-              const currentX = getX(index);
-              const prevX = index > 0 ? getX(index - 1) : 0;
-              const nextX = index < series.length - 1 ? getX(index + 1) : width;
-
-              const startX = index === 0 ? 0 : (prevX + currentX) / 2;
-              const endX = index === series.length - 1 ? width : (currentX + nextX) / 2;
-              const rectWidth = Math.max(1, endX - startX);
-
-              return (
-                <rect
-                  key={`hover-col-${item.key || index}`}
-                  x={startX}
-                  y={0}
-                  width={rectWidth}
-                  height={height}
-                  fill="transparent"
-                  className="cursor-pointer"
-                  onMouseEnter={() => setHoveredIndex(index)}
-                  onMouseMove={() => setHoveredIndex(index)}
-                  onClick={() => setHoveredIndex(index)}
-                />
-              );
-            })}
           </svg>
 
-          {/* Floating Tooltip Card */}
-          {hoveredIndex !== null && (
+          {/* Hover Tooltip */}
+          {hoveredIndex !== null && series[hoveredIndex] && (
             <div
-              className="pointer-events-none absolute z-30 transition-all duration-150 ease-out"
+              className="pointer-events-none absolute z-30 min-w-[160px] rounded-xl border border-sibs-tertiary-10/80 bg-white/95 p-2.5 shadow-xl backdrop-blur-md"
               style={{
-                left: `${getX(hoveredIndex)}px`,
-                top: "10px",
-                transform:
-                  hoveredIndex >= series.length - 2
-                    ? "translateX(-100%) translateX(24px)"
-                    : hoveredIndex <= 1
-                    ? "translateX(-16px)"
-                    : "translateX(-50%)",
+                left: `${Math.min(
+                  Math.max(10, answerPts[hoveredIndex]?.x - 80),
+                  width - 175,
+                )}px`,
+                top: "14px",
               }}
             >
-              <div className="min-w-[210px] rounded-xl border border-sibs-tertiary-10/80 bg-white/95 p-3 shadow-xl backdrop-blur-md">
-                <div className="flex items-center justify-between border-b border-slate-100 pb-1.5">
-                  <span className="text-xs font-black text-sibs-primary-1">
-                    {series[hoveredIndex].label}
-                  </span>
-                  <span className="text-[10px] font-bold text-sibs-tertiary-5">
-                    {formatNumber(series[hoveredIndex].callsOffered)} calls offered
-                  </span>
+              <div className="flex items-center justify-between border-b border-slate-100 pb-1">
+                <span className="text-xs font-black text-sibs-primary-1">
+                  {series[hoveredIndex].label}
+                </span>
+                <span className="text-[10px] font-bold text-sibs-tertiary-5">
+                  Period {hoveredIndex + 1}
+                </span>
+              </div>
+
+              <div className="mt-1.5 space-y-1 text-[11px]">
+                <div className="flex items-center justify-between font-bold text-[#0b3b68]">
+                  <span>Answer %:</span>
+                  <span>{formatPercent(series[hoveredIndex].answerRatePct)}</span>
                 </div>
-
-                <div className="mt-2 space-y-1.5">
-                  {Number(series[hoveredIndex].callsOffered || 0) > 0 ? (
-                    <>
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="flex items-center gap-1.5 font-bold text-[#0b3b68]">
-                          <span className="h-2 w-2 rounded-full bg-[#0b3b68]" />
-                          Answer Rate:
-                        </span>
-                        <span className="font-extrabold text-sibs-primary-1">
-                          {formatPercent(series[hoveredIndex].answerRatePct)}
-                        </span>
-                      </div>
-
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="flex items-center gap-1.5 font-bold text-[#0284c7]">
-                          <span className="h-2 w-2 rounded-full bg-[#0284c7]" />
-                          Service Level:
-                        </span>
-                        <span className="font-extrabold text-sibs-primary-1">
-                          {formatPercent(series[hoveredIndex].serviceLevelPct)}
-                        </span>
-                      </div>
-
-                      <div className="flex items-center justify-between text-xs border-t border-slate-100 pt-1 text-[11px]">
-                        <span className="font-semibold text-slate-500">Handled:</span>
-                        <span className="font-bold text-slate-700">
-                          {formatNumber(series[hoveredIndex].callsHandled)} (
-                          {formatNumber(series[hoveredIndex].handledWithinSla)} w/SLA)
-                        </span>
-                      </div>
-
-                      <div className="flex items-center justify-between text-[11px] pt-0.5">
-                        <span className="font-semibold text-slate-500">Target ({numericTarget}%):</span>
-                        <span
-                          className={`font-extrabold ${
-                            Number(series[hoveredIndex].serviceLevelPct || 0) >= numericTarget
-                              ? "text-emerald-600"
-                              : "text-amber-600"
-                          }`}
-                        >
-                          {Number(series[hoveredIndex].serviceLevelPct || 0) >= numericTarget
-                            ? `✓ +${formatNumber(
-                                Number(series[hoveredIndex].serviceLevelPct || 0) - numericTarget,
-                                1,
-                              )}%`
-                            : `✗ -${formatNumber(
-                                numericTarget - Number(series[hoveredIndex].serviceLevelPct || 0),
-                                1,
-                              )}%`}
-                        </span>
-                      </div>
-                    </>
-                  ) : (
-                    <div className="py-2 text-center text-xs font-semibold text-sibs-tertiary-5">
-                      No call volume recorded in this period.
-                    </div>
-                  )}
+                <div className="flex items-center justify-between font-bold text-[#0284c7]">
+                  <span>Service Level:</span>
+                  <span>{formatPercent(series[hoveredIndex].serviceLevelPct)}</span>
                 </div>
               </div>
             </div>
@@ -865,24 +710,26 @@ function AhtChart({ series, target }) {
   );
 
   return (
-    <div className="min-w-[720px]">
-      <div className="mb-4 flex items-center gap-4 text-xs font-bold text-sibs-tertiary-5">
-        <span>
-          <i className="mr-1.5 inline-block h-2.5 w-2.5 rounded-full bg-[#0b3b68]" />
-          Call AHT
-        </span>
+    <div className="w-full min-w-0">
+      <div className="mb-3 flex items-center justify-between gap-2 text-xs font-bold text-sibs-tertiary-5">
+        <div className="flex items-center gap-3">
+          <span className="inline-flex items-center gap-1.5">
+            <i className="inline-block h-2.5 w-2.5 rounded-full bg-[#0b3b68]" />
+            Call AHT
+          </span>
 
-        <span>
-          <i className="mr-1.5 inline-block h-0.5 w-4 align-middle bg-red-500" />
-          Target ({formatNumber(normalizedTarget)} sec)
-        </span>
+          <span className="inline-flex items-center gap-1.5 text-red-500">
+            <i className="inline-block h-0.5 w-3.5 bg-red-500" />
+            Target: {formatNumber(normalizedTarget)}s
+          </span>
+        </div>
       </div>
 
-      <div className="relative flex h-64 items-end gap-5 border-b border-sibs-tertiary-8 px-3">
+      <div className="relative flex h-[340px] items-end gap-2 border-b border-sibs-tertiary-8 px-2">
         <div
-          className="pointer-events-none absolute right-3 left-3 border-t-2 border-dashed border-red-500"
+          className="pointer-events-none absolute right-2 left-2 border-t-2 border-dashed border-red-500"
           style={{
-            bottom: `calc(32px + ${targetPosition * 1.9}px)`,
+            bottom: `calc(34px + ${targetPosition * 2.35}px)`,
           }}
         />
 
@@ -894,20 +741,20 @@ function AhtChart({ series, target }) {
           return (
             <div
               key={item.key}
-              className="group/aht relative z-10 flex min-w-[88px] flex-1 flex-col items-center justify-end"
+              className="group/aht relative z-10 flex min-w-0 flex-1 flex-col items-center justify-end"
             >
               {hasAht ? (
-                <p className="mb-1 text-[10px] font-extrabold text-sibs-primary-1">
-                  {formatNumber(ahtSec, 2)}
+                <p className="mb-1.5 text-[11px] font-black text-sibs-primary-1">
+                  {formatNumber(ahtSec, 0)}s
                 </p>
               ) : (
-                <span className="mb-1 text-[10px] font-semibold text-slate-400">-</span>
+                <span className="mb-1.5 text-[10px] font-semibold text-slate-400">-</span>
               )}
 
-              {/* White Card Tooltip (clamped on edges to prevent scrollbars) */}
+              {/* Tooltip */}
               {hasAht ? (
                 <div
-                  className={`pointer-events-none absolute z-30 hidden min-w-[170px] rounded-xl border border-sibs-tertiary-10/80 bg-white/95 p-2.5 shadow-xl backdrop-blur-md group-hover/aht:block ${
+                  className={`pointer-events-none absolute z-30 hidden min-w-[160px] rounded-xl border border-sibs-tertiary-10/80 bg-white/95 p-2.5 shadow-xl backdrop-blur-md group-hover/aht:block ${
                     itemIndex >= series.length - 1
                       ? "right-0 translate-x-0"
                       : itemIndex === 0
@@ -915,7 +762,7 @@ function AhtChart({ series, target }) {
                       : "left-1/2 -translate-x-1/2"
                   }`}
                   style={{
-                    bottom: `calc(${heightPct * 1.8}px + 48px)`,
+                    bottom: `calc(${heightPct * 2.35}px + 42px)`,
                   }}
                 >
                   <div className="flex items-center justify-between border-b border-slate-100 pb-1">
@@ -923,32 +770,25 @@ function AhtChart({ series, target }) {
                       {item.label}
                     </span>
                     <span className="text-[10px] font-bold text-sibs-tertiary-5">
-                      Call AHT
+                      AHT
                     </span>
                   </div>
 
-                  <div className="mt-1.5 space-y-1">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="flex items-center gap-1.5 font-bold text-[#0b3b68]">
-                        <span className="h-2 w-2 rounded-full bg-[#0b3b68]" />
-                        Average:
-                      </span>
-                      <span className="font-extrabold text-sibs-primary-1">
-                        {formatDuration(ahtSec)}
-                      </span>
+                  <div className="mt-1.5 space-y-1 text-[11px]">
+                    <div className="flex items-center justify-between font-bold text-[#0b3b68]">
+                      <span>Average:</span>
+                      <span>{formatDuration(ahtSec)}</span>
                     </div>
 
-                    <div className="flex items-center justify-between border-t border-slate-100 pt-1 text-[10.5px]">
+                    <div className="flex items-center justify-between">
                       <span className="font-semibold text-slate-500">Seconds:</span>
                       <span className="font-bold text-slate-700">
                         {formatNumber(ahtSec, 1)}s
                       </span>
                     </div>
 
-                    <div className="flex items-center justify-between text-[10.5px]">
-                      <span className="font-semibold text-slate-500">
-                        Target ({formatNumber(normalizedTarget)}s):
-                      </span>
+                    <div className="flex items-center justify-between pt-1 border-t border-slate-100 text-[10.5px]">
+                      <span className="font-semibold text-slate-500">Target ({formatNumber(normalizedTarget)}s):</span>
                       <span
                         className={`font-extrabold ${
                           ahtSec <= normalizedTarget
@@ -963,22 +803,27 @@ function AhtChart({ series, target }) {
                 </div>
               ) : null}
 
-              <div className="flex h-48 w-full items-end justify-center">
+              <div className="flex h-[270px] w-full items-end justify-center">
                 {hasAht ? (
                   <div
-                    className="w-12 rounded-t bg-[#0b3b68] transition-all duration-200 group-hover/aht:brightness-110 group-hover/aht:-translate-y-0.5 group-hover/aht:shadow-md"
+                    className="w-full max-w-[42px] rounded-t-sm bg-[#0b3b68] transition-all duration-200 group-hover/aht:brightness-110 group-hover/aht:-translate-y-0.5 shadow-xs"
                     style={{
                       height: `${heightPct}%`,
                     }}
                   />
                 ) : (
-                  <div className="h-0.5 w-8 rounded bg-slate-200" />
+                  <div className="h-0.5 w-6 rounded bg-slate-200" />
                 )}
               </div>
 
-              <p className="mt-2 mb-0 text-center text-[11px] font-bold text-sibs-primary-1">
-                {item.label}
-              </p>
+              <div className="mt-2 w-full px-0.5 text-center">
+                <p className="m-0 truncate text-[10.5px] font-extrabold text-sibs-primary-1 leading-tight">
+                  {item.label}
+                </p>
+                <p className="m-0 text-[9px] font-semibold uppercase text-sibs-tertiary-5">
+                  Period {itemIndex + 1}
+                </p>
+              </div>
             </div>
           );
         })}
@@ -1015,8 +860,9 @@ export default function WfmCallKpiDashboard({ data }) {
     summaryAhtSeconds > 0;
 
   return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
+    <div className="space-y-3">
+      {/* 6 Compact KPI Stat Cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-2.5">
         <KpiCard
           icon={PhoneCall}
           label="Call Volume"
@@ -1068,9 +914,9 @@ export default function WfmCallKpiDashboard({ data }) {
           value={formatDuration(summaryAhtSeconds)}
           hint={`${formatNumber(
             summaryAhtSeconds,
-          )} sec • Target ${formatNumber(
+          )}s • Tgt ${formatNumber(
             targetAhtSeconds,
-          )} sec`}
+          )}s`}
           status={{
             label: ahtMet
               ? "Target met"
@@ -1082,52 +928,55 @@ export default function WfmCallKpiDashboard({ data }) {
         />
       </div>
 
-      <ChartShell
-        title="Calls"
-        subtitle="Volume, handled calls, and handled within SLA"
-      >
-        <VolumeChart
-          series={
-            series.length
-              ? series
-              : data?.data?.series || []
-          }
-        />
-      </ChartShell>
+      {/* 3 Prominent Graphs Side-by-Side on Desktop */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+        <ChartShell
+          title="Calls"
+          subtitle="Volume, handled calls, and handled within SLA"
+        >
+          <VolumeChart
+            series={
+              series.length
+                ? series
+                : data?.data?.series || []
+            }
+          />
+        </ChartShell>
 
-      <ChartShell
-        title="Answer Rate & Service Level"
-        subtitle="Answer % and service level performance against target"
-      >
-        <LineChart
-          series={
-            series.length
-              ? series
-              : data?.data?.series || []
-          }
-          target={
-            targets.serviceLevelPct ||
-            data?.data?.targets?.serviceLevelPct
-          }
-        />
-      </ChartShell>
+        <ChartShell
+          title="Answer Rate & Service Level"
+          subtitle="Answer % and service level performance against target"
+        >
+          <LineChart
+            series={
+              series.length
+                ? series
+                : data?.data?.series || []
+            }
+            target={
+              targets.serviceLevelPct ||
+              data?.data?.targets?.serviceLevelPct
+            }
+          />
+        </ChartShell>
 
-      <ChartShell
-        title="Average Handling Time"
-        subtitle="Call AHT measured in seconds against the current target"
-      >
-        <AhtChart
-          series={
-            series.length
-              ? series
-              : data?.data?.series || []
-          }
-          target={
-            targets.ahtSeconds ||
-            data?.data?.targets?.ahtSeconds
-          }
-        />
-      </ChartShell>
+        <ChartShell
+          title="Average Handling Time"
+          subtitle="Call AHT measured in seconds against target"
+        >
+          <AhtChart
+            series={
+              series.length
+                ? series
+                : data?.data?.series || []
+            }
+            target={
+              targets.ahtSeconds ||
+              data?.data?.targets?.ahtSeconds
+            }
+          />
+        </ChartShell>
+      </div>
     </div>
   );
 }

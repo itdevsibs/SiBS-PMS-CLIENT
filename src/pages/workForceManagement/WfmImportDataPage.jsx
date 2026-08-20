@@ -376,31 +376,16 @@ function getImportProfileForCard(card) {
 }
 
 function mapBatchToUpload(batch) {
-  if (!batch || batch.status === "FAILED" || batch.status === "DUPLICATE") {
+  if (!batch || batch.status === "FAILED") {
     return null;
   }
-
-  const profileCode = String(batch.importProfileId || "").toUpperCase();
-  const sourceSystem = String(batch.sourceSystem || "").toUpperCase();
-  const filename = String(batch.sourceFilename || "").toLowerCase();
 
   const isHerodash =
     batch.importProfileId === 1 ||
-    profileCode === "HERO_SKILL_STATISTICS_INBOUND" ||
-    sourceSystem === "HERODASH" ||
-    filename.startsWith("herodash") ||
-    filename.includes("hero");
-
-  const isFusecom =
-    batch.importProfileId === 2 ||
-    profileCode === "FUSECOM_SKILL_STATISTICS_INBOUND" ||
-    sourceSystem === "FUSECOM" ||
-    filename.startsWith("fusecom") ||
-    filename.includes("fuse");
-
-  if (!isHerodash && !isFusecom) {
-    return null;
-  }
+    batch.importProfileId === "HERO_SKILL_STATISTICS_INBOUND" ||
+    String(batch.sourceSystem).toUpperCase() === "HERODASH" ||
+    /hero/i.test(batch.sourceFilename || "") ||
+    (/dash/i.test(batch.sourceFilename || "") && !/fuse/i.test(batch.sourceFilename || ""));
 
   const cardId = isHerodash ? "us-visa-raw-data-2" : "us-visa-raw-data-1";
   const rawDataTitle = isHerodash ? "Herodash" : "Fusecom";
@@ -410,9 +395,9 @@ function mapBatchToUpload(batch) {
   if (batch.createdAt) {
     const raw = String(batch.createdAt).trim();
     const normalized =
-      raw.includes("Z") || raw.includes("+") || (raw.includes("-") && raw.length > 10)
+      raw.includes("Z") || raw.includes("+")
         ? raw
-        : `${raw.replace(" ", "T")}Z`;
+        : `${raw.replace(" ", "T")}+08:00`;
     const parsed = new Date(normalized).getTime();
     if (!Number.isNaN(parsed)) {
       uploadedAtMs = parsed;
@@ -554,7 +539,7 @@ function WfmImportDataPage() {
     try {
       const response = await getUsVisaImportHistory({ limit: 100 });
       if (response?.data && Array.isArray(response.data)) {
-        const dbUploads = response.data.map(mapBatchToUpload).filter(Boolean);
+        const dbUploads = response.data.map(mapBatchToUpload);
 
         setUploadsByCard((current) => {
           const updated = { ...current };
@@ -614,27 +599,6 @@ function WfmImportDataPage() {
       return;
     }
 
-    const lowerName = file.name.toLowerCase();
-    const isHeroCard = /hero/i.test(card.title);
-    const isFuseCard = /fuse/i.test(card.title);
-
-    if (card.account === "US VISA") {
-      if (isHeroCard && !lowerName.includes("hero")) {
-        setErrorModalInfo({
-          title: "Wrong File Selected",
-          message: `Only Herodash Skill Statistics (.xlsx) files can be imported into ${card.title}.`,
-        });
-        return;
-      }
-      if (isFuseCard && !lowerName.includes("fuse")) {
-        setErrorModalInfo({
-          title: "Wrong File Selected",
-          message: `Only Fusecom Skill Statistics (.xlsx) files can be imported into ${card.title}.`,
-        });
-        return;
-      }
-    }
-
     const currentCardUploads = uploadsByCard[card.id] || [];
     const isDuplicate = currentCardUploads.some(
       (upload) => upload.fileName.toLowerCase() === file.name.toLowerCase(),
@@ -685,11 +649,10 @@ function WfmImportDataPage() {
         const uploadResponse = await uploadPromise;
         batchResult = uploadResponse?.batch || null;
 
-        if (batchResult?.status === "FAILED" || uploadResponse?.success === false) {
+        if (batchResult?.status === "FAILED") {
           throw new Error(
-            uploadResponse?.message ||
-            batchResult?.errorMessage ||
-            `The uploaded file is not valid for ${card.title}.`
+            batchResult.errorMessage ||
+            "Workbook structure validation failed. Please check the required worksheet format.",
           );
         }
 
@@ -941,11 +904,10 @@ function WfmImportDataPage() {
                           </span>
                         </div>
                         <span
-                          className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-bold ${
-                            uploads.length > 0
+                          className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-bold ${uploads.length > 0
                               ? "border border-emerald-200/80 bg-emerald-50 text-emerald-700"
                               : "border border-slate-200 bg-slate-50 text-slate-500"
-                          }`}
+                            }`}
                         >
                           {uploads.length > 0 ? (
                             <>

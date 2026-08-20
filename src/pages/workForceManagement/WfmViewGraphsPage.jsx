@@ -1,19 +1,14 @@
-// WFM Calls KPI dashboard. Data is aggregated by the backend from canonical PMS rows.
 import { useCallback, useEffect, useState } from "react";
 import {
   AlertCircle,
   BarChart3,
-  CheckCircle2,
   Clock,
   Database,
-  Filter,
   RefreshCw,
 } from "lucide-react";
 
 import AdminSidebar from "@/components/layout/AdminSidebar";
 import AppHeader from "@/components/layout/AppHeader";
-import AppModal from "@/components/ui/app-modal";
-import { Button } from "@/components/ui/button";
 import ConfirmationModal from "@/components/ui/confirmation-modal";
 import LoadingModal from "@/components/ui/loading-modal";
 import WfmCallKpiDashboard from "@/components/workForceManagement/kpi/WfmCallKpiDashboard";
@@ -177,99 +172,68 @@ export default function WfmViewGraphsPage() {
     dashboard.authUser?.role === "wfm" ||
     Number(dashboard.authUser?.adminAccess || 0) === 9;
 
-  const [draftFilters, setDraftFilters] =
-    useState(DEFAULT_FILTERS);
-
-  const [appliedFilters, setAppliedFilters] =
-    useState(DEFAULT_FILTERS);
-
-  const [kpiResponse, setKpiResponse] =
-    useState(null);
-
-  const [isLoading, setIsLoading] =
-    useState(true);
-
-  const [error, setError] =
-    useState("");
-
-  const [confirmModal, setConfirmModal] = useState({
-    isOpen: false,
-    type: null,
-    title: "",
-    message: "",
-  });
-
-  const [isProcessingModal, setIsProcessingModal] = useState(false);
-  const [processingModalInfo, setProcessingModalInfo] = useState({
-    title: "Loading KPI Data",
-    message: "Please wait while we calculate and load KPI metrics.",
-  });
-
-  const [successModal, setSuccessModal] = useState({
-    isOpen: false,
-    title: "",
-    message: "",
-  });
+  const [filters, setFilters] = useState(DEFAULT_FILTERS);
+  const [kpiResponse, setKpiResponse] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState("");
 
   const loadKpis = useCallback(async () => {
     if (!isWfmUser) {
       return;
     }
 
+    if (filters.period === "custom") {
+      if (!filters.from || !filters.to) {
+        return;
+      }
+
+      if (filters.from > filters.to) {
+        setError({
+          title: "Invalid Date Range",
+          message: "The start date cannot be later than the end date.",
+        });
+        return;
+      }
+    }
+
     setIsLoading(true);
     setError("");
 
     try {
-      const params = buildRequestParams(appliedFilters);
-
+      const params = buildRequestParams(filters);
       const response = await getWfmCallKpis(params);
 
       setKpiResponse(response);
-
-      const dashboardData =
-        response?.data?.data || null;
-
-      const returnedFilters =
-        dashboardData?.filters || {};
-
-      setDraftFilters((current) => {
-        if (
-          current.sourceSystem !== appliedFilters.sourceSystem ||
-          current.period !== appliedFilters.period
-        ) {
-          return current;
-        }
-
-        if (appliedFilters.period === "custom") {
-          return current;
-        }
-
-        if (appliedFilters.referenceDate) {
-          return current;
-        }
-
-        return {
-          ...current,
-          referenceDate:
-            returnedFilters.referenceDate || "",
-        };
-      });
     } catch (loadError) {
       setError(getErrorMessage(loadError));
       setKpiResponse(null);
     } finally {
       setIsLoading(false);
     }
-  }, [appliedFilters, isWfmUser]);
+  }, [filters, isWfmUser]);
 
   useEffect(() => {
     loadKpis();
   }, [loadKpis]);
 
+  useEffect(() => {
+    const returnedFilters = kpiResponse?.data?.data?.filters || {};
+    if (
+      returnedFilters.referenceDate &&
+      !filters.referenceDate &&
+      filters.period !== "custom"
+    ) {
+      setFilters((current) => ({
+        ...current,
+        referenceDate: returnedFilters.referenceDate,
+      }));
+    }
+  }, [kpiResponse, filters.referenceDate, filters.period]);
+
   const handleSourceChange = (event) => {
     const sourceSystem = event.target.value;
 
-    setDraftFilters((current) => ({
+    setFilters((current) => ({
       ...current,
       sourceSystem,
       referenceDate: "",
@@ -281,166 +245,33 @@ export default function WfmViewGraphsPage() {
   const handlePeriodChange = (event) => {
     const nextPeriod = event.target.value;
 
-    const currentDashboardFilters =
-      kpiResponse?.data?.data?.filters || {};
-
-    setDraftFilters((current) => {
-      const canReuseDashboardRange =
-        current.sourceSystem ===
-        currentDashboardFilters.sourceSystem;
-
-      return {
-        ...current,
-        period: nextPeriod,
-
-        referenceDate:
-          nextPeriod === "custom"
-            ? current.referenceDate
-            : current.referenceDate ||
-              (canReuseDashboardRange
-                ? currentDashboardFilters.referenceDate
-                : "") ||
-              "",
-
-        from:
-          nextPeriod === "custom"
-            ? current.from ||
-              (canReuseDashboardRange
-                ? currentDashboardFilters.dateFrom
-                : "") ||
-              ""
-            : "",
-
-        to:
-          nextPeriod === "custom"
-            ? current.to ||
-              (canReuseDashboardRange
-                ? currentDashboardFilters.dateTo
-                : "") ||
-              ""
-            : "",
-      };
-    });
+    setFilters((current) => ({
+      ...current,
+      period: nextPeriod,
+      referenceDate: "",
+      from: "",
+      to: "",
+    }));
   };
 
-  const handleApplyFilters = () => {
-    if (draftFilters.period === "custom") {
-      if (!draftFilters.from || !draftFilters.to) {
-        setError({
-          title: "Missing Date Range",
-          message: "Custom reporting requires both a 'From' and 'To' date.",
-        });
-
-        return;
-      }
-
-      if (draftFilters.from > draftFilters.to) {
-        setError({
-          title: "Invalid Date Range",
-          message: "The start date cannot be later than the end date.",
-        });
-
-        return;
-      }
-    }
-
-    setConfirmModal({
-      isOpen: true,
-      type: "apply",
-      title: "Apply KPI Filters?",
-      message:
-        "Are you sure you want to apply the selected filters and generate the KPI performance graphs?",
-    });
+  const handleReferenceDateChange = (referenceDate) => {
+    setFilters((current) => ({
+      ...current,
+      referenceDate: referenceDate || "",
+    }));
   };
 
   const handleLatestRange = () => {
-    if (draftFilters.period === "custom") {
+    if (filters.period === "custom") {
       return;
     }
 
-    setConfirmModal({
-      isOpen: true,
-      type: "latest",
-      title: "Load Latest KPI Data?",
-      message:
-        "Are you sure you want to switch to the latest available KPI reporting period?",
-    });
-  };
-
-  const handleConfirmAction = async () => {
-    const actionType = confirmModal.type;
-    setConfirmModal({ isOpen: false, type: null, title: "", message: "" });
-
-    let targetFilters;
-
-    if (actionType === "apply") {
-      targetFilters = {
-        sourceSystem: draftFilters.sourceSystem,
-        period: draftFilters.period,
-        referenceDate:
-          draftFilters.period === "custom" ? "" : draftFilters.referenceDate,
-        from: draftFilters.period === "custom" ? draftFilters.from : "",
-        to: draftFilters.period === "custom" ? draftFilters.to : "",
-      };
-      setProcessingModalInfo({
-        title: "Applying KPI Filters",
-        message:
-          "Please wait while we aggregate records and generate performance metrics...",
-      });
-    } else if (actionType === "latest") {
-      targetFilters = {
-        sourceSystem: draftFilters.sourceSystem,
-        period: draftFilters.period,
-        referenceDate: "",
-        from: "",
-        to: "",
-      };
-      setDraftFilters(targetFilters);
-      setProcessingModalInfo({
-        title: "Loading Latest KPI Data",
-        message:
-          "Please wait while we retrieve the latest available KPI reporting period...",
-      });
-    } else {
-      return;
-    }
-
-    setIsProcessingModal(true);
-    setError(null);
-
-    try {
-      const params = buildRequestParams(targetFilters);
-      const response = await getWfmCallKpis(params);
-
-      setKpiResponse(response);
-      setAppliedFilters(targetFilters);
-
-      const dashboardData = response?.data?.data || null;
-      const returnedFilters = dashboardData?.filters || {};
-
-      if (actionType === "latest" && returnedFilters.referenceDate) {
-        setDraftFilters((curr) => ({
-          ...curr,
-          referenceDate: returnedFilters.referenceDate,
-        }));
-      }
-
-      await new Promise((resolve) => setTimeout(resolve, 350));
-      setIsProcessingModal(false);
-
-      setSuccessModal({
-        isOpen: true,
-        title:
-          actionType === "apply"
-            ? "Filters Applied Successfully"
-            : "Latest KPI Data Loaded",
-        message: "Calls KPI metrics and performance graphs have been updated.",
-      });
-    } catch (err) {
-      setIsProcessingModal(false);
-      setError(getErrorMessage(err));
-      setKpiResponse(null);
-    }
+    setFilters((current) => ({
+      ...current,
+      referenceDate: "",
+      from: "",
+      to: "",
+    }));
   };
 
   const dashboardData =
@@ -458,7 +289,7 @@ export default function WfmViewGraphsPage() {
 
   const activeSourceSystem =
     dashboardData.filters?.sourceSystem ||
-    appliedFilters.sourceSystem;
+    filters.sourceSystem;
 
   const emptyDataMessage =
     !availableGrains.length
@@ -470,7 +301,7 @@ export default function WfmViewGraphsPage() {
         : "";
 
   const isCustomPeriod =
-    draftFilters.period === "custom";
+    filters.period === "custom";
 
   return (
     <section className="font-jakarta flex min-h-screen bg-[#eef3f7] text-sibs-primary-1">
@@ -505,7 +336,7 @@ export default function WfmViewGraphsPage() {
           }
         />
 
-        <div className="sibs-scrollbar max-h-[calc(100vh-74px)] overflow-y-auto p-3 sm:p-4 lg:p-5">
+        <div className="sibs-scrollbar max-h-[calc(100vh-74px)] overflow-y-auto p-3 sm:p-3.5">
           {!isWfmUser ? (
             <div className="sibs-card p-6 text-center">
               <AlertCircle
@@ -523,60 +354,31 @@ export default function WfmViewGraphsPage() {
               </p>
             </div>
           ) : (
-            <div className="space-y-4">
-              <section className="sibs-card relative z-40 overflow-visible">
-                <div className="flex flex-col gap-3 border-b border-sibs-tertiary-10 bg-sibs-primary-3/30 px-5 py-4 lg:flex-row lg:items-center lg:justify-between">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <BarChart3
-                        size={20}
-                        className="text-sibs-primary-1"
-                      />
-
-                      <h1 className="m-0 text-lg font-extrabold text-sibs-primary-1">
-                        Calls KPI Performance
-                      </h1>
-                    </div>
-
-                    <p className="mt-1 mb-0 text-sm text-sibs-tertiary-5">
-                      Backend-aggregated KPI reporting from
-                      validated call data stored in PMS.
-                    </p>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={loadKpis}
-                    disabled={isLoading}
-                    className="inline-flex h-9 cursor-pointer items-center justify-center gap-2 rounded-full border border-slate-200 bg-white px-4 text-sm font-bold text-sibs-primary-1 shadow-xs transition hover:border-sibs-primary-1 hover:bg-sibs-primary-1 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    <RefreshCw
-                      size={15}
-                      className={
-                        isLoading ? "animate-spin" : ""
-                      }
+            <div className="space-y-2">
+              <section className="sibs-card relative z-40 overflow-visible shadow-xs">
+                <div className="border-b border-sibs-tertiary-10 bg-sibs-primary-3/30 px-3.5 py-1.5">
+                  <div className="flex items-center gap-2">
+                    <BarChart3
+                      size={16}
+                      className="text-sibs-primary-1"
                     />
 
-                    Refresh
-                  </button>
+                    <h1 className="m-0 text-sm font-extrabold text-sibs-primary-1">
+                      Calls KPI Performance
+                    </h1>
+                  </div>
                 </div>
 
-                <div
-                  className={`grid grid-cols-1 gap-3 p-4 md:grid-cols-2 ${
-                    isCustomPeriod
-                      ? "xl:grid-cols-5"
-                      : "xl:grid-cols-4"
-                  } xl:items-end`}
-                >
+                <div className="grid grid-cols-1 gap-2 p-2.5 md:grid-cols-2 xl:grid-cols-4 xl:items-end">
                   <label className="block">
-                    <span className="mb-1.5 block text-[11px] font-extrabold uppercase text-sibs-tertiary-5">
+                    <span className="mb-0.5 block text-[9.5px] font-extrabold uppercase text-sibs-tertiary-5">
                       Account / Source
                     </span>
 
                     <select
-                      value={draftFilters.sourceSystem}
+                      value={filters.sourceSystem}
                       onChange={handleSourceChange}
-                      className="h-10 w-full rounded-lg border border-sibs-tertiary-8 bg-white px-3 text-sm font-semibold outline-none"
+                      className="h-8 w-full rounded-lg border border-sibs-tertiary-8 bg-white px-2.5 text-xs font-semibold outline-none"
                     >
                       {SOURCE_OPTIONS.map((option) => (
                         <option
@@ -590,14 +392,14 @@ export default function WfmViewGraphsPage() {
                   </label>
 
                   <label className="block">
-                    <span className="mb-1.5 block text-[11px] font-extrabold uppercase text-sibs-tertiary-5">
+                    <span className="mb-0.5 block text-[9.5px] font-extrabold uppercase text-sibs-tertiary-5">
                       Reporting Period
                     </span>
 
                     <select
-                      value={draftFilters.period}
+                      value={filters.period}
                       onChange={handlePeriodChange}
-                      className="h-10 w-full rounded-lg border border-sibs-tertiary-8 bg-white px-3 text-sm font-semibold outline-none"
+                      className="h-8 w-full rounded-lg border border-sibs-tertiary-8 bg-white px-2.5 text-xs font-semibold outline-none"
                     >
                       {PERIOD_OPTIONS.map((option) => (
                         <option
@@ -614,78 +416,53 @@ export default function WfmViewGraphsPage() {
                     <>
                       <WfmKpiDatePicker
                         label="From"
-                        value={draftFilters.from}
+                        value={filters.from}
                         onChange={(from) =>
-                          setDraftFilters(
-                            (current) => ({
-                              ...current,
-                              from,
-                            }),
-                          )
+                          setFilters((current) => ({
+                            ...current,
+                            from: from || "",
+                          }))
                         }
                       />
 
                       <WfmKpiDatePicker
                         label="To"
-                        value={draftFilters.to}
+                        value={filters.to}
                         onChange={(to) =>
-                          setDraftFilters(
-                            (current) => ({
-                              ...current,
-                              to,
-                            }),
-                          )
+                          setFilters((current) => ({
+                            ...current,
+                            to: to || "",
+                          }))
                         }
                       />
                     </>
                   ) : (
-                    <WfmKpiDatePicker
-                      label="Reference Date"
-                      value={draftFilters.referenceDate}
-                      onChange={(referenceDate) =>
-                        setDraftFilters(
-                          (current) => ({
-                            ...current,
-                            referenceDate,
-                          }),
-                        )
-                      }
-                    />
+                    <>
+                      <WfmKpiDatePicker
+                        label="Reference Date"
+                        value={filters.referenceDate}
+                        onChange={handleReferenceDateChange}
+                      />
+
+                      <div>
+                        <button
+                          type="button"
+                          onClick={handleLatestRange}
+                          disabled={isLoading}
+                          title="Use the latest available KPI date."
+                          className="inline-flex h-8 w-full cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-xs font-bold text-sibs-primary-1 shadow-xs transition hover:border-sibs-primary-1 hover:bg-sibs-primary-1 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+                        >
+                          <Clock size={12} className="shrink-0" />
+                          <span>Latest</span>
+                        </button>
+                      </div>
+                    </>
                   )}
-
-                  <div className="grid grid-cols-2 gap-2.5">
-                    <button
-                      type="button"
-                      onClick={handleApplyFilters}
-                      disabled={isLoading}
-                      className="inline-flex h-10 w-full cursor-pointer items-center justify-center gap-1.5 rounded-lg bg-sibs-primary-1 px-3 text-sm font-bold text-white shadow-xs transition hover:bg-sibs-tertiary-4 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      <Filter size={15} className="shrink-0" />
-                      <span>Apply</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={handleLatestRange}
-                      disabled={
-                        isLoading || isCustomPeriod
-                      }
-                      title={
-                        isCustomPeriod
-                          ? "Latest is available for weekly, monthly, quarterly, and annual reporting."
-                          : "Use the latest available KPI date."
-                      }
-                      className="inline-flex h-10 w-full cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-sm font-bold text-sibs-primary-1 shadow-xs transition hover:border-sibs-primary-1 hover:bg-sibs-primary-1 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
-                    >
-                      <Clock size={14} className="shrink-0" />
-                      <span>Latest</span>
-                    </button>
-                  </div>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-sibs-tertiary-10 px-5 py-3 text-xs font-semibold text-sibs-tertiary-5">
-                  <span className="inline-flex items-center gap-1.5">
-                    <Database size={14} />
+                <div className="flex flex-wrap items-center gap-x-3.5 gap-y-1 border-t border-sibs-tertiary-10 px-3.5 py-1 text-[10px] font-semibold text-sibs-tertiary-5">
+                  <span className="inline-flex items-center gap-1">
+                    <Database size={11} />
 
                     {formatGrain(
                       dashboardData.filters?.dataGrain,
@@ -724,17 +501,16 @@ export default function WfmViewGraphsPage() {
                   {dashboardData.filters?.period !==
                   "custom" ? (
                     <span>
-                      Comparison: 6 periods including the
-                      selected/current period
+                      Comparison: 6 periods
                     </span>
                   ) : (
                     <span>
-                      Comparison: Custom daily range
+                      Comparison: Custom range
                     </span>
                   )}
 
                   <span>
-                    Available date range:{" "}
+                    Available:{" "}
                     {dashboardData.availableDateRange
                       ?.minDate ||
                       "Not available"}{" "}
@@ -747,7 +523,7 @@ export default function WfmViewGraphsPage() {
               </section>
 
               {error ? (
-                <div className="sibs-card relative z-0 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border border-red-200 bg-red-50/60 p-4 text-sm text-red-800 shadow-sm">
+                <div className="sibs-card relative z-0 flex flex-col sm:flex-row sm:items-center justify-between gap-2 border border-red-200 bg-red-50/60 p-3 text-xs text-red-800 shadow-xs">
                   <div className="flex items-start gap-3">
                     <AlertCircle
                       size={20}
@@ -812,59 +588,6 @@ export default function WfmViewGraphsPage() {
           )}
         </div>
       </main>
-
-      {/* Action Confirmation Modal */}
-      <ConfirmationModal
-        isOpen={confirmModal.isOpen}
-        title={confirmModal.title}
-        message={confirmModal.message}
-        cancelText="Cancel"
-        confirmText={confirmModal.type === "apply" ? "Apply Filters" : "Load Latest"}
-        onCancel={() =>
-          setConfirmModal({ isOpen: false, type: null, title: "", message: "" })
-        }
-        onConfirm={handleConfirmAction}
-        tone="neutral"
-      />
-
-      {/* Action Processing Loading Modal */}
-      <LoadingModal
-        isOpen={isProcessingModal}
-        title={processingModalInfo.title}
-        message={processingModalInfo.message}
-      />
-
-      {/* Action Success Modal */}
-      <AppModal
-        isOpen={successModal.isOpen}
-        textAlign="center"
-        zIndex="z-[140]"
-      >
-        <div className="flex items-center justify-center gap-2.5">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-emerald-600 shadow-xs ring-4 ring-emerald-50/60">
-            <CheckCircle2 className="h-5 w-5" aria-hidden="true" />
-          </span>
-          <p className="m-0 text-lg font-extrabold text-sibs-primary-1">
-            {successModal.title}
-          </p>
-        </div>
-
-        <p className="mt-2.5 mb-0 text-sm text-sibs-tertiary-5">
-          {successModal.message}
-        </p>
-
-        <div className="mt-6 flex justify-center">
-          <Button
-            type="button"
-            onClick={() =>
-              setSuccessModal({ isOpen: false, title: "", message: "" })
-            }
-            className="h-10 min-w-[120px] cursor-pointer rounded-xl bg-sibs-primary-1 px-6 font-bold text-white shadow-xs transition hover:bg-sibs-tertiary-4"
-          >
-            Done
-          </Button>
-        </div>
-      </AppModal>
 
       <ConfirmationModal
         isOpen={dashboard.showLogoutModal}

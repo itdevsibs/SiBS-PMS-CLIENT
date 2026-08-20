@@ -157,7 +157,7 @@ export default function WfmKpiDatePicker({
 
   return (
     <div className="relative min-w-0">
-      <span className="mb-1.5 block text-[11px] font-extrabold uppercase tracking-wide text-sibs-tertiary-5">
+      <span className="mb-0.5 block text-[9.5px] font-extrabold uppercase text-sibs-tertiary-5">
         {label}
       </span>
 
@@ -168,18 +168,18 @@ export default function WfmKpiDatePicker({
         disabled={disabled}
         aria-haspopup="dialog"
         aria-expanded={isOpen}
-        className={`group flex h-10 w-full min-w-0 items-center gap-2.5 rounded-xl border bg-white px-3 text-left shadow-sm outline-none transition-all duration-150 disabled:cursor-not-allowed disabled:opacity-50 ${
+        className={`group flex h-8 w-full min-w-0 items-center gap-1.5 rounded-lg border bg-white px-2.5 text-left outline-none transition disabled:cursor-not-allowed disabled:opacity-50 ${
           isOpen
-            ? "border-sibs-primary-1 ring-2 ring-sibs-primary-1/10"
-            : "border-sibs-tertiary-8 hover:border-sibs-primary-1/50 hover:shadow-md"
+            ? "border-sibs-primary-1 ring-1 ring-sibs-primary-1/20"
+            : "border-sibs-tertiary-8 hover:border-sibs-primary-1/50"
         }`}
       >
-        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-sibs-primary-3/50 text-sibs-primary-1">
-          <CalendarDays size={15} strokeWidth={2.2} />
+        <span className="flex h-5 w-5 shrink-0 items-center justify-center text-sibs-primary-1">
+          <CalendarDays size={13} strokeWidth={2.2} />
         </span>
 
         <span
-          className={`min-w-0 flex-1 truncate text-sm font-bold ${
+          className={`min-w-0 flex-1 truncate text-xs font-semibold ${
             value ? "text-sibs-primary-1" : "text-sibs-tertiary-5"
           }`}
         >
@@ -187,7 +187,7 @@ export default function WfmKpiDatePicker({
         </span>
 
         <ChevronDown
-          size={16}
+          size={13}
           className={`shrink-0 text-sibs-tertiary-5 transition-transform duration-150 ${
             isOpen ? "rotate-180" : ""
           }`}
