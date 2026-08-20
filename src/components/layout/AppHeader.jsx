@@ -81,7 +81,7 @@ const AppHeader = ({
             <button
               type="button"
               onClick={() => setIsUserMenuOpen((value) => !value)}
-              className={`group flex min-w-0 items-center gap-3 rounded-xl border bg-white px-2 py-1.5 text-left shadow-sm transition hover:border-sibs-tertiary-8 ${
+              className={`group flex min-w-0 items-center gap-2 rounded-xl border bg-white px-2 py-1.5 text-left shadow-sm transition hover:border-sibs-tertiary-8 sm:w-[330px] ${
                 isUserMenuOpen
                   ? "border-sibs-tertiary-8 ring-2 ring-sibs-tertiary-9/70"
                   : "border-sibs-tertiary-9"
@@ -89,14 +89,14 @@ const AppHeader = ({
               aria-expanded={isUserMenuOpen}
               aria-haspopup="menu"
             >
-              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-sibs-primary-1 text-sm font-bold text-white shadow-sm">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-sibs-primary-1 text-sm font-bold text-white shadow-sm">
                 {userInitial}
               </span>
-              <span className="hidden min-w-0 sm:block">
-                <span className="block max-w-[220px] truncate text-sm font-extrabold uppercase leading-5 text-sibs-primary-1">
+              <span className="hidden min-w-0 flex-1 sm:block">
+                <span className="block truncate text-[12px] font-extrabold uppercase leading-5 text-sibs-primary-1" title={displayName}>
                   {displayName}
                 </span>
-                <span className="block max-w-[220px] truncate text-xs font-semibold leading-4 text-sibs-primary-2">
+                <span className="block truncate text-[11px] font-semibold leading-4 text-sibs-primary-2" title={displayEmail}>
                   {displayEmail}
                 </span>
               </span>

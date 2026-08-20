@@ -20,8 +20,8 @@ import ImportProgressModal from "@/components/ui/import-progress-modal";
 import LoadingModal from "@/components/ui/loading-modal";
 import useDashboardPage from "@/hooks/useDashboardPage";
 import { getAuthDisplayName } from "@/lib/auth";
+import { recordWfmHistoryLogQuietly } from "@/lib/axios/wfm-history-logs";
 import { removeWfmGraphReportsForUpload } from "@/lib/wfm-graph-reports";
-import { addWfmHistoryLog } from "@/lib/wfm-history-logs";
 import {
   accountOptions,
   getRawDataCards,
@@ -669,17 +669,6 @@ function WfmImportDataPage() {
         };
       });
 
-      addWfmHistoryLog({
-        action: "imported",
-        account: card.account,
-        fileName: file.name,
-        rawDataTitle: card.title,
-        message: `Imported ${file.name} to ${card.title}`,
-        userName,
-        userEmail: dashboard.authUser?.email || null,
-        userId: dashboard.authUser?.id || dashboard.authUser?.sibs_id || null,
-      });
-
       void fetchDatabaseUploads();
 
       if (batchResult) {
@@ -691,6 +680,14 @@ function WfmImportDataPage() {
         rawDataTitle: card.title,
         fileName: file.name,
         batch: batchResult,
+      });
+
+      void recordWfmHistoryLogQuietly({
+        action: "imported",
+        account: card.account,
+        rawDataTitle: card.title,
+        fileName: file.name,
+        message: `Imported ${file.name} to ${card.account} - ${card.title}.`,
       });
     } catch (error) {
       console.error("Import failed:", error);
@@ -743,23 +740,27 @@ function WfmImportDataPage() {
       ).filter((upload) => upload.id !== selectedUploadToRemove.id),
     }));
 
-    addWfmHistoryLog({
-      action: "removed",
-      account: activeOpenCard?.account,
-      fileName: selectedUploadToRemove.fileName,
-      rawDataTitle: activeOpenCard?.title || selectedUploadToRemove.rawDataTitle,
-      message: `Removed ${selectedUploadToRemove.fileName} from ${
-        activeOpenCard?.title || selectedUploadToRemove.rawDataTitle
-      }`,
-      userName,
-      userEmail: dashboard.authUser?.email || null,
-      userId: dashboard.authUser?.id || dashboard.authUser?.sibs_id || null,
-    });
-
     void fetchDatabaseUploads();
 
     setIsRemovingUpload(false);
     setRemovedUpload(selectedUploadToRemove);
+
+    void recordWfmHistoryLogQuietly({
+      action: "removed",
+      account: selectedUploadToRemove.account || activeOpenCard?.account,
+      rawDataTitle:
+        selectedUploadToRemove.rawDataTitle ||
+        activeOpenCard?.title ||
+        "Raw Data",
+      fileName: selectedUploadToRemove.fileName,
+      message: `Removed ${selectedUploadToRemove.fileName} from ${
+        selectedUploadToRemove.account || activeOpenCard?.account || "WFM"
+      } - ${
+        selectedUploadToRemove.rawDataTitle ||
+        activeOpenCard?.title ||
+        "Raw Data"
+      }.`,
+    });
   };
 
   return (

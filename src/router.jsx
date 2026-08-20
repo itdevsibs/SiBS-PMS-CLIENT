@@ -8,7 +8,7 @@ import OperationsManagementPage from "./pages/dashboard/OperationsManagementPage
 import SuperAdminDashboard from "./pages/dashboard/SuperAdminDashboard";
 import SuperAdminHistoryLogs from "./pages/historyLogs/SuperAdminHistoryLogs";
 import TeamLeaderPage from "./pages/dashboard/TeamLeaderPage";
-import WfmHistoryLogs from "./pages/workForceManagement/WfmHistoryLogs";
+import WfmHistoryLogs from "./pages/workForceManagement/wfmHistoryLogs";
 import WfmImportDataPage from "./pages/workForceManagement/WfmImportDataPage";
 import WfmViewGraphsPage from "./pages/workForceManagement/WfmViewGraphsPage";
 import WorkforceManagementPage from "./pages/dashboard/WorkforceManagementPage";

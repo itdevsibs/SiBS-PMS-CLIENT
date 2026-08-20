@@ -9,11 +9,10 @@ import ConfirmationModal from "@/components/ui/confirmation-modal";
 import LoadingModal from "@/components/ui/loading-modal";
 import { Button } from "@/components/ui/button";
 import useDashboardPage from "@/hooks/useDashboardPage";
-import { getAuthDisplayName } from "@/lib/auth";
+import { recordWfmHistoryLogQuietly } from "@/lib/axios/wfm-history-logs";
 import {
   generateWfmGraphReports,
 } from "@/lib/wfm-graph-reports";
-import { addWfmHistoryLog } from "@/lib/wfm-history-logs";
 import {
   accountOptions,
   getRawDataCards,
@@ -328,9 +327,6 @@ function mapBatchToUpload(batch) {
 
 function WfmDashboardContent() {
   const dashboard = useDashboardPage();
-  const userName = dashboard.userName || getAuthDisplayName(dashboard.authUser);
-  const userEmail = dashboard.authUser?.email || null;
-  const userId = dashboard.authUser?.id || dashboard.authUser?.sibs_id || null;
   const cachedImportState = useMemo(() => readWfmImportCache(), []);
   const [rawDataUploads, setRawDataUploads] = useState(() => readRawDataUploadCache());
 
@@ -474,20 +470,22 @@ function WfmDashboardContent() {
       selectedUpload: importedUpload.fileName,
       uploadedFiles: nextFiles,
     });
-    addWfmHistoryLog({
-      action: "dashboard-imported",
-      account: sourceCard?.account || importedUpload.account,
-      fileName: importedUpload.fileName,
-      rawDataTitle: sourceCard?.title || importedUpload.rawDataTitle,
-      message: `Imported to Work Force Management Dashboard: ${importedUpload.fileName}`,
-      userName,
-      userEmail,
-      userId,
-    });
     setSelectedImportAccount("");
     setDashboardImportSearch("");
     setIsImportingDashboardData(false);
     setImportedDashboardUpload(importedUpload);
+
+    void recordWfmHistoryLogQuietly({
+      action: "dashboard-imported",
+      account: sourceCard?.account || importedUpload.account,
+      rawDataTitle: sourceCard?.title || importedUpload.rawDataTitle || "Dashboard Table",
+      fileName: importedUpload.fileName,
+      message: `Imported ${importedUpload.fileName} from ${
+        sourceCard?.account || importedUpload.account || "WFM"
+      } - ${
+        sourceCard?.title || importedUpload.rawDataTitle || "uploaded data"
+      } to the Workforce Management Dashboard table.`,
+    });
   };
 
   const handleCloseImportUploadedData = () => {
@@ -515,19 +513,21 @@ function WfmDashboardContent() {
       selectedUpload: "",
       uploadedFiles: [],
     });
-    addWfmHistoryLog({
-      action: "dashboard-removed",
-      fileName: removedFileName || "Dashboard table data",
-      message: `Removed data from Work Force Management Dashboard table`,
-      userName,
-      userEmail,
-      userId,
-    });
     setRemovedTableData({
       fileName: removedFileName,
       rows: removedRows,
     });
     setIsRemovingTableData(false);
+
+    void recordWfmHistoryLogQuietly({
+      action: "dashboard-removed",
+      account: selectedUploadedFile?.account || "WFM",
+      rawDataTitle: selectedUploadedFile?.rawDataTitle || "Dashboard Table",
+      fileName: removedFileName || "Dashboard table data",
+      message: `Removed ${removedRows} row(s) from the Workforce Management Dashboard table${
+        removedFileName ? ` for ${removedFileName}` : ""
+      }.`,
+    });
   };
 
   const handleRequestMakeGraph = () => {
@@ -582,16 +582,16 @@ function WfmDashboardContent() {
       return;
     }
 
-    addWfmHistoryLog({
-      action: "graph-generated",
-      fileName: graphSet.sourceFile,
-      message: `Prepared graph reports from Work Force Management Dashboard: ${graphSet.sourceFile}`,
-      userName,
-      userEmail,
-      userId,
-    });
     setIsMakingGraph(false);
     setMadeGraphSet(graphSet);
+
+    void recordWfmHistoryLogQuietly({
+      action: "graph-generated",
+      account: selectedUploadedFile?.account || "WFM",
+      rawDataTitle: selectedUploadedFile?.rawDataTitle || "Dashboard Graphs",
+      fileName: graphSet.sourceFile,
+      message: `Prepared graph reports from ${graphSet.sourceFile} in the Workforce Management Dashboard.`,
+    });
   };
 
   return (

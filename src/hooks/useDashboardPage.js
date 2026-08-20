@@ -12,6 +12,7 @@ import {
 import { useNavigate } from "react-router-dom";
 
 import { clearAuthSession, getAuthDisplayName, getAuthUser, isAuthenticated } from "@/lib/auth";
+import { recordWfmLogout } from "@/lib/axios/wfm-history-logs";
 
 const roleIcons = {
   admin: ShieldCheck,
@@ -82,9 +83,17 @@ function useDashboardPage() {
     }
   }, [navigate]);
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     setShowLogoutModal(false);
     setIsLoggingOut(true);
+
+    if (role === "wfm") {
+      try {
+        await recordWfmLogout();
+      } catch (error) {
+        console.warn("Could not record WFM logout:", error?.response?.data || error?.message || error);
+      }
+    }
 
     // Keeps the loading modal visible before clearing the local session.
     window.setTimeout(() => {

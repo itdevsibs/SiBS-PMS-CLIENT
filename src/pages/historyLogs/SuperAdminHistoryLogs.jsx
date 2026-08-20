@@ -9,7 +9,10 @@ import LoadingModal from "@/components/ui/loading-modal";
 import useDashboardPage from "@/hooks/useDashboardPage";
 import api from "@/lib/axios/api-template";
 
-function formatLogTime(timestamp) {
+function formatLogTime(timestamp, log) {
+  if (log?.formattedTime) {
+    return log.formattedTime;
+  }
   if (!timestamp) return "-";
 
   return new Intl.DateTimeFormat("en-US", {
@@ -144,7 +147,7 @@ function SuperAdminHistoryLogs() {
                 </p>
               </div>
               <p className="m-0 text-sm text-sibs-tertiary-5 md:text-right">
-                {formatLogTime(log.timestamp)}
+                {formatLogTime(log.timestamp, log)}
               </p>
             </div>
           ))
