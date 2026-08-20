@@ -1,5 +1,5 @@
 // WFM dashboard page for importing raw data and generating graphs.
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, BarChart3, Search, Trash2 } from "lucide-react";
 
 import AdminSidebar from "@/components/layout/AdminSidebar";
@@ -19,6 +19,7 @@ import {
   getRawDataCards,
 } from "@/lib/wfm-raw-data-cards";
 import { markWfmImportedFileGraphReady } from "@/lib/axios/wfm-imported-files";
+import { getUsVisaImportHistory } from "@/lib/axios/us-visa-imports";
 
 const knownWfmRawDataColumns = [
   "Employee ID",
@@ -289,13 +290,71 @@ function WfmStatusPill({ status }) {
 }
 
 
+function mapBatchToUpload(batch) {
+  const isHerodash =
+    batch.importProfileId === 1 ||
+    batch.importProfileId === "HERO_SKILL_STATISTICS_INBOUND" ||
+    String(batch.sourceSystem).toUpperCase() === "HERODASH" ||
+    /hero/i.test(batch.sourceFilename || "");
+
+  const cardId = isHerodash ? "us-visa-raw-data-2" : "us-visa-raw-data-1";
+  const rawDataTitle = isHerodash ? "Herodash" : "Fusecom";
+  const account = "US VISA";
+  const uploadedAtMs = new Date(batch.createdAt).getTime() || Date.now();
+
+  return {
+    id: `batch-${batch.id}`,
+    batchId: batch.id,
+    batchCode: batch.batchCode,
+    cardId,
+    account,
+    rawDataTitle,
+    fileName: batch.sourceFilename,
+    fileSize: batch.fileSize || 0,
+    filePath: `${account}/${rawDataTitle}/${batch.sourceFilename}`,
+    uploadedAtMs,
+    uploadedAt: new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeStyle: "short" }).format(new Date(uploadedAtMs)),
+    batchStatus: batch.status || "COMPLETED",
+    totalRows: batch.totalRows || 0,
+    validRows: batch.validRows || 0,
+    invalidRows: batch.invalidRows || 0,
+    duplicateRows: batch.duplicateRows || 0,
+    warningRows: batch.warningRows || 0,
+    uploadedBy: batch.uploadedBy || null,
+    columns: ["Date", "Skill", "Country", "Calls Offered", "Calls Handled", "SL %", "Source File"],
+    rows: [],
+  };
+}
+
 function WfmDashboardContent() {
   const dashboard = useDashboardPage();
   const userName = dashboard.userName || getAuthDisplayName(dashboard.authUser);
   const userEmail = dashboard.authUser?.email || null;
   const userId = dashboard.authUser?.id || dashboard.authUser?.sibs_id || null;
   const cachedImportState = useMemo(() => readWfmImportCache(), []);
-  const rawDataUploadCache = useMemo(() => readRawDataUploadCache(), []);
+  const [rawDataUploads, setRawDataUploads] = useState(() => readRawDataUploadCache());
+
+  const fetchDatabaseBatches = async () => {
+    try {
+      const response = await getUsVisaImportHistory({ limit: 100 });
+      if (response?.data && Array.isArray(response.data)) {
+        const dbUploads = response.data.map(mapBatchToUpload);
+        setRawDataUploads((current) => {
+          const updated = { ...current };
+          updated["us-visa-raw-data-2"] = dbUploads.filter((u) => u.cardId === "us-visa-raw-data-2");
+          updated["us-visa-raw-data-1"] = dbUploads.filter((u) => u.cardId === "us-visa-raw-data-1");
+          return updated;
+        });
+      }
+    } catch (error) {
+      console.warn("Could not sync dashboard upload batches:", error?.message);
+    }
+  };
+
+  useEffect(() => {
+    fetchDatabaseBatches();
+  }, []);
+
   const [selectedUpload, setSelectedUpload] = useState(cachedImportState.selectedUpload);
   const [uploadedFiles, setUploadedFiles] = useState(cachedImportState.uploadedFiles);
   const [isImportUploadedDataOpen, setIsImportUploadedDataOpen] = useState(false);
@@ -318,21 +377,21 @@ function WfmDashboardContent() {
       Object.fromEntries(
         accountOptions.map((account) => {
           const uploadedCount = getRawDataCards(account).filter(
-            (card) => (rawDataUploadCache[card.id] || []).length > 0,
+            (card) => (rawDataUploads[card.id] || []).length > 0,
           ).length;
 
           return [account, uploadedCount];
         }),
       ),
-    [rawDataUploadCache],
+    [rawDataUploads],
   );
   const selectedAccountCards = useMemo(
     () => (selectedImportAccount ? getRawDataCards(selectedImportAccount) : []),
     [selectedImportAccount],
   );
   const activeDashboardImportUploads = useMemo(
-    () => rawDataUploadCache[activeDashboardImportCard?.id] || [],
-    [activeDashboardImportCard, rawDataUploadCache],
+    () => rawDataUploads[activeDashboardImportCard?.id] || [],
+    [activeDashboardImportCard, rawDataUploads],
   );
   const filteredDashboardImportUploads = useMemo(() => {
     const searchValue = dashboardImportSearch.trim().toLowerCase();
