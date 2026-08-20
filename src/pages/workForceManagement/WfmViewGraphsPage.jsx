@@ -3,12 +3,17 @@ import { useCallback, useEffect, useState } from "react";
 import {
   AlertCircle,
   BarChart3,
+  CheckCircle2,
+  Clock,
   Database,
+  Filter,
   RefreshCw,
 } from "lucide-react";
 
 import AdminSidebar from "@/components/layout/AdminSidebar";
 import AppHeader from "@/components/layout/AppHeader";
+import AppModal from "@/components/ui/app-modal";
+import { Button } from "@/components/ui/button";
 import ConfirmationModal from "@/components/ui/confirmation-modal";
 import LoadingModal from "@/components/ui/loading-modal";
 import WfmCallKpiDashboard from "@/components/workForceManagement/kpi/WfmCallKpiDashboard";
@@ -59,11 +64,57 @@ const DEFAULT_FILTERS = {
 };
 
 function getErrorMessage(error) {
-  return (
+  const raw =
     error?.response?.data?.message ||
     error?.message ||
-    "Unable to load Calls KPI data."
+    "";
+
+  if (!raw) {
+    return {
+      title: "No KPI Data Available",
+      message: "No call records were found for the selected filter criteria.",
+    };
+  }
+
+  const match = raw.match(
+    /Reference date must be between (\d{4}-\d{2}-\d{2}) and (\d{4}-\d{2}-\d{2})/i,
   );
+
+  if (match) {
+    const [, minDate, maxDate] = match;
+    return {
+      title: "No Call Records for This Date",
+      message: `There is no imported call data for the selected date. Call records are available from ${minDate} to ${maxDate}. Please choose a date within this range or click "Latest".`,
+      isDateRangeError: true,
+    };
+  }
+
+  if (/Reference date must be between/i.test(raw)) {
+    return {
+      title: "Date Outside Available Range",
+      message: "There is no imported call data for the selected date. Please choose an available date or click 'Latest'.",
+      isDateRangeError: true,
+    };
+  }
+
+  if (/Custom reporting requires both/i.test(raw)) {
+    return {
+      title: "Missing Date Range",
+      message: "Custom reporting requires both a 'From' and 'To' date.",
+    };
+  }
+
+  if (/start date cannot be later/i.test(raw)) {
+    return {
+      title: "Invalid Date Range",
+      message: "The start date cannot be later than the end date.",
+    };
+  }
+
+  return {
+    title: "Unable to Load KPI Data",
+    message: raw,
+  };
 }
 
 function formatGrain(value) {
@@ -140,6 +191,25 @@ export default function WfmViewGraphsPage() {
 
   const [error, setError] =
     useState("");
+
+  const [confirmModal, setConfirmModal] = useState({
+    isOpen: false,
+    type: null,
+    title: "",
+    message: "",
+  });
+
+  const [isProcessingModal, setIsProcessingModal] = useState(false);
+  const [processingModalInfo, setProcessingModalInfo] = useState({
+    title: "Loading KPI Data",
+    message: "Please wait while we calculate and load KPI metrics.",
+  });
+
+  const [successModal, setSuccessModal] = useState({
+    isOpen: false,
+    title: "",
+    message: "",
+  });
 
   const loadKpis = useCallback(async () => {
     if (!isWfmUser) {
@@ -256,42 +326,30 @@ export default function WfmViewGraphsPage() {
   const handleApplyFilters = () => {
     if (draftFilters.period === "custom") {
       if (!draftFilters.from || !draftFilters.to) {
-        setError(
-          "Custom reporting requires both From and To dates.",
-        );
+        setError({
+          title: "Missing Date Range",
+          message: "Custom reporting requires both a 'From' and 'To' date.",
+        });
 
         return;
       }
 
       if (draftFilters.from > draftFilters.to) {
-        setError(
-          "The start date cannot be later than the end date.",
-        );
+        setError({
+          title: "Invalid Date Range",
+          message: "The start date cannot be later than the end date.",
+        });
 
         return;
       }
     }
 
-    setError("");
-
-    setAppliedFilters({
-      sourceSystem: draftFilters.sourceSystem,
-      period: draftFilters.period,
-
-      referenceDate:
-        draftFilters.period === "custom"
-          ? ""
-          : draftFilters.referenceDate,
-
-      from:
-        draftFilters.period === "custom"
-          ? draftFilters.from
-          : "",
-
-      to:
-        draftFilters.period === "custom"
-          ? draftFilters.to
-          : "",
+    setConfirmModal({
+      isOpen: true,
+      type: "apply",
+      title: "Apply KPI Filters?",
+      message:
+        "Are you sure you want to apply the selected filters and generate the KPI performance graphs?",
     });
   };
 
@@ -300,17 +358,89 @@ export default function WfmViewGraphsPage() {
       return;
     }
 
-    const latestFilters = {
-      sourceSystem: draftFilters.sourceSystem,
-      period: draftFilters.period,
-      referenceDate: "",
-      from: "",
-      to: "",
-    };
+    setConfirmModal({
+      isOpen: true,
+      type: "latest",
+      title: "Load Latest KPI Data?",
+      message:
+        "Are you sure you want to switch to the latest available KPI reporting period?",
+    });
+  };
 
-    setError("");
-    setDraftFilters(latestFilters);
-    setAppliedFilters(latestFilters);
+  const handleConfirmAction = async () => {
+    const actionType = confirmModal.type;
+    setConfirmModal({ isOpen: false, type: null, title: "", message: "" });
+
+    let targetFilters;
+
+    if (actionType === "apply") {
+      targetFilters = {
+        sourceSystem: draftFilters.sourceSystem,
+        period: draftFilters.period,
+        referenceDate:
+          draftFilters.period === "custom" ? "" : draftFilters.referenceDate,
+        from: draftFilters.period === "custom" ? draftFilters.from : "",
+        to: draftFilters.period === "custom" ? draftFilters.to : "",
+      };
+      setProcessingModalInfo({
+        title: "Applying KPI Filters",
+        message:
+          "Please wait while we aggregate records and generate performance metrics...",
+      });
+    } else if (actionType === "latest") {
+      targetFilters = {
+        sourceSystem: draftFilters.sourceSystem,
+        period: draftFilters.period,
+        referenceDate: "",
+        from: "",
+        to: "",
+      };
+      setDraftFilters(targetFilters);
+      setProcessingModalInfo({
+        title: "Loading Latest KPI Data",
+        message:
+          "Please wait while we retrieve the latest available KPI reporting period...",
+      });
+    } else {
+      return;
+    }
+
+    setIsProcessingModal(true);
+    setError(null);
+
+    try {
+      const params = buildRequestParams(targetFilters);
+      const response = await getWfmCallKpis(params);
+
+      setKpiResponse(response);
+      setAppliedFilters(targetFilters);
+
+      const dashboardData = response?.data?.data || null;
+      const returnedFilters = dashboardData?.filters || {};
+
+      if (actionType === "latest" && returnedFilters.referenceDate) {
+        setDraftFilters((curr) => ({
+          ...curr,
+          referenceDate: returnedFilters.referenceDate,
+        }));
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, 350));
+      setIsProcessingModal(false);
+
+      setSuccessModal({
+        isOpen: true,
+        title:
+          actionType === "apply"
+            ? "Filters Applied Successfully"
+            : "Latest KPI Data Loaded",
+        message: "Calls KPI metrics and performance graphs have been updated.",
+      });
+    } catch (err) {
+      setIsProcessingModal(false);
+      setError(getErrorMessage(err));
+      setKpiResponse(null);
+    }
   };
 
   const dashboardData =
@@ -418,7 +548,7 @@ export default function WfmViewGraphsPage() {
                     type="button"
                     onClick={loadKpis}
                     disabled={isLoading}
-                    className="inline-flex h-9 items-center justify-center gap-2 rounded-full border border-sibs-tertiary-8 bg-white px-4 text-sm font-bold text-sibs-primary-1 shadow-sm disabled:opacity-50"
+                    className="inline-flex h-9 cursor-pointer items-center justify-center gap-2 rounded-full border border-slate-200 bg-white px-4 text-sm font-bold text-sibs-primary-1 shadow-xs transition hover:border-sibs-primary-1 hover:bg-sibs-primary-1 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     <RefreshCw
                       size={15}
@@ -523,14 +653,15 @@ export default function WfmViewGraphsPage() {
                     />
                   )}
 
-                  <div className="flex gap-2">
+                  <div className="grid grid-cols-2 gap-2.5">
                     <button
                       type="button"
                       onClick={handleApplyFilters}
                       disabled={isLoading}
-                      className="h-10 flex-1 rounded-lg bg-sibs-primary-1 px-4 text-sm font-bold text-white disabled:opacity-50"
+                      className="inline-flex h-10 w-full cursor-pointer items-center justify-center gap-1.5 rounded-lg bg-sibs-primary-1 px-3 text-sm font-bold text-white shadow-xs transition hover:bg-sibs-tertiary-4 disabled:cursor-not-allowed disabled:opacity-50"
                     >
-                      Apply
+                      <Filter size={15} className="shrink-0" />
+                      <span>Apply</span>
                     </button>
 
                     <button
@@ -544,9 +675,10 @@ export default function WfmViewGraphsPage() {
                           ? "Latest is available for weekly, monthly, quarterly, and annual reporting."
                           : "Use the latest available KPI date."
                       }
-                      className="h-10 rounded-lg border border-sibs-tertiary-8 bg-white px-3 text-xs font-bold text-sibs-primary-1 disabled:cursor-not-allowed disabled:opacity-40"
+                      className="inline-flex h-10 w-full cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-sm font-bold text-sibs-primary-1 shadow-xs transition hover:border-sibs-primary-1 hover:bg-sibs-primary-1 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
                     >
-                      Latest
+                      <Clock size={14} className="shrink-0" />
+                      <span>Latest</span>
                     </button>
                   </div>
                 </div>
@@ -602,13 +734,6 @@ export default function WfmViewGraphsPage() {
                   )}
 
                   <span>
-                    Available grains:{" "}
-                    {availableGrains.length
-                      ? availableGrains.join(", ")
-                      : "None returned"}
-                  </span>
-
-                  <span>
                     Available date range:{" "}
                     {dashboardData.availableDateRange
                       ?.minDate ||
@@ -622,21 +747,33 @@ export default function WfmViewGraphsPage() {
               </section>
 
               {error ? (
-                <div className="sibs-card relative z-0 flex items-start gap-3 border border-red-200 p-4 text-sm text-red-700">
-                  <AlertCircle
-                    size={20}
-                    className="mt-0.5 shrink-0"
-                  />
+                <div className="sibs-card relative z-0 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border border-red-200 bg-red-50/60 p-4 text-sm text-red-800 shadow-sm">
+                  <div className="flex items-start gap-3">
+                    <AlertCircle
+                      size={20}
+                      className="mt-0.5 shrink-0 text-red-600"
+                    />
 
-                  <div>
-                    <p className="m-0 font-bold">
-                      Unable to load KPI data
-                    </p>
+                    <div>
+                      <p className="m-0 font-bold text-red-900">
+                        {typeof error === "object" ? error.title : "No Call Records for This Date"}
+                      </p>
 
-                    <p className="mt-1 mb-0">
-                      {error}
-                    </p>
+                      <p className="mt-1 mb-0 text-xs sm:text-sm text-red-700">
+                        {typeof error === "object" ? error.message : error}
+                      </p>
+                    </div>
                   </div>
+
+                  {typeof error === "object" && error.isDateRangeError ? (
+                    <button
+                      type="button"
+                      onClick={handleLatestRange}
+                      className="inline-flex shrink-0 items-center justify-center rounded-lg border border-red-300 bg-white px-3.5 py-1.5 text-xs font-extrabold text-red-700 shadow-sm transition hover:bg-red-50"
+                    >
+                      Use Latest Available Date
+                    </button>
+                  ) : null}
                 </div>
               ) : null}
 
@@ -658,23 +795,76 @@ export default function WfmViewGraphsPage() {
                     </p>
                   </div>
                 </div>
-              ) : !error ? (
+              ) : (
                 <div className="relative z-0">
-                  {emptyDataMessage ? (
-                    <div className="sibs-card p-4 text-sm font-semibold text-sibs-tertiary-5">
+                  {emptyDataMessage && !error ? (
+                    <div className="sibs-card mb-4 p-4 text-sm font-semibold text-sibs-tertiary-5">
                       {emptyDataMessage}
                     </div>
                   ) : null}
 
                   <WfmCallKpiDashboard
-                    data={dashboardData}
+                    data={dashboardData || {}}
                   />
                 </div>
-              ) : null}
+              )}
             </div>
           )}
         </div>
       </main>
+
+      {/* Action Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={confirmModal.isOpen}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        cancelText="Cancel"
+        confirmText={confirmModal.type === "apply" ? "Apply Filters" : "Load Latest"}
+        onCancel={() =>
+          setConfirmModal({ isOpen: false, type: null, title: "", message: "" })
+        }
+        onConfirm={handleConfirmAction}
+        tone="neutral"
+      />
+
+      {/* Action Processing Loading Modal */}
+      <LoadingModal
+        isOpen={isProcessingModal}
+        title={processingModalInfo.title}
+        message={processingModalInfo.message}
+      />
+
+      {/* Action Success Modal */}
+      <AppModal
+        isOpen={successModal.isOpen}
+        textAlign="center"
+        zIndex="z-[140]"
+      >
+        <div className="flex items-center justify-center gap-2.5">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-emerald-600 shadow-xs ring-4 ring-emerald-50/60">
+            <CheckCircle2 className="h-5 w-5" aria-hidden="true" />
+          </span>
+          <p className="m-0 text-lg font-extrabold text-sibs-primary-1">
+            {successModal.title}
+          </p>
+        </div>
+
+        <p className="mt-2.5 mb-0 text-sm text-sibs-tertiary-5">
+          {successModal.message}
+        </p>
+
+        <div className="mt-6 flex justify-center">
+          <Button
+            type="button"
+            onClick={() =>
+              setSuccessModal({ isOpen: false, title: "", message: "" })
+            }
+            className="h-10 min-w-[120px] cursor-pointer rounded-xl bg-sibs-primary-1 px-6 font-bold text-white shadow-xs transition hover:bg-sibs-tertiary-4"
+          >
+            Done
+          </Button>
+        </div>
+      </AppModal>
 
       <ConfirmationModal
         isOpen={dashboard.showLogoutModal}

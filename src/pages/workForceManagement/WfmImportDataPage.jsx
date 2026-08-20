@@ -6,6 +6,7 @@ import {
   CheckCircle2,
   CloudUpload,
   Eye,
+  FileSpreadsheet,
   FolderOpen,
   Search,
   Trash2,
@@ -39,13 +40,6 @@ const accountFilters = [
   "All Accounts",
   ...accountOptions,
 ];
-
-function formatUploadTimestamp(date = new Date()) {
-  return new Intl.DateTimeFormat("en-US", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(date);
-}
 
 function getApiErrorMessage(error, card) {
   const backendMsg = error?.response?.data?.message || "";
@@ -95,8 +89,24 @@ function BatchStat({ label, value }) {
   );
 }
 
+function formatUploadTimestamp(date = new Date()) {
+  const d = date instanceof Date ? date : new Date(date);
+  if (Number.isNaN(d.getTime())) return "";
+
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  }).format(d);
+}
+
 function getUploadTimeMs(upload) {
-  if (upload?.uploadedAtMs) return upload.uploadedAtMs;
+  if (upload?.uploadedAtMs && !Number.isNaN(Number(upload.uploadedAtMs))) {
+    return Number(upload.uploadedAtMs);
+  }
 
   const parsedTime = new Date(upload?.uploadedAt || "").getTime();
 
@@ -104,7 +114,8 @@ function getUploadTimeMs(upload) {
 }
 
 function formatRelativeTime(upload) {
-  const elapsedMs = Math.max(0, Date.now() - getUploadTimeMs(upload));
+  const uploadMs = getUploadTimeMs(upload);
+  const elapsedMs = Math.max(0, Date.now() - uploadMs);
   const elapsedMinutes = Math.floor(elapsedMs / 60000);
   const elapsedHours = Math.floor(elapsedMinutes / 60);
   const elapsedDays = Math.floor(elapsedHours / 24);
@@ -300,13 +311,13 @@ function normalizeUploadsByCard(uploadsByCard) {
       cardId,
       Array.isArray(uploads)
         ? uploads.map((upload, index) => ({
-            ...upload,
-            id:
-              upload.id ||
-              `${cardId}-${upload.fileName || "upload"}-${getUploadTimeMs(upload)}-${index}`,
-            cardId: upload.cardId || cardId,
-            uploadedAtMs: getUploadTimeMs(upload),
-          }))
+          ...upload,
+          id:
+            upload.id ||
+            `${cardId}-${upload.fileName || "upload"}-${getUploadTimeMs(upload)}-${index}`,
+          cardId: upload.cardId || cardId,
+          uploadedAtMs: getUploadTimeMs(upload),
+        }))
         : [],
     ]),
   );
@@ -365,16 +376,50 @@ function getImportProfileForCard(card) {
 }
 
 function mapBatchToUpload(batch) {
+  if (!batch || batch.status === "FAILED" || batch.status === "DUPLICATE") {
+    return null;
+  }
+
+  const profileCode = String(batch.importProfileId || "").toUpperCase();
+  const sourceSystem = String(batch.sourceSystem || "").toUpperCase();
+  const filename = String(batch.sourceFilename || "").toLowerCase();
+
   const isHerodash =
     batch.importProfileId === 1 ||
-    batch.importProfileId === "HERO_SKILL_STATISTICS_INBOUND" ||
-    String(batch.sourceSystem).toUpperCase() === "HERODASH" ||
-    /hero/i.test(batch.sourceFilename || "");
+    profileCode === "HERO_SKILL_STATISTICS_INBOUND" ||
+    sourceSystem === "HERODASH" ||
+    filename.startsWith("herodash") ||
+    filename.includes("hero");
+
+  const isFusecom =
+    batch.importProfileId === 2 ||
+    profileCode === "FUSECOM_SKILL_STATISTICS_INBOUND" ||
+    sourceSystem === "FUSECOM" ||
+    filename.startsWith("fusecom") ||
+    filename.includes("fuse");
+
+  if (!isHerodash && !isFusecom) {
+    return null;
+  }
 
   const cardId = isHerodash ? "us-visa-raw-data-2" : "us-visa-raw-data-1";
   const rawDataTitle = isHerodash ? "Herodash" : "Fusecom";
   const account = "US VISA";
-  const uploadedAtMs = new Date(batch.createdAt).getTime() || Date.now();
+
+  let uploadedAtMs = Date.now();
+  if (batch.createdAt) {
+    const raw = String(batch.createdAt).trim();
+    const normalized =
+      raw.includes("Z") || raw.includes("+") || (raw.includes("-") && raw.length > 10)
+        ? raw
+        : `${raw.replace(" ", "T")}Z`;
+    const parsed = new Date(normalized).getTime();
+    if (!Number.isNaN(parsed)) {
+      uploadedAtMs = parsed;
+    }
+  }
+
+  const uploadedAt = batch.formattedTime || formatUploadTimestamp(new Date(uploadedAtMs));
 
   return {
     id: `batch-${batch.id}`,
@@ -387,7 +432,7 @@ function mapBatchToUpload(batch) {
     fileSize: batch.fileSize || 0,
     filePath: `${account}/${rawDataTitle}/${batch.sourceFilename}`,
     uploadedAtMs,
-    uploadedAt: formatUploadTimestamp(new Date(uploadedAtMs)),
+    uploadedAt,
     batchStatus: batch.status || "COMPLETED",
     totalRows: batch.totalRows || 0,
     validRows: batch.validRows || 0,
@@ -486,7 +531,7 @@ function WfmImportDataPage() {
     [uploadsByCard],
   );
 
-  const taskOrderCounts = useMemo(
+  const sourceSystemCounts = useMemo(
     () =>
       Object.fromEntries(
         accountFilters.map((account) => {
@@ -495,12 +540,7 @@ function WfmImportDataPage() {
           }
 
           const accCards = getRawDataCards(account);
-          const taskOrderCount = accCards.reduce(
-            (total, card) => total + Math.max(card.taskOrders?.length || 0, 1),
-            0,
-          );
-
-          return [account, taskOrderCount];
+          return [account, accCards.length];
         }),
       ),
     [],
@@ -514,7 +554,7 @@ function WfmImportDataPage() {
     try {
       const response = await getUsVisaImportHistory({ limit: 100 });
       if (response?.data && Array.isArray(response.data)) {
-        const dbUploads = response.data.map(mapBatchToUpload);
+        const dbUploads = response.data.map(mapBatchToUpload).filter(Boolean);
 
         setUploadsByCard((current) => {
           const updated = { ...current };
@@ -574,6 +614,27 @@ function WfmImportDataPage() {
       return;
     }
 
+    const lowerName = file.name.toLowerCase();
+    const isHeroCard = /hero/i.test(card.title);
+    const isFuseCard = /fuse/i.test(card.title);
+
+    if (card.account === "US VISA") {
+      if (isHeroCard && !lowerName.includes("hero")) {
+        setErrorModalInfo({
+          title: "Wrong File Selected",
+          message: `Only Herodash Skill Statistics (.xlsx) files can be imported into ${card.title}.`,
+        });
+        return;
+      }
+      if (isFuseCard && !lowerName.includes("fuse")) {
+        setErrorModalInfo({
+          title: "Wrong File Selected",
+          message: `Only Fusecom Skill Statistics (.xlsx) files can be imported into ${card.title}.`,
+        });
+        return;
+      }
+    }
+
     const currentCardUploads = uploadsByCard[card.id] || [];
     const isDuplicate = currentCardUploads.some(
       (upload) => upload.fileName.toLowerCase() === file.name.toLowerCase(),
@@ -623,6 +684,14 @@ function WfmImportDataPage() {
         // Stage 3: Schema validation & hashing on backend
         const uploadResponse = await uploadPromise;
         batchResult = uploadResponse?.batch || null;
+
+        if (batchResult?.status === "FAILED" || uploadResponse?.success === false) {
+          throw new Error(
+            uploadResponse?.message ||
+            batchResult?.errorMessage ||
+            `The uploaded file is not valid for ${card.title}.`
+          );
+        }
 
         // Stage 4: Record processing & normalization
         setImportStage("processing");
@@ -753,13 +822,11 @@ function WfmImportDataPage() {
         activeOpenCard?.title ||
         "Raw Data",
       fileName: selectedUploadToRemove.fileName,
-      message: `Removed ${selectedUploadToRemove.fileName} from ${
-        selectedUploadToRemove.account || activeOpenCard?.account || "WFM"
-      } - ${
-        selectedUploadToRemove.rawDataTitle ||
+      message: `Removed ${selectedUploadToRemove.fileName} from ${selectedUploadToRemove.account || activeOpenCard?.account || "WFM"
+        } - ${selectedUploadToRemove.rawDataTitle ||
         activeOpenCard?.title ||
         "Raw Data"
-      }.`,
+        }.`,
     });
   };
 
@@ -809,7 +876,7 @@ function WfmImportDataPage() {
             >
               {accountFilters.map((account) => (
                 <option key={account} value={account}>
-                  {account} ({taskOrderCounts[account] || 0})
+                  {account} ({sourceSystemCounts[account] || 0})
                 </option>
               ))}
             </select>
@@ -817,103 +884,147 @@ function WfmImportDataPage() {
 
           {selectedAccount === "All Accounts" ? (
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-              {filteredAccountOptions.map((account) => (
-                <button
-                  key={account}
-                  type="button"
-                  onClick={() => {
-                    setSelectedAccount(account);
-                    setRawDataSearch("");
-                  }}
-                  className="sibs-card min-h-[130px] p-4 text-left transition hover:border-sibs-primary-2 hover:bg-sibs-primary-2/5"
-                >
-                  <div className="flex items-start justify-between gap-3">
+              {filteredAccountOptions.map((account) => {
+                const totalSourceSystems =
+                  sourceSystemCounts[account] || 0;
+
+                return (
+                  <button
+                    key={account}
+                    type="button"
+                    onClick={() => {
+                      setSelectedAccount(account);
+                      setRawDataSearch("");
+                    }}
+                    className="group sibs-card flex min-h-[100px] cursor-pointer flex-col justify-between p-4 text-left shadow-xs transition-colors duration-150 hover:border-sibs-primary-1"
+                  >
                     <div className="min-w-0">
                       <p className="m-0 truncate text-base font-bold text-sibs-primary-1">
                         {account}
                       </p>
-                      <p className="mt-1 mb-0 text-sm font-semibold text-sibs-tertiary-5">
-                        Open account raw data
+                      <p className="mt-1 mb-0 text-xs font-semibold text-sibs-tertiary-5">
+                        {totalSourceSystems}{" "}
+                        {totalSourceSystems === 1
+                          ? "Source System"
+                          : "Source Systems"}
                       </p>
                     </div>
-                    <span className="rounded-full bg-[#f8fbfd] px-2.5 py-1 text-xs font-bold text-sibs-primary-1">
-                      {uploadedCardCounts[account] || 0}
-                    </span>
-                  </div>
-                </button>
-              ))}
+
+                    <div className="mt-3 flex items-center justify-end border-t border-slate-100 pt-2 text-[11px] font-bold text-sibs-primary-1">
+                      <span className="inline-flex items-center gap-1 text-sibs-primary-1">
+                        View Source System →
+                      </span>
+                    </div>
+                  </button>
+                );
+              })}
             </div>
           ) : (
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
               {filteredRawDataCards.map((card) => {
                 const uploads = uploadsByCard[card.id] || [];
-                const latestUploads = uploads.slice(0, 5);
+                const latestUploads = uploads.slice(0, 3);
 
                 return (
                   <section
                     key={card.id}
-                    className="sibs-card flex min-h-[300px] flex-col p-4"
+                    className="sibs-card flex min-h-[350px] flex-col justify-between p-4 shadow-xs transition hover:border-sibs-primary-1/40"
                   >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex min-w-0 items-baseline gap-2">
-                        <h2 className="m-0 truncate text-sm font-bold text-sibs-primary-1">
-                          {card.title}
-                        </h2>
-                        <p className="m-0 shrink-0 text-xs font-semibold text-sibs-tertiary-5">
-                          Upload Data
-                        </p>
+                    <div>
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex min-w-0 items-baseline gap-2">
+                          <h2 className="m-0 truncate text-base font-extrabold text-sibs-primary-1">
+                            {card.title}
+                          </h2>
+                          <span className="shrink-0 text-[11px] font-extrabold uppercase tracking-wide text-sibs-tertiary-5">
+                            {card.account}
+                          </span>
+                        </div>
+                        <span
+                          className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-bold ${
+                            uploads.length > 0
+                              ? "border border-emerald-200/80 bg-emerald-50 text-emerald-700"
+                              : "border border-slate-200 bg-slate-50 text-slate-500"
+                          }`}
+                        >
+                          {uploads.length > 0 ? (
+                            <>
+                              <CheckCircle2 size={11} className="shrink-0" />
+                              {uploads.length} {uploads.length === 1 ? "file" : "files"}
+                            </>
+                          ) : (
+                            "0 files"
+                          )}
+                        </span>
                       </div>
-                      <span className="rounded-full bg-[#f8fbfd] px-2.5 py-1 text-xs font-bold text-sibs-primary-1">
-                        {uploads.length}
-                      </span>
-                    </div>
-                    <div className="mt-2 flex min-w-0 flex-wrap items-center gap-2">
-                      <p className="m-0 truncate text-xs font-bold uppercase text-sibs-tertiary-5">
-                        {card.account}
-                      </p>
+
                       {card.taskOrders?.length ? (
-                        <div className="flex min-w-0 flex-wrap gap-1.5">
-                          {card.taskOrders.map((taskOrder) => (
-                            <span
-                              key={taskOrder}
-                              className="rounded-md border border-sibs-tertiary-8 bg-white px-2.5 py-1 text-xs font-extrabold leading-none text-sibs-primary-1"
-                            >
-                              {taskOrder}
-                            </span>
-                          ))}
+                        <div className="mt-2.5 flex min-w-0 flex-wrap items-center gap-1.5 text-xs">
+                          <span className="text-[10px] font-extrabold uppercase text-sibs-tertiary-5">
+                            TASK ORDERS:
+                          </span>
+                          <div className="flex min-w-0 flex-wrap gap-1">
+                            {card.taskOrders.map((taskOrder) => (
+                              <span
+                                key={taskOrder}
+                                className="rounded-md border border-sibs-tertiary-8 bg-white px-2 py-0.5 text-[11px] font-bold text-sibs-primary-1 shadow-2xs"
+                              >
+                                {taskOrder}
+                              </span>
+                            ))}
+                          </div>
                         </div>
                       ) : null}
                     </div>
 
-                    <div className="mt-4 min-h-[170px] flex-1 space-y-1 rounded-lg border border-sibs-tertiary-10 bg-[#f8fbfd] px-3 py-2">
+                    <div className="mt-3.5 min-h-[175px] flex-1 rounded-xl border border-slate-200/80 bg-slate-50/50 p-2.5">
                       {latestUploads.length ? (
-                        latestUploads.map((upload) => (
-                          <div
-                            key={upload.id || `${upload.fileName}-${upload.uploadedAt}`}
-                            className="border-b border-sibs-tertiary-10 pb-1 last:border-b-0 last:pb-0"
-                          >
-                            <p className="m-0 truncate text-[11px] font-semibold leading-4 text-sibs-primary-1">
-                              {upload.fileName}
-                            </p>
-                            <div className="flex items-center justify-between text-[10px] text-sibs-tertiary-5">
-                              <span>{formatRelativeTime(upload)}</span>
-                              {upload.batchCode ? (
-                                <span className="rounded bg-sibs-primary-2/10 px-1 font-mono text-[9px] font-bold text-sibs-primary-2">
-                                  {upload.batchCode}
-                                </span>
-                              ) : null}
+                        <div className="space-y-1.5">
+                          {latestUploads.map((upload) => (
+                            <div
+                              key={upload.id || `${upload.fileName}-${upload.uploadedAt}`}
+                              className="rounded-lg border border-slate-200/60 bg-white p-2 shadow-2xs transition hover:border-slate-300"
+                            >
+                              <div className="flex items-start gap-2">
+                                <FileSpreadsheet
+                                  size={15}
+                                  className="mt-0.5 shrink-0 text-sibs-primary-1/70"
+                                />
+                                <div className="min-w-0 flex-1">
+                                  <p
+                                    className="m-0 truncate text-[11px] font-bold text-sibs-primary-1"
+                                    title={upload.fileName}
+                                  >
+                                    {upload.fileName}
+                                  </p>
+                                  <div className="mt-0.5 flex items-center justify-between text-[10px] text-sibs-tertiary-5">
+                                    <span>{formatRelativeTime(upload)}</span>
+                                    {upload.batchCode ? (
+                                      <span className="rounded bg-sibs-primary-2/10 px-1 font-mono text-[9px] font-bold text-sibs-primary-2">
+                                        {upload.batchCode}
+                                      </span>
+                                    ) : null}
+                                  </div>
+                                </div>
+                              </div>
                             </div>
-                          </div>
-                        ))
+                          ))}
+                        </div>
                       ) : (
-                        <div className="flex min-h-[140px] items-center justify-center text-center text-xs text-sibs-tertiary-5">
-                          No uploaded data yet
+                        <div className="flex h-full min-h-[120px] flex-col items-center justify-center p-3 text-center">
+                          <CloudUpload
+                            size={22}
+                            className="mb-1.5 text-slate-400 opacity-60"
+                          />
+                          <p className="m-0 text-xs font-semibold text-sibs-tertiary-5">
+                            No uploaded data yet
+                          </p>
                         </div>
                       )}
                     </div>
 
-                    <div className="mt-4 grid grid-cols-2 gap-2.5">
-                      <label className="flex h-9 cursor-pointer items-center justify-center gap-1.5 rounded-lg bg-sibs-primary-1 px-3 text-sm font-semibold text-white shadow-xs transition hover:bg-sibs-tertiary-4">
+                    <div className="mt-3.5 grid grid-cols-2 gap-2.5">
+                      <label className="flex h-9 cursor-pointer items-center justify-center gap-1.5 rounded-lg bg-sibs-primary-1 px-3 text-xs font-bold text-white shadow-xs transition hover:bg-sibs-tertiary-4">
                         <CloudUpload className="h-4 w-4 shrink-0" aria-hidden="true" />
                         <span>Import</span>
                         <input
@@ -930,10 +1041,10 @@ function WfmImportDataPage() {
                           setActiveOpenCard(card);
                           setUploadedDataSearch("");
                         }}
-                        className="flex h-9 items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-sm font-semibold text-sibs-primary-1 shadow-xs transition hover:border-sibs-primary-1 hover:bg-sibs-primary-1 hover:text-white"
+                        className="flex h-9 cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-xs font-bold text-sibs-primary-1 shadow-xs transition hover:border-sibs-primary-1 hover:bg-sibs-primary-1 hover:text-white"
                       >
-                        <FolderOpen className="h-4 w-4" aria-hidden="true" />
-                        Open
+                        <FolderOpen className="h-4 w-4 shrink-0" aria-hidden="true" />
+                        <span>Open</span>
                       </button>
                     </div>
                   </section>
@@ -1049,10 +1160,10 @@ function WfmImportDataPage() {
                       Remove
                     </button>
                   </div>
-              </div>
-            );
-          })
-        ) : (
+                </div>
+              );
+            })
+          ) : (
             <div className="rounded-xl border border-dashed border-slate-200 bg-white px-4 py-12 text-center text-sm text-sibs-tertiary-5">
               {openCardUploads.length ? "No uploaded data found matching search." : "No uploaded data yet."}
             </div>
