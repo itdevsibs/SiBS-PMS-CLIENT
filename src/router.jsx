@@ -1,5 +1,5 @@
 // Defines all frontend routes and page mappings.
-import { Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes } from "react-router-dom";
 import AgentsPage from "./pages/dashboard/AgentsPage";
 import BoardOfDirectorsPage from "./pages/dashboard/BoardOfDirectorsPage";
 import ClientPage from "./pages/dashboard/ClientPage";
@@ -17,7 +17,8 @@ import SeniorOperationsManagerPage from "@/pages/dashboard/SeniorOperationsManag
 const Router = () => {
   return (
     <Routes>
-      <Route path="/" element={<Login />} />
+      <Route path="/login" element={<Login />} />
+      <Route path="/" element={<Navigate to="/login" replace />} />
       <Route path="/dashboard" element={<AgentsPage />} />
       <Route path="/dashboard/agent" element={<AgentsPage />} />
       <Route path="/dashboard/agents" element={<AgentsPage />} />
@@ -44,6 +45,7 @@ const Router = () => {
         path="/dashboard/superadmin/history-logs"
         element={<SuperAdminHistoryLogs />}
       />
+      <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>
   );
 };

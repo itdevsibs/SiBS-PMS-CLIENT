@@ -1,9 +1,8 @@
 // Renders the page header with profile menu actions.
 import { useState } from "react";
 import { ChevronDown, LogOut, Menu, UserRound } from "lucide-react";
-import { useNavigate } from "react-router-dom";
-
-import { clearAuthSession, getAuthUser } from "@/lib/auth";
+import { getAuthUser } from "@/lib/auth";
+import { handleLogout as handleAuthLogout } from "@/lib/axios/api-template";
 
 const AppHeader = ({
   onLogoutClick,
@@ -13,7 +12,6 @@ const AppHeader = ({
   userEmail,
   userName,
 }) => {
-  const navigate = useNavigate();
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const authUser = getAuthUser();
   // Uses the saved employee name fields when the API does not send one full name.
@@ -45,8 +43,7 @@ const AppHeader = ({
       return;
     }
 
-    clearAuthSession();
-    navigate("/");
+    void handleAuthLogout(true);
   };
 
   return (
