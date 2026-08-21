@@ -13,7 +13,7 @@ import { useNavigate } from "react-router-dom";
 import AppModal from "@/components/ui/app-modal";
 import { Button } from "@/components/ui/button";
 import LoadingModal from "@/components/ui/loading-modal";
-import { saveAuthSession } from "@/lib/auth";
+import { clearAuthSession, saveAuthSession } from "@/lib/auth";
 import { getLogin } from "@/lib/axios/getLogin";
 
 const MIN_LOGIN_LOADING_MS = 900;
@@ -358,17 +358,7 @@ function saveAuthenticatedUser(
    CLEAR AUTH STORAGE
 ================================ */
 function clearAuthenticationStorage() {
-  sessionStorage.removeItem(
-    "sibsAuthenticatedUser",
-  );
-
-  sessionStorage.removeItem(
-    "accessTokenExpiresAt",
-  );
-
-  localStorage.removeItem(
-    "token_expires_at",
-  );
+  clearAuthSession();
 }
 
 /* ================================

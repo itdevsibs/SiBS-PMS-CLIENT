@@ -1,5 +1,10 @@
-// Configures Axios base URL, auth redirects, and logout handling.
+// Configures Axios base URL, auth refresh, redirects, and logout handling.
 import axios from "axios";
+
+import {
+  clearAuthSession,
+  saveAuthSessionExpiry,
+} from "@/lib/auth";
 
 function getBaseURL() {
   const rawBaseURL =
@@ -15,6 +20,7 @@ function getBaseURL() {
 
 const BASE_URL = getBaseURL();
 const LOGOUT_TIMEOUT_MS = 5000;
+const REFRESH_TIMEOUT_MS = 10000;
 
 export const AUTH_LOGOUT_START_EVENT = "sibs-auth-logout-start";
 
@@ -31,14 +37,12 @@ const IGNORE_AUTH_REDIRECT_ROUTES = [
   "/api/users/login",
   "/api/users/logout",
   "/api/users/refresh",
-  "/api/users/me",
   "/api/users/admin-login",
   "/api/users/manager-login",
 
   "/users/login",
   "/users/logout",
   "/users/refresh",
-  "/users/me",
   "/users/admin-login",
   "/users/manager-login",
 
@@ -100,15 +104,21 @@ const logoutApi = axios.create({
   timeout: LOGOUT_TIMEOUT_MS,
 });
 
+const refreshApi = axios.create({
+  baseURL: BASE_URL,
+  withCredentials: true,
+  timeout: REFRESH_TIMEOUT_MS,
+});
+
 let isRedirecting = false;
 let logoutPromise = null;
+let refreshPromise = null;
 
 function clearClientSession() {
-  sessionStorage.removeItem("accessTokenExpiresAt");
-  sessionStorage.removeItem("selectedEmployeeId");
-  sessionStorage.removeItem("sibsAuthenticatedUser");
+  clearAuthSession();
 
-  localStorage.removeItem("token_expires_at");
+  sessionStorage.removeItem("selectedEmployeeId");
+
   localStorage.removeItem("selectedEmployeeId");
   localStorage.removeItem("employeePageState");
 }
@@ -119,7 +129,25 @@ function dispatchLogoutStart() {
   window.dispatchEvent(new CustomEvent(AUTH_LOGOUT_START_EVENT));
 }
 
-export async function handleLogout(redirect = true) {
+export async function refreshSession() {
+  if (refreshPromise) {
+    return refreshPromise;
+  }
+
+  refreshPromise = refreshApi
+    .post("/api/users/refresh", {})
+    .then((response) => response?.data || {})
+    .finally(() => {
+      refreshPromise = null;
+    });
+
+  return refreshPromise;
+}
+
+export async function handleLogout(
+  redirect = true,
+  reason = "",
+) {
   const pathname = getCurrentPathname();
 
   if (redirect && isPublicPath(pathname)) {
@@ -155,7 +183,11 @@ export async function handleLogout(redirect = true) {
       clearClientSession();
 
       if (redirect) {
-        window.location.replace("/login");
+        const query = reason
+          ? `?reason=${encodeURIComponent(reason)}`
+          : "";
+
+        window.location.replace(`/login${query}`);
       } else {
         isRedirecting = false;
       }
@@ -191,7 +223,7 @@ api.interceptors.request.use(
 
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
+  async (error) => {
     const status = error.response?.status;
     const requestUrl = error.config?.url || "";
     const pathname = getCurrentPathname();
@@ -204,7 +236,28 @@ api.interceptors.response.use(
 
     // A normal 403 can mean missing module permission; do not log out for it.
     if (status === 401 && !ignoreRedirect) {
-      void handleLogout(true);
+      const originalRequest = error.config || {};
+
+      if (!originalRequest._authRetry) {
+        originalRequest._authRetry = true;
+
+        try {
+          const refreshData = await refreshSession();
+
+          if (refreshData?.success) {
+            saveAuthSessionExpiry({
+              expiresAt: refreshData?.expiresAt,
+              expiresInMs: refreshData?.expiresInMs,
+            });
+
+            return api(originalRequest);
+          }
+        } catch {
+          // The centralized logout below handles an invalid/expired session.
+        }
+      }
+
+      void handleLogout(true, "session-expired");
     }
 
     return Promise.reject(error);

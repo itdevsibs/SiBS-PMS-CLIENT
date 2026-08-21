@@ -11,7 +11,8 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
-import { clearAuthSession, getAuthDisplayName, getAuthUser, isAuthenticated } from "@/lib/auth";
+import { getAuthDisplayName, getAuthUser, isAuthenticated } from "@/lib/auth";
+import { handleLogout as handleAuthLogout } from "@/lib/axios/api-template";
 import { recordWfmLogout } from "@/lib/axios/wfm-history-logs";
 
 const roleIcons = {
@@ -79,7 +80,7 @@ function useDashboardPage() {
 
   useEffect(() => {
     if (!isAuthenticated()) {
-      navigate("/");
+      navigate("/login", { replace: true });
     }
   }, [navigate]);
 
@@ -97,8 +98,7 @@ function useDashboardPage() {
 
     // Keeps the loading modal visible before clearing the local session.
     window.setTimeout(() => {
-      clearAuthSession();
-      navigate("/");
+      void handleAuthLogout(true);
     }, 2500);
   };
 
