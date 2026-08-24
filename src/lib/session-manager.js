@@ -1,6 +1,6 @@
 export const SESSION_REFRESH_BUFFER_MS = 5 * 60 * 1000;
 export const SESSION_ACTIVITY_WINDOW_MS = 15 * 60 * 1000;
-export const SESSION_REFRESH_RETRY_MS = 30 * 100000;
+export const SESSION_REFRESH_RETRY_MS = 30 * 1000;
 
 export function getSessionRefreshDelay(expiresAt, now = Date.now()) {
   const numericExpiresAt = Number(expiresAt);

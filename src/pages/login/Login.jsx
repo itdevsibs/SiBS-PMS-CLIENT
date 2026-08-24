@@ -2,13 +2,14 @@ import { useState } from "react";
 import {
   Activity,
   CheckCircle2,
+  Clock3,
   Eye,
   EyeOff,
   Lock,
   User,
   XCircle,
 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
 import AppModal from "@/components/ui/app-modal";
 import { Button } from "@/components/ui/button";
@@ -18,6 +19,23 @@ import { getLogin } from "@/lib/axios/getLogin";
 
 const MIN_LOGIN_LOADING_MS = 900;
 const SUCCESS_REDIRECT_DELAY_MS = 900;
+const SESSION_EXPIRED_REASON = "session-expired";
+
+function hasSessionExpiredReason(search = "") {
+  const params = new URLSearchParams(String(search || ""));
+  return params.get("reason") === SESSION_EXPIRED_REASON;
+}
+
+function removeSessionExpiredReason(search = "") {
+  const params = new URLSearchParams(String(search || ""));
+
+  if (params.get("reason") === SESSION_EXPIRED_REASON) {
+    params.delete("reason");
+  }
+
+  const query = params.toString();
+  return query ? `?${query}` : "";
+}
 
 function waitForMinimumLoading(startedAt) {
   const elapsed = Date.now() - startedAt;
@@ -399,6 +417,21 @@ function getLoginFailureMessage(
 ================================ */
 const Login = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const showSessionExpiredNotice = hasSessionExpiredReason(
+    location.search,
+  );
+
+  const dismissSessionExpiredNotice = () => {
+    navigate(
+      {
+        pathname: location.pathname,
+        search: removeSessionExpiredReason(location.search),
+      },
+      { replace: true },
+    );
+  };
 
   const [
     showPassword,
@@ -840,6 +873,36 @@ const Login = () => {
           </form>
         </div>
       </div>
+
+      <AppModal
+        isOpen={showSessionExpiredNotice}
+        textAlign="center"
+        zIndex="z-[140]"
+      >
+        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-amber-100 text-amber-600">
+          <Clock3
+            className="h-6 w-6"
+            aria-hidden="true"
+          />
+        </div>
+
+        <p className="mb-1 mt-4 text-base font-bold text-sibs-primary-1">
+          Session expired
+        </p>
+
+        <p className="m-0 text-sm leading-6 text-sibs-tertiary-5">
+          Your session has expired after 1 hour of inactivity. Please log in again to continue.
+        </p>
+
+        <Button
+          type="button"
+          size="lg"
+          onClick={dismissSessionExpiredNotice}
+          className="mt-5 h-10 w-full rounded-xl bg-sibs-primary-1 text-white hover:bg-sibs-tertiary-4"
+        >
+          Continue to login
+        </Button>
+      </AppModal>
 
       <AppModal
         isOpen={
