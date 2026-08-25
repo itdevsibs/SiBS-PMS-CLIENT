@@ -45,6 +45,22 @@ function getApiErrorMessage(error, card) {
   const backendMsg = error?.response?.data?.message || "";
   const backendCode = error?.response?.data?.code || "";
 
+  if (backendCode === "CORRUPTED_WORKBOOK") {
+    return "The uploaded XLSX file could not be opened as a valid Excel workbook. Please re-export the report from the source system and try again.";
+  }
+
+  if (backendCode === "INVALID_EXCEL_FILE") {
+    return "The selected file could not be read as an Excel workbook. Please select a valid .xlsx file and try again.";
+  }
+
+  if (backendCode === "INVALID_FILE_TYPE") {
+    return backendMsg || "Only .xlsx files are supported for this import.";
+  }
+
+  if (backendCode === "FILE_TOO_LARGE") {
+    return backendMsg || "The selected workbook exceeds the maximum allowed upload size.";
+  }
+
   if (
     backendCode === "MISSING_REQUIRED_WORKSHEET" ||
     backendCode === "MISSING_REQUIRED_SHEET" ||
@@ -358,21 +374,7 @@ function createUploadRecordId(cardId, fileName) {
 }
 
 function getImportProfileForCard(card) {
-  const title = String(card?.title || "").toLowerCase();
-  const taskOrders = Array.isArray(card?.taskOrders)
-    ? card.taskOrders.map((to) => String(to).toLowerCase()).join(" ")
-    : "";
-  const combined = `${title} ${taskOrders}`;
-
-  if (combined.includes("fuse")) {
-    return "FUSECOM_SKILL_STATISTICS_INBOUND";
-  }
-
-  if (combined.includes("hero")) {
-    return "HERO_SKILL_STATISTICS_INBOUND";
-  }
-
-  return "FUSECOM_SKILL_STATISTICS_INBOUND";
+  return String(card?.importProfileCode || "").trim() || null;
 }
 
 function mapBatchToUpload(batch) {
@@ -599,12 +601,13 @@ function WfmImportDataPage() {
       return;
     }
 
+    const isUsVisa = card.account === "US VISA";
     const currentCardUploads = uploadsByCard[card.id] || [];
     const isDuplicate = currentCardUploads.some(
       (upload) => upload.fileName.toLowerCase() === file.name.toLowerCase(),
     );
 
-    if (isDuplicate) {
+    if (!isUsVisa && isDuplicate) {
       setDuplicateUploadAlert({
         fileName: file.name,
         rawDataTitle: card.title,
@@ -615,39 +618,55 @@ function WfmImportDataPage() {
     setIsUploading(true);
     setUploadingCardTitle(card.title);
     setImportFileName(file.name);
-    setImportStage("reading");
-    setUploadProgress(15);
+    setImportStage(isUsVisa ? "uploading" : "reading");
+    setUploadProgress(isUsVisa ? 5 : 15);
     setUsVisaBatchResult(null);
 
     try {
-      // Stage 1: Reading workbook
-      const importedData = await readSelectedFile(file);
-      setUploadProgress(30);
-      await new Promise((resolve) => setTimeout(resolve, 200));
+      let importedData = {
+        columns: ["Source File"],
+        rows: [],
+      };
+
+      if (!isUsVisa) {
+        importedData = await readSelectedFile(file);
+        setUploadProgress(30);
+        await new Promise((resolve) => setTimeout(resolve, 200));
+      }
 
       let batchResult = null;
-      const isUsVisa = card.account === "US VISA";
 
       if (isUsVisa) {
-        // Stage 2: Uploading payload
-        setImportStage("uploading");
         const importProfileId = getImportProfileForCard(card);
+
+        if (!importProfileId) {
+          throw new Error(
+            `${card.title} raw-data import is not configured yet.`,
+          );
+        }
 
         const uploadPromise = uploadUsVisaImport({
           file,
           importProfileId,
           onProgress: (percent) => {
-            const scaledProgress = Math.round(30 + percent * 0.35);
+            const scaledProgress = Math.round(5 + percent * 0.6);
             setUploadProgress(scaledProgress);
             if (percent >= 90) {
-              setImportStage("validating");
+              setImportStage("processing");
             }
           },
         });
 
-        // Stage 3: Schema validation & hashing on backend
         const uploadResponse = await uploadPromise;
         batchResult = uploadResponse?.batch || null;
+
+        if (batchResult?.status === "DUPLICATE") {
+          setDuplicateUploadAlert({
+            fileName: file.name,
+            rawDataTitle: card.title,
+          });
+          return;
+        }
 
         if (batchResult?.status === "FAILED") {
           throw new Error(
@@ -656,18 +675,13 @@ function WfmImportDataPage() {
           );
         }
 
-        // Stage 4: Record processing & normalization
-        setImportStage("processing");
-        setUploadProgress(85);
-        await new Promise((resolve) => setTimeout(resolve, 250));
+        setUploadProgress(90);
       } else {
         setUploadProgress(75);
       }
 
-      // Stage 5: Database staging & client sync
       setImportStage("finalizing");
       setUploadProgress(95);
-      await new Promise((resolve) => setTimeout(resolve, 200));
 
       const { id: uploadId, uploadedAtMs } = createUploadRecordId(card.id, file.name);
 
@@ -1187,6 +1201,7 @@ function WfmImportDataPage() {
       <AppModal
         isOpen={Boolean(usVisaErrorDetails)}
         className="!max-w-none sm:!w-[min(92vw,1100px)]"
+        zIndex="z-[160]"
       >
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div>
@@ -1425,7 +1440,7 @@ function WfmImportDataPage() {
           Data Removed Successfully
         </p>
         <p className="mt-2 mb-0 text-sm text-sibs-tertiary-5">
-          <span className="font-semibold text-sibs-primary-1">
+          <span className="break-words font-semibold text-sibs-primary-1 [overflow-wrap:anywhere]">
             {removedUpload?.fileName}
           </span>{" "}
           and all associated database records have been deleted.
@@ -1469,6 +1484,13 @@ function WfmImportDataPage() {
         title="Removing data"
         message="Please wait while the file and database records are removed..."
         zIndex="z-[150]"
+      />
+
+      <LoadingModal
+        isOpen={isLoadingUsVisaErrors}
+        title="Loading error details"
+        message="Please wait while we retrieve the import error records..."
+        zIndex="z-[155]"
       />
     </section>
   );

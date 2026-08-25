@@ -21,7 +21,9 @@ const ConfirmationModal = ({
   return (
     <AppModal isOpen={isOpen} zIndex={zIndex}>
       <p className="m-0 text-lg font-bold text-sibs-primary-1">{title}</p>
-      <p className="mt-2 mb-0 text-sm text-sibs-tertiary-5">{message}</p>
+      <p className="mt-2 mb-0 break-words text-sm text-sibs-tertiary-5 [overflow-wrap:anywhere]">
+        {message}
+      </p>
 
       <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
         <Button
