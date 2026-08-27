@@ -15,14 +15,17 @@ const accountRawDataCards = {
     {
       title: "Fusecom",
       taskOrders: ["Seurica", "Nice"],
+      importProfileCode: "FUSECOM_SKILL_STATISTICS_INBOUND",
     },
     {
       title: "Herodash",
       taskOrders: ["Seasia", "Pac"],
+      importProfileCode: "HERO_SKILL_STATISTICS_INBOUND",
     },
     {
       title: "Fusenet",
       taskOrders: ["Nesami"],
+      importProfileCode: null,
     },
   ],
   "YUM-DEL": [
@@ -57,6 +60,8 @@ export function getRawDataCards(account) {
     id: `${slugifyAccount(account)}-raw-data-${index + 1}`,
     account,
     taskOrders: Array.isArray(card.taskOrders) ? card.taskOrders : [],
+    importProfileCode:
+      typeof card === "string" ? null : card.importProfileCode || null,
     };
   });
 }
