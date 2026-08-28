@@ -1,6 +1,6 @@
 // Renders the page header with profile menu actions.
-import { useState } from "react";
-import { ChevronDown, LogOut, Menu, UserRound } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { ChevronDown, LogOut, Menu } from "lucide-react";
 import { getAuthUser } from "@/lib/auth";
 import { handleLogout as handleAuthLogout } from "@/lib/axios/api-template";
 
@@ -13,6 +13,7 @@ const AppHeader = ({
   userName,
 }) => {
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const userMenuRef = useRef(null);
   const authUser = getAuthUser();
   // Uses the saved employee name fields when the API does not send one full name.
   const fullNameFromParts = [
@@ -33,6 +34,24 @@ const AppHeader = ({
     "User";
   const displayEmail = userEmail || authUser?.email || authUser?.roleLabel || "signed-in";
   const userInitial = displayName?.charAt(0)?.toUpperCase() || "U";
+
+  useEffect(() => {
+    if (!isUserMenuOpen) {
+      return undefined;
+    }
+
+    const handleOutsidePointerDown = (event) => {
+      if (!userMenuRef.current?.contains(event.target)) {
+        setIsUserMenuOpen(false);
+      }
+    };
+
+    document.addEventListener("pointerdown", handleOutsidePointerDown);
+
+    return () => {
+      document.removeEventListener("pointerdown", handleOutsidePointerDown);
+    };
+  }, [isUserMenuOpen]);
 
   const handleLogoutClick = () => {
     setIsUserMenuOpen(false);
@@ -74,7 +93,7 @@ const AppHeader = ({
         </div>
 
         {displayName && (
-          <div className="relative shrink-0">
+          <div ref={userMenuRef} className="relative shrink-0">
             <button
               type="button"
               onClick={() => setIsUserMenuOpen((value) => !value)}
@@ -112,26 +131,8 @@ const AppHeader = ({
               >
                 <button
                   type="button"
-                  className="flex w-full items-center gap-3 rounded-lg border-0 bg-transparent px-3 py-3 text-left transition hover:bg-sibs-primary-3"
-                  role="menuitem"
-                >
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-sibs-tertiary-10 text-sibs-primary-1">
-                    <UserRound className="h-4 w-4" aria-hidden="true" />
-                  </span>
-                  <span className="min-w-0">
-                    <span className="block text-sm font-bold text-sibs-primary-1">
-                      Switch to Employee
-                    </span>
-                    <span className="block text-xs text-sibs-tertiary-5">
-                      Current role: Super Admin
-                    </span>
-                  </span>
-                </button>
-
-                <button
-                  type="button"
                   onClick={handleLogoutClick}
-                  className="mt-2 flex w-full items-center gap-3 rounded-lg border-0 bg-transparent px-3 py-3 text-left font-bold text-sibs-danger transition hover:bg-red-50"
+                  className="flex w-full items-center gap-3 rounded-lg border-0 bg-transparent px-3 py-2.5 text-left font-bold text-sibs-danger transition hover:bg-red-50 hover:text-red-700 hover:shadow-sm"
                   role="menuitem"
                 >
                   <LogOut className="h-4 w-4 shrink-0" aria-hidden="true" />

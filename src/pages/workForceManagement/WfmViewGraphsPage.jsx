@@ -50,8 +50,22 @@ const SOURCE_OPTIONS = [
   },
 ];
 
+const TASK_ORDER_OPTIONS_BY_SOURCE = {
+  FUSECOM: [
+    { value: "", label: "All Task Orders" },
+    { value: "TO12", label: "TO12 - NICE" },
+    { value: "TO16", label: "TO16 - SEURECA" },
+  ],
+  HERODASH: [
+    { value: "", label: "All Task Orders" },
+    { value: "TO4", label: "TO4 - PAC" },
+    { value: "TO10", label: "TO10 - SEASIA" },
+  ],
+};
+
 const DEFAULT_FILTERS = {
   sourceSystem: "FUSECOM",
+  taskOrder: "",
   period: "weekly",
   referenceDate: "",
   from: "",
@@ -135,11 +149,30 @@ function getSourceLabel(value) {
   );
 }
 
+function getTaskOrderOptions(sourceSystem) {
+  return (
+    TASK_ORDER_OPTIONS_BY_SOURCE[sourceSystem] ||
+    [{ value: "", label: "All Task Orders" }]
+  );
+}
+
+function getTaskOrderLabel(sourceSystem, value) {
+  return (
+    getTaskOrderOptions(sourceSystem).find(
+      (option) => option.value === String(value || ""),
+    )?.label || "All Task Orders"
+  );
+}
+
 function buildRequestParams(filters) {
   const params = {
     period: filters.period,
     sourceSystem: filters.sourceSystem,
   };
+
+  if (filters.taskOrder) {
+    params.taskOrder = filters.taskOrder;
+  }
 
   if (filters.period === "custom") {
     if (filters.from) {
@@ -236,6 +269,19 @@ export default function WfmViewGraphsPage() {
     setFilters((current) => ({
       ...current,
       sourceSystem,
+      taskOrder: "",
+      referenceDate: "",
+      from: "",
+      to: "",
+    }));
+  };
+
+  const handleTaskOrderChange = (event) => {
+    const taskOrder = event.target.value;
+
+    setFilters((current) => ({
+      ...current,
+      taskOrder,
       referenceDate: "",
       from: "",
       to: "",
@@ -290,6 +336,14 @@ export default function WfmViewGraphsPage() {
   const activeSourceSystem =
     dashboardData.filters?.sourceSystem ||
     filters.sourceSystem;
+
+  const taskOrderOptions = getTaskOrderOptions(
+    filters.sourceSystem,
+  );
+
+  const activeTaskOrder =
+    dashboardData.filters?.taskOrder ||
+    filters.taskOrder;
 
   const emptyDataMessage =
     !availableGrains.length
@@ -369,7 +423,7 @@ export default function WfmViewGraphsPage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 gap-2 p-2.5 md:grid-cols-2 xl:grid-cols-4 xl:items-end">
+                <div className="grid grid-cols-1 gap-2 p-2.5 md:grid-cols-2 xl:grid-cols-5 xl:items-end">
                   <label className="block">
                     <span className="mb-0.5 block text-[9.5px] font-extrabold uppercase text-sibs-tertiary-5">
                       Account / Source
@@ -383,6 +437,27 @@ export default function WfmViewGraphsPage() {
                       {SOURCE_OPTIONS.map((option) => (
                         <option
                           key={option.value}
+                          value={option.value}
+                        >
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <label className="block">
+                    <span className="mb-0.5 block text-[9.5px] font-extrabold uppercase text-sibs-tertiary-5">
+                      Task Order
+                    </span>
+
+                    <select
+                      value={filters.taskOrder}
+                      onChange={handleTaskOrderChange}
+                      className="h-8 w-full rounded-lg border border-sibs-tertiary-8 bg-white px-2.5 text-xs font-semibold outline-none"
+                    >
+                      {taskOrderOptions.map((option) => (
+                        <option
+                          key={option.value || "ALL"}
                           value={option.value}
                         >
                           {option.label}
@@ -476,7 +551,11 @@ export default function WfmViewGraphsPage() {
                   </span>
 
                   <span>
-                    Task Order: Not configured yet
+                    Task Order:{" "}
+                    {getTaskOrderLabel(
+                      activeSourceSystem,
+                      activeTaskOrder,
+                    )}
                   </span>
 
                   {dashboardData.filters?.period !==

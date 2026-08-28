@@ -10,10 +10,7 @@ const SIDEBAR_COLLAPSED_KEY = "pms-sidebar-collapsed";
 const AdminSidebar = ({
   isMobileOpen = false,
   modules,
-  onLogoutClick,
-  onMobileClose,
-  userName = "User",
-  userRole = "Signed in",
+  onMobileClose, 
 }) => {
   const location = useLocation();
   const navigate = useNavigate();

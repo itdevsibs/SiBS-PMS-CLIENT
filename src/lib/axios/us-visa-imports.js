@@ -47,6 +47,14 @@ export async function getUsVisaImportHistory(params) {
   return response.data;
 }
 
+export async function getUsVisaImportSummary(params = {}) {
+  const response = await api.get("/us-visa/imports/summary", {
+    params,
+  });
+
+  return response.data;
+}
+
 export async function getUsVisaImportBatchDetails(batchId) {
   const response = await api.get(
     `/us-visa/imports/${encodeURIComponent(batchId)}`,
