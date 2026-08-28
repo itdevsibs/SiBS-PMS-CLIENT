@@ -35,7 +35,9 @@ function getNiceStep(maxValue, tickCount) {
   const normalized = roughStep / magnitude;
 
   if (normalized <= 1) return magnitude;
+  if (normalized <= 1.25) return 1.25 * magnitude;
   if (normalized <= 2) return 2 * magnitude;
+  if (normalized <= 2.5) return 2.5 * magnitude;
   if (normalized <= 5) return 5 * magnitude;
   return 10 * magnitude;
 }

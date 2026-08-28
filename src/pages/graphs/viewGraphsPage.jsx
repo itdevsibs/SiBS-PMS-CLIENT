@@ -193,7 +193,7 @@ function buildRequestParams(filters) {
   return params;
 }
 
-export default function WfmViewGraphsPage() {
+export default function ViewGraphsPage() {
   const dashboard = useDashboardPage();
 
   const userName =
@@ -201,9 +201,15 @@ export default function WfmViewGraphsPage() {
     dashboard.authUser?.username ||
     "User";
 
-  const isWfmUser =
-    dashboard.authUser?.role === "wfm" ||
-    Number(dashboard.authUser?.adminAccess || 0) === 9;
+  const canViewGraphs = [
+    "admin",
+    "bod",
+    "som",
+    "wfm",
+  ].includes(dashboard.authUser?.role) ||
+    [7, 6, 10, 9].includes(
+      Number(dashboard.authUser?.adminAccess || 0),
+    );
 
   const [filters, setFilters] = useState(DEFAULT_FILTERS);
   const [kpiResponse, setKpiResponse] = useState(null);
@@ -211,7 +217,7 @@ export default function WfmViewGraphsPage() {
   const [error, setError] = useState("");
 
   const loadKpis = useCallback(async () => {
-    if (!isWfmUser) {
+    if (!canViewGraphs) {
       return;
     }
 
@@ -243,7 +249,7 @@ export default function WfmViewGraphsPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [filters, isWfmUser]);
+  }, [canViewGraphs, filters]);
 
   useEffect(() => {
     loadKpis();
@@ -391,7 +397,7 @@ export default function WfmViewGraphsPage() {
         />
 
         <div className="sibs-scrollbar max-h-[calc(100vh-74px)] overflow-y-auto p-3 sm:p-3.5">
-          {!isWfmUser ? (
+          {!canViewGraphs ? (
             <div className="sibs-card p-6 text-center">
               <AlertCircle
                 className="mx-auto mb-3 text-amber-500"
@@ -399,12 +405,12 @@ export default function WfmViewGraphsPage() {
               />
 
               <h2 className="m-0 text-lg font-bold text-sibs-primary-1">
-                WFM access required
+                Graph access required
               </h2>
 
               <p className="mt-2 mb-0 text-sm text-sibs-tertiary-5">
-                Calls KPI reporting is currently available
-                only on the WFM dashboard.
+                Calls KPI reporting is available for
+                WFM, BOD, Admin, and SOM dashboards.
               </p>
             </div>
           ) : (
@@ -432,7 +438,7 @@ export default function WfmViewGraphsPage() {
                     <select
                       value={filters.sourceSystem}
                       onChange={handleSourceChange}
-                      className="h-8 w-full rounded-lg border border-sibs-tertiary-8 bg-white px-2.5 text-xs font-semibold outline-none"
+                      className="h-8 w-full cursor-pointer rounded-lg border border-sibs-tertiary-8 bg-white px-2.5 text-xs font-semibold text-sibs-primary-1 outline-none transition hover:border-sibs-primary-1 hover:bg-slate-50/50 focus:border-sibs-primary-1 focus:ring-1 focus:ring-sibs-primary-1/20"
                     >
                       {SOURCE_OPTIONS.map((option) => (
                         <option
@@ -453,7 +459,7 @@ export default function WfmViewGraphsPage() {
                     <select
                       value={filters.taskOrder}
                       onChange={handleTaskOrderChange}
-                      className="h-8 w-full rounded-lg border border-sibs-tertiary-8 bg-white px-2.5 text-xs font-semibold outline-none"
+                      className="h-8 w-full cursor-pointer rounded-lg border border-sibs-tertiary-8 bg-white px-2.5 text-xs font-semibold text-sibs-primary-1 outline-none transition hover:border-sibs-primary-1 hover:bg-slate-50/50 focus:border-sibs-primary-1 focus:ring-1 focus:ring-sibs-primary-1/20"
                     >
                       {taskOrderOptions.map((option) => (
                         <option
@@ -474,7 +480,7 @@ export default function WfmViewGraphsPage() {
                     <select
                       value={filters.period}
                       onChange={handlePeriodChange}
-                      className="h-8 w-full rounded-lg border border-sibs-tertiary-8 bg-white px-2.5 text-xs font-semibold outline-none"
+                      className="h-8 w-full cursor-pointer rounded-lg border border-sibs-tertiary-8 bg-white px-2.5 text-xs font-semibold text-sibs-primary-1 outline-none transition hover:border-sibs-primary-1 hover:bg-slate-50/50 focus:border-sibs-primary-1 focus:ring-1 focus:ring-sibs-primary-1/20"
                     >
                       {PERIOD_OPTIONS.map((option) => (
                         <option

@@ -42,6 +42,11 @@ function useDashboardPage() {
       icon: Icon,
       path: authUser?.dashboardPath || "/dashboard",
     };
+    const viewGraphsModule = {
+      name: "View Graphs",
+      icon: BarChart3,
+      path: "/dashboard/wfm/view-graphs",
+    };
 
     if (role === "wfm") {
       return [
@@ -51,11 +56,7 @@ function useDashboardPage() {
           icon: ClipboardList,
           path: "/dashboard/wfm/import-data",
         },
-        {
-          name: "View Graphs",
-          icon: BarChart3,
-          path: "/dashboard/wfm/view-graphs",
-        },
+        viewGraphsModule,
         {
           name: "History Logs",
           icon: ClipboardList,
@@ -64,18 +65,24 @@ function useDashboardPage() {
       ];
     }
 
-    if (role !== "admin") {
-      return [dashboardModule];
+    if (["admin", "bod", "som"].includes(role)) {
+      const adminModules = [
+        dashboardModule,
+        viewGraphsModule,
+      ];
+
+      if (role === "admin") {
+        adminModules.push({
+          name: "History Logs",
+          icon: ClipboardList,
+          path: "/dashboard/superadmin/history-logs",
+        });
+      }
+
+      return adminModules;
     }
 
-    return [
-      dashboardModule,
-      {
-        name: "History Logs",
-        icon: ClipboardList,
-        path: "/dashboard/superadmin/history-logs",
-      },
-    ];
+    return [dashboardModule];
   }, [Icon, authUser, role]);
 
   useEffect(() => {
