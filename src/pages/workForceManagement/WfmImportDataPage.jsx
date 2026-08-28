@@ -5,6 +5,7 @@ import {
   AlertTriangle,
   CheckCircle2,
   CloudUpload,
+  ListPlus,
   Eye,
   FileSpreadsheet,
   FolderOpen,
@@ -31,6 +32,7 @@ import {
   deleteUsVisaImportBatch,
   getUsVisaImportBatchErrors,
   getUsVisaImportHistory,
+  getUsVisaImportSummary,
   uploadUsVisaImport,
 } from "@/lib/axios/us-visa-imports";
 
@@ -40,6 +42,78 @@ const accountFilters = [
   "All Accounts",
   ...accountOptions,
 ];
+
+const EMPTY_IMPORT_SUMMARY = {
+  totalUploads: 0,
+  uploadsWithIssues: 0,
+  totalRows: 0,
+  validRows: 0,
+  invalidRows: 0,
+  duplicateRows: 0,
+  warningRows: 0,
+};
+
+const IMPORT_SUMMARY_CARDS = [
+  {
+    key: "totalUploads",
+    label: "TOTAL UPLOADS",
+    icon: CloudUpload,
+    borderClass: "border-sky-200",
+    accentClass: "bg-sky-400",
+    iconBgClass: "bg-sky-50",
+    iconClass: "text-sky-600",
+  },
+  {
+    key: "totalRows",
+    label: "RECORDS PROCESSED",
+    icon: FileSpreadsheet,
+    borderClass: "border-cyan-200",
+    accentClass: "bg-cyan-400",
+    iconBgClass: "bg-cyan-50",
+    iconClass: "text-cyan-600",
+  },
+  {
+    key: "validRows",
+    label: "RECORDS ACCEPTED",
+    icon: CheckCircle2,
+    borderClass: "border-emerald-200",
+    accentClass: "bg-emerald-400",
+    iconBgClass: "bg-emerald-50",
+    iconClass: "text-emerald-600",
+  },
+  {
+    key: "invalidRows",
+    label: "RECORDS REJECTED",
+    icon: AlertCircle,
+    borderClass: "border-rose-200",
+    accentClass: "bg-rose-400",
+    iconBgClass: "bg-rose-50",
+    iconClass: "text-rose-600",
+  },
+  {
+    key: "duplicateRows",
+    label: "DUPLICATES FOUND",
+    icon: ListPlus,
+    borderClass: "border-orange-200",
+    accentClass: "bg-orange-400",
+    iconBgClass: "bg-orange-50",
+    iconClass: "text-orange-600",
+  },
+  {
+    key: "warningRows",
+    label: "WARNINGS FOUND",
+    icon: AlertTriangle,
+    borderClass: "border-amber-200",
+    accentClass: "bg-amber-400",
+    iconBgClass: "bg-amber-50",
+    iconClass: "text-amber-600",
+  },
+];
+
+const importSummaryNumberFormatter = new Intl.NumberFormat("en-US", {
+  notation: "compact",
+  maximumFractionDigits: 1,
+});
 
 function getApiErrorMessage(error, card) {
   const backendMsg = error?.response?.data?.message || "";
@@ -92,15 +166,61 @@ function formatImportStatus(status) {
   return String(status || "").replace(/_/g, " ");
 }
 
-function BatchStat({ label, value }) {
+const BATCH_DETAIL_TONES = {
+  blue: {
+    border: "border-sky-100",
+    background: "bg-sky-50/60",
+    iconBackground: "bg-sky-100",
+    icon: "text-sky-600",
+  },
+  emerald: {
+    border: "border-emerald-100",
+    background: "bg-emerald-50/60",
+    iconBackground: "bg-emerald-100",
+    icon: "text-emerald-600",
+  },
+  rose: {
+    border: "border-rose-100",
+    background: "bg-rose-50/60",
+    iconBackground: "bg-rose-100",
+    icon: "text-rose-600",
+  },
+  orange: {
+    border: "border-orange-100",
+    background: "bg-orange-50/60",
+    iconBackground: "bg-orange-100",
+    icon: "text-orange-600",
+  },
+  amber: {
+    border: "border-amber-100",
+    background: "bg-amber-50/60",
+    iconBackground: "bg-amber-100",
+    icon: "text-amber-600",
+  },
+};
+
+function BatchDetailStat({ label, value, icon: Icon, tone = "blue" }) {
+  const styles = BATCH_DETAIL_TONES[tone] || BATCH_DETAIL_TONES.blue;
+
   return (
-    <div className="rounded-lg border border-sibs-tertiary-10 bg-[#f8fbfd] px-3 py-2">
-      <p className="m-0 text-[11px] font-bold uppercase text-sibs-tertiary-5">
-        {label}
-      </p>
-      <p className="mt-1 mb-0 text-xl font-extrabold text-sibs-primary-1">
-        {Number(value || 0).toLocaleString()}
-      </p>
+    <div
+      className={`group relative overflow-hidden rounded-2xl border ${styles.border} ${styles.background} p-3.5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md`}
+    >
+      <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-start gap-2">
+        <div className="min-w-0">
+          <p className="m-0 min-w-0 text-[9px] font-extrabold uppercase leading-[1.05] tracking-normal text-sibs-tertiary-5">
+            {label}
+          </p>
+          <p className="mt-2 mb-0 text-[22px] font-black leading-none tracking-tight text-sibs-primary-1">
+            {Number(value || 0).toLocaleString()}
+          </p>
+        </div>
+        <span
+          className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-lg ${styles.iconBackground} ${styles.icon}`}
+        >
+          <Icon className="h-3 w-3" aria-hidden="true" />
+        </span>
+      </div>
     </div>
   );
 }
@@ -442,6 +562,8 @@ function WfmImportDataPage() {
   const [importStage, setImportStage] = useState("reading");
   const [importFileName, setImportFileName] = useState("");
   const [usVisaBatchResult, setUsVisaBatchResult] = useState(null);
+  const [importSummary, setImportSummary] = useState(EMPTY_IMPORT_SUMMARY);
+  const [summaryRefreshVersion, setSummaryRefreshVersion] = useState(0);
   const [isLoadingUsVisaErrors, setIsLoadingUsVisaErrors] = useState(false);
   const [usVisaErrorDetails, setUsVisaErrorDetails] = useState(null);
   const [activeOpenCard, setActiveOpenCard] = useState(null);
@@ -564,6 +686,35 @@ function WfmImportDataPage() {
   useEffect(() => {
     fetchDatabaseUploads();
   }, []);
+
+  useEffect(() => {
+    let isActive = true;
+
+    setImportSummary(EMPTY_IMPORT_SUMMARY);
+
+    const loadImportSummary = async () => {
+      try {
+        const response = await getUsVisaImportSummary({
+          account: selectedAccount,
+        });
+
+        if (isActive) {
+          setImportSummary(response?.summary || EMPTY_IMPORT_SUMMARY);
+        }
+      } catch (error) {
+        if (isActive) {
+          setImportSummary(EMPTY_IMPORT_SUMMARY);
+          console.warn("Could not sync import summary:", error?.message);
+        }
+      }
+    };
+
+    void loadImportSummary();
+
+    return () => {
+      isActive = false;
+    };
+  }, [selectedAccount, summaryRefreshVersion]);
 
   const handleOpenUsVisaErrors = async (batchId) => {
     const targetBatchId = batchId || usVisaBatchResult?.id;
@@ -716,6 +867,7 @@ function WfmImportDataPage() {
       });
 
       void fetchDatabaseUploads();
+      setSummaryRefreshVersion((current) => current + 1);
 
       if (batchResult) {
         setUsVisaBatchResult(batchResult);
@@ -787,6 +939,7 @@ function WfmImportDataPage() {
     }));
 
     void fetchDatabaseUploads();
+    setSummaryRefreshVersion((current) => current + 1);
 
     setIsRemovingUpload(false);
     setRemovedUpload(selectedUploadToRemove);
@@ -857,6 +1010,71 @@ function WfmImportDataPage() {
                 </option>
               ))}
             </select>
+          </div>
+
+          <div
+            className="mb-4 grid grid-cols-2 gap-2.5 sm:grid-cols-3 xl:grid-cols-6"
+            aria-label="Import summary"
+          >
+            {IMPORT_SUMMARY_CARDS.map((card) => {
+              const value = Number(importSummary?.[card.key] || 0);
+              const uploadsWithIssues = Number(
+                importSummary?.uploadsWithIssues || 0,
+              );
+              const isTotalUploadsCard = card.key === "totalUploads";
+              const Icon = card.icon;
+
+              return (
+                <div
+                  key={card.key}
+                  className={`group relative min-w-0 overflow-hidden rounded-xl border bg-white px-3.5 pb-3 pt-3.5 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md ${card.borderClass}`}
+                  title={
+                    isTotalUploadsCard && uploadsWithIssues > 0
+                      ? `${card.label}: ${value.toLocaleString()} • ${uploadsWithIssues.toLocaleString()} with issues`
+                      : `${card.label}: ${value.toLocaleString()}`
+                  }
+                >
+                  <div
+                    className={`absolute inset-x-0 top-0 h-[3px] ${card.accentClass}`}
+                    aria-hidden="true"
+                  />
+
+                  <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-start gap-2">
+                    <p className="m-0 min-w-0 break-words text-[9px] font-extrabold leading-tight tracking-[0.04em] text-sibs-tertiary-5">
+                      {card.label}
+                    </p>
+
+                    <span
+                      className={`inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg transition-transform duration-200 group-hover:scale-105 ${card.iconBgClass}`}
+                    >
+                      <Icon
+                        className={`h-3.5 w-3.5 ${card.iconClass}`}
+                        strokeWidth={2}
+                        aria-hidden="true"
+                      />
+                    </span>
+                  </div>
+
+                  <div className="mt-2 flex min-w-0 items-end justify-between gap-2">
+                    <p className="m-0 min-w-0 lowercase text-[22px] font-extrabold leading-none tracking-tight text-sibs-primary-1">
+                      {importSummaryNumberFormatter.format(value)}
+                    </p>
+
+                    {isTotalUploadsCard && uploadsWithIssues > 0 ? (
+                      <span className="ml-auto inline-flex shrink-0 items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2 py-1 text-[9px] font-bold leading-none text-amber-700 shadow-sm">
+                        <AlertTriangle
+                          className="h-3 w-3 shrink-0"
+                          strokeWidth={2.25}
+                          aria-hidden="true"
+                        />
+                        {importSummaryNumberFormatter.format(uploadsWithIssues)}{" "}
+                        {uploadsWithIssues === 1 ? "issue" : "issues"}
+                      </span>
+                    ) : null}
+                  </div>
+                </div>
+              );
+            })}
           </div>
 
           {selectedAccount === "All Accounts" ? (
@@ -1309,12 +1527,37 @@ function WfmImportDataPage() {
                 {formatImportStatus(addedUpload.batch.status)}
               </span>
             </div>
-            <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-5">
-              <BatchStat label="Total Rows" value={addedUpload.batch.totalRows} />
-              <BatchStat label="Valid Rows" value={addedUpload.batch.validRows} />
-              <BatchStat label="Invalid Rows" value={addedUpload.batch.invalidRows} />
-              <BatchStat label="Duplicate Rows" value={addedUpload.batch.duplicateRows} />
-              <BatchStat label="Warning Rows" value={addedUpload.batch.warningRows} />
+            <div className="mt-3 grid grid-cols-2 gap-2.5 sm:grid-cols-5">
+              <BatchDetailStat
+                label="Total Rows"
+                value={addedUpload.batch.totalRows}
+                icon={FileSpreadsheet}
+                tone="blue"
+              />
+              <BatchDetailStat
+                label="Valid Rows"
+                value={addedUpload.batch.validRows}
+                icon={CheckCircle2}
+                tone="emerald"
+              />
+              <BatchDetailStat
+                label="Invalid Rows"
+                value={addedUpload.batch.invalidRows}
+                icon={AlertCircle}
+                tone="rose"
+              />
+              <BatchDetailStat
+                label="Duplicate Rows"
+                value={addedUpload.batch.duplicateRows}
+                icon={ListPlus}
+                tone="orange"
+              />
+              <BatchDetailStat
+                label="Warning Rows"
+                value={addedUpload.batch.warningRows}
+                icon={AlertTriangle}
+                tone="amber"
+              />
             </div>
           </div>
         ) : null}
@@ -1346,60 +1589,106 @@ function WfmImportDataPage() {
 
       <AppModal
         isOpen={Boolean(selectedUploadDetails)}
-        className="!max-w-none sm:!w-[640px]"
+        className="!max-w-none sm:!w-[720px]"
         zIndex="z-[140]"
       >
-        <div>
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <span className="rounded-md bg-sibs-primary-2/10 px-2 py-0.5 text-xs font-bold text-sibs-primary-2">
-                {activeOpenCard?.title || selectedUploadDetails?.rawDataTitle || "Import"}
-              </span>
-              <span className="text-xs font-semibold text-sibs-tertiary-5">
-                {activeOpenCard?.account || selectedUploadDetails?.account}
-              </span>
+        <div className="overflow-hidden rounded-2xl border border-sibs-tertiary-10 bg-white shadow-sm">
+          <div className="bg-gradient-to-br from-slate-50 via-white to-sky-50/50 px-5 py-5 sm:px-6">
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex min-w-0 items-start gap-3.5">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-sky-100 bg-sky-50 text-sky-600 shadow-sm">
+                  <FileSpreadsheet className="h-5 w-5" aria-hidden="true" />
+                </div>
+
+                <div className="min-w-0">
+                  <p className="m-0 text-[10px] font-extrabold uppercase tracking-[0.08em] text-sibs-tertiary-5">
+                    Batch details
+                  </p>
+
+                  <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                    <span className="rounded-lg bg-sibs-primary-2/10 px-2.5 py-1 text-[11px] font-extrabold text-sibs-primary-2">
+                      {activeOpenCard?.title || selectedUploadDetails?.rawDataTitle || "Import"}
+                    </span>
+                    <span className="text-[11px] font-bold text-sibs-tertiary-5">
+                      {activeOpenCard?.account || selectedUploadDetails?.account}
+                    </span>
+                  </div>
+
+                  <p className="mt-3 mb-0 break-words text-[15px] font-extrabold leading-snug text-sibs-primary-1 [overflow-wrap:anywhere]">
+                    {selectedUploadDetails?.fileName}
+                  </p>
+
+                  <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-sibs-tertiary-5">
+                    {selectedUploadDetails?.batchCode ? (
+                      <span className="rounded-md bg-white/80 px-2 py-1 font-mono font-semibold text-sibs-primary-2 shadow-sm ring-1 ring-slate-200/70">
+                        {selectedUploadDetails.batchCode}
+                      </span>
+                    ) : null}
+                    <span>
+                      {selectedUploadDetails?.uploadedAt} ({formatRelativeTime(selectedUploadDetails)})
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {selectedUploadDetails?.batchStatus === "COMPLETED_WITH_ERRORS" || (selectedUploadDetails?.invalidRows > 0) ? (
+                <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-wide text-amber-800 shadow-sm">
+                  <AlertTriangle className="h-3 w-3 shrink-0 text-amber-600" aria-hidden="true" />
+                  Completed with errors
+                </span>
+              ) : (
+                <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-wide text-emerald-700 shadow-sm">
+                  <CheckCircle2 className="h-3 w-3 shrink-0" aria-hidden="true" />
+                  Completed
+                </span>
+              )}
             </div>
-
-            {selectedUploadDetails?.batchStatus === "COMPLETED_WITH_ERRORS" || (selectedUploadDetails?.invalidRows > 0) ? (
-              <span className="inline-flex shrink-0 items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-800">
-                <AlertTriangle className="h-2.5 w-2.5 shrink-0 text-amber-600" aria-hidden="true" />
-                Completed with errors
-              </span>
-            ) : (
-              <span className="inline-flex shrink-0 items-center rounded-md border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
-                Completed
-              </span>
-            )}
           </div>
 
-          <p className="mt-2 mb-0 break-words text-sm font-bold leading-snug text-sibs-primary-1">
-            {selectedUploadDetails?.fileName}
-          </p>
-
-          <p className="mt-1 mb-0 text-xs text-sibs-tertiary-5">
-            {selectedUploadDetails?.batchCode ? `Batch: ${selectedUploadDetails.batchCode} • ` : ""}
-            {selectedUploadDetails?.uploadedAt} ({formatRelativeTime(selectedUploadDetails)})
-          </p>
-        </div>
-
-        <div className="mt-4 rounded-xl border border-sibs-tertiary-10 bg-white p-4">
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
-            <BatchStat label="Total Rows" value={selectedUploadDetails?.totalRows} />
-            <BatchStat label="Valid Rows" value={selectedUploadDetails?.validRows} />
-            <BatchStat label="Invalid Rows" value={selectedUploadDetails?.invalidRows} />
-            <BatchStat label="Duplicate Rows" value={selectedUploadDetails?.duplicateRows} />
-            <BatchStat label="Warning Rows" value={selectedUploadDetails?.warningRows} />
+          <div className="border-t border-sibs-tertiary-10 px-5 py-5 sm:px-6">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+              <BatchDetailStat
+                label="Total Rows"
+                value={selectedUploadDetails?.totalRows}
+                icon={FileSpreadsheet}
+                tone="blue"
+              />
+              <BatchDetailStat
+                label="Valid Rows"
+                value={selectedUploadDetails?.validRows}
+                icon={CheckCircle2}
+                tone="emerald"
+              />
+              <BatchDetailStat
+                label="Invalid Rows"
+                value={selectedUploadDetails?.invalidRows}
+                icon={AlertCircle}
+                tone="rose"
+              />
+              <BatchDetailStat
+                label="Duplicate Rows"
+                value={selectedUploadDetails?.duplicateRows}
+                icon={ListPlus}
+                tone="orange"
+              />
+              <BatchDetailStat
+                label="Warning Rows"
+                value={selectedUploadDetails?.warningRows}
+                icon={AlertTriangle}
+                tone="amber"
+              />
+            </div>
           </div>
         </div>
 
-        <div className="mt-5 flex justify-end gap-2">
+        <div className="mt-5 flex flex-wrap items-center justify-end gap-2 border-t border-sibs-tertiary-10 pt-4">
           {selectedUploadDetails?.batchId && (selectedUploadDetails.invalidRows > 0 || selectedUploadDetails.warningRows > 0) ? (
             <Button
               type="button"
               variant="outline"
               disabled={isLoadingUsVisaErrors}
               onClick={() => handleOpenUsVisaErrors(selectedUploadDetails.batchId)}
-              className="h-9 rounded-lg border-sibs-danger/30 px-3 text-xs text-sibs-danger hover:bg-sibs-danger hover:text-white"
+              className="h-10 rounded-xl border-rose-200 bg-rose-50 px-4 text-xs font-bold text-rose-700 shadow-sm hover:border-rose-300 hover:bg-rose-100 hover:text-rose-800"
             >
               <AlertCircle className="h-3.5 w-3.5" aria-hidden="true" />
               View Error Details ({selectedUploadDetails.invalidRows})
@@ -1408,7 +1697,7 @@ function WfmImportDataPage() {
           <Button
             type="button"
             onClick={() => setSelectedUploadDetails(null)}
-            className="h-9 rounded-lg bg-sibs-primary-1 px-4 text-xs font-bold text-white hover:bg-sibs-tertiary-4"
+            className="h-10 rounded-xl bg-sibs-primary-1 px-5 text-xs font-bold text-white shadow-sm hover:bg-sibs-tertiary-4"
           >
             Close
           </Button>
