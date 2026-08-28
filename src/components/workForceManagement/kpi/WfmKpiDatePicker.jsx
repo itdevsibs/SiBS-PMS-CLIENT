@@ -168,10 +168,10 @@ export default function WfmKpiDatePicker({
         disabled={disabled}
         aria-haspopup="dialog"
         aria-expanded={isOpen}
-        className={`group flex h-8 w-full min-w-0 items-center gap-1.5 rounded-lg border bg-white px-2.5 text-left outline-none transition disabled:cursor-not-allowed disabled:opacity-50 ${
+        className={`group flex h-8 w-full min-w-0 cursor-pointer items-center gap-1.5 rounded-lg border bg-white px-2.5 text-left outline-none transition disabled:cursor-not-allowed disabled:opacity-50 ${
           isOpen
-            ? "border-sibs-primary-1 ring-1 ring-sibs-primary-1/20"
-            : "border-sibs-tertiary-8 hover:border-sibs-primary-1/50"
+            ? "border-sibs-primary-1 bg-slate-50/50 ring-1 ring-sibs-primary-1/20"
+            : "border-sibs-tertiary-8 hover:border-sibs-primary-1 hover:bg-slate-50/50"
         }`}
       >
         <span className="flex h-5 w-5 shrink-0 items-center justify-center text-sibs-primary-1">
