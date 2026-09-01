@@ -41,6 +41,10 @@ const PERIOD_OPTIONS = [
 
 const SOURCE_OPTIONS = [
   {
+    value: "US_VISA",
+    label: "US Visa",
+  },
+  {
     value: "FUSECOM",
     label: "Fusecom",
   },
@@ -51,6 +55,13 @@ const SOURCE_OPTIONS = [
 ];
 
 const TASK_ORDER_OPTIONS_BY_SOURCE = {
+  US_VISA: [
+    { value: "", label: "All Task Orders" },
+    { value: "TO4", label: "TO4 - PAC" },
+    { value: "TO10", label: "TO10 - SEASIA" },
+    { value: "TO12", label: "TO12 - NICE" },
+    { value: "TO16", label: "TO16 - SEURECA" },
+  ],
   FUSECOM: [
     { value: "", label: "All Task Orders" },
     { value: "TO12", label: "TO12 - NICE" },
@@ -63,9 +74,178 @@ const TASK_ORDER_OPTIONS_BY_SOURCE = {
   ],
 };
 
+const SKILL_OPTIONS = [
+  { value: "", label: "All Skills" },
+  { value: "English All", label: "English All" },
+  { value: "English NIV", label: "English NIV" },
+  { value: "English IV", label: "English IV" },
+  { value: "English ACS", label: "English ACS" },
+  { value: "Non English", label: "Non English" },
+];
+
+const COUNTRY_OPTIONS_BY_SOURCE_AND_TO = {
+  US_VISA: {
+    "": [
+      { value: "", label: "All Countries" },
+      { value: "australia", label: "Australia" },
+      { value: "austria", label: "Austria" },
+      { value: "cambodia", label: "Cambodia" },
+      { value: "china", label: "China" },
+      { value: "czech republic", label: "Czech Republic" },
+      { value: "denmark", label: "Denmark" },
+      { value: "estonia", label: "Estonia" },
+      { value: "fiji", label: "Fiji" },
+      { value: "finland", label: "Finland" },
+      { value: "germany", label: "Germany" },
+      { value: "hong kong", label: "Hong Kong" },
+      { value: "hungary", label: "Hungary" },
+      { value: "indonesia", label: "Indonesia" },
+      { value: "japan", label: "Japan" },
+      { value: "korea", label: "Korea" },
+      { value: "laos", label: "Laos" },
+      { value: "latvia", label: "Latvia" },
+      { value: "malaysia", label: "Malaysia" },
+      { value: "montenegro", label: "Montenegro" },
+      { value: "new zealand", label: "New Zealand" },
+      { value: "norway", label: "Norway" },
+      { value: "philippines", label: "Philippines" },
+      { value: "singapore", label: "Singapore" },
+      { value: "slovakia", label: "Slovakia" },
+      { value: "sweden", label: "Sweden" },
+      { value: "switzerland", label: "Switzerland" },
+      { value: "taiwan", label: "Taiwan" },
+      { value: "thailand", label: "Thailand" },
+      { value: "vietnam", label: "Vietnam" },
+    ],
+    TO4: [
+      { value: "", label: "All Countries (TO4)" },
+      { value: "australia", label: "Australia" },
+      { value: "fiji", label: "Fiji" },
+      { value: "japan", label: "Japan" },
+      { value: "korea", label: "Korea" },
+      { value: "new zealand", label: "New Zealand" },
+    ],
+    TO10: [
+      { value: "", label: "All Countries (TO10)" },
+      { value: "cambodia", label: "Cambodia" },
+      { value: "indonesia", label: "Indonesia" },
+      { value: "laos", label: "Laos" },
+      { value: "malaysia", label: "Malaysia" },
+      { value: "philippines", label: "Philippines" },
+      { value: "singapore", label: "Singapore" },
+      { value: "taiwan", label: "Taiwan" },
+      { value: "thailand", label: "Thailand" },
+      { value: "vietnam", label: "Vietnam" },
+    ],
+    TO12: [
+      { value: "", label: "All Countries (TO12)" },
+      { value: "austria", label: "Austria" },
+      { value: "czech republic", label: "Czech Republic" },
+      { value: "denmark", label: "Denmark" },
+      { value: "estonia", label: "Estonia" },
+      { value: "finland", label: "Finland" },
+      { value: "germany", label: "Germany" },
+      { value: "hungary", label: "Hungary" },
+      { value: "latvia", label: "Latvia" },
+      { value: "montenegro", label: "Montenegro" },
+      { value: "norway", label: "Norway" },
+      { value: "slovakia", label: "Slovakia" },
+      { value: "sweden", label: "Sweden" },
+      { value: "switzerland", label: "Switzerland" },
+    ],
+    TO16: [
+      { value: "", label: "All Countries (TO16)" },
+      { value: "china", label: "China" },
+      { value: "hong kong", label: "Hong Kong" },
+    ],
+  },
+  FUSECOM: {
+    "": [
+      { value: "", label: "All Countries" },
+      { value: "austria", label: "Austria" },
+      { value: "china", label: "China" },
+      { value: "czech republic", label: "Czech Republic" },
+      { value: "denmark", label: "Denmark" },
+      { value: "estonia", label: "Estonia" },
+      { value: "finland", label: "Finland" },
+      { value: "germany", label: "Germany" },
+      { value: "hong kong", label: "Hong Kong" },
+      { value: "hungary", label: "Hungary" },
+      { value: "latvia", label: "Latvia" },
+      { value: "montenegro", label: "Montenegro" },
+      { value: "norway", label: "Norway" },
+      { value: "slovakia", label: "Slovakia" },
+      { value: "sweden", label: "Sweden" },
+      { value: "switzerland", label: "Switzerland" },
+    ],
+    TO12: [
+      { value: "", label: "All Countries (TO12)" },
+      { value: "austria", label: "Austria" },
+      { value: "czech republic", label: "Czech Republic" },
+      { value: "denmark", label: "Denmark" },
+      { value: "estonia", label: "Estonia" },
+      { value: "finland", label: "Finland" },
+      { value: "germany", label: "Germany" },
+      { value: "hungary", label: "Hungary" },
+      { value: "latvia", label: "Latvia" },
+      { value: "montenegro", label: "Montenegro" },
+      { value: "norway", label: "Norway" },
+      { value: "slovakia", label: "Slovakia" },
+      { value: "sweden", label: "Sweden" },
+      { value: "switzerland", label: "Switzerland" },
+    ],
+    TO16: [
+      { value: "", label: "All Countries (TO16)" },
+      { value: "china", label: "China" },
+      { value: "hong kong", label: "Hong Kong" },
+    ],
+  },
+  HERODASH: {
+    "": [
+      { value: "", label: "All Countries" },
+      { value: "australia", label: "Australia" },
+      { value: "cambodia", label: "Cambodia" },
+      { value: "fiji", label: "Fiji" },
+      { value: "indonesia", label: "Indonesia" },
+      { value: "japan", label: "Japan" },
+      { value: "korea", label: "Korea" },
+      { value: "laos", label: "Laos" },
+      { value: "malaysia", label: "Malaysia" },
+      { value: "new zealand", label: "New Zealand" },
+      { value: "philippines", label: "Philippines" },
+      { value: "singapore", label: "Singapore" },
+      { value: "taiwan", label: "Taiwan" },
+      { value: "thailand", label: "Thailand" },
+      { value: "vietnam", label: "Vietnam" },
+    ],
+    TO4: [
+      { value: "", label: "All Countries (TO4)" },
+      { value: "australia", label: "Australia" },
+      { value: "fiji", label: "Fiji" },
+      { value: "japan", label: "Japan" },
+      { value: "korea", label: "Korea" },
+      { value: "new zealand", label: "New Zealand" },
+    ],
+    TO10: [
+      { value: "", label: "All Countries (TO10)" },
+      { value: "cambodia", label: "Cambodia" },
+      { value: "indonesia", label: "Indonesia" },
+      { value: "laos", label: "Laos" },
+      { value: "malaysia", label: "Malaysia" },
+      { value: "philippines", label: "Philippines" },
+      { value: "singapore", label: "Singapore" },
+      { value: "taiwan", label: "Taiwan" },
+      { value: "thailand", label: "Thailand" },
+      { value: "vietnam", label: "Vietnam" },
+    ],
+  },
+};
+
 const DEFAULT_FILTERS = {
-  sourceSystem: "FUSECOM",
+  sourceSystem: "US_VISA",
   taskOrder: "",
+  skill: "",
+  country: "",
   period: "weekly",
   referenceDate: "",
   from: "",
@@ -164,6 +344,37 @@ function getTaskOrderLabel(sourceSystem, value) {
   );
 }
 
+function getSkillOptions() {
+  return SKILL_OPTIONS;
+}
+
+function getSkillLabel(_sourceSystem, value) {
+  const target = value !== undefined ? value : _sourceSystem;
+  return (
+    SKILL_OPTIONS.find(
+      (option) =>
+        option.value.toLowerCase() === String(target || "").toLowerCase(),
+    )?.label || target || "All Skills"
+  );
+}
+
+function getCountryOptions(sourceSystem, taskOrder) {
+  const sourceCountries = COUNTRY_OPTIONS_BY_SOURCE_AND_TO[sourceSystem] || {};
+  return (
+    sourceCountries[taskOrder] ||
+    sourceCountries[""] ||
+    [{ value: "", label: "All Countries" }]
+  );
+}
+
+function getCountryLabel(sourceSystem, taskOrder, value) {
+  return (
+    getCountryOptions(sourceSystem, taskOrder).find(
+      (option) => option.value === String(value || "").toLowerCase(),
+    )?.label || "All Countries"
+  );
+}
+
 function buildRequestParams(filters) {
   const params = {
     period: filters.period,
@@ -172,6 +383,14 @@ function buildRequestParams(filters) {
 
   if (filters.taskOrder) {
     params.taskOrder = filters.taskOrder;
+  }
+
+  if (filters.skill) {
+    params.skill = filters.skill;
+  }
+
+  if (filters.country) {
+    params.country = filters.country;
   }
 
   if (filters.period === "custom") {
@@ -276,6 +495,8 @@ export default function ViewGraphsPage() {
       ...current,
       sourceSystem,
       taskOrder: "",
+      skill: "",
+      country: "",
       referenceDate: "",
       from: "",
       to: "",
@@ -288,6 +509,31 @@ export default function ViewGraphsPage() {
     setFilters((current) => ({
       ...current,
       taskOrder,
+      country: "",
+      referenceDate: "",
+      from: "",
+      to: "",
+    }));
+  };
+
+  const handleSkillChange = (event) => {
+    const skill = event.target.value;
+
+    setFilters((current) => ({
+      ...current,
+      skill,
+      referenceDate: "",
+      from: "",
+      to: "",
+    }));
+  };
+
+  const handleCountryChange = (event) => {
+    const country = event.target.value;
+
+    setFilters((current) => ({
+      ...current,
+      country,
       referenceDate: "",
       from: "",
       to: "",
@@ -345,6 +591,15 @@ export default function ViewGraphsPage() {
 
   const taskOrderOptions = getTaskOrderOptions(
     filters.sourceSystem,
+  );
+
+  const skillOptions = getSkillOptions(
+    filters.sourceSystem,
+  );
+
+  const countryOptions = getCountryOptions(
+    filters.sourceSystem,
+    filters.taskOrder,
   );
 
   const activeTaskOrder =
@@ -429,7 +684,8 @@ export default function ViewGraphsPage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 gap-2 p-2.5 md:grid-cols-2 xl:grid-cols-5 xl:items-end">
+                <div className="grid grid-cols-1 gap-2 p-2.5 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 xl:items-end">
+                  {/* 1. Account / Source */}
                   <label className="block">
                     <span className="mb-0.5 block text-[9.5px] font-extrabold uppercase text-sibs-tertiary-5">
                       Account / Source
@@ -451,6 +707,7 @@ export default function ViewGraphsPage() {
                     </select>
                   </label>
 
+                  {/* 2. Task Order */}
                   <label className="block">
                     <span className="mb-0.5 block text-[9.5px] font-extrabold uppercase text-sibs-tertiary-5">
                       Task Order
@@ -472,6 +729,51 @@ export default function ViewGraphsPage() {
                     </select>
                   </label>
 
+                  {/* 3. Skill */}
+                  <label className="block">
+                    <span className="mb-0.5 block text-[9.5px] font-extrabold uppercase text-sibs-tertiary-5">
+                      Skill
+                    </span>
+
+                    <select
+                      value={filters.skill}
+                      onChange={handleSkillChange}
+                      className="h-8 w-full cursor-pointer rounded-lg border border-sibs-tertiary-8 bg-white px-2.5 text-xs font-semibold text-sibs-primary-1 outline-none transition hover:border-sibs-primary-1 hover:bg-slate-50/50 focus:border-sibs-primary-1 focus:ring-1 focus:ring-sibs-primary-1/20"
+                    >
+                      {skillOptions.map((option) => (
+                        <option
+                          key={option.value || "ALL_SKILLS"}
+                          value={option.value}
+                        >
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  {/* 4. Country */}
+                  <label className="block">
+                    <span className="mb-0.5 block text-[9.5px] font-extrabold uppercase text-sibs-tertiary-5">
+                      Country
+                    </span>
+
+                    <select
+                      value={filters.country}
+                      onChange={handleCountryChange}
+                      className="h-8 w-full cursor-pointer rounded-lg border border-sibs-tertiary-8 bg-white px-2.5 text-xs font-semibold text-sibs-primary-1 outline-none transition hover:border-sibs-primary-1 hover:bg-slate-50/50 focus:border-sibs-primary-1 focus:ring-1 focus:ring-sibs-primary-1/20"
+                    >
+                      {countryOptions.map((option) => (
+                        <option
+                          key={option.value || "ALL_COUNTRIES"}
+                          value={option.value}
+                        >
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  {/* 5. Reporting Period */}
                   <label className="block">
                     <span className="mb-0.5 block text-[9.5px] font-extrabold uppercase text-sibs-tertiary-5">
                       Reporting Period
@@ -493,6 +795,7 @@ export default function ViewGraphsPage() {
                     </select>
                   </label>
 
+                  {/* 6. Reference Date (or From + To) */}
                   {isCustomPeriod ? (
                     <>
                       <WfmKpiDatePicker
@@ -525,6 +828,7 @@ export default function ViewGraphsPage() {
                         onChange={handleReferenceDateChange}
                       />
 
+                      {/* 7. Latest button */}
                       <div>
                         <button
                           type="button"
@@ -563,6 +867,27 @@ export default function ViewGraphsPage() {
                       activeTaskOrder,
                     )}
                   </span>
+
+                  {filters.skill ? (
+                    <span>
+                      Skill:{" "}
+                      {getSkillLabel(
+                        activeSourceSystem,
+                        filters.skill,
+                      )}
+                    </span>
+                  ) : null}
+
+                  {filters.country ? (
+                    <span>
+                      Country:{" "}
+                      {getCountryLabel(
+                        activeSourceSystem,
+                        activeTaskOrder,
+                        filters.country,
+                      )}
+                    </span>
+                  ) : null}
 
                   {dashboardData.filters?.period !==
                   "custom" ? (
