@@ -12,8 +12,10 @@ import AppHeader from "@/components/layout/AppHeader";
 import ConfirmationModal from "@/components/ui/confirmation-modal";
 import LoadingModal from "@/components/ui/loading-modal";
 import WfmCallKpiDashboard from "@/components/workForceManagement/kpi/WfmCallKpiDashboard";
+import WfmKpiSourceComparison from "@/components/workForceManagement/kpi/WfmKpiSourceComparison";
 import WfmKpiDatePicker from "@/components/workForceManagement/kpi/WfmKpiDatePicker";
 import useDashboardPage from "@/hooks/useDashboardPage";
+import { getWfmUsVisaPerformanceComparison } from "@/lib/axios/us-visa-performance";
 import { getWfmCallKpis } from "@/lib/axios/wfm-kpis";
 
 const PERIOD_OPTIONS = [
@@ -306,6 +308,15 @@ function getErrorMessage(error) {
   };
 }
 
+function getComparisonErrorMessage(error) {
+  const message =
+    error?.response?.data?.message ||
+    error?.message ||
+    "";
+
+  return message || "No comparison rows were returned for the selected filter criteria.";
+}
+
 function formatGrain(value) {
   const labels = {
     SKILL_DAY: "Daily source",
@@ -349,11 +360,17 @@ function getSkillOptions() {
 }
 
 function getSkillLabel(_sourceSystem, value) {
-  const target = value !== undefined ? value : _sourceSystem;
+  const target =
+    typeof value === "string"
+      ? value
+      : typeof _sourceSystem === "string"
+      ? _sourceSystem
+      : "";
+  if (!target) return "All Skills";
   return (
     SKILL_OPTIONS.find(
       (option) =>
-        option.value.toLowerCase() === String(target || "").toLowerCase(),
+        option.value.toLowerCase() === String(target).toLowerCase(),
     )?.label || target || "All Skills"
   );
 }
@@ -432,6 +449,9 @@ export default function ViewGraphsPage() {
 
   const [filters, setFilters] = useState(DEFAULT_FILTERS);
   const [kpiResponse, setKpiResponse] = useState(null);
+  const [comparisonResponse, setComparisonResponse] = useState(null);
+  const [comparisonError, setComparisonError] = useState("");
+  const [isComparisonLoading, setIsComparisonLoading] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -450,23 +470,45 @@ export default function ViewGraphsPage() {
           title: "Invalid Date Range",
           message: "The start date cannot be later than the end date.",
         });
+        setComparisonResponse(null);
+        setComparisonError("");
         return;
       }
     }
 
     setIsLoading(true);
+    setIsComparisonLoading(true);
     setError("");
+    setComparisonError("");
 
     try {
       const params = buildRequestParams(filters);
-      const response = await getWfmCallKpis(params);
+      const [kpiResult, comparisonResult] = await Promise.allSettled([
+        getWfmCallKpis(params),
+        getWfmUsVisaPerformanceComparison(params),
+      ]);
 
-      setKpiResponse(response);
+      if (kpiResult.status === "fulfilled") {
+        setKpiResponse(kpiResult.value);
+      } else {
+        setError(getErrorMessage(kpiResult.reason));
+        setKpiResponse(null);
+      }
+
+      if (comparisonResult.status === "fulfilled") {
+        setComparisonResponse(comparisonResult.value);
+      } else {
+        setComparisonError(getComparisonErrorMessage(comparisonResult.reason));
+        setComparisonResponse(null);
+      }
     } catch (loadError) {
       setError(getErrorMessage(loadError));
       setKpiResponse(null);
+      setComparisonError(getComparisonErrorMessage(loadError));
+      setComparisonResponse(null);
     } finally {
       setIsLoading(false);
+      setIsComparisonLoading(false);
     }
   }, [canViewGraphs, filters]);
 
@@ -574,6 +616,9 @@ export default function ViewGraphsPage() {
 
   const dashboardData =
     kpiResponse?.data?.data || {};
+
+  const comparisonData =
+    comparisonResponse?.data || {};
 
   const availableGrains =
     Array.isArray(dashboardData.availableGrains)
@@ -992,6 +1037,14 @@ export default function ViewGraphsPage() {
                   <WfmCallKpiDashboard
                     data={dashboardData || {}}
                   />
+
+                  <div className="mt-4">
+                    <WfmKpiSourceComparison
+                      comparison={comparisonData}
+                      error={comparisonError}
+                      isLoading={isComparisonLoading}
+                    />
+                  </div>
                 </div>
               )}
             </div>
