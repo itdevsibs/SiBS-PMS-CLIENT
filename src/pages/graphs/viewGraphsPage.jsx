@@ -360,17 +360,11 @@ function getSkillOptions() {
 }
 
 function getSkillLabel(_sourceSystem, value) {
-  const target =
-    typeof value === "string"
-      ? value
-      : typeof _sourceSystem === "string"
-      ? _sourceSystem
-      : "";
-  if (!target) return "All Skills";
+  const target = value !== undefined ? value : _sourceSystem;
   return (
     SKILL_OPTIONS.find(
       (option) =>
-        option.value.toLowerCase() === String(target).toLowerCase(),
+        option.value.toLowerCase() === String(target || "").toLowerCase(),
     )?.label || target || "All Skills"
   );
 }
