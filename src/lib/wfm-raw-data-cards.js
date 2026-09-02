@@ -13,19 +13,39 @@ const defaultRawDataTitles = Array.from(
 const accountRawDataCards = {
   "US VISA": [
     {
-      title: "Fusecom",
+      title: "Fusecom Skill Statistics",
+      sourceLabel: "Fusecom",
+      groupLabel: "SERVICE / QUEUE LEVEL",
       taskOrders: ["Seurica", "Nice"],
       importProfileCode: "FUSECOM_SKILL_STATISTICS_INBOUND",
     },
     {
-      title: "Herodash",
+      title: "HeroDash Skill Statistics",
+      sourceLabel: "HeroDash",
+      groupLabel: "SERVICE / QUEUE LEVEL",
       taskOrders: ["Seasia", "Pac"],
       importProfileCode: "HERO_SKILL_STATISTICS_INBOUND",
     },
     {
-      title: "Fusenet",
+      title: "Fusecom Agent Level",
+      sourceLabel: "Fusecom",
+      groupLabel: "AGENT LEVEL",
+      taskOrders: ["Seurica", "Nice"],
+      importProfileCode: "FUSECOM_AGENT_LEVEL",
+    },
+    {
+      title: "FuseNet Agent Level",
+      sourceLabel: "FuseNet",
+      groupLabel: "AGENT LEVEL",
       taskOrders: ["Nesami"],
-      importProfileCode: null,
+      importProfileCode: "FUSENET_AGENT_LEVEL",
+    },
+    {
+      title: "HeroDash Agent Level",
+      sourceLabel: "HeroDash",
+      groupLabel: "AGENT LEVEL",
+      taskOrders: ["Seasia", "Pac"],
+      importProfileCode: "HERODASH_AGENT_LEVEL",
     },
   ],
   "YUM-DEL": [
@@ -45,6 +65,24 @@ function getAccountTitles(account) {
   );
 }
 
+export function getRawDataCardByImportProfileCode(importProfileCode) {
+  const profileCode = String(importProfileCode || "").trim();
+
+  if (!profileCode) {
+    return null;
+  }
+
+  for (const account of accountOptions) {
+    const card = getRawDataCards(account).find(
+      (item) => item.importProfileCode === profileCode,
+    );
+
+    if (card) return card;
+  }
+
+  return null;
+}
+
 // Builds stable card IDs used to connect uploads, dashboard imports, and graphs.
 export function getRawDataCards(account) {
   if (!account || account === "All Accounts") {
@@ -59,6 +97,8 @@ export function getRawDataCards(account) {
     title,
     id: `${slugifyAccount(account)}-raw-data-${index + 1}`,
     account,
+    sourceLabel: typeof card === "string" ? title : card.sourceLabel || title,
+    groupLabel: typeof card === "string" ? null : card.groupLabel || null,
     taskOrders: Array.isArray(card.taskOrders) ? card.taskOrders : [],
     importProfileCode:
       typeof card === "string" ? null : card.importProfileCode || null,

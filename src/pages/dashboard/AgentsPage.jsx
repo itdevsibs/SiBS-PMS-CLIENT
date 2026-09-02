@@ -1,13 +1,16 @@
 // Dashboard page for agent users.
+import AgentPerformanceDashboard from "@/components/agent/AgentPerformanceDashboard";
 import AdminSidebar from "@/components/layout/AdminSidebar";
 import AppHeader from "@/components/layout/AppHeader";
 import ConfirmationModal from "@/components/ui/confirmation-modal";
 import LoadingModal from "@/components/ui/loading-modal";
+import useAgentPerformance from "@/hooks/useAgentPerformance";
 import useDashboardPage from "@/hooks/useDashboardPage";
 
 const AgentsPage = () => {
   const dashboard = useDashboardPage();
   const userName = dashboard.authUser?.name || dashboard.authUser?.username || "User";
+  const agentPerformance = useAgentPerformance();
 
   return (
     <section className="font-jakarta flex min-h-screen bg-[#eef3f7] text-sibs-primary-1">
@@ -26,7 +29,21 @@ const AgentsPage = () => {
           onMenuClick={() => dashboard.setIsMobileSidebarOpen(true)}
           onLogoutClick={() => dashboard.setShowLogoutModal(true)}
         />
-        <div className="sibs-scrollbar max-h-[calc(100vh-74px)] overflow-y-auto p-3 sm:p-4 lg:p-5" />
+        <div className="sibs-scrollbar max-h-[calc(100vh-74px)] overflow-y-auto p-3 sm:p-4 lg:p-5">
+          <AgentPerformanceDashboard
+            data={agentPerformance.data}
+            error={agentPerformance.error}
+            filters={agentPerformance.filters}
+            isLoading={agentPerformance.isLoading}
+            onFilterChange={(nextFilters) =>
+              agentPerformance.setFilters((current) => ({
+                ...current,
+                ...nextFilters,
+              }))
+            }
+            onRefresh={agentPerformance.refresh}
+          />
+        </div>
       </main>
       <ConfirmationModal
         isOpen={dashboard.showLogoutModal}

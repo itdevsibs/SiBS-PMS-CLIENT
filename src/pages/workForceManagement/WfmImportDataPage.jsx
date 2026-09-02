@@ -26,6 +26,7 @@ import { recordWfmHistoryLogQuietly } from "@/lib/axios/wfm-history-logs";
 import { removeWfmGraphReportsForUpload } from "@/lib/wfm-graph-reports";
 import {
   accountOptions,
+  getRawDataCardByImportProfileCode,
   getRawDataCards,
 } from "@/lib/wfm-raw-data-cards";
 import {
@@ -119,6 +120,10 @@ function getApiErrorMessage(error, card) {
   const backendMsg = error?.response?.data?.message || "";
   const backendCode = error?.response?.data?.code || "";
 
+  if (backendMsg) {
+    return backendMsg;
+  }
+
   if (backendCode === "CORRUPTED_WORKBOOK") {
     return "The uploaded XLSX file could not be opened as a valid Excel workbook. Please re-export the report from the source system and try again.";
   }
@@ -128,11 +133,11 @@ function getApiErrorMessage(error, card) {
   }
 
   if (backendCode === "INVALID_FILE_TYPE") {
-    return backendMsg || "Only .xlsx files are supported for this import.";
+    return "Only .xlsx files are supported for this import.";
   }
 
   if (backendCode === "FILE_TOO_LARGE") {
-    return backendMsg || "The selected workbook exceeds the maximum allowed upload size.";
+    return "The selected workbook exceeds the maximum allowed upload size.";
   }
 
   if (
@@ -140,30 +145,24 @@ function getApiErrorMessage(error, card) {
     backendCode === "MISSING_REQUIRED_SHEET" ||
     backendCode === "MISSING_REQUIRED_COLUMN" ||
     backendCode === "MISSING_REQUIRED_HEADER" ||
-    backendCode === "WRONG_IMPORT_PROFILE" ||
-    backendMsg.toLowerCase().includes("missing required") ||
-    backendMsg.toLowerCase().includes("only") ||
-    backendMsg.toLowerCase().includes("expected report format") ||
-    backendMsg.toLowerCase().includes("structure validation failed")
+    backendCode === "WRONG_IMPORT_PROFILE"
   ) {
-    if (/hero/i.test(card?.title || card?.id || "")) {
-      return "Only HeroDash Skill Statistics (.xlsx) files are allowed for this card. The uploaded file is missing required HeroDash sheets or headers.";
+    const profileLabel = card?.title || "valid";
+    const reportTypeLabel = /agent/i.test(profileLabel)
+      ? "Agent Level"
+      : "Skill Statistics";
+
+    if (/hero/i.test(profileLabel || card?.id || "")) {
+      return `Only HeroDash ${reportTypeLabel} (.xlsx) files are allowed for this card. The uploaded file is missing required HeroDash ${reportTypeLabel} sheets or headers.`;
     }
-    if (/fuse/i.test(card?.title || card?.id || "")) {
-      return "Only Fusecom Skill Statistics (.xlsx) files are allowed for this card. The uploaded file is missing required Fusecom sheets or headers.";
+    if (/fusenet/i.test(profileLabel || card?.id || "")) {
+      return `Only FuseNet ${reportTypeLabel} (.xlsx) files are allowed for this card. The uploaded file is missing required FuseNet ${reportTypeLabel} sheets or headers.`;
     }
-    return `Only ${card?.title || "valid"} (.xlsx) reports are allowed for this card. The uploaded file does not match the required format.`;
+    if (/fuse/i.test(profileLabel || card?.id || "")) {
+      return `Only Fusecom ${reportTypeLabel} (.xlsx) files are allowed for this card. The uploaded file is missing required Fusecom ${reportTypeLabel} sheets or headers.`;
+    }
+    return `Only ${profileLabel} (.xlsx) reports are allowed for this card. The uploaded file does not match the required format.`;
   }
-
-  return (
-    backendMsg ||
-    error?.message ||
-    "The upload could not be completed."
-  );
-}
-
-function formatImportStatus(status) {
-  return String(status || "").replace(/_/g, " ");
 }
 
 const BATCH_DETAIL_TONES = {
@@ -265,6 +264,21 @@ function formatRelativeTime(upload) {
   }
 
   return `${elapsedDays} day${elapsedDays === 1 ? "" : "s"} ago`;
+}
+
+function formatImportStatus(status) {
+  switch (status) {
+    case "COMPLETED":
+      return "Completed";
+    case "COMPLETED_WITH_ERRORS":
+      return "Completed with warnings";
+    case "FAILED":
+      return "Failed";
+    case "DUPLICATE":
+      return "Duplicate";
+    default:
+      return status ? String(status).replace(/_/g, " ") : "Completed";
+  }
 }
 
 function getCellText(value) {
@@ -502,15 +516,15 @@ function mapBatchToUpload(batch) {
     return null;
   }
 
-  const isHerodash =
-    batch.importProfileId === 1 ||
-    batch.importProfileId === "HERO_SKILL_STATISTICS_INBOUND" ||
-    String(batch.sourceSystem).toUpperCase() === "HERODASH" ||
-    /hero/i.test(batch.sourceFilename || "") ||
-    (/dash/i.test(batch.sourceFilename || "") && !/fuse/i.test(batch.sourceFilename || ""));
+  const profileCode = String(batch.importProfileCode || "").trim();
+  const card = getRawDataCardByImportProfileCode(profileCode);
 
-  const cardId = isHerodash ? "us-visa-raw-data-2" : "us-visa-raw-data-1";
-  const rawDataTitle = isHerodash ? "Herodash" : "Fusecom";
+  if (!card) {
+    return null;
+  }
+
+  const cardId = card.id;
+  const rawDataTitle = card.title;
   const account = "US VISA";
 
   let uploadedAtMs = Date.now();
@@ -535,6 +549,9 @@ function mapBatchToUpload(batch) {
     cardId,
     account,
     rawDataTitle,
+    importProfileCode: profileCode,
+    importProfileName: batch.importProfileName || rawDataTitle,
+    sourceSystem: batch.sourceSystem || card.sourceLabel,
     fileName: batch.sourceFilename,
     fileSize: batch.fileSize || 0,
     filePath: `${account}/${rawDataTitle}/${batch.sourceFilename}`,
@@ -625,6 +642,27 @@ function WfmImportDataPage() {
     );
   }, [rawDataSearch]);
 
+  const groupedRawDataCards = useMemo(() => {
+    const groups = [];
+
+    for (const card of filteredRawDataCards) {
+      const groupLabel = card.groupLabel || "RAW DATA";
+      let group = groups.find((item) => item.label === groupLabel);
+
+      if (!group) {
+        group = {
+          label: groupLabel,
+          cards: [],
+        };
+        groups.push(group);
+      }
+
+      group.cards.push(card);
+    }
+
+    return groups;
+  }, [filteredRawDataCards]);
+
   const uploadedCardCounts = useMemo(
     () =>
       Object.fromEntries(
@@ -663,16 +701,15 @@ function WfmImportDataPage() {
     try {
       const response = await getUsVisaImportHistory({ limit: 100 });
       if (response?.data && Array.isArray(response.data)) {
-        const dbUploads = response.data.map(mapBatchToUpload);
+        const dbUploads = response.data.map(mapBatchToUpload).filter(Boolean);
 
         setUploadsByCard((current) => {
           const updated = { ...current };
+          const usVisaCards = getRawDataCards("US VISA");
 
-          const heroUploads = dbUploads.filter((u) => u.cardId === "us-visa-raw-data-2");
-          const fuseUploads = dbUploads.filter((u) => u.cardId === "us-visa-raw-data-1");
-
-          updated["us-visa-raw-data-2"] = heroUploads;
-          updated["us-visa-raw-data-1"] = fuseUploads;
+          for (const card of usVisaCards) {
+            updated[card.id] = dbUploads.filter((upload) => upload.cardId === card.id);
+          }
 
           writeJsonCache(RAW_DATA_UPLOADS_KEY, updated);
           return updated;
@@ -856,6 +893,9 @@ function WfmImportDataPage() {
         invalidRows: batchResult?.invalidRows ?? 0,
         duplicateRows: batchResult?.duplicateRows ?? 0,
         warningRows: batchResult?.warningRows ?? 0,
+        importProfileCode: card.importProfileCode || null,
+        importProfileName: batchResult?.importProfileName || card.title,
+        sourceSystem: batchResult?.sourceSystem || card.sourceLabel || card.title,
       };
 
       setUploadsByCard((current) => {
@@ -1115,16 +1155,26 @@ function WfmImportDataPage() {
               })}
             </div>
           ) : (
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-              {filteredRawDataCards.map((card) => {
-                const uploads = uploadsByCard[card.id] || [];
-                const latestUploads = uploads.slice(0, 3);
+            <div className="space-y-5">
+              {groupedRawDataCards.map((group) => (
+                <section key={group.label} className="min-w-0">
+                  <div className="mb-2 flex items-center gap-2">
+                    <h2 className="m-0 text-[11px] font-extrabold uppercase tracking-wide text-sibs-tertiary-5">
+                      {group.label}
+                    </h2>
+                    <span className="h-px flex-1 bg-slate-200" aria-hidden="true" />
+                  </div>
 
-                return (
-                  <section
-                    key={card.id}
-                    className="sibs-card flex min-h-[350px] flex-col justify-between p-4 shadow-xs transition hover:border-sibs-primary-1/40"
-                  >
+                  <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+                    {group.cards.map((card) => {
+                      const uploads = uploadsByCard[card.id] || [];
+                      const latestUploads = uploads.slice(0, 3);
+
+                      return (
+                        <section
+                          key={card.id}
+                          className="sibs-card flex min-h-[350px] flex-col justify-between p-4 shadow-xs transition hover:border-sibs-primary-1/40"
+                        >
                     <div>
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex min-w-0 items-baseline gap-2">
@@ -1241,9 +1291,12 @@ function WfmImportDataPage() {
                         <span>Open</span>
                       </button>
                     </div>
-                  </section>
-                );
-              })}
+                        </section>
+                      );
+                    })}
+                  </div>
+                </section>
+              ))}
             </div>
           )}
 
