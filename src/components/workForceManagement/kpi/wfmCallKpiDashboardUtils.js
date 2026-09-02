@@ -45,11 +45,11 @@ function getNiceStep(maxValue, tickCount) {
 export function getCallAxisTicks(maxValue, tickCount = 4) {
   const safeTickCount = Math.max(1, Math.floor(Number(tickCount) || 4));
   const step = getNiceStep(maxValue, safeTickCount);
-  const axisMax = Math.max(step * safeTickCount, Math.ceil((Number(maxValue) || 0) / step) * step);
-  const interval = axisMax / safeTickCount;
+  const axisMax = Math.max(step, Math.ceil((Number(maxValue) || 0) / step) * step);
+  const numSteps = Math.max(1, Math.round(axisMax / step));
 
-  return Array.from({ length: safeTickCount + 1 }, (_, index) =>
-    Math.max(0, Math.round(axisMax - interval * index)),
+  return Array.from({ length: numSteps + 1 }, (_, index) =>
+    Math.max(0, Math.round(axisMax - step * index)),
   );
 }
 
