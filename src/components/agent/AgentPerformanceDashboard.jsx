@@ -206,7 +206,6 @@ function AgentCallsChart({ series = [] }) {
                 numericValue > 0
                   ? Math.max(2, (numericValue / axisMax) * 100)
                   : 0;
-              const tooltipIsNearTop = heightPercent >= 70;
 
               return (
                 <div
@@ -227,20 +226,18 @@ function AgentCallsChart({ series = [] }) {
                       </span>
                     ) : null}
 
-                    {/* Hover Tooltip */}
+                    {/* Tooltip Modal */}
                     <div
-                      className={`pointer-events-none absolute z-30 hidden min-w-[150px] rounded-xl border border-sibs-tertiary-10/80 bg-white/95 p-2.5 shadow-xl backdrop-blur-md group-hover/bar:block ${
+                      className={`pointer-events-none absolute z-50 hidden min-w-[150px] rounded-xl border border-sibs-tertiary-10/80 bg-white/95 p-2.5 shadow-xl backdrop-blur-md group-hover/bar:block ${
                         periodIndex >= series.length - 1
-                          ? "right-0 translate-x-0"
+                          ? "left-1/2 -translate-x-[75%]"
                           : periodIndex === 0
-                          ? "left-0 translate-x-0"
+                          ? "left-1/2 -translate-x-[25%]"
                           : "left-1/2 -translate-x-1/2"
                       }`}
-                      style={
-                        tooltipIsNearTop
-                          ? { top: "6px" }
-                          : { bottom: `calc(${heightPercent}% + 28px)` }
-                      }
+                      style={{
+                        bottom: `calc(${heightPercent}% + 44px)`,
+                      }}
                     >
                       <div className="flex items-center justify-between border-b border-slate-100 pb-1">
                         <span className="text-xs font-black text-sibs-primary-1">

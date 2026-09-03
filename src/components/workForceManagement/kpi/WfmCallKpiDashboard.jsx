@@ -64,8 +64,8 @@ function KpiCard({ icon: Icon, label, value, hint, status }) {
 
 function ChartShell({ title, subtitle, children }) {
   return (
-    <article className="sibs-card overflow-hidden flex flex-col h-full shadow-xs">
-      <div className="border-b border-sibs-tertiary-10 bg-sibs-primary-3/30 px-4 py-2.5">
+    <article className="sibs-card relative z-10 flex flex-col h-full shadow-xs overflow-visible">
+      <div className="border-b border-sibs-tertiary-10 bg-sibs-primary-3/30 px-4 py-2.5 rounded-t-xl">
         <h3 className="m-0 text-xs font-extrabold uppercase tracking-[0.14em] text-sibs-primary-1">
           {title}
         </h3>
@@ -77,7 +77,7 @@ function ChartShell({ title, subtitle, children }) {
         ) : null}
       </div>
 
-      <div className="p-3 pb-2.5 flex-1 flex flex-col overflow-x-auto">
+      <div className="p-3 pb-2.5 flex-1 flex flex-col min-w-0 overflow-visible">
         {children}
       </div>
     </article>
@@ -178,8 +178,6 @@ function VolumeChart({ series }) {
                         ? Math.max(2, (numericValue / axisMax) * 100)
                         : 0;
 
-                    const tooltipIsNearTop = heightPercent >= 70;
-
                     return (
                       <div
                         key={metric}
@@ -204,24 +202,18 @@ function VolumeChart({ series }) {
                             </span>
                           ) : null}
 
-                          {/* Tooltip */}
+                          {/* Tooltip Modal */}
                           <div
-                            className={`pointer-events-none absolute z-30 hidden min-w-[160px] rounded-xl border border-sibs-tertiary-10/80 bg-white/95 p-2.5 shadow-xl backdrop-blur-md group-hover/bar:block ${
+                            className={`pointer-events-none absolute z-50 hidden min-w-[160px] rounded-xl border border-sibs-tertiary-10/80 bg-white/95 p-2.5 shadow-xl backdrop-blur-md group-hover/bar:block ${
                               periodIndex >= series.length - 1
-                                ? "right-0 translate-x-0"
+                                ? "left-1/2 -translate-x-[75%]"
                                 : periodIndex === 0
-                                ? "left-0 translate-x-0"
+                                ? "left-1/2 -translate-x-[25%]"
                                 : "left-1/2 -translate-x-1/2"
                             }`}
-                            style={
-                              tooltipIsNearTop
-                                ? {
-                                    top: "6px",
-                                  }
-                                : {
-                                    bottom: `calc(${heightPercent}% + 28px)`,
-                                  }
-                            }
+                            style={{
+                              bottom: `calc(${heightPercent}% + 44px)`,
+                            }}
                           >
                             <div className="flex items-center justify-between border-b border-slate-100 pb-1">
                               <span className="text-xs font-black text-sibs-primary-1">
@@ -594,13 +586,19 @@ function LineChart({ series, target = 90 }) {
             {hoveredIndex !== null && series[hoveredIndex] && (
               <div
                 className="pointer-events-none absolute z-30 min-w-[160px] rounded-xl border border-sibs-tertiary-10/80 bg-white/95 p-2.5 shadow-xl backdrop-blur-md"
-                style={{
-                  left: `${Math.min(
-                    Math.max(10, answerPts[hoveredIndex]?.x - 80),
-                    width - 175,
-                  )}px`,
-                  top: "14px",
-                }}
+                style={
+                  hoveredIndex >= series.length - 1
+                    ? { right: "10px", top: "14px" }
+                    : hoveredIndex === 0
+                    ? { left: "10px", top: "14px" }
+                    : {
+                        left: `${Math.min(
+                          Math.max(10, (answerPts[hoveredIndex]?.x || 0) - 80),
+                          width - 175,
+                        )}px`,
+                        top: "14px",
+                      }
+                }
               >
                 <div className="flex items-center justify-between border-b border-slate-100 pb-1">
                   <span className="text-xs font-black text-sibs-primary-1">
@@ -737,7 +735,7 @@ function AhtChart({ series, target }) {
 
           <div className="relative flex h-[300px] items-end gap-1.5 border-b border-sibs-tertiary-8 px-1 sm:gap-2.5">
             <div
-              className="pointer-events-none absolute right-0 left-0 border-t-2 border-dashed border-red-500 z-20"
+              className="pointer-events-none absolute right-0 left-0 border-t-2 border-dashed border-red-500 z-0"
               style={{
                 bottom: `${targetPosition}%`,
               }}
@@ -751,7 +749,7 @@ function AhtChart({ series, target }) {
               return (
                 <div
                   key={item.key}
-                  className="group/aht relative z-10 flex h-full min-w-0 flex-1 flex-col items-center justify-end"
+                  className="group/aht relative z-10 hover:z-30 flex h-full min-w-0 flex-1 flex-col items-center justify-end"
                 >
                   {hasAht ? (
                     <p
@@ -766,18 +764,18 @@ function AhtChart({ series, target }) {
                     <span className="mb-1.5 text-[10px] font-semibold text-slate-400">-</span>
                   )}
 
-                  {/* Tooltip */}
+                  {/* Tooltip Modal */}
                   {hasAht ? (
                     <div
-                      className={`pointer-events-none absolute z-30 hidden min-w-[160px] rounded-xl border border-sibs-tertiary-10/80 bg-white/95 p-2.5 shadow-xl backdrop-blur-md group-hover/aht:block ${
+                      className={`pointer-events-none absolute z-50 hidden min-w-[160px] rounded-xl border border-sibs-tertiary-10 bg-white p-2.5 shadow-xl group-hover/aht:block ${
                         itemIndex >= series.length - 1
-                          ? "right-0 translate-x-0"
+                          ? "left-1/2 -translate-x-[75%]"
                           : itemIndex === 0
-                          ? "left-0 translate-x-0"
+                          ? "left-1/2 -translate-x-[25%]"
                           : "left-1/2 -translate-x-1/2"
                       }`}
                       style={{
-                        bottom: `calc(${heightPct}% + 28px)`,
+                        bottom: `calc(${heightPct}% + 44px)`,
                       }}
                     >
                       <div className="flex items-center justify-between border-b border-slate-100 pb-1">
@@ -803,9 +801,9 @@ function AhtChart({ series, target }) {
                         </div>
 
                         <div className="flex items-center justify-between pt-1 border-t border-slate-100 text-[10.5px]">
-                          <span className="font-semibold text-slate-500">Target ({formatNumber(normalizedTarget)}s):</span>
+                          <span className="whitespace-nowrap font-semibold text-slate-500">Target ({formatNumber(normalizedTarget)}s):</span>
                           <span
-                            className={`font-extrabold ${
+                            className={`whitespace-nowrap font-extrabold ${
                               ahtSec <= normalizedTarget
                                 ? "text-emerald-600"
                                 : "text-amber-600"
@@ -834,13 +832,20 @@ function AhtChart({ series, target }) {
           </div>
 
           <div className="flex w-full min-w-0 gap-1.5 px-1 sm:gap-2.5">
-            {series.map((item, itemIndex) => (
-              <div key={item.key} className="mt-2 min-w-0 flex-1 px-0.5 text-center">
-                <p className="m-0 truncate text-[10.5px] font-extrabold text-sibs-primary-1 leading-tight">
+            {series.map((item, periodIndex) => (
+              <div
+                key={item.key}
+                className="mt-2 min-w-0 flex-1 px-0.5 text-center"
+              >
+                <p
+                  className="m-0 truncate text-[10.5px] font-extrabold text-sibs-primary-1 leading-tight"
+                  title={item.label}
+                >
                   {item.label}
                 </p>
+
                 <p className="m-0 text-[9px] font-semibold uppercase text-sibs-tertiary-5">
-                  Period {itemIndex + 1}
+                  Period {periodIndex + 1}
                 </p>
               </div>
             ))}

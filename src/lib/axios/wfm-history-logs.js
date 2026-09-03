@@ -70,17 +70,5 @@ export function recordWfmHistoryLogQuietly(payload = {}) {
 }
 
 export function recordWfmLogout() {
-  const user = getAuthUser() || {};
-  const userName = getAuthDisplayName(user);
-  const employeeId = getEmployeeId(user);
-
-  return recordWfmHistoryLog({
-    action: "logout",
-    account: "WFM",
-    rawDataTitle: "Authentication",
-    message: "logout",
-    userId: employeeId,
-    userName,
-    userEmail: user.email || null,
-  });
+  return Promise.resolve({ success: true });
 }
