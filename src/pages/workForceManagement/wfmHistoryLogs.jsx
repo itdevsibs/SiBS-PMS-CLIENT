@@ -14,21 +14,20 @@ import {
   fetchWfmHistoryLogs,
 } from "@/lib/axios/wfm-history-logs";
 
-function getLogActionText(log) {
-  if (log.action === "login") return "logged in";
-  if (log.action === "logout") return "logged out";
-  if (log.message === "logged-in") return "logged in";
-  if (log.message === "logged-out") return "logged out";
-  if (log.message === "login") return "logged in";
-  if (log.message === "logout") return "logged out";
-
-  return log.message || log.action || "performed an action";
-}
-
 function isAuthLog(log) {
-  const actionText = getLogActionText(log);
+  const action = String(log?.action || "").toLowerCase();
+  const message = String(log?.message || "").toLowerCase();
 
-  return actionText === "logged in" || actionText === "logged out";
+  return (
+    action === "login" ||
+    action === "logout" ||
+    message === "login" ||
+    message === "logout" ||
+    message === "logged-in" ||
+    message === "logged-out" ||
+    message.includes("logged in") ||
+    message.includes("logged out")
+  );
 }
 
 function formatHistoryTime(value) {
@@ -102,13 +101,14 @@ function WfmHistoryLogs() {
         limit: pagination.limit,
       });
 
-      setLogs(
-        Array.isArray(response?.data) ? sortLatestLogsFirst(response.data) : [],
-      );
+      const rawData = Array.isArray(response?.data) ? response.data : [];
+      const nonAuthLogs = rawData.filter((log) => !isAuthLog(log));
+
+      setLogs(sortLatestLogsFirst(nonAuthLogs));
       setPagination((current) => ({
         ...current,
         page: response?.pagination?.page || page,
-        total: response?.pagination?.total || 0,
+        total: response?.pagination?.total || nonAuthLogs.length,
         totalPages: response?.pagination?.totalPages || 1,
       }));
     } catch (loadError) {
@@ -229,8 +229,7 @@ function WfmHistoryLogs() {
 
               {!error && !isLoading
                 ? logs.map((log) => {
-                    const actionText = getLogActionText(log);
-                    const isAuthAction = isAuthLog(log);
+                    const actionText = log.message || log.action || "Action performed";
                     const formattedTime = formatHistoryTime(log.formattedTime);
 
                     return (
@@ -242,32 +241,19 @@ function WfmHistoryLogs() {
                           <span className="font-semibold text-sibs-tertiary-5">
                             {formattedTime}
                           </span>
-                          {isAuthAction ? (
-                            <>
-                              <span className="text-sibs-tertiary-5"> - </span>
-                              <span>({log.userId || "N/A"}) </span>
-                              <span className="font-bold">
-                                {log.userName || "User"}
-                              </span>{" "}
-                              <span>{actionText}</span>
-                            </>
-                          ) : (
-                            <>
-                              <span className="text-sibs-tertiary-5">, </span>
-                              {getHighlightedActionMessage(actionText)}
-                              <span className="text-sibs-tertiary-5">
-                                {" - "}
-                              </span>
-                              <span className="font-semibold text-sibs-tertiary-5">
-                                Action performed
-                              </span>
-                              <span> </span>
-                              <span>({log.userId || "N/A"}) </span>
-                              <span className="font-bold">
-                                {log.userName || "User"}
-                              </span>
-                            </>
-                          )}
+                          <span className="text-sibs-tertiary-5">, </span>
+                          {getHighlightedActionMessage(actionText)}
+                          <span className="text-sibs-tertiary-5">
+                            {" - "}
+                          </span>
+                          <span className="font-semibold text-sibs-tertiary-5">
+                            Action performed
+                          </span>
+                          <span> </span>
+                          <span>({log.userId || "N/A"}) </span>
+                          <span className="font-bold">
+                            {log.userName || "User"}
+                          </span>
                         </p>
                       </article>
                     );
