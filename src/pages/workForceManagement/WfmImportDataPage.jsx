@@ -4,11 +4,16 @@ import {
   AlertCircle,
   AlertTriangle,
   CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
   CloudUpload,
-  ListPlus,
   Eye,
   FileSpreadsheet,
   FolderOpen,
+  ListPlus,
+  Loader2,
   Search,
   Trash2,
 } from "lucide-react";
@@ -567,6 +572,35 @@ function mapBatchToUpload(batch) {
   };
 }
 
+function getPageNumbers(currentPage, totalPages) {
+  if (totalPages <= 7) {
+    return Array.from({ length: totalPages }, (_, i) => i + 1);
+  }
+  if (currentPage <= 4) {
+    return [1, 2, 3, 4, 5, "...", totalPages];
+  }
+  if (currentPage >= totalPages - 3) {
+    return [
+      1,
+      "...",
+      totalPages - 4,
+      totalPages - 3,
+      totalPages - 2,
+      totalPages - 1,
+      totalPages,
+    ];
+  }
+  return [
+    1,
+    "...",
+    currentPage - 1,
+    currentPage,
+    currentPage + 1,
+    "...",
+    totalPages,
+  ];
+}
+
 function WfmImportDataPage() {
   const dashboard = useDashboardPage();
   const userName = dashboard.userName || getAuthDisplayName(dashboard.authUser);
@@ -583,6 +617,16 @@ function WfmImportDataPage() {
   const [summaryRefreshVersion, setSummaryRefreshVersion] = useState(0);
   const [isLoadingUsVisaErrors, setIsLoadingUsVisaErrors] = useState(false);
   const [usVisaErrorDetails, setUsVisaErrorDetails] = useState(null);
+  const [errorPagination, setErrorPagination] = useState({
+    page: 1,
+    limit: 25,
+    total: 0,
+    totalPages: 1,
+  });
+  const [activeErrorBatchId, setActiveErrorBatchId] = useState(null);
+  const [errorSearchQuery, setErrorSearchQuery] = useState("");
+  const [errorSeverityFilter, setErrorSeverityFilter] = useState("ALL");
+  const [jumpPageInput, setJumpPageInput] = useState("");
   const [activeOpenCard, setActiveOpenCard] = useState(null);
   const [isRemovingUpload, setIsRemovingUpload] = useState(false);
   const [uploadToRemove, setUploadToRemove] = useState(null);
@@ -753,21 +797,55 @@ function WfmImportDataPage() {
     };
   }, [selectedAccount, summaryRefreshVersion]);
 
-  const handleOpenUsVisaErrors = async (batchId) => {
-    const targetBatchId = batchId || usVisaBatchResult?.id;
+  const errorShowingText = useMemo(() => {
+    const { page, limit, total } = errorPagination;
+    if (!total) return "Showing 0 issues";
+    const start = (page - 1) * limit + 1;
+    const end = Math.min(page * limit, total);
+    return `Showing ${start.toLocaleString()} to ${end.toLocaleString()} of ${total.toLocaleString()} issues`;
+  }, [errorPagination]);
+
+  const handleOpenUsVisaErrors = async (
+    batchId,
+    targetPage = 1,
+    targetLimit,
+    targetSearch = errorSearchQuery,
+    targetSeverity = errorSeverityFilter,
+  ) => {
+    const targetBatchId = batchId || activeErrorBatchId || usVisaBatchResult?.id;
 
     if (!targetBatchId || isLoadingUsVisaErrors) {
       return;
     }
 
+    const currentLimit = targetLimit || errorPagination.limit || 25;
     setIsLoadingUsVisaErrors(true);
+    setActiveErrorBatchId(targetBatchId);
 
     try {
       const response = await getUsVisaImportBatchErrors(targetBatchId, {
-        limit: 50,
+        page: targetPage,
+        limit: currentLimit,
+        search: targetSearch || undefined,
+        severity: targetSeverity !== "ALL" ? targetSeverity : undefined,
       });
 
       setUsVisaErrorDetails(response);
+      const totalCount =
+        response?.pagination?.total ??
+        response?.data?.length ??
+        0;
+      const totalPages =
+        response?.pagination?.totalPages ??
+        Math.max(1, Math.ceil(totalCount / currentLimit));
+
+      setErrorPagination({
+        page: targetPage,
+        limit: currentLimit,
+        total: totalCount,
+        totalPages,
+      });
+      setJumpPageInput(String(targetPage));
     } catch (error) {
       console.error("Failed to load US VISA import errors:", error);
       setErrorModalInfo({
@@ -1347,7 +1425,10 @@ function WfmImportDataPage() {
             filteredOpenCardUploads.map((upload) => {
               const isCompletedWithErrors =
                 upload.batchStatus === "COMPLETED_WITH_ERRORS" ||
-                (upload.batchId && (upload.invalidRows > 0 || upload.warningRows > 0));
+                (upload.batchId &&
+                  (upload.invalidRows > 0 ||
+                    upload.warningRows > 0 ||
+                    upload.duplicateRows > 0));
 
               return (
                 <div
@@ -1471,83 +1552,436 @@ function WfmImportDataPage() {
 
       <AppModal
         isOpen={Boolean(usVisaErrorDetails)}
-        className="!max-w-none sm:!w-[min(92vw,1100px)]"
+        className="!max-w-none !w-[min(96vw,1440px)] !h-[88vh] !max-h-[88vh] flex flex-col p-5 sm:p-6 overflow-hidden"
         zIndex="z-[160]"
       >
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        {/* Header (fixed) */}
+        <div className="shrink-0 flex flex-col gap-3 border-b border-sibs-tertiary-10 pb-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="m-0 text-lg font-bold text-sibs-primary-1">
-              Import Error Details
-            </p>
-            <p className="mt-1 mb-0 text-sm text-sibs-tertiary-5">
-              {usVisaErrorDetails?.batch?.batchCode || usVisaBatchResult?.batchCode}
+            <div className="flex items-center gap-2.5">
+              <p className="m-0 text-xl font-bold text-sibs-primary-1">
+                Import Error Details
+              </p>
+              {errorPagination.total > 0 ? (
+                <span className="inline-flex items-center rounded-full border border-rose-200 bg-rose-50 px-2.5 py-0.5 text-xs font-bold text-rose-700">
+                  {errorPagination.total.toLocaleString()} issues
+                </span>
+              ) : null}
+            </div>
+            <p className="mt-1 mb-0 text-xs text-sibs-tertiary-5">
+              Batch:{" "}
+              <span className="font-mono font-semibold text-sibs-primary-1">
+                {usVisaErrorDetails?.batch?.batchCode ||
+                  usVisaBatchResult?.batchCode ||
+                  "-"}
+              </span>
+              {usVisaErrorDetails?.batch?.sourceFilename ? (
+                <span className="ml-2 text-slate-400">
+                  • {usVisaErrorDetails.batch.sourceFilename}
+                </span>
+              ) : null}
             </p>
           </div>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => setUsVisaErrorDetails(null)}
-            className="h-9 rounded-lg px-4"
-          >
-            Close
-          </Button>
+
+          <div className="flex items-center gap-2">
+            {/* Search Input */}
+            <div className="relative w-64 sm:w-80">
+              <Search
+                className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-sibs-tertiary-6"
+                aria-hidden="true"
+              />
+              <input
+                value={errorSearchQuery}
+                onChange={(e) => setErrorSearchQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    void handleOpenUsVisaErrors(
+                      activeErrorBatchId,
+                      1,
+                      errorPagination.limit,
+                      errorSearchQuery,
+                      errorSeverityFilter,
+                    );
+                  }
+                }}
+                placeholder="Search error, sheet, code, row..."
+                className="h-9 w-full rounded-lg border border-sibs-tertiary-9 bg-white pl-8 pr-8 text-xs outline-none focus:border-sibs-primary-2"
+                type="text"
+              />
+              {errorSearchQuery ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setErrorSearchQuery("");
+                    void handleOpenUsVisaErrors(
+                      activeErrorBatchId,
+                      1,
+                      errorPagination.limit,
+                      "",
+                      errorSeverityFilter,
+                    );
+                  }}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 hover:text-slate-600"
+                >
+                  ✕
+                </button>
+              ) : null}
+            </div>
+
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setUsVisaErrorDetails(null);
+                setActiveErrorBatchId(null);
+                setErrorSearchQuery("");
+                setErrorSeverityFilter("ALL");
+              }}
+              className="h-9 rounded-lg px-4 text-xs font-semibold"
+            >
+              Close
+            </Button>
+          </div>
         </div>
 
-        <div className="sibs-scrollbar mt-4 max-h-[65vh] overflow-auto rounded-lg border border-sibs-tertiary-10">
-          <table className="w-max min-w-full border-collapse text-left text-sm">
-            <thead className="bg-sibs-primary-3/50 text-xs uppercase text-sibs-tertiary-6">
+        {/* Filter Bar (shrink-0) */}
+        <div className="shrink-0 mt-2.5 mb-1.5 flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-1.5">
+            {["ALL", "ERROR", "DUPLICATE", "WARNING"].map((sev) => {
+              const isActive = errorSeverityFilter === sev;
+              return (
+                <button
+                  key={sev}
+                  type="button"
+                  onClick={() => {
+                    setErrorSeverityFilter(sev);
+                    void handleOpenUsVisaErrors(
+                      activeErrorBatchId,
+                      1,
+                      errorPagination.limit,
+                      errorSearchQuery,
+                      sev,
+                    );
+                  }}
+                  className={`rounded-lg px-2.5 py-1 text-xs font-bold transition-all ${
+                    isActive
+                      ? "bg-sibs-primary-1 text-white shadow-xs"
+                      : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                  }`}
+                >
+                  {sev === "ALL" ? "All Severities" : sev}
+                </button>
+              );
+            })}
+          </div>
+
+          <button
+            type="button"
+            onClick={() =>
+              void handleOpenUsVisaErrors(
+                activeErrorBatchId,
+                1,
+                errorPagination.limit,
+                errorSearchQuery,
+                errorSeverityFilter,
+              )
+            }
+            className="inline-flex h-7 items-center gap-1 rounded-md bg-sibs-primary-2/10 px-2.5 text-xs font-bold text-sibs-primary-2 hover:bg-sibs-primary-2/20"
+          >
+            <Search className="h-3 w-3" />
+            <span>Search / Filter</span>
+          </button>
+        </div>
+
+        {/* Table Container (flex-1 min-h-0 overflow-y-auto) */}
+        <div className="sibs-scrollbar relative flex-1 min-h-0 mt-1 overflow-y-auto rounded-lg border border-sibs-tertiary-10 bg-white">
+          {isLoadingUsVisaErrors ? (
+            <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/70 backdrop-blur-xs">
+              <div className="flex items-center gap-2 text-sm font-semibold text-sibs-primary-1">
+                <Loader2 className="h-4 w-4 animate-spin text-sibs-primary-1" />
+                Loading records...
+              </div>
+            </div>
+          ) : null}
+
+          <table className="w-full table-fixed border-collapse text-left text-xs">
+            <thead className="sticky top-0 z-5 bg-[#f0f5fa] uppercase text-sibs-tertiary-6 shadow-xs">
               <tr>
-                <th className="px-4 py-3 font-bold">Sheet</th>
-                <th className="px-4 py-3 font-bold">Row</th>
-                <th className="px-4 py-3 font-bold">Severity</th>
-                <th className="px-4 py-3 font-bold">Code</th>
-                <th className="px-4 py-3 font-bold">Column</th>
-                <th className="px-4 py-3 font-bold">Value</th>
-                <th className="px-4 py-3 font-bold">Message</th>
+                <th className="w-[18%] px-3.5 py-3 font-bold">Sheet</th>
+                <th className="w-[7%] px-2.5 py-3 text-center font-bold">Row</th>
+                <th className="w-[12%] px-3 py-3 font-bold">Severity</th>
+                <th className="w-[15%] px-3 py-3 font-bold">Code</th>
+                <th className="w-[13%] px-3 py-3 font-bold">Column</th>
+                <th className="w-[12%] px-3 py-3 font-bold">Value</th>
+                <th className="w-[23%] px-3.5 py-3 font-bold">Message</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-sibs-tertiary-10">
               {usVisaErrorDetails?.data?.length ? (
-                usVisaErrorDetails.data.map((error) => (
-                  <tr key={error.id} className="bg-[#f8fbfd]">
-                    <td className="whitespace-nowrap px-4 py-3 text-sibs-primary-1">
-                      {error.sheetName || "-"}
-                    </td>
-                    <td className="whitespace-nowrap px-4 py-3 text-sibs-tertiary-5">
-                      {error.excelRowNumber || "-"}
-                    </td>
-                    <td className="whitespace-nowrap px-4 py-3 font-bold text-sibs-primary-1">
-                      {error.severity || "-"}
-                    </td>
-                    <td className="whitespace-nowrap px-4 py-3 text-sibs-tertiary-5">
-                      {error.errorCode || "-"}
-                    </td>
-                    <td className="whitespace-nowrap px-4 py-3 text-sibs-tertiary-5">
-                      {error.columnName || "-"}
-                    </td>
-                    <td
-                      className="max-w-[220px] truncate px-4 py-3 text-sibs-tertiary-5"
-                      title={String(error.rawValue || "")}
+                usVisaErrorDetails.data.map((error) => {
+                  const severityUpper = String(error.severity || "").toUpperCase();
+                  const severityClass =
+                    severityUpper === "ERROR"
+                      ? "border border-rose-200 bg-rose-50 text-rose-700"
+                      : severityUpper === "DUPLICATE" || severityUpper === "WARNING"
+                      ? "border border-amber-200 bg-amber-50 text-amber-800"
+                      : "border border-sky-200 bg-sky-50 text-sky-700";
+
+                  return (
+                    <tr
+                      key={error.id}
+                      className="bg-[#f8fbfd] transition-colors hover:bg-sky-50/40"
                     >
-                      {error.rawValue || "-"}
-                    </td>
-                    <td className="min-w-[320px] px-4 py-3 text-sibs-tertiary-5">
-                      {error.errorMessage || "-"}
-                    </td>
-                  </tr>
-                ))
+                      <td
+                        className="truncate px-3.5 py-2.5 font-medium text-sibs-primary-1"
+                        title={error.sheetName || "-"}
+                      >
+                        {error.sheetName || "-"}
+                      </td>
+                      <td className="px-2.5 py-2.5 text-center font-mono text-[11px] text-sibs-tertiary-5">
+                        {error.excelRowNumber || "-"}
+                      </td>
+                      <td className="px-3 py-2.5">
+                        <span
+                          className={`inline-flex items-center rounded-md px-2 py-0.5 text-[10.5px] font-bold ${severityClass}`}
+                        >
+                          {error.severity || "-"}
+                        </span>
+                      </td>
+                      <td
+                        className="truncate px-3 py-2.5 font-mono text-[11px] text-sibs-tertiary-5"
+                        title={error.errorCode || "-"}
+                      >
+                        {error.errorCode || "-"}
+                      </td>
+                      <td
+                        className="truncate px-3 py-2.5 text-sibs-tertiary-5"
+                        title={error.columnName || "-"}
+                      >
+                        {error.columnName || "-"}
+                      </td>
+                      <td
+                        className="truncate px-3 py-2.5 font-mono text-[11px] text-sibs-tertiary-5"
+                        title={String(error.rawValue || "")}
+                      >
+                        {error.rawValue || "-"}
+                      </td>
+                      <td className="break-words px-3.5 py-2.5 text-[11.5px] leading-relaxed text-sibs-tertiary-5">
+                        {error.errorMessage || "-"}
+                      </td>
+                    </tr>
+                  );
+                })
               ) : (
                 <tr>
                   <td
                     colSpan={7}
-                    className="bg-[#f8fbfd] px-5 py-8 text-center text-sm text-sibs-tertiary-5"
+                    className="bg-[#f8fbfd] px-5 py-16 text-center text-sm text-sibs-tertiary-5"
                   >
-                    No error details found.
+                    No error details found matching your search or filters.
                   </td>
                 </tr>
               )}
             </tbody>
           </table>
+        </div>
+
+        {/* Footer (shrink-0) */}
+        <div className="shrink-0 mt-3 flex flex-col gap-3 border-t border-sibs-tertiary-10 pt-3 text-xs text-sibs-tertiary-6 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="font-medium text-slate-600">
+              {errorShowingText}
+            </span>
+            <div className="flex items-center gap-1.5 text-slate-500">
+              <span>Per page:</span>
+              <select
+                value={errorPagination.limit}
+                onChange={(e) => {
+                  const newLimit = Number(e.target.value);
+                  void handleOpenUsVisaErrors(
+                    activeErrorBatchId,
+                    1,
+                    newLimit,
+                    errorSearchQuery,
+                    errorSeverityFilter,
+                  );
+                }}
+                disabled={
+                  isLoadingUsVisaErrors || errorPagination.total === 0
+                }
+                className="h-7 rounded border border-slate-200 bg-white px-1.5 text-xs text-slate-700 outline-hidden focus:border-sibs-primary-1"
+              >
+                <option value={10}>10</option>
+                <option value={25}>25</option>
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+                <option value={200}>200</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2.5">
+            {/* Custom Go to Page Input */}
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                const targetP = Math.min(
+                  Math.max(1, Number(jumpPageInput) || 1),
+                  errorPagination.totalPages,
+                );
+                void handleOpenUsVisaErrors(
+                  activeErrorBatchId,
+                  targetP,
+                  errorPagination.limit,
+                  errorSearchQuery,
+                  errorSeverityFilter,
+                );
+              }}
+              className="flex items-center gap-1.5"
+            >
+              <span className="text-slate-500">Go to page:</span>
+              <input
+                type="number"
+                min={1}
+                max={errorPagination.totalPages}
+                value={jumpPageInput}
+                onChange={(e) => setJumpPageInput(e.target.value)}
+                className="h-8 w-14 rounded-lg border border-slate-200 bg-white px-1.5 text-center text-xs font-semibold text-slate-700 outline-none focus:border-sibs-primary-1"
+                placeholder={String(errorPagination.page)}
+              />
+              <span className="text-slate-400">/ {errorPagination.totalPages}</span>
+              <button
+                type="submit"
+                disabled={isLoadingUsVisaErrors || errorPagination.totalPages <= 1}
+                className="inline-flex h-8 items-center rounded-lg border border-slate-200 bg-white px-2 text-xs font-semibold text-slate-700 transition hover:border-sibs-primary-1 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Go
+              </button>
+            </form>
+
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                disabled={errorPagination.page <= 1 || isLoadingUsVisaErrors}
+                onClick={() =>
+                  void handleOpenUsVisaErrors(
+                    activeErrorBatchId,
+                    1,
+                    errorPagination.limit,
+                    errorSearchQuery,
+                    errorSeverityFilter,
+                  )
+                }
+                title="First Page"
+                className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition-all hover:border-sibs-primary-1 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                <ChevronsLeft className="h-3.5 w-3.5" />
+              </button>
+              <button
+                type="button"
+                disabled={errorPagination.page <= 1 || isLoadingUsVisaErrors}
+                onClick={() =>
+                  void handleOpenUsVisaErrors(
+                    activeErrorBatchId,
+                    Math.max(1, errorPagination.page - 1),
+                    errorPagination.limit,
+                    errorSearchQuery,
+                    errorSeverityFilter,
+                  )
+                }
+                title="Previous Page"
+                className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition-all hover:border-sibs-primary-1 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                <ChevronLeft className="h-3.5 w-3.5" />
+              </button>
+
+              <div className="flex items-center gap-1 px-1">
+                {getPageNumbers(
+                  errorPagination.page,
+                  errorPagination.totalPages,
+                ).map((p, idx) => {
+                  if (p === "...") {
+                    return (
+                      <span
+                        key={`ellipsis-${idx}`}
+                        className="select-none px-1 text-slate-400"
+                      >
+                        ...
+                      </span>
+                    );
+                  }
+                  const isActivePage = p === errorPagination.page;
+                  return (
+                    <button
+                      key={`page-${p}`}
+                      type="button"
+                      disabled={isLoadingUsVisaErrors}
+                      onClick={() =>
+                        void handleOpenUsVisaErrors(
+                          activeErrorBatchId,
+                          p,
+                          errorPagination.limit,
+                          errorSearchQuery,
+                          errorSeverityFilter,
+                        )
+                      }
+                      className={`inline-flex h-8 min-w-[32px] items-center justify-center rounded-lg px-2 text-xs font-semibold transition-all ${
+                        isActivePage
+                          ? "bg-sibs-primary-1 text-white shadow-xs"
+                          : "border border-slate-200 bg-white text-slate-700 hover:border-sibs-primary-1 hover:bg-slate-50"
+                      }`}
+                    >
+                      {p}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <button
+                type="button"
+                disabled={
+                  errorPagination.page >= errorPagination.totalPages ||
+                  isLoadingUsVisaErrors
+                }
+                onClick={() =>
+                  void handleOpenUsVisaErrors(
+                    activeErrorBatchId,
+                    Math.min(
+                      errorPagination.totalPages,
+                      errorPagination.page + 1,
+                    ),
+                    errorPagination.limit,
+                    errorSearchQuery,
+                    errorSeverityFilter,
+                  )
+                }
+                title="Next Page"
+                className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition-all hover:border-sibs-primary-1 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                <ChevronRight className="h-3.5 w-3.5" />
+              </button>
+              <button
+                type="button"
+                disabled={
+                  errorPagination.page >= errorPagination.totalPages ||
+                  isLoadingUsVisaErrors
+                }
+                onClick={() =>
+                  void handleOpenUsVisaErrors(
+                    activeErrorBatchId,
+                    errorPagination.totalPages,
+                    errorPagination.limit,
+                    errorSearchQuery,
+                    errorSeverityFilter,
+                  )
+                }
+                title="Last Page"
+                className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition-all hover:border-sibs-primary-1 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                <ChevronsRight className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          </div>
         </div>
       </AppModal>
 
@@ -1616,7 +2050,10 @@ function WfmImportDataPage() {
         ) : null}
 
         <div className="mt-5 flex justify-end gap-2">
-          {addedUpload?.batch && (addedUpload.batch.invalidRows > 0 || addedUpload.batch.warningRows > 0) ? (
+          {addedUpload?.batch &&
+          (addedUpload.batch.invalidRows > 0 ||
+            addedUpload.batch.warningRows > 0 ||
+            addedUpload.batch.duplicateRows > 0) ? (
             <Button
               type="button"
               variant="outline"
@@ -1627,7 +2064,13 @@ function WfmImportDataPage() {
               }}
               className="h-10 rounded-lg border-sibs-danger/30 px-4 text-sibs-danger hover:bg-sibs-danger hover:text-white"
             >
-              View Errors
+              View Errors (
+              {(
+                (addedUpload.batch.invalidRows || 0) +
+                (addedUpload.batch.warningRows || 0) +
+                (addedUpload.batch.duplicateRows || 0)
+              ).toLocaleString()}
+              )
             </Button>
           ) : null}
           <Button
@@ -1735,7 +2178,10 @@ function WfmImportDataPage() {
         </div>
 
         <div className="mt-5 flex flex-wrap items-center justify-end gap-2 border-t border-sibs-tertiary-10 pt-4">
-          {selectedUploadDetails?.batchId && (selectedUploadDetails.invalidRows > 0 || selectedUploadDetails.warningRows > 0) ? (
+          {selectedUploadDetails?.batchId &&
+          ((selectedUploadDetails.invalidRows || 0) > 0 ||
+            (selectedUploadDetails.warningRows || 0) > 0 ||
+            (selectedUploadDetails.duplicateRows || 0) > 0) ? (
             <Button
               type="button"
               variant="outline"
@@ -1744,7 +2190,13 @@ function WfmImportDataPage() {
               className="h-10 rounded-xl border-rose-200 bg-rose-50 px-4 text-xs font-bold text-rose-700 shadow-sm hover:border-rose-300 hover:bg-rose-100 hover:text-rose-800"
             >
               <AlertCircle className="h-3.5 w-3.5" aria-hidden="true" />
-              View Error Details ({selectedUploadDetails.invalidRows})
+              View Error Details (
+              {(
+                (selectedUploadDetails.invalidRows || 0) +
+                (selectedUploadDetails.warningRows || 0) +
+                (selectedUploadDetails.duplicateRows || 0)
+              ).toLocaleString()}
+              )
             </Button>
           ) : null}
           <Button
