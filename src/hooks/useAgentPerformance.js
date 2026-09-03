@@ -1,31 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 
+import {
+  buildAgentPerformanceParams,
+  DEFAULT_AGENT_PERFORMANCE_FILTERS,
+} from "@/components/agent/agentPerformanceFilterUtils";
 import { getMyUsVisaPerformance } from "@/lib/axios/us-visa-performance";
-
-const DEFAULT_FILTERS = {
-  period: "weekly",
-  referenceDate: "",
-  from: "",
-  to: "",
-};
-
-function buildAgentPerformanceParams(filters = {}) {
-  const params = {
-    period: filters.period || DEFAULT_FILTERS.period,
-  };
-
-  if (params.period === "custom") {
-    if (filters.from) params.from = filters.from;
-    if (filters.to) params.to = filters.to;
-    return params;
-  }
-
-  if (filters.referenceDate) {
-    params.referenceDate = filters.referenceDate;
-  }
-
-  return params;
-}
 
 function getErrorMessage(error) {
   return (
@@ -35,9 +14,11 @@ function getErrorMessage(error) {
   );
 }
 
-export default function useAgentPerformance(initialFilters = DEFAULT_FILTERS) {
+export default function useAgentPerformance(
+  initialFilters = DEFAULT_AGENT_PERFORMANCE_FILTERS,
+) {
   const [filters, setFilters] = useState({
-    ...DEFAULT_FILTERS,
+    ...DEFAULT_AGENT_PERFORMANCE_FILTERS,
     ...initialFilters,
   });
   const [data, setData] = useState(null);
@@ -59,10 +40,14 @@ export default function useAgentPerformance(initialFilters = DEFAULT_FILTERS) {
 
       try {
         const [trendResponse, skillResponse] = await Promise.all([
-          getMyUsVisaPerformance(requestParams),
+          getMyUsVisaPerformance({
+            ...requestParams,
+            includeFilterOptions: true,
+          }),
           getMyUsVisaPerformance({
             ...requestParams,
             groupBy: "skill",
+            includeFilterOptions: false,
           }),
         ]);
 
