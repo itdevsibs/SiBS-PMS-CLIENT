@@ -16,6 +16,11 @@ import {
   LineChart,
   AhtChart,
 } from "@/components/workForceManagement/kpi/WfmCallKpiDashboard";
+import {
+  getAgentCountryOptions,
+  getAgentSkillOptions,
+  isAgentSkillAvailableForCountry,
+} from "./agentPerformanceFilterUtils";
 
 const PERIOD_OPTIONS = [
   { value: "weekly", label: "Weekly" },
@@ -335,7 +340,7 @@ function CallsBySkill({ skills = [] }) {
           Breakdown of handled interactions by skill
         </p>
       </div>
-      <div className="p-4 min-h-[400px] max-h-[680px] overflow-y-auto divide-y divide-sibs-tertiary-10">
+      <div className="p-4 max-h-[680px] overflow-y-auto divide-y divide-sibs-tertiary-10">
         {skills.map((item) => (
           <div key={item.key || item.skillName} className="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0 transition hover:bg-slate-50/50 px-1 rounded-lg">
             <div className="min-w-0">
@@ -395,6 +400,9 @@ export default function AgentPerformanceDashboard({
     ? data.skillBreakdown.filter((item) => item.skillName)
     : [];
   const metricCards = getMetricCards(summary);
+  const availableFilters = performance?.availableFilters || {};
+  const countryOptions = getAgentCountryOptions(availableFilters);
+  const skillOptions = getAgentSkillOptions(availableFilters, filters.country);
   const isCustom = filters.period === "custom";
   const hasData = Number(summary.interactionCount || summary.handledCalls || 0) > 0;
 
@@ -404,7 +412,59 @@ export default function AgentPerformanceDashboard({
         <h1 className="sr-only">My Performance</h1>
 
         <div className="flex flex-wrap items-end gap-2 px-2 pt-3 pb-2.5">
-          {/* 1. Reporting Period */}
+          {/* 1. Country */}
+          <label className="block w-full min-w-0 sm:w-52">
+            <span className="mb-0.5 block text-[9.5px] font-extrabold uppercase text-sibs-tertiary-5">
+              Country
+            </span>
+            <select
+              value={filters.country}
+              onChange={(event) => {
+                const country = event.target.value;
+                const keepSkill = isAgentSkillAvailableForCountry(
+                  availableFilters,
+                  filters.skill,
+                  country,
+                );
+
+                onFilterChange({
+                  country,
+                  ...(keepSkill ? {} : { skill: "" }),
+                });
+              }}
+              disabled={isLoading}
+              className="h-8 w-full cursor-pointer rounded-lg border border-sibs-tertiary-8 bg-white px-2.5 text-xs font-semibold text-sibs-primary-1 outline-none transition hover:border-sibs-primary-1 hover:bg-slate-50/50 focus:border-sibs-primary-1 focus:ring-1 focus:ring-sibs-primary-1/20 disabled:cursor-not-allowed disabled:opacity-60"
+              aria-label="Country"
+            >
+              {countryOptions.map((option) => (
+                <option key={option.value || "ALL_COUNTRIES"} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          {/* 2. Skill */}
+          <label className="block w-full min-w-0 sm:w-72">
+            <span className="mb-0.5 block text-[9.5px] font-extrabold uppercase text-sibs-tertiary-5">
+              Skill
+            </span>
+            <select
+              value={filters.skill}
+              onChange={(event) => onFilterChange({ skill: event.target.value })}
+              disabled={isLoading}
+              className="h-8 w-full cursor-pointer rounded-lg border border-sibs-tertiary-8 bg-white px-2.5 text-xs font-semibold text-sibs-primary-1 outline-none transition hover:border-sibs-primary-1 hover:bg-slate-50/50 focus:border-sibs-primary-1 focus:ring-1 focus:ring-sibs-primary-1/20 disabled:cursor-not-allowed disabled:opacity-60"
+              aria-label="Skill"
+            >
+              {skillOptions.map((option) => (
+                <option key={option.value || "ALL_SKILLS"} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          {/* 3. Reporting Period */}
           <label className="block w-full min-w-0 sm:w-52">
             <span className="mb-0.5 block text-[9.5px] font-extrabold uppercase text-sibs-tertiary-5">
               Reporting Period
@@ -430,7 +490,7 @@ export default function AgentPerformanceDashboard({
             </select>
           </label>
 
-          {/* 2. Reference Date (or From + To) */}
+          {/* 4. Reference Date (or From + To) */}
           {isCustom ? (
             <>
               <div className="w-full min-w-0 sm:w-52">
@@ -481,6 +541,8 @@ export default function AgentPerformanceDashboard({
         <div className="flex flex-wrap items-center gap-x-3.5 gap-y-1 border-t border-sibs-tertiary-10 px-3.5 py-1 text-[10px] font-semibold text-sibs-tertiary-5">
           <span>Source: Agent Level Interactions</span>
           <span>Period: {PERIOD_OPTIONS.find((opt) => opt.value === filters.period)?.label || filters.period}</span>
+          {filters.skill ? <span>Skill: {filters.skill}</span> : null}
+          {filters.country ? <span>Country: {filters.country}</span> : null}
           {filters.referenceDate && !isCustom ? <span>Reference date: {filters.referenceDate}</span> : null}
           {filters.from && filters.to && isCustom ? <span>Range: {filters.from} to {filters.to}</span> : null}
         </div>
