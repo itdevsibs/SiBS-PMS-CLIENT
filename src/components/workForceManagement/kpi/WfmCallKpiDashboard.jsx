@@ -404,12 +404,7 @@ function LineChart({ series, target = 90 }) {
 
   const targetY = getY(numericTarget);
 
-  const activeItem =
-    hoveredIndex !== null ? series[hoveredIndex] : series[series.length - 1];
 
-  const activeAnswer = Number(activeItem?.answerRatePct || 0);
-  const activeSl = Number(activeItem?.serviceLevelPct || 0);
-  const isTargetMet = activeSl >= numericTarget;
 
   return (
     <div ref={containerRef} className="w-full min-w-0 select-none">

@@ -1,4 +1,5 @@
 import {
+  Activity,
   BarChart3,
   Clock,
   Clock3,
@@ -12,6 +13,7 @@ import {
 
 import AgentKpiDetail from "@/components/agent/AgentKpiDetail";
 import { formatNumber, formatSeconds } from "@/components/agent/AgentPerformanceDashboard";
+import { Button } from "@/components/ui/button";
 import WfmKpiDatePicker from "@/components/workForceManagement/kpi/WfmKpiDatePicker";
 
 const PERIOD_OPTIONS = [

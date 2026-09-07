@@ -842,7 +842,7 @@ function WfmDashboardContent() {
           ) : (
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
               {selectedAccountCards.map((card) => {
-                const cardUploads = rawDataUploadCache[card.id] || [];
+                const cardUploads = rawDataUploads[card.id] || [];
                 const latestUploads = cardUploads.slice(0, 5);
 
                 return (
