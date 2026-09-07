@@ -31,13 +31,29 @@ function formatPercent(value) {
   return `${formatNumber(number)}%`;
 }
 
+function renderMetricLabel(label) {
+  if (!label || typeof label !== "string") return label;
+  if (label.includes("(seconds)")) {
+    const [title] = label.split("(seconds)");
+    return (
+      <>
+        <span className="uppercase">{title.trim()}</span>{" "}
+        <span className="normal-case lowercase font-bold text-[9px] text-sibs-tertiary-6">
+          (seconds)
+        </span>
+      </>
+    );
+  }
+  return <span className="uppercase">{label}</span>;
+}
+
 function MetricTile({ icon: Icon, label, value, subtitle }) {
   return (
     <div className="min-w-0 rounded-xl border border-sibs-tertiary-10 bg-white p-4 shadow-xs">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="m-0 text-[10px] font-extrabold uppercase tracking-wide text-sibs-tertiary-5">
-            {label}
+          <p className="m-0 text-[10px] font-extrabold tracking-wide text-sibs-tertiary-5">
+            {renderMetricLabel(label)}
           </p>
           <p className="mt-2 mb-0 break-words text-2xl font-black leading-none text-sibs-primary-1">
             {value}
@@ -267,17 +283,17 @@ function TeamSummary({ summary = {}, agentCount = 0 }) {
         />
         <MetricTile
           icon={Clock3}
-          label="Team AHT"
+          label="Team AHT (seconds)"
           value={formatSeconds(summary.averageHandleSeconds)}
         />
         <MetricTile
           icon={Headphones}
-          label="Talk Time"
+          label="Handled Time (seconds)"
           value={formatSeconds(summary.totalTalkSeconds)}
         />
         <MetricTile
           icon={PauseCircle}
-          label="Hold Time"
+          label="Hold Time (seconds)"
           value={formatSeconds(summary.totalHoldSeconds)}
         />
         <MetricTile
@@ -308,9 +324,15 @@ function AgentTable({ agents = [], selectedAgentUid, onSelectAgent }) {
             <tr>
               <th className="px-4 py-3 font-bold">Agent</th>
               <th className="px-4 py-3 font-bold">Handled Calls</th>
-              <th className="px-4 py-3 font-bold">AHT</th>
-              <th className="px-4 py-3 font-bold">Talk Time</th>
-              <th className="px-4 py-3 font-bold">Hold Time</th>
+              <th className="px-4 py-3 font-bold">
+                AHT <span className="normal-case lowercase font-bold text-[10px] text-sibs-tertiary-6">(seconds)</span>
+              </th>
+              <th className="px-4 py-3 font-bold">
+                Handled Time <span className="normal-case lowercase font-bold text-[10px] text-sibs-tertiary-6">(seconds)</span>
+              </th>
+              <th className="px-4 py-3 font-bold">
+                Hold Time <span className="normal-case lowercase font-bold text-[10px] text-sibs-tertiary-6">(seconds)</span>
+              </th>
               <th className="px-4 py-3 font-bold">Hold Count</th>
               <th className="px-4 py-3 font-bold">Action</th>
             </tr>

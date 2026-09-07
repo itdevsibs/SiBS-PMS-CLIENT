@@ -167,33 +167,35 @@ function VolumeChart({ series }) {
             {series.map((item, periodIndex) => (
               <div
                 key={item.key}
-                className="group/period flex h-full min-w-0 flex-1 items-end justify-center gap-1 px-0.5 sm:gap-1.5"
+                className="group/period flex h-full min-w-0 flex-1 items-end justify-center px-0.5 sm:px-1"
               >
-                {buildVolumeBarItems(item).map(
-                  ({ metric, value, className }) => {
-                    const numericValue = Number(value || 0);
+                {/* Clustered 3-bar group with 0 gap between bars, touching side-by-side */}
+                <div className="flex h-full w-full max-w-[96px] items-end justify-center gap-0">
+                  {buildVolumeBarItems(item).map(
+                    ({ metric, value, className }, barIndex) => {
+                      const numericValue = Number(value || 0);
 
-                    const heightPercent =
-                      numericValue > 0
-                        ? Math.max(2, (numericValue / axisMax) * 100)
-                        : 0;
+                      const heightPercent =
+                        numericValue > 0
+                          ? Math.max(2, (numericValue / axisMax) * 100)
+                          : 0;
 
-                    return (
-                      <div
-                        key={metric}
-                        className="group/bar flex h-full min-w-0 flex-1 items-end justify-center"
-                      >
+                      // Stagger the middle bar's label so values don't collide
+                      const labelBottomOffset = barIndex === 1 ? 15 : 4;
+
+                      return (
                         <div
-                          className="relative flex h-full w-full max-w-[22px] items-end justify-center"
+                          key={metric}
+                          className="group/bar relative flex h-full min-w-0 flex-1 items-end justify-center"
                           aria-label={`${item.label} ${metric}: ${formatNumber(
                             numericValue,
                           )}`}
                         >
                           {numericValue > 0 ? (
                             <span
-                              className="pointer-events-none absolute left-1/2 z-10 -translate-x-1/2 whitespace-nowrap text-[10px] font-black text-sibs-primary-1 transition-all duration-200 group-hover/bar:-translate-y-0.5"
+                              className="pointer-events-none absolute left-1/2 z-10 -translate-x-1/2 whitespace-nowrap text-[8.5px] sm:text-[9px] font-extrabold text-sibs-primary-1 transition-all duration-200 group-hover/bar:-translate-y-0.5"
                               style={{
-                                bottom: `calc(${heightPercent}% + 4px)`,
+                                bottom: `calc(${heightPercent}% + ${labelBottomOffset}px)`,
                               }}
                             >
                               {numericValue >= 1000
@@ -260,16 +262,18 @@ function VolumeChart({ series }) {
                           </div>
 
                           <div
-                            className={`w-full rounded-t-sm shadow-xs transition-all duration-200 ease-out group-hover/bar:-translate-y-0.5 group-hover/bar:brightness-110 ${className}`}
+                            className={`w-full rounded-t-[4px] shadow-xs transition-all duration-200 ease-out group-hover/bar:-translate-y-0.5 group-hover/bar:brightness-110 ${
+                              barIndex < 2 ? "border-r border-white/80" : ""
+                            } ${className}`}
                             style={{
                               height: `${heightPercent}%`,
                             }}
                           />
                         </div>
-                      </div>
-                    );
-                  },
-                )}
+                      );
+                    },
+                  )}
+                </div>
               </div>
             ))}
           </div>
@@ -735,11 +739,14 @@ function AhtChart({ series, target }) {
 
           <div className="relative flex h-[300px] items-end gap-1.5 border-b border-sibs-tertiary-8 px-1 sm:gap-2.5">
             <div
-              className="pointer-events-none absolute right-0 left-0 border-t-2 border-dashed border-red-500 z-0"
+              className="pointer-events-none absolute right-0 left-0 z-10 flex items-center"
               style={{
                 bottom: `${targetPosition}%`,
               }}
-            />
+            >
+              <div className="w-full border-t border-red-500" />
+              <span className="absolute right-4 -translate-y-1/2 h-2.5 w-2.5 rounded-full bg-red-500 shadow-xs border-2 border-white" />
+            </div>
 
             {series.map((item, itemIndex) => {
               const ahtSec = convertDurationToSeconds(item.ahtSeconds);
@@ -818,7 +825,7 @@ function AhtChart({ series, target }) {
 
                   {hasAht ? (
                     <div
-                      className="w-full max-w-[42px] rounded-t-sm bg-[#0b3b68] transition-all duration-200 group-hover/aht:brightness-110 group-hover/aht:-translate-y-0.5 shadow-xs"
+                      className="w-full max-w-[42px] rounded-t-[4px] bg-[#0b3b68] transition-all duration-200 group-hover/aht:brightness-110 group-hover/aht:-translate-y-0.5 shadow-xs"
                       style={{
                         height: `${heightPct}%`,
                       }}
