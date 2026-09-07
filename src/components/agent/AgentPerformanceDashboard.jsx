@@ -51,7 +51,23 @@ function formatSeconds(value) {
   const number = Number(value);
   if (!Number.isFinite(number)) return "N/A";
 
-  return `${formatNumber(number)}s`;
+  return formatNumber(number);
+}
+
+function renderMetricLabel(label) {
+  if (!label || typeof label !== "string") return label;
+  if (label.includes("(seconds)")) {
+    const [title] = label.split("(seconds)");
+    return (
+      <>
+        <span className="uppercase">{title.trim()}</span>{" "}
+        <span className="normal-case lowercase font-bold text-[10px] text-sibs-tertiary-6">
+          (seconds)
+        </span>
+      </>
+    );
+  }
+  return <span className="uppercase">{label}</span>;
 }
 
 function getMetricCards(summary = {}) {
@@ -64,25 +80,25 @@ function getMetricCards(summary = {}) {
     },
     {
       key: "averageHandleSeconds",
-      label: "AHT",
+      label: "Average Handle Time (seconds)",
       value: formatSeconds(summary?.averageHandleSeconds),
       icon: Clock3,
     },
     {
       key: "totalTalkSeconds",
-      label: "Talk Time",
+      label: "Handled Time (seconds)",
       value: formatSeconds(summary?.totalTalkSeconds),
       icon: Headphones,
     },
     {
       key: "totalHoldSeconds",
-      label: "Hold Time",
+      label: "Hold Time (seconds)",
       value: formatSeconds(summary?.totalHoldSeconds),
       icon: PauseCircle,
     },
     {
       key: "averageHoldSeconds",
-      label: "Average Hold",
+      label: "Average Hold (seconds)",
       value: formatSeconds(summary?.averageHoldSeconds),
       icon: TimerReset,
     },
@@ -108,8 +124,11 @@ function MetricCard({ icon: Icon, label, value }) {
   return (
     <article className="sibs-card min-w-0 px-3.5 py-2.5 shadow-xs flex flex-col justify-between gap-1 h-full">
       <div className="flex items-center justify-between gap-1.5">
-        <p className="m-0 text-[10.5px] font-extrabold uppercase tracking-wider text-sibs-tertiary-5 truncate">
-          {label}
+        <p
+          className="m-0 text-[10.5px] font-extrabold tracking-wide text-sibs-tertiary-5 truncate"
+          title={typeof label === "string" ? label : undefined}
+        >
+          {renderMetricLabel(label)}
         </p>
         <div className="rounded-md bg-sibs-primary-3/50 p-1.5 text-sibs-primary-1 shrink-0">
           <Icon size={14} />
@@ -212,7 +231,7 @@ function AgentCallsChart({ series = [] }) {
                   key={item.key}
                   className="group/period flex h-full min-w-0 flex-1 items-end justify-center px-0.5 sm:px-1"
                 >
-                  <div className="group/bar relative flex h-full w-full max-w-[28px] items-end justify-center">
+                  <div className="group/bar relative flex h-full w-full max-w-[36px] items-end justify-center">
                     {numericValue > 0 ? (
                       <span
                         className="pointer-events-none absolute left-1/2 z-10 -translate-x-1/2 whitespace-nowrap text-[10px] font-black text-sibs-primary-1 transition-all duration-200 group-hover/bar:-translate-y-0.5"
@@ -272,7 +291,7 @@ function AgentCallsChart({ series = [] }) {
 
                     {/* Single Bar Pillar */}
                     <div
-                      className="w-full rounded-t-sm bg-[#0b3b68] shadow-xs transition-all duration-200 ease-out group-hover/bar:-translate-y-0.5 group-hover/bar:brightness-110"
+                      className="w-full rounded-t-[4px] bg-[#0b3b68] shadow-xs transition-all duration-200 ease-out group-hover/bar:-translate-y-0.5 group-hover/bar:brightness-110"
                       style={{
                         height: `${heightPercent}%`,
                       }}
