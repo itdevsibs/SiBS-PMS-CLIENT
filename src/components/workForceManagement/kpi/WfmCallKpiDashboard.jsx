@@ -890,10 +890,23 @@ export default function WfmCallKpiDashboard({ data }) {
     summaryAhtSeconds <= targetAhtSeconds &&
     summaryAhtSeconds > 0;
 
+  const summaryAsaSeconds = convertDurationToSeconds(
+    summary.asaSeconds,
+  );
+
+  const targetAsaSeconds = targets.asaSeconds
+    ? convertDurationToSeconds(targets.asaSeconds)
+    : null;
+
+  const asaMet =
+    targetAsaSeconds !== null
+      ? summaryAsaSeconds <= targetAsaSeconds && summaryAsaSeconds > 0
+      : null;
+
   return (
     <div className="space-y-3">
-      {/* 6 Compact KPI Stat Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-2.5">
+      {/* 7 Compact KPI Stat Cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-7 gap-2.5">
         <KpiCard
           icon={PhoneCall}
           label="Call Volume"
@@ -952,6 +965,22 @@ export default function WfmCallKpiDashboard({ data }) {
               ? "bg-green-100 text-green-700"
               : "bg-amber-100 text-amber-700",
           }}
+        />
+
+        <KpiCard
+          icon={Clock3}
+          label="Average Speed of Answer (ASA)"
+          value={summaryAsaSeconds > 0 ? `${formatNumber(summaryAsaSeconds)}s` : "--"}
+          status={
+            targetAsaSeconds !== null
+              ? {
+                  label: asaMet ? "Target met" : "Above target",
+                  className: asaMet
+                    ? "bg-green-100 text-green-700"
+                    : "bg-amber-100 text-amber-700",
+                }
+              : null
+          }
         />
       </div>
 
