@@ -20,7 +20,7 @@ import {
   getTodayIso,
   parseIsoDate,
   shiftMonth,
-} from "./wfmKpiDatePickerUtils.js";
+} from "./datePickerUtils.js";
 
 const WEEK_DAYS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
 
@@ -42,7 +42,7 @@ function getInitialView(value) {
   };
 }
 
-export default function WfmKpiDatePicker({
+export default function DatePicker({
   label,
   value,
   onChange,
@@ -305,3 +305,5 @@ export default function WfmKpiDatePicker({
     </div>
   );
 }
+
+export { DatePicker as KpiDatePicker, DatePicker as WfmKpiDatePicker };

@@ -96,7 +96,7 @@ function EmptyComparison({ error }) {
   );
 }
 
-export default function WfmKpiSourceComparison({
+export default function KpiSourceComparison({
   comparison,
   error,
   isLoading,
@@ -208,4 +208,6 @@ export {
   formatDifference,
   formatMetricValue,
   getStatusLabel,
+  KpiSourceComparison,
+  KpiSourceComparison as WfmKpiSourceComparison,
 };

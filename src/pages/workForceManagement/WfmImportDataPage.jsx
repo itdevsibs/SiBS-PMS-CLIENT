@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   AlertCircle,
   AlertTriangle,
+  ArrowLeft,
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
@@ -1234,9 +1235,23 @@ function WfmImportDataPage() {
             </div>
           ) : (
             <div className="space-y-5">
-              {groupedRawDataCards.map((group) => (
+              {groupedRawDataCards.map((group, groupIndex) => (
                 <section key={group.label} className="min-w-0">
                   <div className="mb-2 flex items-center gap-2">
+                    {groupIndex === 0 ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedAccount("All Accounts");
+                          setRawDataSearch("");
+                        }}
+                        className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-bold text-sibs-primary-1 shadow-xs transition hover:border-sibs-primary-1 hover:bg-sibs-primary-1 hover:text-white cursor-pointer shrink-0"
+                        title="Back to All Accounts"
+                      >
+                        <ArrowLeft size={14} />
+                        <span>Back</span>
+                      </button>
+                    ) : null}
                     <h2 className="m-0 text-[11px] font-extrabold uppercase tracking-wide text-sibs-tertiary-5">
                       {group.label}
                     </h2>
@@ -1386,7 +1401,18 @@ function WfmImportDataPage() {
 
           {selectedAccount !== "All Accounts" && !filteredRawDataCards.length ? (
             <div className="mt-4 rounded-lg border border-dashed border-sibs-tertiary-9 bg-[#f8fbfd] px-5 py-8 text-center text-sm text-sibs-tertiary-5">
-              No raw data cards found.
+              <p className="m-0">No raw data cards found.</p>
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedAccount("All Accounts");
+                  setRawDataSearch("");
+                }}
+                className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-sibs-primary-1 shadow-xs transition hover:border-sibs-primary-1 hover:bg-sibs-primary-1 hover:text-white cursor-pointer"
+              >
+                <ArrowLeft size={14} />
+                <span>Back to All Accounts</span>
+              </button>
             </div>
           ) : null}
         </div>

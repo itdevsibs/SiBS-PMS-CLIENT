@@ -11,9 +11,9 @@ import AdminSidebar from "@/components/layout/AdminSidebar";
 import AppHeader from "@/components/layout/AppHeader";
 import ConfirmationModal from "@/components/ui/confirmation-modal";
 import LoadingModal from "@/components/ui/loading-modal";
-import WfmCallKpiDashboard from "@/components/kpi/WfmCallKpiDashboard";
-import WfmKpiSourceComparison from "@/components/kpi/WfmKpiSourceComparison";
-import WfmKpiDatePicker from "@/components/kpi/WfmKpiDatePicker";
+import CallKpiDashboard from "@/components/kpi/CallKpiDashboard";
+import KpiSourceComparison from "@/components/kpi/KpiSourceComparison";
+import DatePicker from "@/components/ui/DatePicker";
 import useDashboardPage from "@/hooks/useDashboardPage";
 import { getWfmUsVisaPerformanceComparison } from "@/lib/axios/us-visa-performance";
 import { getWfmCallKpis } from "@/lib/axios/wfm-kpis";
@@ -837,7 +837,7 @@ export default function ViewGraphsPage() {
                   {/* 6. Reference Date (or From + To) */}
                   {isCustomPeriod ? (
                     <>
-                      <WfmKpiDatePicker
+                      <DatePicker
                         label="From"
                         value={filters.from}
                         onChange={(from) =>
@@ -848,7 +848,7 @@ export default function ViewGraphsPage() {
                         }
                       />
 
-                      <WfmKpiDatePicker
+                      <DatePicker
                         label="To"
                         value={filters.to}
                         onChange={(to) =>
@@ -861,7 +861,7 @@ export default function ViewGraphsPage() {
                     </>
                   ) : (
                     <>
-                      <WfmKpiDatePicker
+                      <DatePicker
                         label="Reference Date"
                         value={filters.referenceDate}
                         onChange={handleReferenceDateChange}
@@ -1028,12 +1028,12 @@ export default function ViewGraphsPage() {
                     </div>
                   ) : null}
 
-                  <WfmCallKpiDashboard
+                  <CallKpiDashboard
                     data={dashboardData || {}}
                   />
 
                   <div className="mt-4">
-                    <WfmKpiSourceComparison
+                    <KpiSourceComparison
                       comparison={comparisonData}
                       error={comparisonError}
                       isLoading={isComparisonLoading}
