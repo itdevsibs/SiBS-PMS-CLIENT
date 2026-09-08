@@ -14,7 +14,7 @@ import {
 import AgentKpiDetail from "@/components/agent/AgentKpiDetail";
 import { formatNumber, formatSeconds } from "@/components/agent/AgentPerformanceDashboard";
 import { Button } from "@/components/ui/button";
-import WfmKpiDatePicker from "@/components/workForceManagement/kpi/WfmKpiDatePicker";
+import WfmKpiDatePicker from "@/components/kpi/WfmKpiDatePicker";
 
 const PERIOD_OPTIONS = [
   { value: "weekly", label: "Weekly" },

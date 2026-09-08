@@ -9,13 +9,13 @@ import {
   TimerReset,
 } from "lucide-react";
 
-import WfmKpiDatePicker from "@/components/workForceManagement/kpi/WfmKpiDatePicker";
-import { getCallAxisTicks } from "@/components/workForceManagement/kpi/wfmCallKpiDashboardUtils";
+import WfmKpiDatePicker from "@/components/kpi/WfmKpiDatePicker";
+import { getCallAxisTicks } from "@/components/kpi/wfmCallKpiDashboardUtils";
 import {
   ChartShell,
   LineChart,
   AhtChart,
-} from "@/components/workForceManagement/kpi/WfmCallKpiDashboard";
+} from "@/components/kpi/WfmCallKpiDashboard";
 import {
   getAgentCountryOptions,
   getAgentSkillOptions,

@@ -33,7 +33,7 @@ test("View Graph uses one synchronized filter object for graph and comparison", 
 
 test("WFM comparison section is separate from the existing graph dashboard", async () => {
   const page = await read("src/pages/graphs/viewGraphsPage.jsx");
-  const dashboard = await read("src/components/workForceManagement/kpi/WfmCallKpiDashboard.jsx");
+  const dashboard = await read("src/components/kpi/WfmCallKpiDashboard.jsx");
 
   assert.match(page, /WfmCallKpiDashboard/);
   assert.match(page, /WfmKpiSourceComparison/);
@@ -41,7 +41,7 @@ test("WFM comparison section is separate from the existing graph dashboard", asy
 });
 
 test("WFM comparison table displays exact values, N/A, and supported statuses", async () => {
-  const source = await read("src/components/workForceManagement/kpi/WfmKpiSourceComparison.jsx");
+  const source = await read("src/components/kpi/WfmKpiSourceComparison.jsx");
 
   assert.match(source, /Skill Stats/);
   assert.match(source, /Agent Level/);
@@ -57,7 +57,7 @@ test("WFM comparison table displays exact values, N/A, and supported statuses", 
 });
 
 test("WFM comparison handles missing Skill or Agent uploads without substituting zero", async () => {
-  const source = await read("src/components/workForceManagement/kpi/WfmKpiSourceComparison.jsx");
+  const source = await read("src/components/kpi/WfmKpiSourceComparison.jsx");
 
   assert.match(source, /MISSING_AGENT_DATA/);
   assert.match(source, /MISSING_SKILL_DATA/);
