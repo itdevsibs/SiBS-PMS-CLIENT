@@ -12,10 +12,8 @@ import AppHeader from "@/components/layout/AppHeader";
 import ConfirmationModal from "@/components/ui/confirmation-modal";
 import LoadingModal from "@/components/ui/loading-modal";
 import CallKpiDashboard from "@/components/kpi/CallKpiDashboard";
-import KpiSourceComparison from "@/components/kpi/KpiSourceComparison";
-import DatePicker from "@/components/ui/DatePicker";
+import DatePicker from "@/components/ui/Filter/DatePicker";
 import useDashboardPage from "@/hooks/useDashboardPage";
-import { getWfmUsVisaPerformanceComparison } from "@/lib/axios/us-visa-performance";
 import { getWfmCallKpis } from "@/lib/axios/wfm-kpis";
 
 const PERIOD_OPTIONS = [
@@ -308,15 +306,6 @@ function getErrorMessage(error) {
   };
 }
 
-function getComparisonErrorMessage(error) {
-  const message =
-    error?.response?.data?.message ||
-    error?.message ||
-    "";
-
-  return message || "No comparison rows were returned for the selected filter criteria.";
-}
-
 function formatGrain(value) {
   const labels = {
     SKILL_DAY: "Daily source",
@@ -443,9 +432,6 @@ export default function ViewGraphsPage() {
 
   const [filters, setFilters] = useState(DEFAULT_FILTERS);
   const [kpiResponse, setKpiResponse] = useState(null);
-  const [comparisonResponse, setComparisonResponse] = useState(null);
-  const [comparisonError, setComparisonError] = useState("");
-  const [isComparisonLoading, setIsComparisonLoading] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -464,45 +450,22 @@ export default function ViewGraphsPage() {
           title: "Invalid Date Range",
           message: "The start date cannot be later than the end date.",
         });
-        setComparisonResponse(null);
-        setComparisonError("");
         return;
       }
     }
 
     setIsLoading(true);
-    setIsComparisonLoading(true);
     setError("");
-    setComparisonError("");
 
     try {
       const params = buildRequestParams(filters);
-      const [kpiResult, comparisonResult] = await Promise.allSettled([
-        getWfmCallKpis(params),
-        getWfmUsVisaPerformanceComparison(params),
-      ]);
-
-      if (kpiResult.status === "fulfilled") {
-        setKpiResponse(kpiResult.value);
-      } else {
-        setError(getErrorMessage(kpiResult.reason));
-        setKpiResponse(null);
-      }
-
-      if (comparisonResult.status === "fulfilled") {
-        setComparisonResponse(comparisonResult.value);
-      } else {
-        setComparisonError(getComparisonErrorMessage(comparisonResult.reason));
-        setComparisonResponse(null);
-      }
+      const result = await getWfmCallKpis(params);
+      setKpiResponse(result);
     } catch (loadError) {
       setError(getErrorMessage(loadError));
       setKpiResponse(null);
-      setComparisonError(getComparisonErrorMessage(loadError));
-      setComparisonResponse(null);
     } finally {
       setIsLoading(false);
-      setIsComparisonLoading(false);
     }
   }, [canViewGraphs, filters]);
 
@@ -611,9 +574,6 @@ export default function ViewGraphsPage() {
   const dashboardData =
     kpiResponse?.data?.data || {};
 
-  const comparisonData =
-    comparisonResponse?.data || {};
-
   const availableGrains =
     Array.isArray(dashboardData.availableGrains)
       ? dashboardData.availableGrains
@@ -658,7 +618,7 @@ export default function ViewGraphsPage() {
     filters.period === "custom";
 
   return (
-    <section className="font-jakarta flex min-h-screen bg-[#eef3f7] text-sibs-primary-1">
+    <section className="font-jakarta flex h-screen max-h-[100dvh] min-h-screen bg-[#eef3f7] text-sibs-primary-1 overflow-hidden">
       <AdminSidebar
         isMobileOpen={dashboard.isMobileSidebarOpen}
         modules={dashboard.modules}
@@ -676,7 +636,7 @@ export default function ViewGraphsPage() {
         }
       />
 
-      <main className="min-w-0 flex-1">
+      <main className="min-w-0 flex-1 flex flex-col h-full overflow-hidden">
         <AppHeader
           title={`${
             dashboard.authUser?.roleLabel || "User"
@@ -690,7 +650,7 @@ export default function ViewGraphsPage() {
           }
         />
 
-        <div className="sibs-scrollbar max-h-[calc(100vh-74px)] overflow-y-auto p-3 sm:p-3.5">
+        <div className="sibs-scrollbar flex-1 overflow-y-auto p-3 sm:p-3.5 pb-16 sm:pb-8">
           {!canViewGraphs ? (
             <div className="sibs-card p-6 text-center">
               <AlertCircle
@@ -1031,14 +991,6 @@ export default function ViewGraphsPage() {
                   <CallKpiDashboard
                     data={dashboardData || {}}
                   />
-
-                  <div className="mt-4">
-                    <KpiSourceComparison
-                      comparison={comparisonData}
-                      error={comparisonError}
-                      isLoading={isComparisonLoading}
-                    />
-                  </div>
                 </div>
               )}
             </div>

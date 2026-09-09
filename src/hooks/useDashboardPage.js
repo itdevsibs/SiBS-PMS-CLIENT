@@ -8,6 +8,7 @@ import {
   Gauge,
   LineChart,
   ShieldCheck,
+  Users,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
@@ -46,6 +47,11 @@ function useDashboardPage() {
       icon: BarChart3,
       path: "/dashboard/wfm/view-graphs",
     };
+    const occupancyModule = {
+      name: "Occupancy",
+      icon: Users,
+      path: "/dashboard/occupancy",
+    };
 
     if (role === "wfm") {
       return [
@@ -56,6 +62,7 @@ function useDashboardPage() {
           path: "/dashboard/wfm/import-data",
         },
         viewGraphsModule,
+        occupancyModule,
         {
           name: "History Logs",
           icon: ClipboardList,
@@ -68,6 +75,7 @@ function useDashboardPage() {
       const adminModules = [
         dashboardModule,
         viewGraphsModule,
+        occupancyModule,
       ];
 
       if (role === "admin") {

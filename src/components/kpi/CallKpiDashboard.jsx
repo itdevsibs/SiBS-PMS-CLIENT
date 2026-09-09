@@ -748,7 +748,6 @@ function AhtChart({ series, target }) {
               }}
             >
               <div className="w-full border-t border-red-500" />
-              <span className="absolute right-4 -translate-y-1/2 h-2.5 w-2.5 rounded-full bg-red-500 shadow-xs border-2 border-white" />
             </div>
 
             {series.map((item, itemIndex) => {

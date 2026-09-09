@@ -13,7 +13,7 @@ const AgentsPage = () => {
   const agentPerformance = useAgentPerformance();
 
   return (
-    <section className="font-jakarta flex min-h-screen bg-[#eef3f7] text-sibs-primary-1">
+    <section className="font-jakarta flex h-screen max-h-[100dvh] min-h-screen bg-[#eef3f7] text-sibs-primary-1 overflow-hidden">
       <AdminSidebar
         isMobileOpen={dashboard.isMobileSidebarOpen}
         modules={dashboard.modules}
@@ -22,14 +22,14 @@ const AgentsPage = () => {
         userName={userName}
         userRole={dashboard.authUser?.email || dashboard.authUser?.roleLabel || "User"}
       />
-      <main className="min-w-0 flex-1">
+      <main className="min-w-0 flex-1 flex flex-col h-full overflow-hidden">
         <AppHeader
           title={`${dashboard.authUser?.roleLabel || "User"} Dashboard`}
           subtitle="Performance Management System"
           onMenuClick={() => dashboard.setIsMobileSidebarOpen(true)}
           onLogoutClick={() => dashboard.setShowLogoutModal(true)}
         />
-        <div className="sibs-scrollbar max-h-[calc(100vh-74px)] overflow-y-auto p-3 sm:p-4 lg:p-5">
+        <div className="sibs-scrollbar flex-1 overflow-y-auto p-3 sm:p-4 lg:p-5">
           <AgentPerformanceDashboard
             data={agentPerformance.data}
             error={agentPerformance.error}

@@ -13,6 +13,7 @@ import WfmImportDataPage from "./pages/workForceManagement/WfmImportDataPage";
 import ViewGraphsPage from "./pages/graphs/viewGraphsPage";
 import WorkforceManagementPage from "./pages/dashboard/WorkforceManagementPage";
 import SeniorOperationsManagerPage from "@/pages/dashboard/SeniorOperationsManagerPage";
+import OccupancyPage from "./pages/occupancy/OccupancyPage";
 
 const Router = () => {
   return (
@@ -34,6 +35,14 @@ const Router = () => {
       <Route
         path="/dashboard/wfm/view-graphs"
         element={<ViewGraphsPage />}
+      />
+      <Route
+        path="/dashboard/occupancy"
+        element={<OccupancyPage />}
+      />
+      <Route
+        path="/dashboard/wfm/occupancy"
+        element={<OccupancyPage />}
       />
       <Route path="/dashboard/om" element={<OperationsManagementPage />} />
       <Route path="/dashboard/tl" element={<TeamLeaderPage />} />

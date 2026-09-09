@@ -14,7 +14,7 @@ import {
 import AgentKpiDetail from "@/components/agent/AgentKpiDetail";
 import { formatNumber, formatSeconds } from "@/components/agent/AgentPerformanceDashboard";
 import { Button } from "@/components/ui/button";
-import DatePicker from "@/components/ui/DatePicker";
+import DatePicker from "@/components/ui/Filter/DatePicker";
 
 const PERIOD_OPTIONS = [
   { value: "weekly", label: "Weekly" },
