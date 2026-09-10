@@ -862,7 +862,7 @@ export default function OccupancyTable({
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
   const [intervalType, setIntervalType] = useState("Hourly");
-  const [showSampleData, setShowSampleData] = useState(false);
+  const [showSampleData, setShowSampleData] = useState(true);
 
   const activeData = useMemo(() => {
     if (data && data.length > 0) return data;
@@ -1108,7 +1108,7 @@ export default function OccupancyTable({
               {showSampleData ? (
                 <>
                   <EyeOff className="h-4 w-4 text-slate-600 transition-colors group-hover/button:text-slate-900" />
-                  <span>Hide Sample Preview</span>
+                  <span>Hide Sample Data</span>
                 </>
               ) : (
                 <>
@@ -1136,136 +1136,151 @@ export default function OccupancyTable({
 
       {/* Structured, Well-Organized Data Grid */}
       <div className="rounded-xl border border-slate-200 bg-white shadow-xs overflow-hidden">
-        {isLoading ? (
-          <div className="p-16 text-center text-slate-500">
-            <div className="flex flex-col items-center justify-center gap-2.5">
-              <RefreshCw className="h-6 w-6 animate-spin text-slate-400" />
-              <span className="font-medium text-sm">Loading records...</span>
-            </div>
-          </div>
-        ) : activeData.length === 0 ? (
-          <div className="p-8 sm:p-14 text-center">
-            <div className="mx-auto flex max-w-sm flex-col items-center justify-center">
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-slate-400 mb-3.5">
-                <TableIcon size={24} />
-              </div>
-              <p className="m-0 text-base font-bold text-slate-800">
-                No occupancy data available yet
-              </p>
-              <p className="mt-1.5 mb-4 text-xs sm:text-sm text-slate-500">
-                When your co-developer completes the uploading process, the imported records will automatically reflect in these fields.
-              </p>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => setShowSampleData(true)}
-                className="gap-2 text-xs sm:text-sm font-medium text-slate-700 h-9.5 px-4 hover:bg-slate-50"
-              >
-                <Eye className="h-4 w-4 text-slate-500" />
-                Preview Sample Data
-              </Button>
-            </div>
-          </div>
-        ) : filteredData.length === 0 ? (
-          <div className="p-8 sm:p-14 text-center">
-            <div className="mx-auto flex max-w-sm flex-col items-center justify-center">
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-slate-400 mb-3.5">
-                <TableIcon size={24} />
-              </div>
-              <p className="m-0 text-base font-bold text-slate-800">
-                No matching occupancy records found
-              </p>
-              <p className="mt-1.5 mb-4 text-xs sm:text-sm text-slate-500">
-                Try adjusting your search query, employee filter, date, or time range selection.
-              </p>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={handleResetFilters}
-                className="gap-2 text-xs sm:text-sm font-medium text-[#18466b] border-slate-300 h-9.5 px-4 hover:bg-slate-50"
-              >
-                Reset All Filters
-              </Button>
-            </div>
-          </div>
-        ) : (
-          <div className="w-full overflow-hidden">
-            <table
-              className="w-full table-fixed border-collapse text-left"
-            >
-              <colgroup>
+        <div className="w-full overflow-x-auto sibs-scrollbar">
+          <table
+            className="w-full table-fixed border-collapse text-left"
+          >
+            <colgroup>
+              {OCCUPANCY_COLUMNS.map((col) => (
+                <col
+                  key={`col-${col.key}`}
+                />
+              ))}
+            </colgroup>
+
+            {/* Category Groups Header */}
+            <thead>
+              <tr className="border-b border-slate-200 bg-slate-100/90 text-[11px] font-bold uppercase tracking-wider text-slate-600">
+                <th
+                  colSpan={2}
+                  className="px-2 py-2 border-r border-slate-200 text-center font-extrabold tracking-wide"
+                >
+                  Agent Information
+                </th>
+                <th
+                  colSpan={7}
+                  className="px-2 py-2 border-r border-slate-200 text-center font-extrabold tracking-wide"
+                >
+                  Phone & Calls Metrics
+                </th>
+                <th
+                  colSpan={4}
+                  className="px-2 py-2 border-r border-slate-200 text-center font-extrabold tracking-wide"
+                >
+                  Email Metrics
+                </th>
+                <th
+                  colSpan={1}
+                  className="px-2 py-2 text-center font-extrabold tracking-wide"
+                >
+                  Efficiency
+                </th>
+              </tr>
+
+              {/* Sub-Column Header */}
+              <tr className="border-b border-slate-200 bg-slate-50/75 text-[11px] font-bold uppercase tracking-wide text-slate-700">
                 {OCCUPANCY_COLUMNS.map((col) => (
-                  <col
-                    key={`col-${col.key}`}
-                  />
-                ))}
-              </colgroup>
-
-              {/* Category Groups Header */}
-              <thead>
-                <tr className="border-b border-slate-200 bg-slate-100/90 text-[11px] font-bold uppercase tracking-wider text-slate-600">
                   <th
-                    colSpan={2}
-                    className="px-2 py-2 border-r border-slate-200 text-center font-extrabold tracking-wide"
+                    key={`th-${col.key}`}
+                    className={`px-2 py-3 border-r border-slate-200 last:border-r-0 align-middle ${col.align}`}
                   >
-                    Agent Information
-                  </th>
-                  <th
-                    colSpan={7}
-                    className="px-2 py-2 border-r border-slate-200 text-center font-extrabold tracking-wide"
-                  >
-                    Phone & Calls Metrics
-                  </th>
-                  <th
-                    colSpan={4}
-                    className="px-2 py-2 border-r border-slate-200 text-center font-extrabold tracking-wide"
-                  >
-                    Email Metrics
-                  </th>
-                  <th
-                    colSpan={1}
-                    className="px-2 py-2 text-center font-extrabold tracking-wide"
-                  >
-                    Efficiency
-                  </th>
-                </tr>
-
-                {/* Sub-Column Header */}
-                <tr className="border-b border-slate-200 bg-slate-50/75 text-[11px] font-bold uppercase tracking-wide text-slate-700">
-                  {OCCUPANCY_COLUMNS.map((col) => (
-                    <th
-                      key={`th-${col.key}`}
-                      className={`px-2 py-3 border-r border-slate-200 last:border-r-0 align-middle ${col.align}`}
+                    <div
+                      className={`flex flex-col justify-center min-h-[36px] leading-tight ${
+                        col.align === "text-left"
+                          ? "items-start pl-2 text-left"
+                          : col.align === "text-center"
+                          ? "items-center text-center"
+                          : "items-end pr-2 text-right"
+                      }`}
                     >
-                      <div
-                        className={`flex flex-col justify-center min-h-[36px] leading-tight ${
-                          col.align === "text-left"
-                            ? "items-start pl-2 text-left"
-                            : col.align === "text-center"
-                            ? "items-center text-center"
-                            : "items-end pr-2 text-right"
-                        }`}
-                      >
-                        {col.labelLines ? (
-                          col.labelLines.map((line, lIdx) => (
-                            <span key={lIdx} className="whitespace-nowrap font-bold">
-                              {line}
-                            </span>
-                          ))
-                        ) : (
-                          <span className="whitespace-nowrap font-bold">{col.label}</span>
-                        )}
-                      </div>
-                    </th>
-                  ))}
-                </tr>
-              </thead>
+                      {col.labelLines ? (
+                        col.labelLines.map((line, lIdx) => (
+                          <span key={lIdx} className="whitespace-nowrap font-bold">
+                            {line}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="whitespace-nowrap font-bold">{col.label}</span>
+                      )}
+                    </div>
+                  </th>
+                ))}
+              </tr>
+            </thead>
 
-              {/* Table Body - Balanced spacing, aligned rows */}
-              <tbody className="divide-y divide-slate-100">
-                {paginatedData.map((row, idx) => (
+            {/* Table Body */}
+            <tbody className="divide-y divide-slate-100">
+              {isLoading ? (
+                <tr>
+                  <td
+                    colSpan={OCCUPANCY_COLUMNS.length}
+                    className="py-16 text-center text-slate-500 bg-white"
+                  >
+                    <div className="flex flex-col items-center justify-center gap-2.5">
+                      <RefreshCw className="h-6 w-6 animate-spin text-slate-400" />
+                      <span className="font-medium text-sm">Loading records...</span>
+                    </div>
+                  </td>
+                </tr>
+              ) : activeData.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={OCCUPANCY_COLUMNS.length}
+                    className="py-14 text-center text-slate-400 bg-white"
+                  >
+                    <div className="mx-auto flex max-w-sm flex-col items-center justify-center">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-400 mb-2">
+                        <TableIcon size={18} />
+                      </div>
+                      <p className="m-0 text-xs sm:text-sm font-semibold text-slate-700">
+                        No occupancy data displayed
+                      </p>
+                      <p className="mt-1 mb-3 text-[11px] sm:text-xs text-slate-400">
+                        Sample data is hidden. Click &quot;Preview Sample Data&quot; to display sample preview records.
+                      </p>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowSampleData(true)}
+                        className="gap-1.5 text-xs font-medium text-slate-700 h-8 px-3 hover:bg-slate-50 border-slate-300"
+                      >
+                        <Eye className="h-3.5 w-3.5 text-slate-500" />
+                        Preview Sample Data
+                      </Button>
+                    </div>
+                  </td>
+                </tr>
+              ) : filteredData.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={OCCUPANCY_COLUMNS.length}
+                    className="py-14 text-center text-slate-400 bg-white"
+                  >
+                    <div className="mx-auto flex max-w-sm flex-col items-center justify-center">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-400 mb-2">
+                        <TableIcon size={18} />
+                      </div>
+                      <p className="m-0 text-xs sm:text-sm font-semibold text-slate-700">
+                        No matching occupancy records found
+                      </p>
+                      <p className="mt-1 mb-3 text-[11px] sm:text-xs text-slate-400">
+                        Try adjusting your search query, employee filter, date, or time range selection.
+                      </p>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={handleResetFilters}
+                        className="gap-1.5 text-xs font-medium text-[#18466b] border-slate-300 h-8 px-3 hover:bg-slate-50"
+                      >
+                        Reset All Filters
+                      </Button>
+                    </div>
+                  </td>
+                </tr>
+              ) : (
+                paginatedData.map((row, idx) => (
                   <tr
                     key={`row-${idx}`}
                     className="bg-white transition-colors hover:bg-slate-50/80 even:bg-slate-50/30"
@@ -1305,21 +1320,23 @@ export default function OccupancyTable({
                       );
                     })}
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
 
         {/* Reusable Clean Corporate Table Pagination */}
-        <TablePagination
-          currentPage={currentPage}
-          totalPages={totalPages}
-          totalItems={totalItems}
-          pageSize={PAGE_SIZE}
-          onPageChange={setCurrentPage}
-          itemLabel="employees"
-        />
+        {totalItems > 0 && (
+          <TablePagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalItems={totalItems}
+            pageSize={PAGE_SIZE}
+            onPageChange={setCurrentPage}
+            itemLabel="employees"
+          />
+        )}
       </div>
     </div>
   );

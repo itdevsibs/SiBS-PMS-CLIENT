@@ -13,6 +13,7 @@ import ConfirmationModal from "@/components/ui/confirmation-modal";
 import LoadingModal from "@/components/ui/loading-modal";
 import CallKpiDashboard from "@/components/kpi/CallKpiDashboard";
 import DatePicker from "@/components/ui/Filter/DatePicker";
+import MultiSelectDropdown from "@/components/ui/Filter/MultiSelectDropdown";
 import useDashboardPage from "@/hooks/useDashboardPage";
 import { getWfmCallKpis } from "@/lib/axios/wfm-kpis";
 
@@ -40,10 +41,6 @@ const PERIOD_OPTIONS = [
 ];
 
 const SOURCE_OPTIONS = [
-  {
-    value: "US_VISA",
-    label: "US Visa",
-  },
   {
     value: "FUSECOM",
     label: "Fusecom",
@@ -242,10 +239,10 @@ const COUNTRY_OPTIONS_BY_SOURCE_AND_TO = {
 };
 
 const DEFAULT_FILTERS = {
-  sourceSystem: "US_VISA",
-  taskOrder: "",
-  skill: "",
-  country: "",
+  sourceSystem: [],
+  taskOrder: [],
+  skill: [],
+  country: [],
   period: "weekly",
   referenceDate: "",
   from: "",
@@ -322,77 +319,202 @@ function formatGrain(value) {
 }
 
 function getSourceLabel(value) {
-  return (
-    SOURCE_OPTIONS.find((option) => option.value === value)?.label ||
-    value ||
-    "Selected source"
-  );
+  if (!value || (Array.isArray(value) && !value.length)) return "US Visa (All Sources)";
+  const list = Array.isArray(value)
+    ? value.filter((v) => v && v !== "__NONE__")
+    : String(value)
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
+  if (
+    !list.length ||
+    list.includes("US_VISA") ||
+    (list.includes("FUSECOM") && list.includes("HERODASH"))
+  ) {
+    return "US Visa (All Sources)";
+  }
+  return list
+    .map((val) => SOURCE_OPTIONS.find((o) => o.value === val)?.label || val)
+    .join(", ");
 }
 
 function getTaskOrderOptions(sourceSystem) {
-  return (
-    TASK_ORDER_OPTIONS_BY_SOURCE[sourceSystem] ||
-    [{ value: "", label: "All Task Orders" }]
+  const sources = Array.isArray(sourceSystem)
+    ? sourceSystem.filter((s) => s && s !== "__NONE__")
+    : [sourceSystem];
+
+  if (
+    !sources.length ||
+    sources.includes("US_VISA") ||
+    (sources.includes("FUSECOM") && sources.includes("HERODASH"))
+  ) {
+    return (TASK_ORDER_OPTIONS_BY_SOURCE.US_VISA || []).filter(
+      (opt) => opt.value !== "",
+    );
+  }
+  if (sources.includes("FUSECOM") && !sources.includes("HERODASH")) {
+    return (TASK_ORDER_OPTIONS_BY_SOURCE.FUSECOM || []).filter(
+      (opt) => opt.value !== "",
+    );
+  }
+  if (sources.includes("HERODASH") && !sources.includes("FUSECOM")) {
+    return (TASK_ORDER_OPTIONS_BY_SOURCE.HERODASH || []).filter(
+      (opt) => opt.value !== "",
+    );
+  }
+  return (TASK_ORDER_OPTIONS_BY_SOURCE.US_VISA || []).filter(
+    (opt) => opt.value !== "",
   );
 }
 
 function getTaskOrderLabel(sourceSystem, value) {
-  return (
-    getTaskOrderOptions(sourceSystem).find(
-      (option) => option.value === String(value || ""),
-    )?.label || "All Task Orders"
-  );
+  if (!value || (Array.isArray(value) && !value.length)) return "All Task Orders";
+  const list = Array.isArray(value)
+    ? value.filter((v) => v && v !== "__NONE__")
+    : String(value)
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
+  if (!list.length) return "All Task Orders";
+
+  const allOpts = getTaskOrderOptions(sourceSystem);
+  return list
+    .map((val) => allOpts.find((o) => o.value === val)?.label || val)
+    .join(", ");
 }
 
 function getSkillOptions() {
-  return SKILL_OPTIONS;
+  return SKILL_OPTIONS.filter((opt) => opt.value !== "");
 }
 
 function getSkillLabel(_sourceSystem, value) {
-  const target = value !== undefined ? value : _sourceSystem;
-  return (
-    SKILL_OPTIONS.find(
-      (option) =>
-        option.value.toLowerCase() === String(target || "").toLowerCase(),
-    )?.label || target || "All Skills"
-  );
+  if (!value || (Array.isArray(value) && !value.length)) return "All Skills";
+  const list = Array.isArray(value)
+    ? value.filter((v) => v && v !== "__NONE__")
+    : String(value)
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
+  if (!list.length) return "All Skills";
+
+  return list
+    .map(
+      (val) =>
+        SKILL_OPTIONS.find((o) => o.value.toLowerCase() === val.toLowerCase())
+          ?.label || val,
+    )
+    .join(", ");
 }
 
 function getCountryOptions(sourceSystem, taskOrder) {
-  const sourceCountries = COUNTRY_OPTIONS_BY_SOURCE_AND_TO[sourceSystem] || {};
-  return (
-    sourceCountries[taskOrder] ||
-    sourceCountries[""] ||
-    [{ value: "", label: "All Countries" }]
+  const sources = Array.isArray(sourceSystem)
+    ? sourceSystem.filter((s) => s && s !== "__NONE__")
+    : [sourceSystem];
+
+  const primarySource =
+    !sources.length ||
+    sources.includes("US_VISA") ||
+    (sources.includes("FUSECOM") && sources.includes("HERODASH"))
+      ? "US_VISA"
+      : sources.includes("FUSECOM")
+      ? "FUSECOM"
+      : "HERODASH";
+
+  const sourceCountries =
+    COUNTRY_OPTIONS_BY_SOURCE_AND_TO[primarySource] ||
+    COUNTRY_OPTIONS_BY_SOURCE_AND_TO.US_VISA ||
+    {};
+
+  const toList = Array.isArray(taskOrder)
+    ? taskOrder.filter((to) => to && to !== "__NONE__")
+    : taskOrder
+    ? String(taskOrder)
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean)
+    : [];
+
+  // If no specific task order is selected (All Task Orders)
+  if (!toList.length) {
+    return (sourceCountries[""] || []).filter((opt) => opt.value !== "");
+  }
+
+  // Combine countries for all selected task orders
+  const countryMap = new Map();
+  for (const to of toList) {
+    const countriesForTo = sourceCountries[to] || [];
+    for (const opt of countriesForTo) {
+      if (opt.value && !countryMap.has(opt.value)) {
+        countryMap.set(opt.value, opt);
+      }
+    }
+  }
+
+  return Array.from(countryMap.values()).sort((a, b) =>
+    a.label.localeCompare(b.label),
   );
 }
 
 function getCountryLabel(sourceSystem, taskOrder, value) {
-  return (
-    getCountryOptions(sourceSystem, taskOrder).find(
-      (option) => option.value === String(value || "").toLowerCase(),
-    )?.label || "All Countries"
-  );
+  if (!value || (Array.isArray(value) && !value.length)) return "All Countries";
+  const list = Array.isArray(value)
+    ? value.filter((v) => v && v !== "__NONE__")
+    : String(value)
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
+  if (!list.length) return "All Countries";
+
+  const allOpts = getCountryOptions(sourceSystem, taskOrder);
+  return list
+    .map((val) => allOpts.find((o) => o.value === val)?.label || val)
+    .join(", ");
 }
 
 function buildRequestParams(filters) {
   const params = {
     period: filters.period,
-    sourceSystem: filters.sourceSystem,
   };
 
-  if (filters.taskOrder) {
+  // 1. Source System
+  if (Array.isArray(filters.sourceSystem) && filters.sourceSystem.length > 0) {
+    if (!filters.sourceSystem.includes("__NONE__")) {
+      params.sourceSystem = filters.sourceSystem.join(",");
+    }
+  } else if (typeof filters.sourceSystem === "string" && filters.sourceSystem) {
+    params.sourceSystem = filters.sourceSystem;
+  } else {
+    params.sourceSystem = "US_VISA";
+  }
+
+  // 2. Task Order
+  if (Array.isArray(filters.taskOrder) && filters.taskOrder.length > 0) {
+    if (!filters.taskOrder.includes("__NONE__")) {
+      params.taskOrder = filters.taskOrder.join(",");
+    }
+  } else if (typeof filters.taskOrder === "string" && filters.taskOrder) {
     params.taskOrder = filters.taskOrder;
   }
 
-  if (filters.skill) {
+  // 3. Skill
+  if (Array.isArray(filters.skill) && filters.skill.length > 0) {
+    if (!filters.skill.includes("__NONE__")) {
+      params.skill = filters.skill.join(",");
+    }
+  } else if (typeof filters.skill === "string" && filters.skill) {
     params.skill = filters.skill;
   }
 
-  if (filters.country) {
+  // 4. Country
+  if (Array.isArray(filters.country) && filters.country.length > 0) {
+    if (!filters.country.includes("__NONE__")) {
+      params.country = filters.country.join(",");
+    }
+  } else if (typeof filters.country === "string" && filters.country) {
     params.country = filters.country;
   }
 
+  // 5. Period / Date
   if (filters.period === "custom") {
     if (filters.from) {
       params.from = filters.from;
@@ -487,52 +609,75 @@ export default function ViewGraphsPage() {
     }
   }, [kpiResponse, filters.referenceDate, filters.period]);
 
-  const handleSourceChange = (event) => {
-    const sourceSystem = event.target.value;
+  const handleSourceChange = (newSources) => {
+    setFilters((current) => {
+      const nextSource = Array.isArray(newSources) ? newSources : [newSources];
+      const validTaskOrders = new Set(
+        getTaskOrderOptions(nextSource).map((to) => to.value),
+      );
+      const nextTaskOrder = Array.isArray(current.taskOrder)
+        ? current.taskOrder.filter((to) => validTaskOrders.has(to))
+        : [];
+      const validCountries = new Set(
+        getCountryOptions(nextSource, nextTaskOrder).map((c) => c.value),
+      );
+      const nextCountry = Array.isArray(current.country)
+        ? current.country.filter((c) => validCountries.has(c))
+        : [];
 
+      return {
+        ...current,
+        sourceSystem: newSources,
+        taskOrder: nextTaskOrder,
+        country: nextCountry,
+        referenceDate: "",
+        from: "",
+        to: "",
+      };
+    });
+  };
+
+  const handleTaskOrderChange = (newTaskOrders) => {
+    setFilters((current) => {
+      const nextTaskOrders = Array.isArray(newTaskOrders)
+        ? newTaskOrders
+        : [newTaskOrders];
+      const newCountryOptions = getCountryOptions(
+        current.sourceSystem,
+        nextTaskOrders,
+      );
+      const validCountryValues = new Set(
+        newCountryOptions.map((c) => c.value),
+      );
+      const nextCountry = Array.isArray(current.country)
+        ? current.country.filter((c) => validCountryValues.has(c))
+        : [];
+
+      return {
+        ...current,
+        taskOrder: newTaskOrders,
+        country: nextCountry,
+        referenceDate: "",
+        from: "",
+        to: "",
+      };
+    });
+  };
+
+  const handleSkillChange = (newSkills) => {
     setFilters((current) => ({
       ...current,
-      sourceSystem,
-      taskOrder: "",
-      skill: "",
-      country: "",
+      skill: newSkills,
       referenceDate: "",
       from: "",
       to: "",
     }));
   };
 
-  const handleTaskOrderChange = (event) => {
-    const taskOrder = event.target.value;
-
+  const handleCountryChange = (newCountries) => {
     setFilters((current) => ({
       ...current,
-      taskOrder,
-      country: "",
-      referenceDate: "",
-      from: "",
-      to: "",
-    }));
-  };
-
-  const handleSkillChange = (event) => {
-    const skill = event.target.value;
-
-    setFilters((current) => ({
-      ...current,
-      skill,
-      referenceDate: "",
-      from: "",
-      to: "",
-    }));
-  };
-
-  const handleCountryChange = (event) => {
-    const country = event.target.value;
-
-    setFilters((current) => ({
-      ...current,
-      country,
+      country: newCountries,
       referenceDate: "",
       from: "",
       to: "",
@@ -685,92 +830,44 @@ export default function ViewGraphsPage() {
 
                 <div className="grid grid-cols-1 gap-2 p-2.5 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 xl:items-end">
                   {/* 1. Account / Source */}
-                  <label className="block">
-                    <span className="mb-0.5 block text-[9.5px] font-extrabold uppercase text-sibs-tertiary-5">
-                      Account / Source
-                    </span>
-
-                    <select
-                      value={filters.sourceSystem}
-                      onChange={handleSourceChange}
-                      className="h-8 w-full cursor-pointer rounded-lg border border-sibs-tertiary-8 bg-white px-2.5 text-xs font-semibold text-sibs-primary-1 outline-none transition hover:border-sibs-primary-1 hover:bg-slate-50/50 focus:border-sibs-primary-1 focus:ring-1 focus:ring-sibs-primary-1/20"
-                    >
-                      {SOURCE_OPTIONS.map((option) => (
-                        <option
-                          key={option.value}
-                          value={option.value}
-                        >
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
+                  <MultiSelectDropdown
+                    label="Account / Source"
+                    value={filters.sourceSystem}
+                    onChange={handleSourceChange}
+                    options={SOURCE_OPTIONS}
+                    placeholder="All Sources"
+                    allOptionLabel="US Visa (All Sources)"
+                  />
 
                   {/* 2. Task Order */}
-                  <label className="block">
-                    <span className="mb-0.5 block text-[9.5px] font-extrabold uppercase text-sibs-tertiary-5">
-                      Task Order
-                    </span>
-
-                    <select
-                      value={filters.taskOrder}
-                      onChange={handleTaskOrderChange}
-                      className="h-8 w-full cursor-pointer rounded-lg border border-sibs-tertiary-8 bg-white px-2.5 text-xs font-semibold text-sibs-primary-1 outline-none transition hover:border-sibs-primary-1 hover:bg-slate-50/50 focus:border-sibs-primary-1 focus:ring-1 focus:ring-sibs-primary-1/20"
-                    >
-                      {taskOrderOptions.map((option) => (
-                        <option
-                          key={option.value || "ALL"}
-                          value={option.value}
-                        >
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
+                  <MultiSelectDropdown
+                    label="Task Order"
+                    value={filters.taskOrder}
+                    onChange={handleTaskOrderChange}
+                    options={taskOrderOptions}
+                    placeholder="All Task Orders"
+                    allOptionLabel="All Task Orders"
+                  />
 
                   {/* 3. Skill */}
-                  <label className="block">
-                    <span className="mb-0.5 block text-[9.5px] font-extrabold uppercase text-sibs-tertiary-5">
-                      Skill
-                    </span>
-
-                    <select
-                      value={filters.skill}
-                      onChange={handleSkillChange}
-                      className="h-8 w-full cursor-pointer rounded-lg border border-sibs-tertiary-8 bg-white px-2.5 text-xs font-semibold text-sibs-primary-1 outline-none transition hover:border-sibs-primary-1 hover:bg-slate-50/50 focus:border-sibs-primary-1 focus:ring-1 focus:ring-sibs-primary-1/20"
-                    >
-                      {skillOptions.map((option) => (
-                        <option
-                          key={option.value || "ALL_SKILLS"}
-                          value={option.value}
-                        >
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
+                  <MultiSelectDropdown
+                    label="Skill"
+                    value={filters.skill}
+                    onChange={handleSkillChange}
+                    options={skillOptions}
+                    placeholder="All Skills"
+                    allOptionLabel="All Skills"
+                  />
 
                   {/* 4. Country */}
-                  <label className="block">
-                    <span className="mb-0.5 block text-[9.5px] font-extrabold uppercase text-sibs-tertiary-5">
-                      Country
-                    </span>
-
-                    <select
-                      value={filters.country}
-                      onChange={handleCountryChange}
-                      className="h-8 w-full cursor-pointer rounded-lg border border-sibs-tertiary-8 bg-white px-2.5 text-xs font-semibold text-sibs-primary-1 outline-none transition hover:border-sibs-primary-1 hover:bg-slate-50/50 focus:border-sibs-primary-1 focus:ring-1 focus:ring-sibs-primary-1/20"
-                    >
-                      {countryOptions.map((option) => (
-                        <option
-                          key={option.value || "ALL_COUNTRIES"}
-                          value={option.value}
-                        >
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
+                  <MultiSelectDropdown
+                    label="Country"
+                    value={filters.country}
+                    onChange={handleCountryChange}
+                    options={countryOptions}
+                    placeholder="All Countries"
+                    allOptionLabel="All Countries"
+                  />
 
                   {/* 5. Reporting Period */}
                   <label className="block">
