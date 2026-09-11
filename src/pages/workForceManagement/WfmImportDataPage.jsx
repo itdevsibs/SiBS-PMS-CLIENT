@@ -1,5 +1,5 @@
 // WFM page for uploading and managing raw data files.
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertCircle,
   AlertTriangle,
@@ -204,19 +204,19 @@ const BATCH_DETAIL_TONES = {
   },
 };
 
-function BatchDetailStat({ label, value, icon: Icon, tone = "blue" }) {
+function BatchDetailStat({ label, value, icon: Icon, tone = "blue", className = "" }) {
   const styles = BATCH_DETAIL_TONES[tone] || BATCH_DETAIL_TONES.blue;
 
   return (
     <div
-      className={`group relative overflow-hidden rounded-2xl border ${styles.border} ${styles.background} p-3.5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md`}
+      className={`group relative overflow-hidden rounded-xl sm:rounded-2xl border ${styles.border} ${styles.background} p-3 sm:p-3.5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md ${className}`}
     >
       <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-start gap-2">
         <div className="min-w-0">
           <p className="m-0 min-w-0 text-[9px] font-extrabold uppercase leading-[1.05] tracking-normal text-sibs-tertiary-5">
             {label}
           </p>
-          <p className="mt-2 mb-0 text-[22px] font-black leading-none tracking-tight text-sibs-primary-1">
+          <p className="mt-1.5 sm:mt-2 mb-0 text-xl sm:text-[22px] font-black leading-none tracking-tight text-sibs-primary-1">
             {Number(value || 0).toLocaleString()}
           </p>
         </div>
@@ -639,6 +639,84 @@ function WfmImportDataPage() {
   const [rawDataSearch, setRawDataSearch] = useState("");
   const [uploadedDataSearch, setUploadedDataSearch] = useState("");
   const [selectedAccount, setSelectedAccount] = useState("All Accounts");
+
+  const errorTableContainerRef = useRef(null);
+  const [canScrollTableLeft, setCanScrollTableLeft] = useState(false);
+  const [canScrollTableRight, setCanScrollTableRight] = useState(false);
+  const isDraggingTableRef = useRef(false);
+  const tableDragStartXRef = useRef(0);
+  const tableDragScrollLeftRef = useRef(0);
+
+  const handleTableScroll = () => {
+    const el = errorTableContainerRef.current;
+    if (el) {
+      setCanScrollTableLeft(el.scrollLeft > 10);
+      setCanScrollTableRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 10);
+    }
+  };
+
+  const handleScrollTableLeft = () => {
+    const el = errorTableContainerRef.current;
+    if (el) {
+      el.scrollBy({ left: -280, behavior: "smooth" });
+      setTimeout(handleTableScroll, 320);
+    }
+  };
+
+  const handleScrollTableRight = () => {
+    const el = errorTableContainerRef.current;
+    if (el) {
+      el.scrollBy({ left: 280, behavior: "smooth" });
+      setTimeout(handleTableScroll, 320);
+    }
+  };
+
+  const handleTablePointerDown = (e) => {
+    if (e.button !== 0 || e.target.closest("button, input, a, select")) return;
+    const el = errorTableContainerRef.current;
+    if (!el || el.scrollWidth <= el.clientWidth + 2) return;
+    try {
+      el.setPointerCapture(e.pointerId);
+    } catch {
+      // Fallback
+    }
+    isDraggingTableRef.current = true;
+    tableDragStartXRef.current = e.clientX;
+    tableDragScrollLeftRef.current = el.scrollLeft;
+  };
+
+  const handleTablePointerMove = (e) => {
+    if (!isDraggingTableRef.current) return;
+    const el = errorTableContainerRef.current;
+    if (!el) return;
+    const dx = e.clientX - tableDragStartXRef.current;
+    el.scrollLeft = tableDragScrollLeftRef.current - dx;
+    handleTableScroll();
+  };
+
+  const handleTablePointerUp = (e) => {
+    if (!isDraggingTableRef.current) return;
+    isDraggingTableRef.current = false;
+    const el = errorTableContainerRef.current;
+    if (el) {
+      try {
+        if (el.hasPointerCapture(e.pointerId)) {
+          el.releasePointerCapture(e.pointerId);
+        }
+      } catch {
+        // Fallback
+      }
+    }
+  };
+
+  useEffect(() => {
+    if (usVisaErrorDetails) {
+      const timer = setTimeout(() => {
+        handleTableScroll();
+      }, 120);
+      return () => clearTimeout(timer);
+    }
+  }, [usVisaErrorDetails]);
 
   const openCardUploads = useMemo(
     () => uploadsByCard[activeOpenCard?.id] || [],
@@ -1269,14 +1347,11 @@ function WfmImportDataPage() {
                           className="sibs-card flex min-h-[350px] flex-col justify-between p-4 shadow-xs transition hover:border-sibs-primary-1/40"
                         >
                     <div>
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="flex min-w-0 items-baseline gap-2">
-                          <h2 className="m-0 truncate text-base font-extrabold text-sibs-primary-1">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                          <h2 className="m-0 text-base font-extrabold leading-tight text-sibs-primary-1 break-words">
                             {card.title}
                           </h2>
-                          <span className="shrink-0 text-[11px] font-extrabold uppercase tracking-wide text-sibs-tertiary-5">
-                            {card.account}
-                          </span>
                         </div>
                         <span
                           className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-bold ${uploads.length > 0
@@ -1420,7 +1495,7 @@ function WfmImportDataPage() {
 
       <AppModal
         isOpen={Boolean(activeOpenCard)}
-        className="!max-w-none sm:!w-[min(92vw,1100px)]"
+        className="!max-w-none w-full sm:!w-[min(92vw,1100px)] flex flex-col p-4 sm:p-6 overflow-hidden max-h-[90vh]"
       >
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
@@ -1439,14 +1514,23 @@ function WfmImportDataPage() {
             <input
               value={uploadedDataSearch}
               onChange={(event) => setUploadedDataSearch(event.target.value)}
-              className="h-9 w-full rounded-full border border-sibs-tertiary-9 bg-white pl-9 pr-4 text-sm outline-none focus:border-sibs-primary-2"
+              className="h-9 w-full rounded-full border border-sibs-tertiary-9 bg-white pl-9 pr-8 text-sm outline-none focus:border-sibs-primary-2"
               placeholder="Search uploaded data..."
               type="text"
             />
+            {uploadedDataSearch ? (
+              <button
+                type="button"
+                onClick={() => setUploadedDataSearch("")}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 hover:text-slate-600"
+              >
+                ✕
+              </button>
+            ) : null}
           </div>
         </div>
 
-        <div className="mt-4 max-h-[65vh] min-h-[360px] space-y-2.5 overflow-y-auto rounded-xl border border-slate-200/80 bg-slate-50/50 p-3">
+        <div className="mt-4 max-h-[65vh] min-h-[260px] sm:min-h-[360px] space-y-2.5 overflow-y-auto rounded-xl border border-slate-200/80 bg-slate-50/50 p-2.5 sm:p-3 sibs-scrollbar">
           {filteredOpenCardUploads.length ? (
             filteredOpenCardUploads.map((upload) => {
               const isCompletedWithErrors =
@@ -1459,16 +1543,33 @@ function WfmImportDataPage() {
               return (
                 <div
                   key={upload.id || `${upload.fileName}-${upload.uploadedAt}`}
-                  className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-3.5 shadow-xs transition-all hover:border-slate-300 hover:shadow-sm sm:flex-row sm:items-center sm:justify-between"
+                  className="flex flex-col gap-2.5 sm:gap-3 rounded-xl border border-slate-200 bg-white p-3 sm:p-3.5 shadow-xs transition-all hover:border-slate-300 hover:shadow-sm sm:flex-row sm:items-center sm:justify-between"
                 >
-                  <div className="min-w-0">
-                    <p
-                      className="m-0 break-words text-sm font-bold text-sibs-primary-1"
-                      title={upload.fileName}
-                    >
-                      {upload.fileName}
-                    </p>
-                    <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-sibs-tertiary-5">
+                  {/* Left content: In desktop, filename + metadata block; in mobile, filename + status badge on top row */}
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-start justify-between gap-2 sm:block">
+                      <p
+                        className="m-0 break-words text-sm font-bold text-sibs-primary-1 leading-snug"
+                        title={upload.fileName}
+                      >
+                        {upload.fileName}
+                      </p>
+                      {/* Mobile-only status badge on top right */}
+                      {isCompletedWithErrors ? (
+                        <button
+                          type="button"
+                          disabled={isLoadingUsVisaErrors}
+                          onClick={() => handleOpenUsVisaErrors(upload.batchId)}
+                          className="sm:hidden inline-flex shrink-0 items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-800 transition-all hover:border-amber-400 hover:bg-amber-100"
+                          title="Completed with error - click to view error details"
+                        >
+                          <AlertTriangle className="h-2.5 w-2.5 shrink-0 text-amber-600" aria-hidden="true" />
+                          <span>Completed with error</span>
+                        </button>
+                      ) : null}
+                    </div>
+
+                    <div className="mt-1 flex flex-wrap items-center gap-1.5 sm:gap-2 text-xs text-sibs-tertiary-5">
                       <span>{upload.uploadedAt} ({formatRelativeTime(upload)})</span>
                       {upload.batchCode ? (
                         <span className="rounded bg-sibs-primary-2/10 px-1.5 py-0.5 font-mono text-[10px] font-bold text-sibs-primary-2">
@@ -1483,13 +1584,17 @@ function WfmImportDataPage() {
                     </div>
                   </div>
 
-                  <div className="flex flex-wrap items-center gap-2 sm:shrink-0">
+                  {/* Right side actions:
+                      - In Desktop: flex row at the right with [Completed with error] [View] [Remove]
+                      - In Mobile: grid-cols-2 at the bottom for clean tap targets */}
+                  <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100 sm:border-0 sm:pt-0 sm:flex sm:flex-wrap sm:items-center sm:gap-2 sm:shrink-0">
+                    {/* Desktop-only status badge */}
                     {isCompletedWithErrors ? (
                       <button
                         type="button"
                         disabled={isLoadingUsVisaErrors}
                         onClick={() => handleOpenUsVisaErrors(upload.batchId)}
-                        className="inline-flex h-6 items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-2 text-[10px] font-semibold text-amber-800 transition-all hover:border-amber-400 hover:bg-amber-100"
+                        className="hidden sm:inline-flex h-6 items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-2 text-[10px] font-semibold text-amber-800 transition-all hover:border-amber-400 hover:bg-amber-100"
                         title="Completed with error - click to view error details"
                       >
                         <AlertTriangle className="h-2.5 w-2.5 shrink-0 text-amber-600" aria-hidden="true" />
@@ -1500,18 +1605,18 @@ function WfmImportDataPage() {
                     <button
                       type="button"
                       onClick={() => setSelectedUploadDetails(upload)}
-                      className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 shadow-xs transition-all hover:border-sibs-primary-1 hover:bg-sibs-primary-1 hover:text-white"
+                      className="inline-flex h-8 items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 shadow-xs transition-all hover:border-sibs-primary-1 hover:bg-sibs-primary-1 hover:text-white"
                     >
                       <Eye className="h-3.5 w-3.5" aria-hidden="true" />
-                      View
+                      <span>View</span>
                     </button>
                     <button
                       type="button"
                       onClick={() => setUploadToRemove(upload)}
-                      className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-rose-200 bg-rose-50/70 px-3 text-xs font-semibold text-rose-600 shadow-xs transition-all hover:border-rose-600 hover:bg-rose-600 hover:text-white"
+                      className="inline-flex h-8 items-center justify-center gap-1.5 rounded-lg border border-rose-200 bg-rose-50/70 px-3 text-xs font-semibold text-rose-600 shadow-xs transition-all hover:border-rose-600 hover:bg-rose-600 hover:text-white"
                     >
                       <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
-                      Remove
+                      <span>Remove</span>
                     </button>
                   </div>
                 </div>
@@ -1524,7 +1629,10 @@ function WfmImportDataPage() {
           )}
         </div>
 
-        <div className="mt-5 flex justify-end">
+        <div className="mt-5 flex items-center justify-between">
+          <span className="text-xs text-slate-500">
+            Showing {filteredOpenCardUploads.length} of {openCardUploads.length} upload{openCardUploads.length === 1 ? "" : "s"}
+          </span>
           <Button
             type="button"
             variant="outline"
@@ -1578,14 +1686,14 @@ function WfmImportDataPage() {
 
       <AppModal
         isOpen={Boolean(usVisaErrorDetails)}
-        className="!max-w-none !w-[min(96vw,1440px)] !h-[88vh] !max-h-[88vh] flex flex-col p-5 sm:p-6 overflow-hidden"
+        className="!max-w-none !w-[min(96vw,1440px)] !h-[90vh] !max-h-[90vh] flex flex-col p-3.5 sm:p-6 overflow-hidden"
         zIndex="z-[160]"
       >
         {/* Header (fixed) */}
-        <div className="shrink-0 flex flex-col gap-3 border-b border-sibs-tertiary-10 pb-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="shrink-0 flex flex-col gap-2.5 sm:gap-3 border-b border-sibs-tertiary-10 pb-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <div className="flex items-center gap-2.5">
-              <p className="m-0 text-xl font-bold text-sibs-primary-1">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
+              <p className="m-0 text-lg sm:text-xl font-bold text-sibs-primary-1">
                 Import Error Details
               </p>
               {errorPagination.total > 0 ? (
@@ -1594,7 +1702,7 @@ function WfmImportDataPage() {
                 </span>
               ) : null}
             </div>
-            <p className="mt-1 mb-0 text-xs text-sibs-tertiary-5">
+            <p className="mt-1 mb-0 text-xs text-sibs-tertiary-5 truncate max-w-[85vw] sm:max-w-none">
               Batch:{" "}
               <span className="font-mono font-semibold text-sibs-primary-1">
                 {usVisaErrorDetails?.batch?.batchCode ||
@@ -1602,16 +1710,16 @@ function WfmImportDataPage() {
                   "-"}
               </span>
               {usVisaErrorDetails?.batch?.sourceFilename ? (
-                <span className="ml-2 text-slate-400">
+                <span className="ml-1 sm:ml-2 text-slate-400">
                   • {usVisaErrorDetails.batch.sourceFilename}
                 </span>
               ) : null}
             </p>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 w-full sm:w-auto">
             {/* Search Input */}
-            <div className="relative w-64 sm:w-80">
+            <div className="relative flex-1 sm:w-80 sm:flex-initial">
               <Search
                 className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-sibs-tertiary-6"
                 aria-hidden="true"
@@ -1663,7 +1771,7 @@ function WfmImportDataPage() {
                 setErrorSearchQuery("");
                 setErrorSeverityFilter("ALL");
               }}
-              className="h-9 rounded-lg px-4 text-xs font-semibold"
+              className="h-9 shrink-0 rounded-lg px-3.5 sm:px-4 text-xs font-semibold"
             >
               Close
             </Button>
@@ -1672,7 +1780,7 @@ function WfmImportDataPage() {
 
         {/* Filter Bar (shrink-0) */}
         <div className="shrink-0 mt-2.5 mb-1.5 flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-center gap-1.5">
+          <div className="flex flex-wrap items-center gap-1.5">
             {["ALL", "ERROR", "DUPLICATE", "WARNING"].map((sev) => {
               const isActive = errorSeverityFilter === sev;
               return (
@@ -1701,26 +1809,38 @@ function WfmImportDataPage() {
             })}
           </div>
 
-          <button
-            type="button"
-            onClick={() =>
-              void handleOpenUsVisaErrors(
-                activeErrorBatchId,
-                1,
-                errorPagination.limit,
-                errorSearchQuery,
-                errorSeverityFilter,
-              )
-            }
-            className="inline-flex h-7 items-center gap-1 rounded-md bg-sibs-primary-2/10 px-2.5 text-xs font-bold text-sibs-primary-2 hover:bg-sibs-primary-2/20"
-          >
-            <Search className="h-3 w-3" />
-            <span>Search / Filter</span>
-          </button>
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() =>
+                void handleOpenUsVisaErrors(
+                  activeErrorBatchId,
+                  1,
+                  errorPagination.limit,
+                  errorSearchQuery,
+                  errorSeverityFilter,
+                )
+              }
+              className="inline-flex h-7 items-center gap-1 rounded-md bg-sibs-primary-2/10 px-2.5 text-xs font-bold text-sibs-primary-2 hover:bg-sibs-primary-2/20 shrink-0"
+            >
+              <Search className="h-3 w-3" />
+              <span>Search / Filter</span>
+            </button>
+          </div>
         </div>
 
-        {/* Table Container (flex-1 min-h-0 overflow-y-auto) */}
-        <div className="sibs-scrollbar relative flex-1 min-h-0 mt-1 overflow-y-auto rounded-lg border border-sibs-tertiary-10 bg-white">
+        {/* Table Container (flex-1 min-h-0 overflow-x-auto overflow-y-auto) */}
+        <div
+          ref={errorTableContainerRef}
+          onScroll={handleTableScroll}
+          onPointerDown={handleTablePointerDown}
+          onPointerMove={handleTablePointerMove}
+          onPointerUp={handleTablePointerUp}
+          className="sibs-scrollbar relative flex-1 min-h-0 mt-1 overflow-x-auto overflow-y-auto rounded-lg border border-sibs-tertiary-10 bg-white cursor-auto lg:cursor-default touch-pan-x touch-pan-y"
+          style={{
+            WebkitOverflowScrolling: "touch",
+          }}
+        >
           {isLoadingUsVisaErrors ? (
             <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/70 backdrop-blur-xs">
               <div className="flex items-center gap-2 text-sm font-semibold text-sibs-primary-1">
@@ -1730,16 +1850,34 @@ function WfmImportDataPage() {
             </div>
           ) : null}
 
-          <table className="w-full table-fixed border-collapse text-left text-xs">
+          <table className="w-full min-w-[960px] lg:min-w-0 lg:w-full table-fixed border-collapse text-left text-xs">
+            <colgroup className="hidden lg:table-column-group">
+              <col style={{ width: "18%" }} />
+              <col style={{ width: "7%" }} />
+              <col style={{ width: "12%" }} />
+              <col style={{ width: "15%" }} />
+              <col style={{ width: "13%" }} />
+              <col style={{ width: "12%" }} />
+              <col style={{ width: "23%" }} />
+            </colgroup>
+            <colgroup className="lg:hidden">
+              <col style={{ width: "130px" }} />
+              <col style={{ width: "65px" }} />
+              <col style={{ width: "105px" }} />
+              <col style={{ width: "160px" }} />
+              <col style={{ width: "130px" }} />
+              <col style={{ width: "120px" }} />
+              <col style={{ width: "250px" }} />
+            </colgroup>
             <thead className="sticky top-0 z-5 bg-[#f0f5fa] uppercase text-sibs-tertiary-6 shadow-xs">
-              <tr>
-                <th className="w-[18%] px-3.5 py-3 font-bold">Sheet</th>
-                <th className="w-[7%] px-2.5 py-3 text-center font-bold">Row</th>
-                <th className="w-[12%] px-3 py-3 font-bold">Severity</th>
-                <th className="w-[15%] px-3 py-3 font-bold">Code</th>
-                <th className="w-[13%] px-3 py-3 font-bold">Column</th>
-                <th className="w-[12%] px-3 py-3 font-bold">Value</th>
-                <th className="w-[23%] px-3.5 py-3 font-bold">Message</th>
+              <tr className="border-b border-sibs-tertiary-10">
+                <th className="w-[18%] lg:w-auto px-3.5 py-3 font-bold whitespace-nowrap">Sheet</th>
+                <th className="w-[7%] lg:w-auto px-2.5 py-3 text-center font-bold whitespace-nowrap">Row</th>
+                <th className="w-[12%] lg:w-auto px-3 py-3 font-bold whitespace-nowrap">Severity</th>
+                <th className="w-[15%] lg:w-auto px-3 py-3 font-bold whitespace-nowrap">Code</th>
+                <th className="w-[13%] lg:w-auto px-3 py-3 font-bold whitespace-nowrap">Column</th>
+                <th className="w-[12%] lg:w-auto px-3 py-3 font-bold whitespace-nowrap">Value</th>
+                <th className="w-[23%] lg:w-auto px-3.5 py-3 font-bold whitespace-nowrap">Message</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-sibs-tertiary-10">
@@ -1767,7 +1905,7 @@ function WfmImportDataPage() {
                       <td className="px-2.5 py-2.5 text-center font-mono text-[11px] text-sibs-tertiary-5">
                         {error.excelRowNumber || "-"}
                       </td>
-                      <td className="px-3 py-2.5">
+                      <td className="px-3 py-2.5 whitespace-nowrap">
                         <span
                           className={`inline-flex items-center rounded-md px-2 py-0.5 text-[10.5px] font-bold ${severityClass}`}
                         >
@@ -1813,13 +1951,13 @@ function WfmImportDataPage() {
         </div>
 
         {/* Footer (shrink-0) */}
-        <div className="shrink-0 mt-3 flex flex-col gap-3 border-t border-sibs-tertiary-10 pt-3 text-xs text-sibs-tertiary-6 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex flex-wrap items-center gap-3">
-            <span className="font-medium text-slate-600">
+        <div className="shrink-0 mt-3 flex flex-col gap-2.5 sm:gap-3 border-t border-sibs-tertiary-10 pt-2.5 sm:pt-3 text-xs text-sibs-tertiary-6 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-wrap items-center justify-between sm:justify-start gap-2 sm:gap-3">
+            <span className="font-medium text-slate-600 text-[11px] sm:text-xs">
               {errorShowingText}
             </span>
             <div className="flex items-center gap-1.5 text-slate-500">
-              <span>Per page:</span>
+              <span className="text-[11px] sm:text-xs">Per page:</span>
               <select
                 value={errorPagination.limit}
                 onChange={(e) => {
@@ -1846,7 +1984,7 @@ function WfmImportDataPage() {
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2.5">
+          <div className="flex flex-wrap items-center justify-between sm:justify-end gap-2 sm:gap-2.5">
             {/* Custom Go to Page Input */}
             <form
               onSubmit={(e) => {
@@ -1865,21 +2003,21 @@ function WfmImportDataPage() {
               }}
               className="flex items-center gap-1.5"
             >
-              <span className="text-slate-500">Go to page:</span>
+              <span className="text-slate-500 text-[11px] sm:text-xs">Go to:</span>
               <input
                 type="number"
                 min={1}
                 max={errorPagination.totalPages}
                 value={jumpPageInput}
                 onChange={(e) => setJumpPageInput(e.target.value)}
-                className="h-8 w-14 rounded-lg border border-slate-200 bg-white px-1.5 text-center text-xs font-semibold text-slate-700 outline-none focus:border-sibs-primary-1"
+                className="h-7 sm:h-8 w-12 sm:w-14 rounded-lg border border-slate-200 bg-white px-1 text-center text-xs font-semibold text-slate-700 outline-none focus:border-sibs-primary-1"
                 placeholder={String(errorPagination.page)}
               />
-              <span className="text-slate-400">/ {errorPagination.totalPages}</span>
+              <span className="text-slate-400 text-[11px] sm:text-xs">/ {errorPagination.totalPages}</span>
               <button
                 type="submit"
                 disabled={isLoadingUsVisaErrors || errorPagination.totalPages <= 1}
-                className="inline-flex h-8 items-center rounded-lg border border-slate-200 bg-white px-2 text-xs font-semibold text-slate-700 transition hover:border-sibs-primary-1 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                className="inline-flex h-7 sm:h-8 items-center rounded-lg border border-slate-200 bg-white px-2 text-xs font-semibold text-slate-700 transition hover:border-sibs-primary-1 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 Go
               </button>
@@ -1899,7 +2037,7 @@ function WfmImportDataPage() {
                   )
                 }
                 title="First Page"
-                className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition-all hover:border-sibs-primary-1 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                className="inline-flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition-all hover:border-sibs-primary-1 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <ChevronsLeft className="h-3.5 w-3.5" />
               </button>
@@ -1916,12 +2054,13 @@ function WfmImportDataPage() {
                   )
                 }
                 title="Previous Page"
-                className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition-all hover:border-sibs-primary-1 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                className="inline-flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition-all hover:border-sibs-primary-1 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <ChevronLeft className="h-3.5 w-3.5" />
               </button>
 
-              <div className="flex items-center gap-1 px-1">
+              {/* Numbered page buttons: shown on sm+ screens */}
+              <div className="hidden sm:flex items-center gap-1 px-1">
                 {getPageNumbers(
                   errorPagination.page,
                   errorPagination.totalPages,
@@ -1963,6 +2102,11 @@ function WfmImportDataPage() {
                 })}
               </div>
 
+              {/* Compact page indicator badge on mobile */}
+              <div className="flex sm:hidden items-center px-1.5 text-xs font-medium text-slate-700">
+                <span>{errorPagination.page} / {errorPagination.totalPages}</span>
+              </div>
+
               <button
                 type="button"
                 disabled={
@@ -1982,7 +2126,7 @@ function WfmImportDataPage() {
                   )
                 }
                 title="Next Page"
-                className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition-all hover:border-sibs-primary-1 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                className="inline-flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition-all hover:border-sibs-primary-1 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <ChevronRight className="h-3.5 w-3.5" />
               </button>
@@ -2002,7 +2146,7 @@ function WfmImportDataPage() {
                   )
                 }
                 title="Last Page"
-                className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition-all hover:border-sibs-primary-1 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                className="inline-flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition-all hover:border-sibs-primary-1 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <ChevronsRight className="h-3.5 w-3.5" />
               </button>
@@ -2046,6 +2190,7 @@ function WfmImportDataPage() {
                 value={addedUpload.batch.totalRows}
                 icon={FileSpreadsheet}
                 tone="blue"
+                className="col-span-2 sm:col-span-1"
               />
               <BatchDetailStat
                 label="Valid Rows"
@@ -2111,14 +2256,16 @@ function WfmImportDataPage() {
 
       <AppModal
         isOpen={Boolean(selectedUploadDetails)}
-        className="!max-w-none sm:!w-[720px]"
+        className="!max-w-none w-full max-w-[94vw] sm:!w-[720px] !p-0 overflow-hidden"
         zIndex="z-[140]"
       >
-        <div className="overflow-hidden rounded-2xl border border-sibs-tertiary-10 bg-white shadow-sm">
-          <div className="bg-gradient-to-br from-slate-50 via-white to-sky-50/50 px-5 py-5 sm:px-6">
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex min-w-0 items-start gap-3.5">
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-sky-100 bg-sky-50 text-sky-600 shadow-sm">
+        <div className="overflow-hidden rounded-2xl bg-white">
+          {/* Header */}
+          <div className="bg-gradient-to-br from-slate-50 via-white to-sky-50/50 p-4 sm:p-6 border-b border-sibs-tertiary-10">
+            {/* Top row: Icon + Details on left, Status badge on right */}
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex min-w-0 items-start gap-3 sm:gap-3.5">
+                <div className="flex h-10 w-10 sm:h-11 sm:w-11 shrink-0 items-center justify-center rounded-xl sm:rounded-2xl border border-sky-100 bg-sky-50 text-sky-600 shadow-xs">
                   <FileSpreadsheet className="h-5 w-5" aria-hidden="true" />
                 </div>
 
@@ -2127,53 +2274,73 @@ function WfmImportDataPage() {
                     Batch details
                   </p>
 
-                  <div className="mt-1.5 flex flex-wrap items-center gap-2">
-                    <span className="rounded-lg bg-sibs-primary-2/10 px-2.5 py-1 text-[11px] font-extrabold text-sibs-primary-2">
+                  {/* Desktop badges shown inline under BATCH DETAILS */}
+                  <div className="hidden sm:flex items-center gap-2 mt-1.5">
+                    <span className="rounded-lg bg-sibs-primary-2/10 px-2.5 py-1 text-[11px] font-extrabold text-sibs-primary-2 whitespace-nowrap">
                       {activeOpenCard?.title || selectedUploadDetails?.rawDataTitle || "Import"}
                     </span>
-                    <span className="text-[11px] font-bold text-sibs-tertiary-5">
+                    <span className="text-[11px] font-bold text-sibs-tertiary-5 whitespace-nowrap">
                       {activeOpenCard?.account || selectedUploadDetails?.account}
-                    </span>
-                  </div>
-
-                  <p className="mt-3 mb-0 break-words text-[15px] font-extrabold leading-snug text-sibs-primary-1 [overflow-wrap:anywhere]">
-                    {selectedUploadDetails?.fileName}
-                  </p>
-
-                  <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-sibs-tertiary-5">
-                    {selectedUploadDetails?.batchCode ? (
-                      <span className="rounded-md bg-white/80 px-2 py-1 font-mono font-semibold text-sibs-primary-2 shadow-sm ring-1 ring-slate-200/70">
-                        {selectedUploadDetails.batchCode}
-                      </span>
-                    ) : null}
-                    <span>
-                      {selectedUploadDetails?.uploadedAt} ({formatRelativeTime(selectedUploadDetails)})
                     </span>
                   </div>
                 </div>
               </div>
 
-              {selectedUploadDetails?.batchStatus === "COMPLETED_WITH_ERRORS" || (selectedUploadDetails?.invalidRows > 0) ? (
-                <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-wide text-amber-800 shadow-sm">
+              {/* Status Badge */}
+              {selectedUploadDetails?.batchStatus === "COMPLETED_WITH_ERRORS" ||
+              (selectedUploadDetails?.invalidRows > 0) ||
+              (selectedUploadDetails?.warningRows > 0) ||
+              (selectedUploadDetails?.duplicateRows > 0) ? (
+                <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 sm:px-3 sm:py-1.5 text-[10px] sm:text-[10.5px] font-extrabold uppercase tracking-wide text-amber-800 shadow-xs">
                   <AlertTriangle className="h-3 w-3 shrink-0 text-amber-600" aria-hidden="true" />
-                  Completed with errors
+                  <span>Completed with errors</span>
                 </span>
               ) : (
-                <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-wide text-emerald-700 shadow-sm">
-                  <CheckCircle2 className="h-3 w-3 shrink-0" aria-hidden="true" />
-                  Completed
+                <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 sm:px-3 sm:py-1.5 text-[10px] sm:text-[10.5px] font-extrabold uppercase tracking-wide text-emerald-700 shadow-xs">
+                  <CheckCircle2 className="h-3 w-3 shrink-0 text-emerald-600" aria-hidden="true" />
+                  <span>Completed</span>
                 </span>
               )}
             </div>
+
+            {/* Mobile-only badges row: sits under top bar on mobile across full width */}
+            <div className="flex sm:hidden items-center gap-2 mt-2.5">
+              <span className="rounded-lg bg-sibs-primary-2/10 px-2.5 py-1 text-[10.5px] font-extrabold text-sibs-primary-2 whitespace-nowrap">
+                {activeOpenCard?.title || selectedUploadDetails?.rawDataTitle || "Import"}
+              </span>
+              <span className="text-[10.5px] font-bold text-sibs-tertiary-5 whitespace-nowrap">
+                {activeOpenCard?.account || selectedUploadDetails?.account}
+              </span>
+            </div>
+
+            {/* File Name & Batch Code: full width */}
+            <div className="mt-2.5 sm:mt-3 min-w-0 sm:pl-[58px]">
+              <p className="m-0 break-words text-sm sm:text-[15px] font-extrabold leading-snug text-sibs-primary-1 [overflow-wrap:anywhere]">
+                {selectedUploadDetails?.fileName}
+              </p>
+
+              <div className="mt-1.5 sm:mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-sibs-tertiary-5">
+                {selectedUploadDetails?.batchCode ? (
+                  <span className="rounded-md bg-white px-2 py-0.5 font-mono font-semibold text-sibs-primary-2 shadow-xs ring-1 ring-slate-200/70 whitespace-nowrap">
+                    {selectedUploadDetails.batchCode}
+                  </span>
+                ) : null}
+                <span className="whitespace-nowrap">
+                  {selectedUploadDetails?.uploadedAt} ({formatRelativeTime(selectedUploadDetails)})
+                </span>
+              </div>
+            </div>
           </div>
 
-          <div className="border-t border-sibs-tertiary-10 px-5 py-5 sm:px-6">
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+          {/* Metric Stats Cards */}
+          <div className="p-4 sm:p-6 bg-white">
+            <div className="grid grid-cols-2 gap-2.5 sm:gap-3 sm:grid-cols-5">
               <BatchDetailStat
                 label="Total Rows"
                 value={selectedUploadDetails?.totalRows}
                 icon={FileSpreadsheet}
                 tone="blue"
+                className="col-span-2 sm:col-span-1"
               />
               <BatchDetailStat
                 label="Valid Rows"
@@ -2201,37 +2368,40 @@ function WfmImportDataPage() {
               />
             </div>
           </div>
-        </div>
 
-        <div className="mt-5 flex flex-wrap items-center justify-end gap-2 border-t border-sibs-tertiary-10 pt-4">
-          {selectedUploadDetails?.batchId &&
-          ((selectedUploadDetails.invalidRows || 0) > 0 ||
-            (selectedUploadDetails.warningRows || 0) > 0 ||
-            (selectedUploadDetails.duplicateRows || 0) > 0) ? (
+          {/* Footer Actions */}
+          <div className="px-4 pb-4 pt-3 sm:px-6 sm:pb-6 sm:pt-4 border-t border-sibs-tertiary-10 bg-slate-50/50 flex flex-col sm:flex-row sm:items-center sm:justify-end gap-2">
+            {selectedUploadDetails?.batchId &&
+            ((selectedUploadDetails.invalidRows || 0) > 0 ||
+              (selectedUploadDetails.warningRows || 0) > 0 ||
+              (selectedUploadDetails.duplicateRows || 0) > 0) ? (
+              <Button
+                type="button"
+                variant="outline"
+                disabled={isLoadingUsVisaErrors}
+                onClick={() => handleOpenUsVisaErrors(selectedUploadDetails.batchId)}
+                className="h-10 w-full sm:w-auto rounded-xl border-rose-200 bg-rose-50 px-4 text-xs font-bold text-rose-700 shadow-xs hover:border-rose-300 hover:bg-rose-100 hover:text-rose-800"
+              >
+                <AlertCircle className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                <span>
+                  View Error Details (
+                  {(
+                    (selectedUploadDetails.invalidRows || 0) +
+                    (selectedUploadDetails.warningRows || 0) +
+                    (selectedUploadDetails.duplicateRows || 0)
+                  ).toLocaleString()}
+                  )
+                </span>
+              </Button>
+            ) : null}
             <Button
               type="button"
-              variant="outline"
-              disabled={isLoadingUsVisaErrors}
-              onClick={() => handleOpenUsVisaErrors(selectedUploadDetails.batchId)}
-              className="h-10 rounded-xl border-rose-200 bg-rose-50 px-4 text-xs font-bold text-rose-700 shadow-sm hover:border-rose-300 hover:bg-rose-100 hover:text-rose-800"
+              onClick={() => setSelectedUploadDetails(null)}
+              className="h-10 w-full sm:w-auto rounded-xl bg-sibs-primary-1 px-5 text-xs font-bold text-white shadow-xs hover:bg-sibs-tertiary-4"
             >
-              <AlertCircle className="h-3.5 w-3.5" aria-hidden="true" />
-              View Error Details (
-              {(
-                (selectedUploadDetails.invalidRows || 0) +
-                (selectedUploadDetails.warningRows || 0) +
-                (selectedUploadDetails.duplicateRows || 0)
-              ).toLocaleString()}
-              )
+              Close
             </Button>
-          ) : null}
-          <Button
-            type="button"
-            onClick={() => setSelectedUploadDetails(null)}
-            className="h-10 rounded-xl bg-sibs-primary-1 px-5 text-xs font-bold text-white shadow-sm hover:bg-sibs-tertiary-4"
-          >
-            Close
-          </Button>
+          </div>
         </div>
       </AppModal>
 

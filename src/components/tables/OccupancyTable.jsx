@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ChevronDown,
   Eye,
@@ -22,6 +22,7 @@ export const OCCUPANCY_COLUMNS = [
     category: "general",
     align: "text-left",
     minWidth: 160,
+    widthPct: "11.5%",
   },
   {
     key: "interval",
@@ -30,6 +31,7 @@ export const OCCUPANCY_COLUMNS = [
     category: "general",
     align: "text-center",
     minWidth: 95,
+    widthPct: "6%",
   },
   {
     key: "expectedHoursSec",
@@ -38,6 +40,7 @@ export const OCCUPANCY_COLUMNS = [
     category: "phone",
     align: "text-center",
     minWidth: 125,
+    widthPct: "6.5%",
   },
   {
     key: "actualLoggedTime",
@@ -46,6 +49,7 @@ export const OCCUPANCY_COLUMNS = [
     category: "phone",
     align: "text-center",
     minWidth: 125,
+    widthPct: "6.5%",
   },
   {
     key: "handledCalls",
@@ -54,6 +58,7 @@ export const OCCUPANCY_COLUMNS = [
     category: "phone",
     align: "text-center",
     minWidth: 100,
+    widthPct: "6%",
   },
   {
     key: "avgTalkTime",
@@ -62,6 +67,7 @@ export const OCCUPANCY_COLUMNS = [
     category: "phone",
     align: "text-center",
     minWidth: 110,
+    widthPct: "6.5%",
   },
   {
     key: "avgHoldTime",
@@ -70,6 +76,7 @@ export const OCCUPANCY_COLUMNS = [
     category: "phone",
     align: "text-center",
     minWidth: 110,
+    widthPct: "6%",
   },
   {
     key: "availTime",
@@ -78,6 +85,7 @@ export const OCCUPANCY_COLUMNS = [
     category: "phone",
     align: "text-center",
     minWidth: 100,
+    widthPct: "6.5%",
   },
   {
     key: "phoneOccupancy",
@@ -86,6 +94,7 @@ export const OCCUPANCY_COLUMNS = [
     category: "phone",
     align: "text-center",
     minWidth: 120,
+    widthPct: "7.5%",
   },
   {
     key: "availableEmailCapacity",
@@ -94,6 +103,7 @@ export const OCCUPANCY_COLUMNS = [
     category: "email",
     align: "text-center",
     minWidth: 130,
+    widthPct: "7.5%",
   },
   {
     key: "targetEmails",
@@ -102,6 +112,7 @@ export const OCCUPANCY_COLUMNS = [
     category: "email",
     align: "text-center",
     minWidth: 115,
+    widthPct: "7%",
   },
   {
     key: "actualEmails",
@@ -110,6 +121,7 @@ export const OCCUPANCY_COLUMNS = [
     category: "email",
     align: "text-center",
     minWidth: 110,
+    widthPct: "7%",
   },
   {
     key: "utilizationEmail",
@@ -118,6 +130,7 @@ export const OCCUPANCY_COLUMNS = [
     category: "email",
     align: "text-center",
     minWidth: 120,
+    widthPct: "7.5%",
   },
   {
     key: "actualEfficiency",
@@ -126,8 +139,14 @@ export const OCCUPANCY_COLUMNS = [
     category: "efficiency",
     align: "text-center",
     minWidth: 120,
+    widthPct: "8%",
   },
 ];
+
+export const TOTAL_TABLE_MIN_WIDTH = OCCUPANCY_COLUMNS.reduce(
+  (sum, col) => sum + (col.minWidth || 100),
+  0,
+);
 
 export function getCellValue(row, column) {
   if (!row) return "-";
@@ -1002,6 +1021,63 @@ export default function OccupancyTable({
     onFilteredDataChange?.(filteredHourlyRows);
   }, [filteredHourlyRows, onFilteredDataChange]);
 
+  const tableContainerRef = useRef(null);
+  const isDraggingRef = useRef(false);
+  const dragStartXRef = useRef(0);
+  const dragScrollLeftRef = useRef(0);
+
+  const handlePointerDown = (e) => {
+    if (e.button !== 0 || e.target.closest("button, input, a, select")) return;
+    const el = tableContainerRef.current;
+    if (!el || el.scrollWidth <= el.clientWidth + 2) return;
+    try {
+      el.setPointerCapture(e.pointerId);
+    } catch {
+      // Fallback
+    }
+    isDraggingRef.current = true;
+    dragStartXRef.current = e.clientX;
+    dragScrollLeftRef.current = el.scrollLeft;
+  };
+
+  const handlePointerMove = (e) => {
+    if (!isDraggingRef.current) return;
+    const el = tableContainerRef.current;
+    if (!el) return;
+    const dx = e.clientX - dragStartXRef.current;
+    if (Math.abs(dx) > 3) {
+      e.preventDefault();
+    }
+    el.scrollLeft = dragScrollLeftRef.current - dx;
+  };
+
+  const handlePointerUp = (e) => {
+    if (!isDraggingRef.current) return;
+    isDraggingRef.current = false;
+    const el = tableContainerRef.current;
+    if (el) {
+      try {
+        if (el.hasPointerCapture(e.pointerId)) {
+          el.releasePointerCapture(e.pointerId);
+        }
+      } catch {
+        // Fallback
+      }
+    }
+  };
+
+  // Reset horizontal scroll when on desktop browser mode
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth >= 1024 && tableContainerRef.current) {
+        tableContainerRef.current.scrollLeft = 0;
+      }
+    };
+    window.addEventListener("resize", handleResize);
+    handleResize();
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
   return (
     <div className="space-y-3.5">
       {/* Search and filter toolbar matching reference bar */}
@@ -1136,71 +1212,97 @@ export default function OccupancyTable({
 
       {/* Structured, Well-Organized Data Grid */}
       <div className="rounded-xl border border-slate-200 bg-white shadow-xs overflow-hidden">
-        <div className="w-full overflow-x-auto sibs-scrollbar">
-          <table
-            className="w-full table-fixed border-collapse text-left"
-          >
-            <colgroup>
+        <div
+          ref={tableContainerRef}
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+          onPointerCancel={handlePointerUp}
+          className="w-full overflow-x-auto lg:overflow-x-hidden sibs-scrollbar cursor-grab active:cursor-grabbing lg:cursor-default lg:active:cursor-default touch-pan-x touch-pan-y"
+          style={{
+            WebkitOverflowScrolling: "touch",
+          }}
+        >
+          <table className="w-full min-w-[1585px] lg:min-w-0 lg:w-full table-fixed border-collapse text-left">
+            <colgroup className="hidden lg:table-column-group">
               {OCCUPANCY_COLUMNS.map((col) => (
                 <col
-                  key={`col-${col.key}`}
+                  key={`desk-col-${col.key}`}
+                  style={{
+                    width: col.widthPct,
+                  }}
+                />
+              ))}
+            </colgroup>
+            <colgroup className="lg:hidden">
+              {OCCUPANCY_COLUMNS.map((col) => (
+                <col
+                  key={`mob-col-${col.key}`}
+                  style={{
+                    width: `${col.minWidth}px`,
+                  }}
                 />
               ))}
             </colgroup>
 
             {/* Category Groups Header */}
-            <thead>
-              <tr className="border-b border-slate-200 bg-slate-100/90 text-[11px] font-bold uppercase tracking-wider text-slate-600">
+            <thead className="relative z-10 bg-slate-100">
+              <tr className="border-b border-slate-200 bg-slate-100/95 text-[11px] font-bold uppercase tracking-wider text-slate-600">
                 <th
                   colSpan={2}
-                  className="px-2 py-2 border-r border-slate-200 text-center font-extrabold tracking-wide"
+                  className="px-2.5 py-2.5 border-r border-slate-200 text-center font-extrabold tracking-wide whitespace-nowrap"
                 >
                   Agent Information
                 </th>
                 <th
                   colSpan={7}
-                  className="px-2 py-2 border-r border-slate-200 text-center font-extrabold tracking-wide"
+                  className="px-2.5 py-2.5 border-r border-slate-200 text-center font-extrabold tracking-wide whitespace-nowrap"
                 >
                   Phone & Calls Metrics
                 </th>
                 <th
                   colSpan={4}
-                  className="px-2 py-2 border-r border-slate-200 text-center font-extrabold tracking-wide"
+                  className="px-2.5 py-2.5 border-r border-slate-200 text-center font-extrabold tracking-wide whitespace-nowrap"
                 >
                   Email Metrics
                 </th>
                 <th
                   colSpan={1}
-                  className="px-2 py-2 text-center font-extrabold tracking-wide"
+                  className="px-2.5 py-2.5 text-center font-extrabold tracking-wide whitespace-nowrap"
                 >
                   Efficiency
                 </th>
               </tr>
 
               {/* Sub-Column Header */}
-              <tr className="border-b border-slate-200 bg-slate-50/75 text-[11px] font-bold uppercase tracking-wide text-slate-700">
+              <tr className="border-b border-slate-200 bg-slate-50 text-[11px] font-bold uppercase tracking-wide text-slate-700">
                 {OCCUPANCY_COLUMNS.map((col) => (
                   <th
                     key={`th-${col.key}`}
-                    className={`px-2 py-3 border-r border-slate-200 last:border-r-0 align-middle ${col.align}`}
+                    className={`px-1.5 lg:px-1 xl:px-2 py-2.5 border-r border-slate-200 last:border-r-0 align-middle ${col.align}`}
                   >
                     <div
-                      className={`flex flex-col justify-center min-h-[36px] leading-tight ${
+                      className={`flex flex-col justify-center min-h-[38px] leading-tight ${
                         col.align === "text-left"
-                          ? "items-start pl-2 text-left"
+                          ? "items-start pl-1 lg:pl-2 text-left"
                           : col.align === "text-center"
                           ? "items-center text-center"
-                          : "items-end pr-2 text-right"
+                          : "items-end pr-1 lg:pr-2 text-right"
                       }`}
                     >
                       {col.labelLines ? (
                         col.labelLines.map((line, lIdx) => (
-                          <span key={lIdx} className="whitespace-nowrap font-bold">
+                          <span
+                            key={lIdx}
+                            className="whitespace-nowrap font-bold text-[10px] xl:text-[10.5px] tracking-tight"
+                          >
                             {line}
                           </span>
                         ))
                       ) : (
-                        <span className="whitespace-nowrap font-bold">{col.label}</span>
+                        <span className="whitespace-nowrap font-bold text-[10px] xl:text-[10.5px] tracking-tight">
+                          {col.label}
+                        </span>
                       )}
                     </div>
                   </th>
@@ -1216,7 +1318,7 @@ export default function OccupancyTable({
                     colSpan={OCCUPANCY_COLUMNS.length}
                     className="py-16 text-center text-slate-500 bg-white"
                   >
-                    <div className="flex flex-col items-center justify-center gap-2.5">
+                    <div className="mx-auto flex flex-col items-center justify-center gap-2.5">
                       <RefreshCw className="h-6 w-6 animate-spin text-slate-400" />
                       <span className="font-medium text-sm">Loading records...</span>
                     </div>
@@ -1294,8 +1396,8 @@ export default function OccupancyTable({
                       return (
                         <td
                           key={`cell-${col.key}-${idx}`}
-                          className={`px-2 py-3.5 text-xs sm:text-[13px] border-r border-slate-100 last:border-r-0 tabular-nums truncate ${col.align} ${
-                            isName ? "text-slate-900 font-bold pl-3" : "text-slate-700"
+                          className={`px-1.5 lg:px-2 xl:px-2.5 py-3 text-xs xl:text-[13px] border-r border-slate-100 last:border-r-0 tabular-nums truncate ${col.align} ${
+                            isName ? "text-slate-900 font-bold pl-2 lg:pl-3" : "text-slate-700"
                           }`}
                           title={String(value)}
                         >
