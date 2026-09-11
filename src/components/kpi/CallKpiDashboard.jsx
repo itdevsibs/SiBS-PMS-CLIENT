@@ -4,7 +4,7 @@ import {
   buildVolumeBarItems,
   convertDurationToSeconds,
   getCallAxisTicks,
-} from "./wfmCallKpiDashboardUtils.js";
+} from "./callKpiDashboardUtils.js";
 
 function formatNumber(value, digits = 0) {
   const number = Number(value || 0);
@@ -25,37 +25,45 @@ function formatDuration(seconds) {
     : `${remainingSeconds}s`;
 }
 
-function KpiCard({ icon: Icon, label, value, hint, status }) {
+function KpiCard({ icon: Icon, label, value, hint, status, title }) {
   return (
-    <article className="sibs-card min-w-0 px-3.5 py-2.5 shadow-xs flex flex-col justify-between gap-1 h-full">
-      <div className="flex items-center justify-between gap-1.5">
-        <p className="m-0 text-[10.5px] font-extrabold uppercase tracking-wider text-sibs-tertiary-5 truncate">
+    <article className="sibs-card min-w-0 px-3 py-2 sm:px-3 sm:py-2.5 shadow-xs flex flex-col justify-between gap-1.5 transition-all duration-150 hover:border-sibs-primary-1/30">
+      {/* 1. Header: Label + Icon */}
+      <div className="flex items-center justify-between gap-1 min-w-0">
+        <span
+          className="m-0 text-[10px] xl:text-[10.5px] font-extrabold uppercase tracking-wider text-sibs-tertiary-5 leading-none truncate"
+          title={title || label}
+        >
           {label}
-        </p>
-        <div className="rounded-md bg-sibs-primary-3/50 p-1.5 text-sibs-primary-1 shrink-0">
-          <Icon size={14} />
+        </span>
+        <div className="rounded-md bg-sibs-primary-3/50 p-1 text-sibs-primary-1 shrink-0">
+          <Icon size={13} />
         </div>
       </div>
 
-      <div className="flex items-baseline justify-between gap-1.5 min-w-0">
-        <div className="flex items-baseline gap-1.5 min-w-0 truncate">
-          <span className="text-2xl font-black text-sibs-primary-1 leading-none shrink-0">
+      {/* 2. Value + Badge & Hint */}
+      <div className="flex flex-col gap-0.5 min-w-0">
+        <div className="flex items-baseline justify-between gap-1 min-w-0">
+          <span className="text-xl xl:text-[22px] 2xl:text-2xl font-black text-sibs-primary-1 leading-none tracking-tight shrink-0">
             {value}
           </span>
 
-          {hint ? (
-            <span className="truncate text-[11px] font-medium text-sibs-tertiary-5">
-              {hint}
+          {status ? (
+            <span
+              className={`inline-flex shrink-0 items-center rounded-full px-1.5 py-0.5 text-[9px] font-bold leading-none ${status.className}`}
+            >
+              {status.label}
             </span>
           ) : null}
         </div>
 
-        {status ? (
-          <span
-            className={`inline-flex shrink-0 rounded-full px-2 py-0.5 text-[9px] font-bold ${status.className}`}
+        {hint ? (
+          <p
+            className="m-0 text-[10px] xl:text-[10.5px] font-medium text-sibs-tertiary-5 leading-tight truncate"
+            title={hint}
           >
-            {status.label}
-          </span>
+            {hint}
+          </p>
         ) : null}
       </div>
     </article>
@@ -404,12 +412,7 @@ function LineChart({ series, target = 90 }) {
 
   const targetY = getY(numericTarget);
 
-  const activeItem =
-    hoveredIndex !== null ? series[hoveredIndex] : series[series.length - 1];
 
-  const activeAnswer = Number(activeItem?.answerRatePct || 0);
-  const activeSl = Number(activeItem?.serviceLevelPct || 0);
-  const isTargetMet = activeSl >= numericTarget;
 
   return (
     <div ref={containerRef} className="w-full min-w-0 select-none">
@@ -745,7 +748,6 @@ function AhtChart({ series, target }) {
               }}
             >
               <div className="w-full border-t border-red-500" />
-              <span className="absolute right-4 -translate-y-1/2 h-2.5 w-2.5 rounded-full bg-red-500 shadow-xs border-2 border-white" />
             </div>
 
             {series.map((item, itemIndex) => {
@@ -863,7 +865,7 @@ function AhtChart({ series, target }) {
   );
 }
 
-export default function WfmCallKpiDashboard({ data }) {
+export default function CallKpiDashboard({ data }) {
   const summary = data?.summary || {};
   const series = Array.isArray(data?.series)
     ? data.series
@@ -890,10 +892,23 @@ export default function WfmCallKpiDashboard({ data }) {
     summaryAhtSeconds <= targetAhtSeconds &&
     summaryAhtSeconds > 0;
 
+  const summaryAsaSeconds = convertDurationToSeconds(
+    summary.asaSeconds,
+  );
+
+  const targetAsaSeconds = targets.asaSeconds
+    ? convertDurationToSeconds(targets.asaSeconds)
+    : null;
+
+  const asaMet =
+    targetAsaSeconds !== null
+      ? summaryAsaSeconds <= targetAsaSeconds && summaryAsaSeconds > 0
+      : null;
+
   return (
     <div className="space-y-3">
-      {/* 6 Compact KPI Stat Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-2.5">
+      {/* 7 Compact KPI Stat Cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-7 gap-2">
         <KpiCard
           icon={PhoneCall}
           label="Call Volume"
@@ -953,6 +968,28 @@ export default function WfmCallKpiDashboard({ data }) {
               : "bg-amber-100 text-amber-700",
           }}
         />
+
+        <KpiCard
+          icon={Clock3}
+          label="ASA"
+          title="Average Speed of Answer (ASA)"
+          value={summaryAsaSeconds > 0 ? `${formatNumber(summaryAsaSeconds)}s` : "--"}
+          hint={
+            targetAsaSeconds !== null
+              ? `Target ${formatNumber(targetAsaSeconds)}s`
+              : "Speed to answer"
+          }
+          status={
+            targetAsaSeconds !== null
+              ? {
+                  label: asaMet ? "Target met" : "Above target",
+                  className: asaMet
+                    ? "bg-green-100 text-green-700"
+                    : "bg-amber-100 text-amber-700",
+                }
+              : null
+          }
+        />
       </div>
 
       {/* 3 Prominent Graphs Side-by-Side on Desktop */}
@@ -1008,4 +1045,4 @@ export default function WfmCallKpiDashboard({ data }) {
   );
 }
 
-export { ChartShell, VolumeChart, LineChart, AhtChart };
+export { ChartShell, VolumeChart, LineChart, AhtChart, CallKpiDashboard, CallKpiDashboard as WfmCallKpiDashboard };

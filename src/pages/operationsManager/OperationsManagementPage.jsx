@@ -1,16 +1,16 @@
-// Dashboard page for agent users.
-import AgentPerformanceDashboard from "@/components/agent/AgentPerformanceDashboard";
+// Dashboard page for operations management users.
 import AdminSidebar from "@/components/layout/AdminSidebar";
 import AppHeader from "@/components/layout/AppHeader";
+import OperationsManagerPerformanceDashboard from "./OperationsManagerPerformanceDashboard";
 import ConfirmationModal from "@/components/ui/confirmation-modal";
 import LoadingModal from "@/components/ui/loading-modal";
-import useAgentPerformance from "@/hooks/useAgentPerformance";
 import useDashboardPage from "@/hooks/useDashboardPage";
+import useOperationsManagerPerformance from "@/hooks/useOperationsManagerPerformance";
 
-const AgentsPage = () => {
+function OperationsManagementPage() {
   const dashboard = useDashboardPage();
+  const operationsPerformance = useOperationsManagerPerformance();
   const userName = dashboard.authUser?.name || dashboard.authUser?.username || "User";
-  const agentPerformance = useAgentPerformance();
 
   return (
     <section className="font-jakarta flex h-screen max-h-[100dvh] min-h-screen bg-[#eef3f7] text-sibs-primary-1 overflow-hidden">
@@ -30,18 +30,26 @@ const AgentsPage = () => {
           onLogoutClick={() => dashboard.setShowLogoutModal(true)}
         />
         <div className="sibs-scrollbar flex-1 overflow-y-auto p-3 sm:p-4 lg:p-5">
-          <AgentPerformanceDashboard
-            data={agentPerformance.data}
-            error={agentPerformance.error}
-            filters={agentPerformance.filters}
-            isLoading={agentPerformance.isLoading}
-            onFilterChange={(nextFilters) =>
-              agentPerformance.setFilters((current) => ({
+          <OperationsManagerPerformanceDashboard
+            error={operationsPerformance.error}
+            filters={operationsPerformance.filters}
+            isLoading={operationsPerformance.isLoading}
+            isLoadingAgent={operationsPerformance.isLoadingAgent}
+            operationalContext={operationsPerformance.operationalContext}
+            operationalError={operationsPerformance.operationalError}
+            operationsData={operationsPerformance.operationsData}
+            onFilterChange={(patch) =>
+              operationsPerformance.setFilters((current) => ({
                 ...current,
-                ...nextFilters,
+                ...patch,
               }))
             }
-            onRefresh={agentPerformance.refresh}
+            onRefresh={operationsPerformance.refresh}
+            onSelectAgent={operationsPerformance.setSelectedAgentUid}
+            onSelectTeamLeader={operationsPerformance.setSelectedTeamLeaderUid}
+            selectedAgentData={operationsPerformance.selectedAgentData}
+            selectedAgentUid={operationsPerformance.selectedAgentUid}
+            selectedTeamLeaderUid={operationsPerformance.selectedTeamLeaderUid}
           />
         </div>
       </main>
@@ -62,6 +70,7 @@ const AgentsPage = () => {
       />
     </section>
   );
-};
+}
 
-export default AgentsPage;
+export default OperationsManagementPage;
+

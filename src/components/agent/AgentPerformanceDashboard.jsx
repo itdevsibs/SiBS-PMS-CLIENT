@@ -9,13 +9,13 @@ import {
   TimerReset,
 } from "lucide-react";
 
-import WfmKpiDatePicker from "@/components/workForceManagement/kpi/WfmKpiDatePicker";
-import { getCallAxisTicks } from "@/components/workForceManagement/kpi/wfmCallKpiDashboardUtils";
+import DatePicker from "@/components/ui/Filter/DatePicker";
+import { getCallAxisTicks } from "@/components/kpi/callKpiDashboardUtils";
 import {
   ChartShell,
   LineChart,
   AhtChart,
-} from "@/components/workForceManagement/kpi/WfmCallKpiDashboard";
+} from "@/components/kpi/CallKpiDashboard";
 import {
   getAgentCountryOptions,
   getAgentSkillOptions,
@@ -510,7 +510,7 @@ export default function AgentPerformanceDashboard({
           {isCustom ? (
             <>
               <div className="w-full min-w-0 sm:w-52">
-                <WfmKpiDatePicker
+                <DatePicker
                   label="From"
                   value={filters.from}
                   onChange={(from) => onFilterChange({ from: from || "" })}
@@ -518,7 +518,7 @@ export default function AgentPerformanceDashboard({
                 />
               </div>
               <div className="w-full min-w-0 sm:w-52">
-                <WfmKpiDatePicker
+                <DatePicker
                   label="To"
                   value={filters.to}
                   onChange={(to) => onFilterChange({ to: to || "" })}
@@ -529,7 +529,7 @@ export default function AgentPerformanceDashboard({
           ) : (
             <>
               <div className="w-full min-w-0 sm:w-56">
-                <WfmKpiDatePicker
+                <DatePicker
                   label="Reference Date"
                   value={filters.referenceDate}
                   onChange={(referenceDate) =>

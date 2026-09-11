@@ -1,6 +1,6 @@
 // Renders the page header with profile menu actions.
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown, LogOut, Menu } from "lucide-react";
+import { ChevronDown, LogOut, Menu, Settings, User } from "lucide-react";
 import { getAuthUser } from "@/lib/auth";
 import { handleLogout as handleAuthLogout } from "@/lib/axios/api-template";
 
@@ -66,8 +66,9 @@ const AppHeader = ({
   };
 
   return (
-    <header className="app-header">
-      <div className="app-header-inner justify-start gap-3 px-4 sm:px-6 md:justify-between">
+    <>
+      <header className="app-header fixed top-0 left-0 right-0 z-[90] bg-[#eef3f7] md:sticky md:top-0 md:left-auto md:right-auto md:w-full">
+        <div className="app-header-inner justify-between gap-3 px-4 sm:px-6">
         <div className="flex min-w-0 items-center gap-3">
           {onMenuClick && (
             <button
@@ -126,17 +127,41 @@ const AppHeader = ({
 
             {isUserMenuOpen && (
               <div
-                className="sibs-profile-dropdown-panel absolute right-0 top-[calc(100%+0.75rem)] z-[999] w-[286px] overflow-hidden rounded-xl border border-sibs-tertiary-9 bg-white p-3 shadow-xl"
+                className="sibs-profile-dropdown-panel absolute right-0 top-[calc(100%+0.75rem)] z-[999] w-[286px] overflow-hidden rounded-xl border border-sibs-tertiary-9 bg-white p-2.5 shadow-xl"
                 role="menu"
               >
+                <div className="space-y-0.5">
+                  <button
+                    type="button"
+                    className="flex w-full items-center gap-3 rounded-lg border-0 bg-transparent px-3 py-2 text-left text-sm font-semibold text-slate-700 transition hover:bg-slate-50 hover:text-sibs-primary-1 cursor-pointer"
+                    role="menuitem"
+                    title="View name, email, role, employee details"
+                  >
+                    <User className="h-4 w-4 shrink-0 text-sibs-tertiary-5" aria-hidden="true" />
+                    <span>My Profile</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    className="flex w-full items-center gap-3 rounded-lg border-0 bg-transparent px-3 py-2 text-left text-sm font-semibold text-slate-700 transition hover:bg-slate-50 hover:text-sibs-primary-1 cursor-pointer"
+                    role="menuitem"
+                    title="Basic account preferences"
+                  >
+                    <Settings className="h-4 w-4 shrink-0 text-sibs-tertiary-5" aria-hidden="true" />
+                    <span>Account Settings</span>
+                  </button>
+                </div>
+
+                <div className="my-1.5 border-t border-slate-100" />
+
                 <button
                   type="button"
                   onClick={handleLogoutClick}
-                  className="flex w-full items-center gap-3 rounded-lg border-0 bg-transparent px-3 py-2.5 text-left font-bold text-sibs-danger transition hover:bg-red-50 hover:text-red-700 hover:shadow-sm"
+                  className="flex w-full items-center gap-3 rounded-lg border-0 bg-transparent px-3 py-2 text-left text-sm font-bold text-sibs-danger transition hover:bg-red-50 hover:text-red-700 hover:shadow-sm cursor-pointer"
                   role="menuitem"
                 >
                   <LogOut className="h-4 w-4 shrink-0" aria-hidden="true" />
-                  <span className="text-sm">Logout</span>
+                  <span>Logout</span>
                 </button>
               </div>
             )}
@@ -145,6 +170,11 @@ const AppHeader = ({
       </div>
       <div className="app-header-line" />
     </header>
+    <div
+      className="h-[calc(74px+env(safe-area-inset-top,0px))] shrink-0 md:hidden pointer-events-none"
+      aria-hidden="true"
+    />
+  </>
   );
 };
 

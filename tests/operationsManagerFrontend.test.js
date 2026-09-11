@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import fs from "node:fs/promises";
 import path from "node:path";
+import process from "node:process";
 import test from "node:test";
 
 const root = process.cwd();
@@ -52,7 +53,7 @@ test("Operations Manager dashboard consumes backend TL summaries and reuses shar
   assert.match(source, /AgentKpiDetail/);
   assert.match(teamLeader, /AgentKpiDetail/);
   assert.match(detail, /Handled/);
-  assert.match(detail, /AHT/);
+  assert.match(detail, /AHT|Average Handle Time/);
 });
 
 test("existing Operations Manager route renders the performance dashboard", async () => {

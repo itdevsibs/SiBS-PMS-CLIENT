@@ -1,16 +1,16 @@
-// Dashboard page for agent users.
-import AgentPerformanceDashboard from "@/components/agent/AgentPerformanceDashboard";
+// Dashboard page for team leader users.
 import AdminSidebar from "@/components/layout/AdminSidebar";
 import AppHeader from "@/components/layout/AppHeader";
 import ConfirmationModal from "@/components/ui/confirmation-modal";
 import LoadingModal from "@/components/ui/loading-modal";
-import useAgentPerformance from "@/hooks/useAgentPerformance";
 import useDashboardPage from "@/hooks/useDashboardPage";
+import useTeamLeaderPerformance from "@/hooks/useTeamLeaderPerformance";
+import TeamLeaderPerformanceDashboard from "./TeamLeaderPerformanceDashboard";
 
-const AgentsPage = () => {
+function TeamLeaderPage() {
   const dashboard = useDashboardPage();
+  const teamLeaderPerformance = useTeamLeaderPerformance();
   const userName = dashboard.authUser?.name || dashboard.authUser?.username || "User";
-  const agentPerformance = useAgentPerformance();
 
   return (
     <section className="font-jakarta flex h-screen max-h-[100dvh] min-h-screen bg-[#eef3f7] text-sibs-primary-1 overflow-hidden">
@@ -30,18 +30,24 @@ const AgentsPage = () => {
           onLogoutClick={() => dashboard.setShowLogoutModal(true)}
         />
         <div className="sibs-scrollbar flex-1 overflow-y-auto p-3 sm:p-4 lg:p-5">
-          <AgentPerformanceDashboard
-            data={agentPerformance.data}
-            error={agentPerformance.error}
-            filters={agentPerformance.filters}
-            isLoading={agentPerformance.isLoading}
-            onFilterChange={(nextFilters) =>
-              agentPerformance.setFilters((current) => ({
+          <TeamLeaderPerformanceDashboard
+            error={teamLeaderPerformance.error}
+            filters={teamLeaderPerformance.filters}
+            isLoading={teamLeaderPerformance.isLoading}
+            isLoadingAgent={teamLeaderPerformance.isLoadingAgent}
+            operationalContext={teamLeaderPerformance.operationalContext}
+            operationalError={teamLeaderPerformance.operationalError}
+            teamData={teamLeaderPerformance.teamData}
+            onFilterChange={(patch) =>
+              teamLeaderPerformance.setFilters((current) => ({
                 ...current,
-                ...nextFilters,
+                ...patch,
               }))
             }
-            onRefresh={agentPerformance.refresh}
+            onRefresh={teamLeaderPerformance.refresh}
+            onSelectAgent={teamLeaderPerformance.setSelectedAgentUid}
+            selectedAgentData={teamLeaderPerformance.selectedAgentData}
+            selectedAgentUid={teamLeaderPerformance.selectedAgentUid}
           />
         </div>
       </main>
@@ -62,6 +68,7 @@ const AgentsPage = () => {
       />
     </section>
   );
-};
+}
 
-export default AgentsPage;
+export default TeamLeaderPage;
+

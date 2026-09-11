@@ -1,4 +1,5 @@
 import {
+  Activity,
   BarChart3,
   Clock,
   Clock3,
@@ -12,7 +13,8 @@ import {
 
 import AgentKpiDetail from "@/components/agent/AgentKpiDetail";
 import { formatNumber, formatSeconds } from "@/components/agent/AgentPerformanceDashboard";
-import WfmKpiDatePicker from "@/components/workForceManagement/kpi/WfmKpiDatePicker";
+import { Button } from "@/components/ui/button";
+import DatePicker from "@/components/ui/Filter/DatePicker";
 
 const PERIOD_OPTIONS = [
   { value: "weekly", label: "Weekly" },
@@ -131,7 +133,7 @@ function FilterBar({ filters, isLoading, onFilterChange, onRefresh }) {
         {isCustom ? (
           <>
             <div className="w-44">
-              <WfmKpiDatePicker
+              <DatePicker
                 label="From"
                 value={filters.from}
                 onChange={(from) => onFilterChange({ from: from || "" })}
@@ -139,7 +141,7 @@ function FilterBar({ filters, isLoading, onFilterChange, onRefresh }) {
               />
             </div>
             <div className="w-44">
-              <WfmKpiDatePicker
+              <DatePicker
                 label="To"
                 value={filters.to}
                 onChange={(to) => onFilterChange({ to: to || "" })}
@@ -150,7 +152,7 @@ function FilterBar({ filters, isLoading, onFilterChange, onRefresh }) {
         ) : (
           <>
             <div className="w-44">
-              <WfmKpiDatePicker
+              <DatePicker
                 label="Reference Date"
                 value={filters.referenceDate}
                 onChange={(referenceDate) =>
