@@ -139,11 +139,12 @@ function getApiErrorMessage(error, card) {
   }
 
   if (backendCode === "INVALID_FILE_TYPE") {
-    return "Only .xlsx files are supported for this import.";
+    const extension = card?.fileExtension || ".xlsx";
+    return `Only ${extension} files are supported for this import.`;
   }
 
   if (backendCode === "FILE_TOO_LARGE") {
-    return "The selected workbook exceeds the maximum allowed upload size.";
+    return "The selected file exceeds the maximum allowed upload size.";
   }
 
   if (
@@ -154,20 +155,23 @@ function getApiErrorMessage(error, card) {
     backendCode === "WRONG_IMPORT_PROFILE"
   ) {
     const profileLabel = card?.title || "valid";
-    const reportTypeLabel = /agent/i.test(profileLabel)
-      ? "Agent Level"
-      : "Skill Statistics";
+    const extension = card?.fileExtension || ".xlsx";
+    const reportTypeLabel = /occupancy/i.test(profileLabel)
+      ? "Agent Occupancy"
+      : /agent/i.test(profileLabel)
+        ? "Agent Level"
+        : "Skill Statistics";
 
     if (/hero/i.test(profileLabel || card?.id || "")) {
-      return `Only HeroDash ${reportTypeLabel} (.xlsx) files are allowed for this card. The uploaded file is missing required HeroDash ${reportTypeLabel} sheets or headers.`;
+      return `Only HeroDash ${reportTypeLabel} (${extension}) files are allowed for this card. The uploaded file is missing required HeroDash ${reportTypeLabel} sheets or headers.`;
     }
     if (/fusenet/i.test(profileLabel || card?.id || "")) {
-      return `Only FuseNet ${reportTypeLabel} (.xlsx) files are allowed for this card. The uploaded file is missing required FuseNet ${reportTypeLabel} sheets or headers.`;
+      return `Only FuseNet ${reportTypeLabel} (${extension}) files are allowed for this card. The uploaded file is missing required FuseNet ${reportTypeLabel} sheets or headers.`;
     }
     if (/fuse/i.test(profileLabel || card?.id || "")) {
-      return `Only Fusecom ${reportTypeLabel} (.xlsx) files are allowed for this card. The uploaded file is missing required Fusecom ${reportTypeLabel} sheets or headers.`;
+      return `Only Fusecom ${reportTypeLabel} (${extension}) files are allowed for this card. The uploaded file is missing required Fusecom ${reportTypeLabel} sheets or headers.`;
     }
-    return `Only ${profileLabel} (.xlsx) reports are allowed for this card. The uploaded file does not match the required format.`;
+    return `Only ${profileLabel} (${extension}) reports are allowed for this card. The uploaded file does not match the required format.`;
   }
 }
 
@@ -569,6 +573,8 @@ function mapBatchToUpload(batch) {
     invalidRows: batch.invalidRows || 0,
     duplicateRows: batch.duplicateRows || 0,
     warningRows: batch.warningRows || 0,
+    reportDateFrom: batch.reportDateFrom || null,
+    reportDateTo: batch.reportDateTo || null,
     uploadedBy: batch.uploadedBy || null,
   };
 }
@@ -639,6 +645,9 @@ function WfmImportDataPage() {
   const [rawDataSearch, setRawDataSearch] = useState("");
   const [uploadedDataSearch, setUploadedDataSearch] = useState("");
   const [selectedAccount, setSelectedAccount] = useState("All Accounts");
+  const [pendingReportingPeriodUpload, setPendingReportingPeriodUpload] = useState(null);
+  const [reportDateFrom, setReportDateFrom] = useState("");
+  const [reportDateTo, setReportDateTo] = useState("");
 
   const errorTableContainerRef = useRef(null);
   const [canScrollTableLeft, setCanScrollTableLeft] = useState(false);
@@ -938,10 +947,7 @@ function WfmImportDataPage() {
     }
   };
 
-  const handleCardFileSelect = async (card, event) => {
-    const file = event.target.files?.[0];
-    event.target.value = "";
-
+  const processCardFile = async (card, file, reportingPeriod = {}) => {
     if (!file) {
       return;
     }
@@ -993,6 +999,8 @@ function WfmImportDataPage() {
         const uploadPromise = uploadUsVisaImport({
           file,
           importProfileId,
+          reportDateFrom: reportingPeriod.reportDateFrom || undefined,
+          reportDateTo: reportingPeriod.reportDateTo || undefined,
           onProgress: (percent) => {
             const scaledProgress = Math.round(5 + percent * 0.6);
             setUploadProgress(scaledProgress);
@@ -1016,7 +1024,7 @@ function WfmImportDataPage() {
         if (batchResult?.status === "FAILED") {
           throw new Error(
             batchResult.errorMessage ||
-            "Workbook structure validation failed. Please check the required worksheet format.",
+            "Import structure validation failed. Please check the required file format.",
           );
         }
 
@@ -1050,6 +1058,8 @@ function WfmImportDataPage() {
         invalidRows: batchResult?.invalidRows ?? 0,
         duplicateRows: batchResult?.duplicateRows ?? 0,
         warningRows: batchResult?.warningRows ?? 0,
+        reportDateFrom: batchResult?.reportDateFrom || reportingPeriod.reportDateFrom || null,
+        reportDateTo: batchResult?.reportDateTo || reportingPeriod.reportDateTo || null,
         importProfileCode: card.importProfileCode || null,
         importProfileName: batchResult?.importProfileName || card.title,
         sourceSystem: batchResult?.sourceSystem || card.sourceLabel || card.title,
@@ -1097,6 +1107,50 @@ function WfmImportDataPage() {
       setUploadProgress(0);
       setImportStage("reading");
     }
+  };
+
+  const handleCardFileSelect = async (card, event) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+
+    if (!file) {
+      return;
+    }
+
+    if (card.requiresReportingPeriod) {
+      setPendingReportingPeriodUpload({ card, file });
+      setReportDateFrom("");
+      setReportDateTo("");
+      return;
+    }
+
+    await processCardFile(card, file);
+  };
+
+  const handleConfirmReportingPeriodUpload = async () => {
+    if (!pendingReportingPeriodUpload) return;
+
+    if (!reportDateFrom || !reportDateTo || reportDateFrom > reportDateTo) {
+      setErrorModalInfo({
+        title: "Reporting Period Required",
+        message: "Select a valid reporting start date and end date before uploading HeroDash Agent Occupancy.",
+      });
+      return;
+    }
+
+    const pendingUpload = pendingReportingPeriodUpload;
+    setPendingReportingPeriodUpload(null);
+
+    await processCardFile(pendingUpload.card, pendingUpload.file, {
+      reportDateFrom,
+      reportDateTo,
+    });
+  };
+
+  const handleCancelReportingPeriodUpload = () => {
+    setPendingReportingPeriodUpload(null);
+    setReportDateFrom("");
+    setReportDateTo("");
   };
 
   const handleRemoveUpload = async () => {
@@ -1441,7 +1495,7 @@ function WfmImportDataPage() {
                         <span>Import</span>
                         <input
                           type="file"
-                          accept={card.account === "US VISA" ? ".xlsx" : ".xlsx,.xls,.csv"}
+                          accept={card.account === "US VISA" ? (card.fileExtension || ".xlsx") : ".xlsx,.xls,.csv"}
                           disabled={isUploading}
                           onChange={(event) => handleCardFileSelect(card, event)}
                           className="hidden"
@@ -1492,6 +1546,62 @@ function WfmImportDataPage() {
           ) : null}
         </div>
       </main>
+
+      <AppModal
+        isOpen={Boolean(pendingReportingPeriodUpload)}
+        className="w-full max-w-md p-5 sm:p-6"
+      >
+        <div>
+          <p className="m-0 text-lg font-bold text-sibs-primary-1">
+            HeroDash Reporting Period
+          </p>
+          <p className="mt-1 mb-0 text-xs font-semibold leading-5 text-sibs-tertiary-5">
+            Select the reporting period represented by this HeroDash Agent Occupancy CSV.
+            The source Date column is not used for canonical date attribution.
+          </p>
+        </div>
+
+        <div className="mt-5 grid gap-4 sm:grid-cols-2">
+          <label className="block">
+            <span className="mb-1.5 block text-xs font-bold text-sibs-primary-1">Start Date</span>
+            <input
+              type="date"
+              value={reportDateFrom}
+              max={reportDateTo || undefined}
+              onChange={(event) => setReportDateFrom(event.target.value)}
+              className="form-input h-10 w-full rounded-lg"
+            />
+          </label>
+          <label className="block">
+            <span className="mb-1.5 block text-xs font-bold text-sibs-primary-1">End Date</span>
+            <input
+              type="date"
+              value={reportDateTo}
+              min={reportDateFrom || undefined}
+              onChange={(event) => setReportDateTo(event.target.value)}
+              className="form-input h-10 w-full rounded-lg"
+            />
+          </label>
+        </div>
+
+        <div className="mt-6 flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={handleCancelReportingPeriodUpload}
+            className="h-9 rounded-lg border border-slate-200 bg-white px-4 text-xs font-bold text-sibs-primary-1 transition hover:bg-slate-50"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={handleConfirmReportingPeriodUpload}
+            disabled={!reportDateFrom || !reportDateTo || reportDateFrom > reportDateTo}
+            className="h-9 rounded-lg bg-sibs-primary-1 px-4 text-xs font-bold text-white transition hover:bg-sibs-tertiary-4 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Upload CSV
+          </button>
+        </div>
+      </AppModal>
 
       <AppModal
         isOpen={Boolean(activeOpenCard)}
@@ -1781,7 +1891,7 @@ function WfmImportDataPage() {
         {/* Filter Bar (shrink-0) */}
         <div className="shrink-0 mt-2.5 mb-1.5 flex flex-wrap items-center justify-between gap-2">
           <div className="flex flex-wrap items-center gap-1.5">
-            {["ALL", "ERROR", "DUPLICATE", "WARNING"].map((sev) => {
+            {["ALL", "ERROR", "DUPLICATE", "WARNING", "INFO"].map((sev) => {
               const isActive = errorSeverityFilter === sev;
               return (
                 <button
@@ -1889,7 +1999,9 @@ function WfmImportDataPage() {
                       ? "border border-rose-200 bg-rose-50 text-rose-700"
                       : severityUpper === "DUPLICATE" || severityUpper === "WARNING"
                       ? "border border-amber-200 bg-amber-50 text-amber-800"
-                      : "border border-sky-200 bg-sky-50 text-sky-700";
+                      : severityUpper === "INFO"
+                        ? "border border-sky-200 bg-sky-50 text-sky-700"
+                        : "border border-slate-200 bg-slate-50 text-slate-700";
 
                   return (
                     <tr

@@ -47,6 +47,31 @@ const accountRawDataCards = {
       taskOrders: ["Seasia", "Pac"],
       importProfileCode: "HERODASH_AGENT_LEVEL",
     },
+    {
+      title: "Fusecom Agent Occupancy",
+      sourceLabel: "Fusecom",
+      groupLabel: "AGENT OCCUPANCY",
+      taskOrders: [],
+      importProfileCode: "FUSECOM_AGENT_OCCUPANCY",
+      fileExtension: ".csv",
+    },
+    {
+      title: "FuseNet Agent Occupancy",
+      sourceLabel: "FuseNet",
+      groupLabel: "AGENT OCCUPANCY",
+      taskOrders: [],
+      importProfileCode: "FUSENET_AGENT_OCCUPANCY",
+      fileExtension: ".csv",
+    },
+    {
+      title: "HeroDash Agent Occupancy",
+      sourceLabel: "HeroDash",
+      groupLabel: "AGENT OCCUPANCY",
+      taskOrders: [],
+      importProfileCode: "HERODASH_AGENT_OCCUPANCY",
+      fileExtension: ".csv",
+      requiresReportingPeriod: true,
+    },
   ],
   "YUM-DEL": [
     "Raw Data 1",
@@ -102,6 +127,10 @@ export function getRawDataCards(account) {
     taskOrders: Array.isArray(card.taskOrders) ? card.taskOrders : [],
     importProfileCode:
       typeof card === "string" ? null : card.importProfileCode || null,
+    fileExtension:
+      typeof card === "string" ? null : card.fileExtension || (account === "US VISA" ? ".xlsx" : null),
+    requiresReportingPeriod:
+      typeof card === "string" ? false : Boolean(card.requiresReportingPeriod),
     };
   });
 }
