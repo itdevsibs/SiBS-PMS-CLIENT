@@ -4,6 +4,7 @@ import {
   AlertCircle,
   AlertTriangle,
   ArrowLeft,
+  ArrowRight,
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
@@ -13,6 +14,7 @@ import {
   Eye,
   FileSpreadsheet,
   FolderOpen,
+  Layers,
   ListPlus,
   Loader2,
   Search,
@@ -65,55 +67,31 @@ const IMPORT_SUMMARY_CARDS = [
     key: "totalUploads",
     label: "TOTAL UPLOADS",
     icon: CloudUpload,
-    borderClass: "border-sky-200",
-    accentClass: "bg-sky-400",
-    iconBgClass: "bg-sky-50",
-    iconClass: "text-sky-600",
   },
   {
     key: "totalRows",
     label: "RECORDS PROCESSED",
     icon: FileSpreadsheet,
-    borderClass: "border-cyan-200",
-    accentClass: "bg-cyan-400",
-    iconBgClass: "bg-cyan-50",
-    iconClass: "text-cyan-600",
   },
   {
     key: "validRows",
     label: "RECORDS ACCEPTED",
     icon: CheckCircle2,
-    borderClass: "border-emerald-200",
-    accentClass: "bg-emerald-400",
-    iconBgClass: "bg-emerald-50",
-    iconClass: "text-emerald-600",
   },
   {
     key: "invalidRows",
     label: "RECORDS REJECTED",
     icon: AlertCircle,
-    borderClass: "border-rose-200",
-    accentClass: "bg-rose-400",
-    iconBgClass: "bg-rose-50",
-    iconClass: "text-rose-600",
   },
   {
     key: "duplicateRows",
     label: "DUPLICATES FOUND",
     icon: ListPlus,
-    borderClass: "border-orange-200",
-    accentClass: "bg-orange-400",
-    iconBgClass: "bg-orange-50",
-    iconClass: "text-orange-600",
   },
   {
     key: "warningRows",
     label: "WARNINGS FOUND",
     icon: AlertTriangle,
-    borderClass: "border-amber-200",
-    accentClass: "bg-amber-400",
-    iconBgClass: "bg-amber-50",
-    iconClass: "text-amber-600",
   },
 ];
 
@@ -1263,8 +1241,9 @@ function WfmImportDataPage() {
             </select>
           </div>
 
+          {/* Import Summary Metric Cards */}
           <div
-            className="mb-4 grid grid-cols-2 gap-2.5 sm:grid-cols-3 xl:grid-cols-6"
+            className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6"
             aria-label="Import summary"
           >
             {IMPORT_SUMMARY_CARDS.map((card) => {
@@ -1273,53 +1252,74 @@ function WfmImportDataPage() {
                 importSummary?.uploadsWithIssues || 0,
               );
               const isTotalUploadsCard = card.key === "totalUploads";
+              const isError =
+                (card.key === "invalidRows" || card.key === "warningRows") &&
+                value > 0;
+              const isWarning = card.key === "duplicateRows" && value > 0;
               const Icon = card.icon;
 
               return (
                 <div
                   key={card.key}
-                  className={`group relative min-w-0 overflow-hidden rounded-xl border bg-white px-3.5 pb-3 pt-3.5 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md ${card.borderClass}`}
+                  className={`group relative min-w-0 rounded-xl border bg-white p-2.5 shadow-2xs transition-all duration-150 hover:border-sibs-primary-1/40 hover:shadow-xs ${
+                    isError
+                      ? "border-red-300 bg-red-50/20 ring-1 ring-red-200"
+                      : isWarning
+                      ? "border-amber-300 bg-amber-50/20 ring-1 ring-amber-200"
+                      : "border-slate-200"
+                  }`}
                   title={
                     isTotalUploadsCard && uploadsWithIssues > 0
                       ? `${card.label}: ${value.toLocaleString()} • ${uploadsWithIssues.toLocaleString()} with issues`
                       : `${card.label}: ${value.toLocaleString()}`
                   }
                 >
-                  <div
-                    className={`absolute inset-x-0 top-0 h-[3px] ${card.accentClass}`}
-                    aria-hidden="true"
-                  />
-
-                  <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-start gap-2">
-                    <p className="m-0 min-w-0 break-words text-[9px] font-extrabold leading-tight tracking-[0.04em] text-sibs-tertiary-5">
+                  <div className="flex items-center justify-between gap-1 min-w-0">
+                    <p className="m-0 min-w-0 truncate text-[9px] font-extrabold uppercase tracking-wider text-sibs-tertiary-5 leading-none">
                       {card.label}
                     </p>
 
                     <span
-                      className={`inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg transition-transform duration-200 group-hover:scale-105 ${card.iconBgClass}`}
+                      className={`inline-flex h-5.5 w-5.5 shrink-0 items-center justify-center rounded-md ${
+                        isError
+                          ? "bg-red-50 text-red-600 border border-red-200"
+                          : isWarning
+                          ? "bg-amber-50 text-amber-600 border border-amber-100"
+                          : "bg-sibs-primary-3/60 text-sibs-primary-1 border border-sibs-tertiary-10"
+                      }`}
                     >
                       <Icon
-                        className={`h-3.5 w-3.5 ${card.iconClass}`}
+                        className="h-3 w-3"
                         strokeWidth={2}
                         aria-hidden="true"
                       />
                     </span>
                   </div>
 
-                  <div className="mt-2 flex min-w-0 items-end justify-between gap-2">
-                    <p className="m-0 min-w-0 lowercase text-[22px] font-extrabold leading-none tracking-tight text-sibs-primary-1">
+                  <div className="mt-1.5 flex min-w-0 items-baseline justify-between gap-1">
+                    <p
+                      className={`m-0 text-lg font-black leading-none tracking-tight ${
+                        isError
+                          ? "text-red-600"
+                          : isWarning
+                          ? "text-amber-700"
+                          : "text-sibs-primary-1"
+                      }`}
+                    >
                       {importSummaryNumberFormatter.format(value)}
                     </p>
 
                     {isTotalUploadsCard && uploadsWithIssues > 0 ? (
-                      <span className="ml-auto inline-flex shrink-0 items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2 py-1 text-[9px] font-bold leading-none text-amber-700 shadow-sm">
+                      <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-amber-300 bg-amber-50/90 px-2 py-0.5 text-[9.5px] font-extrabold leading-none text-amber-800 shadow-2xs">
                         <AlertTriangle
-                          className="h-3 w-3 shrink-0"
-                          strokeWidth={2.25}
+                          className="h-2.5 w-2.5 shrink-0 text-amber-600"
+                          strokeWidth={2.5}
                           aria-hidden="true"
                         />
-                        {importSummaryNumberFormatter.format(uploadsWithIssues)}{" "}
-                        {uploadsWithIssues === 1 ? "issue" : "issues"}
+                        <span>
+                          {importSummaryNumberFormatter.format(uploadsWithIssues)}{" "}
+                          {uploadsWithIssues === 1 ? "issue" : "issues"}
+                        </span>
                       </span>
                     ) : null}
                   </div>
@@ -1329,41 +1329,62 @@ function WfmImportDataPage() {
           </div>
 
           {selectedAccount === "All Accounts" ? (
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-              {filteredAccountOptions.map((account) => {
-                const totalSourceSystems =
-                  sourceSystemCounts[account] || 0;
+            <div>
+              <div className="mb-2.5 flex items-center gap-1.5">
+                <h2 className="m-0 text-[11px] font-extrabold uppercase tracking-wide text-sibs-tertiary-5">
+                  Accounts & Workspaces
+                </h2>
+              </div>
 
-                return (
-                  <button
-                    key={account}
-                    type="button"
-                    onClick={() => {
-                      setSelectedAccount(account);
-                      setRawDataSearch("");
-                    }}
-                    className="group sibs-card flex min-h-[100px] cursor-pointer flex-col justify-between p-4 text-left shadow-xs transition-colors duration-150 hover:border-sibs-primary-1"
-                  >
-                    <div className="min-w-0">
-                      <p className="m-0 truncate text-base font-bold text-sibs-primary-1">
-                        {account}
-                      </p>
-                      <p className="mt-1 mb-0 text-xs font-semibold text-sibs-tertiary-5">
-                        {totalSourceSystems}{" "}
-                        {totalSourceSystems === 1
-                          ? "Source System"
-                          : "Source Systems"}
-                      </p>
-                    </div>
+              <div className="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                {filteredAccountOptions.map((account) => {
+                  const totalSourceSystems =
+                    sourceSystemCounts[account] || 0;
 
-                    <div className="mt-3 flex items-center justify-end border-t border-slate-100 pt-2 text-[11px] font-bold text-sibs-primary-1">
-                      <span className="inline-flex items-center gap-1 text-sibs-primary-1">
-                        View Source System →
-                      </span>
-                    </div>
-                  </button>
-                );
-              })}
+                  return (
+                    <button
+                      key={account}
+                      type="button"
+                      onClick={() => {
+                        setSelectedAccount(account);
+                        setRawDataSearch("");
+                      }}
+                      className="group relative flex min-h-[135px] cursor-pointer flex-col justify-between rounded-2xl border border-slate-300/90 bg-white p-4 text-left shadow-xs transition-all duration-200 hover:-translate-y-1 hover:border-sibs-primary-2 hover:shadow-md ring-1 ring-slate-900/[0.04]"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#07385f] text-white shadow-2xs group-hover:bg-sibs-primary-2 transition-colors">
+                          <FolderOpen size={16} />
+                        </div>
+                        <span className="rounded-full bg-slate-100 border border-slate-200 px-2 py-0.5 text-[9.5px] font-extrabold uppercase tracking-wider text-slate-600">
+                          Workspace
+                        </span>
+                      </div>
+
+                      <div className="mt-2.5 min-w-0">
+                        <p className="m-0 truncate text-base font-black text-sibs-primary-1 group-hover:text-sibs-primary-2 transition-colors">
+                          {account}
+                        </p>
+                        <p className="mt-1 mb-0 flex items-center gap-1.5 text-xs font-semibold text-slate-500">
+                          <Layers size={13} className="text-sibs-primary-2" />
+                          <span>
+                            {totalSourceSystems}{" "}
+                            {totalSourceSystems === 1
+                              ? "Source System"
+                              : "Source Systems"}
+                          </span>
+                        </p>
+                      </div>
+
+                      <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-2 text-xs font-bold text-sibs-primary-1 group-hover:text-sibs-primary-2 transition-colors">
+                        <span className="text-[11px]">Explore Feeds</span>
+                        <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-slate-100 group-hover:bg-sibs-primary-2 group-hover:text-white transition-all">
+                          <ArrowRight size={11} />
+                        </span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           ) : (
             <div className="space-y-5">

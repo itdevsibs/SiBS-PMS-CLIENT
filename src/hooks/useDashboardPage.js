@@ -6,6 +6,7 @@ import {
   Filter,
   FolderDown,
   Gauge,
+  LayoutDashboard,
   LineChart,
   ShieldCheck,
   Users,
@@ -16,8 +17,9 @@ import { getAuthDisplayName, getAuthUser, isAuthenticated } from "@/lib/auth";
 import { handleLogout as handleAuthLogout } from "@/lib/axios/api-template";
 
 const roleIcons = {
-  admin: ShieldCheck,
-  wfm: FolderDown,
+  admin: LayoutDashboard,
+  wfm: LayoutDashboard,
+  som: LayoutDashboard,
   agent: Gauge,
   om: Filter,
   tl: ClipboardList,

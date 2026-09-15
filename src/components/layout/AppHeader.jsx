@@ -171,7 +171,7 @@ const AppHeader = ({
       <div className="app-header-line" />
     </header>
     <div
-      className="h-[calc(74px+env(safe-area-inset-top,0px))] shrink-0 md:hidden pointer-events-none"
+      className="h-[calc(82px+env(safe-area-inset-top,0px))] shrink-0 md:hidden pointer-events-none"
       aria-hidden="true"
     />
   </>
