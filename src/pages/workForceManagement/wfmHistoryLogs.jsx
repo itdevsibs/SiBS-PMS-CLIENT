@@ -81,7 +81,7 @@ function WfmHistoryLogs() {
   const [logs, setLogs] = useState([]);
   const [pagination, setPagination] = useState({
     page: 1,
-    limit: 12,
+    limit: 18,
     total: 0,
     totalPages: 1,
   });

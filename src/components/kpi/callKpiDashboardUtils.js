@@ -44,8 +44,10 @@ function getNiceStep(maxValue, tickCount) {
 
 export function getCallAxisTicks(maxValue, tickCount = 4) {
   const safeTickCount = Math.max(1, Math.floor(Number(tickCount) || 4));
-  const step = getNiceStep(maxValue, safeTickCount);
-  const axisMax = Math.max(step, Math.ceil((Number(maxValue) || 0) / step) * step);
+  // Add headroom so the tallest bars and their labels never collide with the top axis border
+  const paddedMax = Math.max(1, Number(maxValue) || 0) * 1.12;
+  const step = getNiceStep(paddedMax, safeTickCount);
+  const axisMax = Math.max(step, Math.ceil(paddedMax / step) * step);
   const numSteps = Math.max(1, Math.round(axisMax / step));
 
   return Array.from({ length: numSteps + 1 }, (_, index) =>

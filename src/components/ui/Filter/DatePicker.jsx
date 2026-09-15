@@ -275,18 +275,18 @@ export default function DatePicker({
                       onClick={() =>
                         chooseDate(day.iso, day.year, day.month)
                       }
-                      className={`relative flex aspect-square items-center justify-center rounded-lg text-xs font-bold transition-all duration-100 ${
+                      className={`relative flex aspect-square items-center justify-center rounded-lg text-xs font-bold transition-all duration-150 cursor-pointer ${
                         isSelected
-                          ? "bg-sibs-primary-1 text-white shadow-sm"
+                          ? "bg-sibs-primary-1 text-white shadow-md ring-2 ring-sibs-primary-1/30"
                           : day.inCurrentMonth
-                          ? "text-sibs-primary-1 hover:bg-sibs-primary-3/70"
-                          : "text-sibs-tertiary-6/50 hover:bg-sibs-tertiary-10/70"
+                          ? "text-sibs-primary-1 hover:bg-sky-100 hover:text-sibs-primary-1 hover:ring-1 hover:ring-sky-300 hover:shadow-xs hover:scale-105"
+                          : "text-slate-400 hover:bg-slate-100 hover:text-slate-700 hover:scale-105"
                       }`}
                     >
                       {day.day}
 
                       {isToday && !isSelected ? (
-                        <span className="absolute bottom-1 h-1 w-1 rounded-full bg-sibs-primary-1" />
+                        <span className="absolute bottom-1 h-1 w-1 rounded-full bg-sibs-primary-2" />
                       ) : null}
                     </button>
                   );
