@@ -24,6 +24,7 @@ import {
 import AdminSidebar from "@/components/layout/AdminSidebar";
 import AppHeader from "@/components/layout/AppHeader";
 import AppModal from "@/components/ui/app-modal";
+import SingleSelectDropdown from "@/components/ui/Filter/SingleSelectDropdown";
 import { Button } from "@/components/ui/button";
 import ConfirmationModal from "@/components/ui/confirmation-modal";
 import ImportProgressModal from "@/components/ui/import-progress-modal";
@@ -1202,7 +1203,7 @@ function WfmImportDataPage() {
 
       <main className="min-w-0 flex-1 flex flex-col h-full overflow-hidden">
         <AppHeader
-          title={`${dashboard.authUser?.roleLabel || "User"} Dashboard`}
+          title={dashboard.authUser?.roleLabel || "Workforce Management"}
           subtitle="Performance Management System"
           onMenuClick={() => dashboard.setIsMobileSidebarOpen(true)}
           onLogoutClick={() => dashboard.setShowLogoutModal(true)}
@@ -1228,17 +1229,16 @@ function WfmImportDataPage() {
               />
             </div>
 
-            <select
+            <SingleSelectDropdown
+              className="w-full shrink-0 sm:w-64"
+              buttonClassName="h-9 rounded-full border border-sibs-tertiary-9 bg-white px-4 text-sm font-semibold text-sibs-primary-1"
               value={selectedAccount}
               onChange={(event) => setSelectedAccount(event.target.value)}
-              className="form-input h-9 w-full shrink-0 rounded-full py-0 sm:w-64"
-            >
-              {accountFilters.map((account) => (
-                <option key={account} value={account}>
-                  {account} ({sourceSystemCounts[account] || 0})
-                </option>
-              ))}
-            </select>
+              options={accountFilters.map((account) => ({
+                value: account,
+                label: `${account} (${sourceSystemCounts[account] || 0})`,
+              }))}
+            />
           </div>
 
           {/* Import Summary Metric Cards */}
@@ -1411,7 +1411,7 @@ function WfmImportDataPage() {
                     <span className="h-px flex-1 bg-slate-200" aria-hidden="true" />
                   </div>
 
-                  <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                     {group.cards.map((card) => {
                       const uploads = uploadsByCard[card.id] || [];
                       const latestUploads = uploads.slice(0, 3);
@@ -1447,14 +1447,14 @@ function WfmImportDataPage() {
 
                       {card.taskOrders?.length ? (
                         <div className="mt-2.5 flex min-w-0 flex-wrap items-center gap-1.5 text-xs">
-                          <span className="text-[10px] font-extrabold uppercase text-sibs-tertiary-5">
+                          <span className="text-[10px] font-extrabold uppercase text-sibs-tertiary-5 shrink-0">
                             TASK ORDERS:
                           </span>
                           <div className="flex min-w-0 flex-wrap gap-1">
                             {card.taskOrders.map((taskOrder) => (
                               <span
                                 key={taskOrder}
-                                className="rounded-md border border-sibs-tertiary-8 bg-white px-2 py-0.5 text-[11px] font-bold text-sibs-primary-1 shadow-2xs"
+                                className="rounded-md border border-sibs-tertiary-8 bg-white px-2 py-0.5 text-[11px] font-bold text-sibs-primary-1 shadow-2xs whitespace-nowrap"
                               >
                                 {taskOrder}
                               </span>
@@ -1484,10 +1484,13 @@ function WfmImportDataPage() {
                                   >
                                     {upload.fileName}
                                   </p>
-                                  <div className="mt-0.5 flex items-center justify-between text-[10px] text-sibs-tertiary-5">
-                                    <span>{formatRelativeTime(upload)}</span>
+                                  <div className="mt-1 flex flex-wrap items-center justify-between gap-1.5 text-[10px] text-sibs-tertiary-5">
+                                    <span className="whitespace-nowrap shrink-0">{formatRelativeTime(upload)}</span>
                                     {upload.batchCode ? (
-                                      <span className="rounded bg-sibs-primary-2/10 px-1 font-mono text-[9px] font-bold text-sibs-primary-2">
+                                      <span
+                                        className="rounded bg-sibs-primary-2/10 px-1.5 py-0.5 font-mono text-[9px] font-bold text-sibs-primary-2 whitespace-nowrap"
+                                        title={upload.batchCode}
+                                      >
                                         {upload.batchCode}
                                       </span>
                                     ) : null}
@@ -1629,8 +1632,11 @@ function WfmImportDataPage() {
         className="!max-w-none w-full sm:!w-[min(92vw,1100px)] flex flex-col p-4 sm:p-6 overflow-hidden max-h-[90vh]"
       >
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <p className="m-0 text-lg font-bold text-sibs-primary-1">
+          <div className="min-w-0">
+            <p
+              className="m-0 truncate whitespace-nowrap text-sm sm:text-base md:text-lg font-bold text-sibs-primary-1"
+              title={`${activeOpenCard?.title} Uploaded Data`}
+            >
               {activeOpenCard?.title} Uploaded Data
             </p>
             <p className="mt-1 mb-0 text-xs font-semibold text-sibs-tertiary-5">
@@ -1661,7 +1667,7 @@ function WfmImportDataPage() {
           </div>
         </div>
 
-        <div className="mt-4 max-h-[65vh] min-h-[260px] sm:min-h-[360px] space-y-2.5 overflow-y-auto rounded-xl border border-slate-200/80 bg-slate-50/50 p-2.5 sm:p-3 sibs-scrollbar">
+        <div className="mt-4 max-h-[65vh] min-h-[260px] sm:min-h-[360px] space-y-2.5 overflow-x-hidden overflow-y-auto rounded-xl border border-slate-200/80 bg-slate-50/50 p-2.5 sm:p-3 sibs-scrollbar">
           {filteredOpenCardUploads.length ? (
             filteredOpenCardUploads.map((upload) => {
               const isCompletedWithErrors =
@@ -1676,22 +1682,22 @@ function WfmImportDataPage() {
                   key={upload.id || `${upload.fileName}-${upload.uploadedAt}`}
                   className="flex flex-col gap-2.5 sm:gap-3 rounded-xl border border-slate-200 bg-white p-3 sm:p-3.5 shadow-xs transition-all hover:border-slate-300 hover:shadow-sm sm:flex-row sm:items-center sm:justify-between"
                 >
-                  {/* Left content: In desktop, filename + metadata block; in mobile, filename + status badge on top row */}
+                  {/* Left content: In desktop, filename + metadata block; in mobile, filename + status badge on top row with wrapping */}
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-start justify-between gap-2 sm:block">
+                    <div className="flex flex-wrap items-center justify-between gap-1.5 sm:block">
                       <p
-                        className="m-0 break-words text-sm font-bold text-sibs-primary-1 leading-snug"
+                        className="m-0 min-w-0 max-w-full break-words [word-break:break-word] text-sm font-bold text-sibs-primary-1 leading-snug"
                         title={upload.fileName}
                       >
                         {upload.fileName}
                       </p>
-                      {/* Mobile-only status badge on top right */}
+                      {/* Mobile-only status badge on top right / wraps cleanly on small screens */}
                       {isCompletedWithErrors ? (
                         <button
                           type="button"
                           disabled={isLoadingUsVisaErrors}
                           onClick={() => handleOpenUsVisaErrors(upload.batchId)}
-                          className="sm:hidden inline-flex shrink-0 items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-800 transition-all hover:border-amber-400 hover:bg-amber-100"
+                          className="sm:hidden inline-flex shrink-0 whitespace-nowrap items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-800 transition-all hover:border-amber-400 hover:bg-amber-100"
                           title="Completed with error - click to view error details"
                         >
                           <AlertTriangle className="h-2.5 w-2.5 shrink-0 text-amber-600" aria-hidden="true" />
@@ -1725,7 +1731,7 @@ function WfmImportDataPage() {
                         type="button"
                         disabled={isLoadingUsVisaErrors}
                         onClick={() => handleOpenUsVisaErrors(upload.batchId)}
-                        className="hidden sm:inline-flex h-6 items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-2 text-[10px] font-semibold text-amber-800 transition-all hover:border-amber-400 hover:bg-amber-100"
+                        className="hidden sm:inline-flex h-6 shrink-0 whitespace-nowrap items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-2 text-[10px] font-semibold text-amber-800 transition-all hover:border-amber-400 hover:bg-amber-100"
                         title="Completed with error - click to view error details"
                       >
                         <AlertTriangle className="h-2.5 w-2.5 shrink-0 text-amber-600" aria-hidden="true" />

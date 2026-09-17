@@ -15,6 +15,7 @@ import AgentKpiDetail from "@/components/agent/AgentKpiDetail";
 import { formatNumber, formatSeconds } from "@/components/agent/AgentPerformanceDashboard";
 import { Button } from "@/components/ui/button";
 import DatePicker from "@/components/ui/Filter/DatePicker";
+import SingleSelectDropdown from "@/components/ui/Filter/SingleSelectDropdown";
 
 const PERIOD_OPTIONS = [
   { value: "weekly", label: "Weekly" },
@@ -104,11 +105,9 @@ function FilterBar({ filters, isLoading, onFilterChange, onRefresh }) {
 
       <div className="flex flex-wrap items-end gap-2.5 p-3">
         {/* 1. Reporting Period */}
-        <label className="block w-44">
-          <span className="mb-0.5 block text-[9.5px] font-extrabold uppercase text-sibs-tertiary-5">
-            Reporting Period
-          </span>
-          <select
+        <div className="w-44">
+          <SingleSelectDropdown
+            label="Reporting Period"
             value={filters.period}
             onChange={(event) =>
               onFilterChange({
@@ -118,16 +117,10 @@ function FilterBar({ filters, isLoading, onFilterChange, onRefresh }) {
                 to: "",
               })
             }
-            className="h-8 w-full cursor-pointer rounded-lg border border-sibs-tertiary-8 bg-white px-2.5 text-xs font-semibold text-sibs-primary-1 outline-none transition hover:border-sibs-primary-1 hover:bg-slate-50/50 focus:border-sibs-primary-1 focus:ring-1 focus:ring-sibs-primary-1/20"
-            aria-label="Reporting period"
-          >
-            {PERIOD_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </label>
+            options={PERIOD_OPTIONS}
+            placeholder="Weekly"
+          />
+        </div>
 
         {/* 2. Reference Date (or From + To) */}
         {isCustom ? (

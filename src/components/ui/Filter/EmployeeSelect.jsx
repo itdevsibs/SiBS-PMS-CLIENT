@@ -177,7 +177,7 @@ export default function EmployeeSelect({
       {isOpen && (
         <div
           ref={listRef}
-          className="absolute top-full left-0 mt-1.5 z-50 max-h-60 w-full min-w-[220px] overflow-y-auto rounded-xl border border-slate-200 bg-white py-1 shadow-[0_12px_32px_rgba(4,44,81,0.14)] [scrollbar-width:thin] [scrollbar-color:#042c51_#f1f5f9]"
+          className="absolute top-full left-0 right-0 sm:right-auto mt-1.5 z-50 max-h-60 w-full min-w-full sm:min-w-[220px] max-w-[calc(100vw-2rem)] overflow-y-auto rounded-xl border border-slate-200 bg-white py-1 shadow-[0_12px_32px_rgba(4,44,81,0.14)] [scrollbar-width:thin] [scrollbar-color:#042c51_#f1f5f9]"
         >
           {/* Default "All Matched Employees" option with total count reflection and checkbox */}
           <button

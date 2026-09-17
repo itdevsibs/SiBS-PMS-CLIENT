@@ -941,7 +941,7 @@ export default function CallKpiDashboard({ data }) {
   return (
     <div className="space-y-3">
       {/* 7 Compact KPI Stat Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-7 gap-2">
+      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-7 gap-2">
         <KpiCard
           icon={PhoneCall}
           label="Call Volume"
@@ -1025,10 +1025,10 @@ export default function CallKpiDashboard({ data }) {
         />
       </div>
 
-      {/* 3 Prominent Graphs: Stacked on Mobile/Tablet, Side-by-Side on Desktop */}
+      {/* 3 Prominent Graphs: Stacked on Mobile/Tablet/iPad, Side-by-Side on Ultra-wide Desktop */}
       <div
         key={`kpi-charts-${series.map((s) => s.key || s.label).join("-")}`}
-        className="grid grid-cols-1 xl:grid-cols-3 gap-3"
+        className="grid grid-cols-1 2xl:grid-cols-3 gap-3.5"
       >
         <ChartShell
           title="Calls"

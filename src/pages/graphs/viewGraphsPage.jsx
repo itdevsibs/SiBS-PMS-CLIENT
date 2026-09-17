@@ -14,6 +14,7 @@ import LoadingModal from "@/components/ui/loading-modal";
 import CallKpiDashboard from "@/components/kpi/CallKpiDashboard";
 import DatePicker from "@/components/ui/Filter/DatePicker";
 import MultiSelectDropdown from "@/components/ui/Filter/MultiSelectDropdown";
+import SingleSelectDropdown from "@/components/ui/Filter/SingleSelectDropdown";
 import useDashboardPage from "@/hooks/useDashboardPage";
 import { getWfmCallKpis } from "@/lib/axios/wfm-kpis";
 
@@ -684,8 +685,11 @@ export default function ViewGraphsPage() {
     }));
   };
 
-  const handlePeriodChange = (event) => {
-    const nextPeriod = event.target.value;
+  const handlePeriodChange = (eventOrValue) => {
+    const nextPeriod =
+      typeof eventOrValue === "object" && eventOrValue?.target
+        ? eventOrValue.target.value
+        : eventOrValue;
 
     setFilters((current) => ({
       ...current,
@@ -783,9 +787,9 @@ export default function ViewGraphsPage() {
 
       <main className="min-w-0 flex-1 flex flex-col h-full overflow-hidden">
         <AppHeader
-          title={`${
+          title={
             dashboard.authUser?.roleLabel || "User"
-          } Dashboard`}
+          }
           subtitle="Performance Management System"
           onMenuClick={() =>
             dashboard.setIsMobileSidebarOpen(true)
@@ -870,26 +874,13 @@ export default function ViewGraphsPage() {
                   />
 
                   {/* 5. Reporting Period */}
-                  <label className="block">
-                    <span className="mb-0.5 block text-[9.5px] font-extrabold uppercase text-sibs-tertiary-5">
-                      Reporting Period
-                    </span>
-
-                    <select
-                      value={filters.period}
-                      onChange={handlePeriodChange}
-                      className="h-8 w-full cursor-pointer rounded-lg border border-sibs-tertiary-8 bg-white px-2.5 text-xs font-semibold text-sibs-primary-1 outline-none transition hover:border-sibs-primary-1 hover:bg-slate-50/50 focus:border-sibs-primary-1 focus:ring-1 focus:ring-sibs-primary-1/20"
-                    >
-                      {PERIOD_OPTIONS.map((option) => (
-                        <option
-                          key={option.value}
-                          value={option.value}
-                        >
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
+                  <SingleSelectDropdown
+                    label="Reporting Period"
+                    value={filters.period}
+                    onChange={handlePeriodChange}
+                    options={PERIOD_OPTIONS}
+                    placeholder="Weekly"
+                  />
 
                   {/* 6. Reference Date (or From + To) */}
                   {isCustomPeriod ? (

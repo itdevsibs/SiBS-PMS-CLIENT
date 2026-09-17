@@ -24,12 +24,12 @@ function TeamLeaderPage() {
       />
       <main className="min-w-0 flex-1 flex flex-col h-full overflow-hidden">
         <AppHeader
-          title={`${dashboard.authUser?.roleLabel || "User"} Dashboard`}
+          title={dashboard.authUser?.roleLabel || "Team Leader"}
           subtitle="Performance Management System"
           onMenuClick={() => dashboard.setIsMobileSidebarOpen(true)}
           onLogoutClick={() => dashboard.setShowLogoutModal(true)}
         />
-        <div className="sibs-scrollbar flex-1 overflow-y-auto p-3 sm:p-4 lg:p-5">
+        <div className="sibs-scrollbar flex-1 overflow-y-auto overflow-x-hidden w-full max-w-full min-w-0 p-3 sm:p-4 lg:p-5">
           <TeamLeaderPerformanceDashboard
             error={teamLeaderPerformance.error}
             filters={teamLeaderPerformance.filters}

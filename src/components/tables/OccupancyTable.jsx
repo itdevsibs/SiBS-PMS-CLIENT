@@ -1084,7 +1084,7 @@ export default function OccupancyTable({
       <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-3 sm:gap-3.5 rounded-xl border border-slate-200 bg-white p-3 sm:p-4 shadow-xs">
         <div className="flex flex-wrap items-end gap-3 sm:gap-3.5 flex-1 min-w-0 w-full">
           {/* 1. Search */}
-          <div className="w-full sm:w-auto flex-1 min-w-0 sm:min-w-[190px] lg:max-w-xs">
+          <div className="w-full sm:w-auto sm:flex-1 sm:min-w-[190px] lg:max-w-xs">
             <label className="text-xs font-bold text-slate-800 block mb-1.5">
               Search
             </label>
@@ -1101,7 +1101,7 @@ export default function OccupancyTable({
           </div>
 
           {/* 2. Employee */}
-          <div className="w-full sm:w-auto flex-1 min-w-0 sm:min-w-[190px] lg:max-w-xs">
+          <div className="w-full sm:w-auto sm:flex-1 sm:min-w-[190px] lg:max-w-xs">
             <label className="text-xs font-bold text-slate-800 block mb-1.5">
               Employee
             </label>
@@ -1218,26 +1218,16 @@ export default function OccupancyTable({
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
           onPointerCancel={handlePointerUp}
-          className="w-full overflow-x-auto lg:overflow-x-hidden sibs-scrollbar cursor-grab active:cursor-grabbing lg:cursor-default lg:active:cursor-default touch-pan-x touch-pan-y"
+          className="w-full overflow-x-auto sibs-scrollbar cursor-grab active:cursor-grabbing touch-pan-x touch-pan-y"
           style={{
             WebkitOverflowScrolling: "touch",
           }}
         >
-          <table className="w-full min-w-[1585px] lg:min-w-0 lg:w-full table-fixed border-collapse text-left">
-            <colgroup className="hidden lg:table-column-group">
+          <table className="w-full min-w-[1640px] table-fixed border-collapse text-left">
+            <colgroup>
               {OCCUPANCY_COLUMNS.map((col) => (
                 <col
-                  key={`desk-col-${col.key}`}
-                  style={{
-                    width: col.widthPct,
-                  }}
-                />
-              ))}
-            </colgroup>
-            <colgroup className="lg:hidden">
-              {OCCUPANCY_COLUMNS.map((col) => (
-                <col
-                  key={`mob-col-${col.key}`}
+                  key={`col-${col.key}`}
                   style={{
                     width: `${col.minWidth}px`,
                   }}
@@ -1279,7 +1269,7 @@ export default function OccupancyTable({
                 {OCCUPANCY_COLUMNS.map((col) => (
                   <th
                     key={`th-${col.key}`}
-                    className={`px-1.5 lg:px-1 xl:px-2 py-2.5 border-r border-slate-200 last:border-r-0 align-middle ${col.align}`}
+                    className={`px-2 py-2.5 border-r border-slate-200 last:border-r-0 align-middle ${col.align}`}
                   >
                     <div
                       className={`flex flex-col justify-center min-h-[38px] leading-tight ${
@@ -1396,8 +1386,8 @@ export default function OccupancyTable({
                       return (
                         <td
                           key={`cell-${col.key}-${idx}`}
-                          className={`px-1.5 lg:px-2 xl:px-2.5 py-3 text-xs xl:text-[13px] border-r border-slate-100 last:border-r-0 tabular-nums truncate ${col.align} ${
-                            isName ? "text-slate-900 font-bold pl-2 lg:pl-3" : "text-slate-700"
+                          className={`px-2 xl:px-2.5 py-3 text-xs xl:text-[13px] border-r border-slate-100 last:border-r-0 tabular-nums truncate ${col.align} ${
+                            isName ? "text-slate-900 font-bold pl-2.5 lg:pl-3" : "text-slate-700"
                           }`}
                           title={String(value)}
                         >
