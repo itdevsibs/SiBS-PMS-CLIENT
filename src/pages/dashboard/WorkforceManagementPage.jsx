@@ -8,7 +8,6 @@ import {
   Clock,
   Database,
   History,
-  RefreshCw,
   ShieldCheck,
   TrendingUp,
   UserCheck,
@@ -212,9 +211,9 @@ function WorkforceManagementPage() {
         <AppHeader
           title={
             <>
-              <span className="sm:hidden">WFM Dashboard</span>
+              <span className="sm:hidden">WFM</span>
               <span className="hidden sm:inline">
-                {dashboard.authUser?.roleLabel || "Workforce Management"} Dashboard
+                {dashboard.authUser?.roleLabel || "Workforce Management"}
               </span>
             </>
           }
@@ -225,7 +224,7 @@ function WorkforceManagementPage() {
 
         <div className="flex-1 overflow-y-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden p-3 sm:p-4 lg:p-5 pb-3 sm:pb-4 space-y-3 sm:space-y-3.5">
           {/* Welcome & Overview Status Bar */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl bg-white p-4 shadow-xs border border-slate-200/80">
+          <div className="rounded-2xl bg-white p-4 shadow-xs border border-slate-200/80">
             <div>
               <h2 className="m-0 text-base sm:text-lg font-bold tracking-tight text-sibs-primary-1">
                 Dashboard Overview
@@ -233,23 +232,6 @@ function WorkforceManagementPage() {
               <p className="m-0 mt-0.5 text-xs font-medium text-slate-500">
                 Overview and quick access to all workforce management modules.
               </p>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 border border-emerald-200 px-2.5 py-1 text-[11px] font-bold text-emerald-700">
-                <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                Connected
-              </span>
-
-              <button
-                type="button"
-                onClick={() => loadAllModulesData(true)}
-                disabled={isRefreshing}
-                title="Refresh dashboard data"
-                className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-600 transition hover:border-sibs-primary-1 hover:bg-white hover:text-sibs-primary-1 disabled:opacity-50"
-              >
-                <RefreshCw size={13} className={isRefreshing ? "animate-spin" : ""} />
-              </button>
             </div>
           </div>
 

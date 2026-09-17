@@ -24,7 +24,7 @@ function OperationsManagementPage() {
       />
       <main className="min-w-0 flex-1 flex flex-col h-full overflow-hidden">
         <AppHeader
-          title={`${dashboard.authUser?.roleLabel || "User"} Dashboard`}
+          title={dashboard.authUser?.roleLabel || "Operations Manager"}
           subtitle="Performance Management System"
           onMenuClick={() => dashboard.setIsMobileSidebarOpen(true)}
           onLogoutClick={() => dashboard.setShowLogoutModal(true)}

@@ -25,17 +25,20 @@ function renderMetricLabel(label) {
 
 function DetailMetric({ icon: Icon, label, value }) {
   return (
-    <div className="min-w-0 rounded-xl border border-sibs-tertiary-10 bg-white p-4 shadow-xs">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="m-0 text-[10px] font-extrabold tracking-wide text-sibs-tertiary-5">
+    <div className="min-w-0 rounded-xl border border-sibs-tertiary-10 bg-white p-3 sm:p-4 shadow-xs">
+      <div className="flex items-start justify-between gap-2 sm:gap-3">
+        <div className="min-w-0 flex-1">
+          <p className="m-0 text-[10px] sm:text-xs font-extrabold tracking-wide text-sibs-tertiary-5 leading-tight">
             {renderMetricLabel(label)}
           </p>
-          <p className="mt-2 mb-0 break-words text-2xl font-black leading-none text-sibs-primary-1">
+          <p
+            className="mt-1.5 sm:mt-2 mb-0 text-base sm:text-xl xl:text-2xl font-black leading-tight text-sibs-primary-1 whitespace-nowrap overflow-hidden text-ellipsis"
+            title={value}
+          >
             {value}
           </p>
         </div>
-        <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-sky-100 bg-sky-50 text-sky-700">
+        <span className="inline-flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-lg border border-sky-100 bg-sky-50 text-sky-700">
           <Icon className="h-4 w-4" aria-hidden="true" />
         </span>
       </div>
@@ -91,7 +94,7 @@ export default function AgentKpiDetail({
       <p className="mt-1 mb-0 text-xs text-sibs-tertiary-5">
         {agent?.label || agent?.employeeUid || "Selected agent"}
       </p>
-      <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
+      <div className="mt-4 grid grid-cols-2 gap-2.5 sm:gap-3 md:grid-cols-4">
         <DetailMetric icon={PhoneCall} label="Handled" value={formatNumber(kpis.handledCalls)} />
         <DetailMetric icon={Clock3} label="Average Handle Time (seconds)" value={formatSeconds(kpis.averageHandleSeconds)} />
         <DetailMetric icon={Headphones} label="Handled Time (seconds)" value={formatSeconds(kpis.totalTalkSeconds)} />

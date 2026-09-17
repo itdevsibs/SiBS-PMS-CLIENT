@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import {
   Activity,
   BarChart3,
@@ -15,6 +16,7 @@ import AgentKpiDetail from "@/components/agent/AgentKpiDetail";
 import { formatNumber, formatSeconds } from "@/components/agent/AgentPerformanceDashboard";
 import { Button } from "@/components/ui/button";
 import DatePicker from "@/components/ui/Filter/DatePicker";
+import SingleSelectDropdown from "@/components/ui/Filter/SingleSelectDropdown";
 
 const PERIOD_OPTIONS = [
   { value: "weekly", label: "Weekly" },
@@ -51,22 +53,25 @@ function renderMetricLabel(label) {
 
 function MetricTile({ icon: Icon, label, value, subtitle }) {
   return (
-    <div className="min-w-0 rounded-xl border border-sibs-tertiary-10 bg-white p-4 shadow-xs">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="m-0 text-[10px] font-extrabold tracking-wide text-sibs-tertiary-5">
+    <div className="min-w-0 rounded-xl border border-sibs-tertiary-10 bg-white p-3 sm:p-4 shadow-xs">
+      <div className="flex items-start justify-between gap-2 sm:gap-3">
+        <div className="min-w-0 flex-1">
+          <p className="m-0 text-[10px] sm:text-xs font-extrabold tracking-wide text-sibs-tertiary-5 leading-tight">
             {renderMetricLabel(label)}
           </p>
-          <p className="mt-2 mb-0 break-words text-2xl font-black leading-none text-sibs-primary-1">
+          <p
+            className="mt-1.5 sm:mt-2 mb-0 text-base sm:text-xl xl:text-2xl font-black leading-tight text-sibs-primary-1 whitespace-nowrap overflow-hidden text-ellipsis"
+            title={value}
+          >
             {value}
           </p>
           {subtitle ? (
-            <p className="mt-1 mb-0 text-xs text-sibs-tertiary-5">
+            <p className="mt-1 mb-0 text-[11px] sm:text-xs text-sibs-tertiary-5 truncate">
               {subtitle}
             </p>
           ) : null}
         </div>
-        <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-sky-100 bg-sky-50 text-sky-700">
+        <span className="inline-flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-lg border border-sky-100 bg-sky-50 text-sky-700">
           <Icon className="h-4 w-4" aria-hidden="true" />
         </span>
       </div>
@@ -104,11 +109,9 @@ function FilterBar({ filters, isLoading, onFilterChange, onRefresh }) {
 
       <div className="flex flex-wrap items-end gap-2.5 p-3">
         {/* 1. Reporting Period */}
-        <label className="block w-44">
-          <span className="mb-0.5 block text-[9.5px] font-extrabold uppercase text-sibs-tertiary-5">
-            Reporting Period
-          </span>
-          <select
+        <div className="w-full sm:w-44">
+          <SingleSelectDropdown
+            label="Reporting Period"
             value={filters.period}
             onChange={(event) =>
               onFilterChange({
@@ -118,21 +121,15 @@ function FilterBar({ filters, isLoading, onFilterChange, onRefresh }) {
                 to: "",
               })
             }
-            className="h-8 w-full cursor-pointer rounded-lg border border-sibs-tertiary-8 bg-white px-2.5 text-xs font-semibold text-sibs-primary-1 outline-none transition hover:border-sibs-primary-1 hover:bg-slate-50/50 focus:border-sibs-primary-1 focus:ring-1 focus:ring-sibs-primary-1/20"
-            aria-label="Reporting period"
-          >
-            {PERIOD_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </label>
+            options={PERIOD_OPTIONS}
+            placeholder="Weekly"
+          />
+        </div>
 
         {/* 2. Reference Date (or From + To) */}
         {isCustom ? (
           <>
-            <div className="w-44">
+            <div className="w-full sm:w-44">
               <DatePicker
                 label="From"
                 value={filters.from}
@@ -140,7 +137,7 @@ function FilterBar({ filters, isLoading, onFilterChange, onRefresh }) {
                 disabled={isLoading}
               />
             </div>
-            <div className="w-44">
+            <div className="w-full sm:w-44">
               <DatePicker
                 label="To"
                 value={filters.to}
@@ -151,7 +148,7 @@ function FilterBar({ filters, isLoading, onFilterChange, onRefresh }) {
           </>
         ) : (
           <>
-            <div className="w-44">
+            <div className="w-full sm:w-44">
               <DatePicker
                 label="Reference Date"
                 value={filters.referenceDate}
@@ -189,7 +186,7 @@ function FilterBar({ filters, isLoading, onFilterChange, onRefresh }) {
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-x-3.5 gap-y-1 border-t border-sibs-tertiary-10 px-3.5 py-1 text-[10px] font-semibold text-sibs-tertiary-5">
+      <div className="flex flex-wrap items-center gap-x-3.5 gap-y-1 border-t border-sibs-tertiary-10 px-3.5 py-1 text-[10px] font-semibold text-sibs-tertiary-5 break-words">
         <span>Source: Agent Level Interactions & Team Leader Scopes</span>
         <span>Period: {PERIOD_OPTIONS.find((opt) => opt.value === filters.period)?.label || filters.period}</span>
         {filters.referenceDate && !isCustom ? <span>Reference date: {filters.referenceDate}</span> : null}
@@ -224,7 +221,7 @@ function OperationalContext({ context, error }) {
         </div>
       ) : null}
 
-      <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-5">
+      <div className="mt-4 grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-5">
         <MetricTile
           icon={ShieldCheck}
           label="Service Level"
@@ -262,7 +259,7 @@ function TeamSummary({ summary = {}, agentCount = 0 }) {
         <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-emerald-100 bg-emerald-50 text-emerald-700">
           <Users className="h-4 w-4" aria-hidden="true" />
         </span>
-        <div>
+        <div className="min-w-0">
           <p className="m-0 text-sm font-extrabold uppercase tracking-wide text-sibs-tertiary-5">
             Team / Individual Agent Performance
           </p>
@@ -272,7 +269,7 @@ function TeamSummary({ summary = {}, agentCount = 0 }) {
         </div>
       </div>
 
-      <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+      <div className="mt-4 grid grid-cols-2 gap-2.5 sm:gap-3 md:grid-cols-3 xl:grid-cols-6">
         <MetricTile
           icon={Users}
           label="Agent Count"
@@ -309,6 +306,51 @@ function TeamSummary({ summary = {}, agentCount = 0 }) {
 }
 
 function AgentTable({ agents = [], selectedAgentUid, onSelectAgent }) {
+  const tableContainerRef = useRef(null);
+  const isDraggingRef = useRef(false);
+  const dragStartXRef = useRef(0);
+  const dragScrollLeftRef = useRef(0);
+
+  const handlePointerDown = (e) => {
+    if (e.button !== 0 || e.target.closest("button, input, a, select")) return;
+    const el = tableContainerRef.current;
+    if (!el || el.scrollWidth <= el.clientWidth + 2) return;
+    try {
+      el.setPointerCapture(e.pointerId);
+    } catch {
+      // Fallback
+    }
+    isDraggingRef.current = true;
+    dragStartXRef.current = e.clientX;
+    dragScrollLeftRef.current = el.scrollLeft;
+  };
+
+  const handlePointerMove = (e) => {
+    if (!isDraggingRef.current) return;
+    const el = tableContainerRef.current;
+    if (!el) return;
+    const dx = e.clientX - dragStartXRef.current;
+    if (Math.abs(dx) > 3) {
+      e.preventDefault();
+    }
+    el.scrollLeft = dragScrollLeftRef.current - dx;
+  };
+
+  const handlePointerUp = (e) => {
+    if (!isDraggingRef.current) return;
+    isDraggingRef.current = false;
+    const el = tableContainerRef.current;
+    if (el) {
+      try {
+        if (el.hasPointerCapture(e.pointerId)) {
+          el.releasePointerCapture(e.pointerId);
+        }
+      } catch {
+        // Fallback
+      }
+    }
+  };
+
   if (!agents.length) {
     return (
       <EmptyPanel
@@ -319,24 +361,34 @@ function AgentTable({ agents = [], selectedAgentUid, onSelectAgent }) {
   }
 
   return (
-    <div className="overflow-hidden rounded-xl border border-sibs-tertiary-10 bg-white shadow-xs">
-      <div className="overflow-x-auto">
-        <table className="min-w-full border-collapse text-left text-sm">
+    <div className="w-full max-w-full overflow-hidden rounded-xl border border-sibs-tertiary-10 bg-white shadow-xs">
+      <div
+        ref={tableContainerRef}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerUp}
+        className="w-full max-w-full overflow-x-auto sibs-scrollbar cursor-grab active:cursor-grabbing touch-pan-x touch-pan-y select-none"
+        style={{
+          WebkitOverflowScrolling: "touch",
+        }}
+      >
+        <table className="w-full min-w-[720px] border-collapse text-left text-sm">
           <thead className="bg-sibs-primary-3/50 text-xs uppercase text-sibs-tertiary-6">
             <tr>
-              <th className="px-4 py-3 font-bold">Agent</th>
-              <th className="px-4 py-3 font-bold">Handled Calls</th>
-              <th className="px-4 py-3 font-bold">
+              <th className="px-4 py-3 font-bold whitespace-nowrap">Agent</th>
+              <th className="px-4 py-3 font-bold whitespace-nowrap">Handled Calls</th>
+              <th className="px-4 py-3 font-bold whitespace-nowrap">
                 AHT <span className="normal-case lowercase font-bold text-[10px] text-sibs-tertiary-6">(seconds)</span>
               </th>
-              <th className="px-4 py-3 font-bold">
+              <th className="px-4 py-3 font-bold whitespace-nowrap">
                 Handled Time <span className="normal-case lowercase font-bold text-[10px] text-sibs-tertiary-6">(seconds)</span>
               </th>
-              <th className="px-4 py-3 font-bold">
+              <th className="px-4 py-3 font-bold whitespace-nowrap">
                 Hold Time <span className="normal-case lowercase font-bold text-[10px] text-sibs-tertiary-6">(seconds)</span>
               </th>
-              <th className="px-4 py-3 font-bold">Hold Count</th>
-              <th className="px-4 py-3 font-bold">Action</th>
+              <th className="px-4 py-3 font-bold whitespace-nowrap">Hold Count</th>
+              <th className="px-4 py-3 font-bold whitespace-nowrap text-right pr-4">Action</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-sibs-tertiary-10">
@@ -345,26 +397,26 @@ function AgentTable({ agents = [], selectedAgentUid, onSelectAgent }) {
               const isSelected = selectedAgentUid === agent.employeeUid;
 
               return (
-                <tr key={agent.employeeUid || agent.label} className={isSelected ? "bg-sky-50" : "bg-white"}>
-                  <td className="px-4 py-3 font-bold text-sibs-primary-1">
+                <tr key={agent.employeeUid || agent.label} className={isSelected ? "bg-sky-50" : "bg-white hover:bg-slate-50/60 transition-colors"}>
+                  <td className="px-4 py-3 font-bold text-sibs-primary-1 whitespace-nowrap">
                     {agent.label || agent.employeeUid || "Unmapped"}
                   </td>
-                  <td className="px-4 py-3 text-sibs-tertiary-5">
+                  <td className="px-4 py-3 text-sibs-tertiary-5 whitespace-nowrap">
                     {formatNumber(kpis.handledCalls)}
                   </td>
-                  <td className="px-4 py-3 text-sibs-tertiary-5">
+                  <td className="px-4 py-3 text-sibs-tertiary-5 whitespace-nowrap">
                     {formatSeconds(kpis.averageHandleSeconds)}
                   </td>
-                  <td className="px-4 py-3 text-sibs-tertiary-5">
+                  <td className="px-4 py-3 text-sibs-tertiary-5 whitespace-nowrap">
                     {formatSeconds(kpis.totalTalkSeconds)}
                   </td>
-                  <td className="px-4 py-3 text-sibs-tertiary-5">
+                  <td className="px-4 py-3 text-sibs-tertiary-5 whitespace-nowrap">
                     {formatSeconds(kpis.totalHoldSeconds)}
                   </td>
-                  <td className="px-4 py-3 text-sibs-tertiary-5">
+                  <td className="px-4 py-3 text-sibs-tertiary-5 whitespace-nowrap">
                     {formatNumber(kpis.holdCount)}
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3 whitespace-nowrap text-right pr-4">
                     <Button
                       type="button"
                       variant={isSelected ? "outline" : "default"}
@@ -402,7 +454,7 @@ export default function TeamLeaderPerformanceDashboard({
   const summary = teamData?.summary || {};
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 w-full max-w-full min-w-0">
       <FilterBar
         filters={filters}
         isLoading={isLoading}
@@ -437,3 +489,4 @@ export default function TeamLeaderPerformanceDashboard({
     </div>
   );
 }
+

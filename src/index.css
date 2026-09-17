@@ -729,7 +729,7 @@
 ========================= */
 @layer components {
   .app-header {
-    @apply fixed top-0 left-0 right-0 z-[90] shrink-0 bg-[#eef3f7] md:sticky md:top-0 md:left-auto md:right-auto md:w-full;
+    @apply fixed top-0 left-0 right-0 z-[90] shrink-0 bg-white md:sticky md:top-0 md:left-auto md:right-auto md:w-full;
     padding-top: env(safe-area-inset-top, 0px);
   }
 
