@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   BarChart3,
   ClipboardList,
+  Database,
   Filter,
   FolderDown,
   Gauge,
@@ -25,6 +26,7 @@ const roleIcons = {
   tl: ClipboardList,
   client: LineChart,
   bod: BarChart3,
+  masterdata: Database,
 };
 
 // Central dashboard state shared by all role-based dashboard pages.
@@ -54,10 +56,20 @@ function useDashboardPage() {
       icon: Users,
       path: "/dashboard/occupancy",
     };
+    const employeeLedgerModule = {
+      name: "Employee Ledger",
+      icon: Database,
+      path: "/dashboard/employee-master-data",
+    };
+
+    if (role === "masterdata") {
+      return [employeeLedgerModule];
+    }
 
     if (role === "wfm") {
       return [
         dashboardModule,
+        employeeLedgerModule,
         {
           name: "Import Data",
           icon: ClipboardList,
@@ -73,14 +85,19 @@ function useDashboardPage() {
       ];
     }
 
-    if (["admin", "bod", "som"].includes(role)) {
+    const adminAccessNum = Number(
+      authUser?.adminAccess ?? authUser?.admin_access ?? 0,
+    );
+
+    if (["admin", "bod", "som"].includes(role) || adminAccessNum === 7) {
       const adminModules = [
         dashboardModule,
+        employeeLedgerModule,
         viewGraphsModule,
         occupancyModule,
       ];
 
-      if (role === "admin") {
+      if (role === "admin" || adminAccessNum === 7) {
         adminModules.push({
           name: "History Logs",
           icon: ClipboardList,

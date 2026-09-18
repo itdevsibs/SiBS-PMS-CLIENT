@@ -14,12 +14,21 @@ import ViewGraphsPage from "./pages/graphs/viewGraphsPage";
 import WorkforceManagementPage from "./pages/dashboard/WorkforceManagementPage";
 import SeniorOperationsManagerPage from "@/pages/dashboard/SeniorOperationsManagerPage";
 import OccupancyPage from "./pages/occupancy/OccupancyPage";
+import EmployeeMasterDataPage from "./pages/employeeMasterData/EmployeeMasterDataPage";
 
 const Router = () => {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/" element={<Navigate to="/login" replace />} />
+      <Route
+        path="/dashboard/employee-master-data"
+        element={<EmployeeMasterDataPage />}
+      />
+      <Route
+        path="/dashboard/masterdata"
+        element={<EmployeeMasterDataPage />}
+      />
       <Route path="/dashboard" element={<AgentsPage />} />
       <Route path="/dashboard/agent" element={<AgentsPage />} />
       <Route path="/dashboard/agents" element={<AgentsPage />} />

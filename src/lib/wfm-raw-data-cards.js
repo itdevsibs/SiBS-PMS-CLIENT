@@ -1,7 +1,7 @@
 // Defines WFM raw data card names and stable card IDs.
 export const accountOptions = [
   "US VISA",
-  "YUM-DEL",
+  "YOMDEL",
 ];
 
 const defaultRawDataTitles = Array.from(
@@ -73,7 +73,7 @@ const accountRawDataCards = {
       requiresReportingPeriod: true,
     },
   ],
-  "YUM-DEL": [
+  "YOMDEL": [
     "Raw Data 1",
     "Raw Data 2",
     "Raw Data 3",

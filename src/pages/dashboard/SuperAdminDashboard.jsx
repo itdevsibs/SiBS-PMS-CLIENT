@@ -19,6 +19,7 @@ const userInterfaces = [
   "Super Admin",
   "Operations Management",
   "Client",
+  "Employee Ledger",
 ];
 
 const emptyAccessByInterface = Object.fromEntries(
