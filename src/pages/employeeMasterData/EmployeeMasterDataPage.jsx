@@ -19,73 +19,82 @@ import {
   fetchMasterDataLedger,
 } from "@/lib/axios/masterdata";
 
+/* ─── Status badge ──────────────────────────────────────────────── */
+function StatusBadge({ status }) {
+  const map = {
+    UNIFIED: "bg-emerald-50 text-emerald-700 border-emerald-200",
+    ALIASED:  "bg-amber-50  text-amber-700  border-amber-200",
+    INCOMPLETE: "bg-rose-50 text-rose-600   border-rose-200",
+  };
+  const cls = map[status] || "bg-slate-100 text-slate-600 border-slate-200";
+  return (
+    <span
+      className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[9.5px] font-bold uppercase tracking-wider ${cls}`}
+    >
+      {status || "—"}
+    </span>
+  );
+}
+
+/* ─── Tool name cell ─────────────────────────────────────────────── */
+function ToolCell({ name, type, accentClass }) {
+  if (!name) return <span className="text-slate-300 select-none">—</span>;
+  return (
+    <div className="flex flex-col gap-0.5">
+      <span className="font-medium text-slate-800 leading-tight">{name}</span>
+      {type && (
+        <span
+          className={`inline-block w-fit rounded px-1.5 py-px text-[9px] font-bold uppercase tracking-wider border ${accentClass}`}
+        >
+          {type}
+        </span>
+      )}
+    </div>
+  );
+}
+
+/* ─── Main Page ──────────────────────────────────────────────────── */
 export default function EmployeeMasterDataPage() {
   const dashboard = useDashboardPage();
 
-  // Search, filter & data states
-  const [searchTerm, setSearchTerm] = useState("");
+  const [searchTerm, setSearchTerm]           = useState("");
   const [selectedAccount, setSelectedAccount] = useState("");
-  const [accountsList, setAccountsList] = useState([]);
-  const [ledgerList, setLedgerList] = useState([]);
-  const [totalCount, setTotalCount] = useState(0);
-  const [isLoading, setIsLoading] = useState(false);
-  const [errorMsg, setErrorMsg] = useState("");
-
-  // Pagination states
-  const [currentPage, setCurrentPage] = useState(1);
+  const [accountsList, setAccountsList]       = useState([]);
+  const [ledgerList, setLedgerList]           = useState([]);
+  const [totalCount, setTotalCount]           = useState(0);
+  const [isLoading, setIsLoading]             = useState(false);
+  const [errorMsg, setErrorMsg]               = useState("");
+  const [currentPage, setCurrentPage]         = useState(1);
+  const [totalPages, setTotalPages]           = useState(1);
   const pageSize = 25;
-  const [totalPages, setTotalPages] = useState(1);
 
-  // Fetch accounts on mount for the account filter
+  /* Fetch accounts */
   useEffect(() => {
-    let isMounted = true;
+    let alive = true;
     fetchMasterDataAccounts()
-      .then((res) => {
-        if (isMounted && res?.success) {
-          setAccountsList(res.accounts || []);
-        }
-      })
-      .catch((err) => console.error("Error loading master data accounts:", err));
-    return () => {
-      isMounted = false;
-    };
+      .then((res) => { if (alive && res?.success) setAccountsList(res.accounts || []); })
+      .catch(console.error);
+    return () => { alive = false; };
   }, []);
 
-  // Fetch ledger data from live API
+  /* Fetch ledger data */
   const loadLedgerData = useCallback(
     async (searchQuery = "", acc = "", page = 1, size = 25) => {
-      const query = searchQuery.trim();
+      const query  = searchQuery.trim();
       const hasAcc = Boolean(acc);
 
-      // Clean initial state: If no query and no account, keep table empty
       if (!query && !hasAcc) {
-        setLedgerList([]);
-        setTotalCount(0);
-        setTotalPages(1);
-        setIsLoading(false);
+        setLedgerList([]); setTotalCount(0); setTotalPages(1); setIsLoading(false);
         return;
       }
-
-      // Only US Visa is fetched for now; do not fetch data if another account is selected
       if (hasAcc && acc.trim().toLowerCase() !== "us visa") {
-        setLedgerList([]);
-        setTotalCount(0);
-        setTotalPages(1);
-        setIsLoading(false);
+        setLedgerList([]); setTotalCount(0); setTotalPages(1); setIsLoading(false);
         return;
       }
 
       try {
-        setIsLoading(true);
-        setErrorMsg("");
-        const result = await fetchMasterDataLedger({
-          search: query,
-          account: acc,
-          page,
-          limit: size,
-          viewAll: true,
-        });
-
+        setIsLoading(true); setErrorMsg("");
+        const result = await fetchMasterDataLedger({ search: query, account: acc, page, limit: size, viewAll: true });
         if (result?.success) {
           setLedgerList(result.data || []);
           setTotalCount(result.total || 0);
@@ -93,8 +102,7 @@ export default function EmployeeMasterDataPage() {
         } else {
           setErrorMsg(result?.message || "Failed to load master ledger records.");
         }
-      } catch (err) {
-        console.error("Master data fetch error:", err);
+      } catch {
         setErrorMsg("Unable to connect to Master Data service.");
       } finally {
         setIsLoading(false);
@@ -103,18 +111,13 @@ export default function EmployeeMasterDataPage() {
     [],
   );
 
-  // Reset to page 1 when search term or account changes
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchTerm, selectedAccount]);
+  useEffect(() => { setCurrentPage(1); }, [searchTerm, selectedAccount]);
 
-  // Debounced search & filter trigger
   useEffect(() => {
-    const timer = setTimeout(() => {
+    const t = setTimeout(() => {
       void loadLedgerData(searchTerm, selectedAccount, currentPage, pageSize);
     }, 250);
-
-    return () => clearTimeout(timer);
+    return () => clearTimeout(t);
   }, [searchTerm, selectedAccount, currentPage, pageSize, loadLedgerData]);
 
   const isAdmin =
@@ -122,8 +125,11 @@ export default function EmployeeMasterDataPage() {
     Number(dashboard.authUser?.adminAccess ?? dashboard.authUser?.admin_access ?? 0) === 7 ||
     ["admin", "bod", "som"].includes(dashboard.authUser?.role);
 
+  const hasQuery = Boolean(searchTerm.trim() || selectedAccount);
+
+  /* ─── RENDER ───────────────────────────────────────────────────── */
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-white text-slate-800 antialiased font-sans">
+    <div className="flex h-screen w-screen overflow-hidden bg-[#f0f4f8] text-slate-800 antialiased font-sans">
       {/* Sidebar */}
       <AdminSidebar
         modules={dashboard.modules}
@@ -131,291 +137,275 @@ export default function EmployeeMasterDataPage() {
         onMobileClose={() => dashboard.setIsMobileSidebarOpen(false)}
       />
 
-      {/* Main Content Area */}
-      <div className="flex flex-1 flex-col overflow-hidden bg-white">
-        {/* App Header */}
+      {/* Main content */}
+      <div className="flex flex-1 flex-col min-w-0 overflow-hidden">
         <AppHeader
-          title={
-            isAdmin
-              ? dashboard.authUser?.roleLabel || "Super Admin"
-              : "Employee Master Data Ledger"
-          }
-          subtitle={
-            isAdmin
-              ? "Performance Management System"
-              : "Align tool identities (Fusecom, FuseNet, HeroDash)"
-          }
+          title={isAdmin ? dashboard.authUser?.roleLabel || "Super Admin" : "Employee Master Data Ledger"}
+          subtitle={isAdmin ? "Performance Management System" : "Align tool identities (Fusecom, FuseNet, HeroDash)"}
           userName={dashboard.userName}
           onMenuClick={() => dashboard.setIsMobileSidebarOpen(true)}
           onLogoutClick={() => dashboard.setShowLogoutModal(true)}
         />
 
-        {/* Main Body */}
-        <main className="min-w-0 flex-1 min-h-0 flex flex-col overflow-hidden bg-[#f8fafc] p-4 sm:p-5">
-          <div className="w-full flex-1 min-h-0 flex flex-col space-y-4">
-            {/* Search & Account Filter Toolbar (Inline) */}
-            <div className="shrink-0 bg-white p-3.5 sm:p-4 rounded-xl border border-slate-200 shadow-xs flex flex-col sm:flex-row items-center gap-3">
-              {/* Search bar on the left */}
-              <div className="relative flex-1 w-full">
-                <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                <input
-                  type="text"
-                  placeholder="Search by SIBS ID, employee name, or tool alias..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="h-10 w-full rounded-lg border border-slate-200 bg-white pl-10 pr-9 text-xs text-slate-800 placeholder:text-slate-400 focus:border-[#ff5c28] focus:ring-2 focus:ring-[#ff5c28]/20 focus:outline-none transition"
-                />
-                {searchTerm && (
-                  <button
-                    type="button"
-                    onClick={() => setSearchTerm("")}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                  >
-                    <X className="h-3.5 w-3.5" />
-                  </button>
-                )}
-              </div>
+        <main className="flex flex-1 min-h-0 flex-col gap-3 overflow-hidden p-3 sm:p-4 lg:p-5">
 
-              {/* Filtering inline on the right side */}
-              <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto justify-end">
-                <select
-                  value={selectedAccount}
-                  onChange={(e) => setSelectedAccount(e.target.value)}
-                  className="h-10 rounded-lg border border-slate-200 bg-white px-3 text-xs text-slate-700 focus:border-[#ff5c28] focus:outline-none"
-                >
-                  <option value="">All Accounts / Campaigns</option>
-                  {accountsList.map((acc) => (
-                    <option key={acc} value={acc}>
-                      {acc}
-                    </option>
-                  ))}
-                </select>
-
+          {/* ── Toolbar ────────────────────────────────────────────── */}
+          <div className="shrink-0 flex flex-col sm:flex-row items-center gap-2.5 rounded-xl border border-slate-200 bg-white px-3.5 py-3 shadow-xs">
+            {/* Search */}
+            <div className="relative flex-1 w-full min-w-0">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Search by SIBS ID, employee name, or tool alias…"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="h-9 w-full rounded-lg border border-slate-200 bg-slate-50 pl-9 pr-8 text-xs text-slate-800 placeholder:text-slate-400 focus:border-[#0b3b68] focus:bg-white focus:ring-2 focus:ring-[#0b3b68]/10 focus:outline-none transition"
+              />
+              {searchTerm && (
                 <button
                   type="button"
-                  onClick={() => {
-                    setSearchTerm("");
-                    setSelectedAccount("");
-                    setCurrentPage(1);
-                  }}
-                  title="Reset filters"
-                  className="inline-flex h-10 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-xs font-medium text-slate-600 hover:bg-slate-50 transition"
+                  onClick={() => setSearchTerm("")}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
                 >
-                  <RotateCcw className="h-3.5 w-3.5 text-slate-400" />
-                  Reset
+                  <X className="h-3 w-3" />
                 </button>
-              </div>
+              )}
             </div>
 
-            {/* Error notice if any */}
-            {errorMsg && (
-              <div className="shrink-0 rounded-xl border border-rose-200 bg-rose-50 p-4 text-xs font-medium text-rose-700">
-                {errorMsg}
-              </div>
-            )}
+            {/* Account select + Reset */}
+            <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto">
+              <select
+                value={selectedAccount}
+                onChange={(e) => setSelectedAccount(e.target.value)}
+                className="h-9 flex-1 sm:flex-none rounded-lg border border-slate-200 bg-slate-50 px-3 text-xs text-slate-700 focus:border-[#0b3b68] focus:outline-none transition"
+              >
+                <option value="">All Accounts</option>
+                {accountsList.map((acc) => (
+                  <option key={acc} value={acc}>{acc}</option>
+                ))}
+              </select>
 
-            {/* Master Identity Ledger Table */}
-            <div className="flex-1 min-h-0 flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs">
-              <div className="flex-1 min-h-0 overflow-x-auto overflow-y-auto sibs-scrollbar">
-                <table className="w-full text-left text-xs">
-                  <thead className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50 text-[11px] font-bold uppercase tracking-wider text-slate-600 shadow-xs">
+              <button
+                type="button"
+                onClick={() => { setSearchTerm(""); setSelectedAccount(""); setCurrentPage(1); }}
+                className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-3 text-xs font-medium text-slate-600 hover:bg-slate-100 transition"
+              >
+                <RotateCcw className="h-3.5 w-3.5 text-slate-400" />
+                Reset
+              </button>
+            </div>
+          </div>
+
+          {/* ── Error banner ───────────────────────────────────────── */}
+          {errorMsg && (
+            <div className="shrink-0 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs font-medium text-rose-700">
+              {errorMsg}
+            </div>
+          )}
+
+          {/* ── Table card ─────────────────────────────────────────── */}
+          <div className="flex-1 min-h-0 flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs">
+
+            {/* Scrollable table wrapper */}
+            <div
+              className="flex-1 min-h-0 overflow-x-auto overflow-y-auto sibs-scrollbar scroll-smooth"
+              style={{ WebkitOverflowScrolling: "touch" }}
+            >
+                <table className="min-w-full text-left text-xs border-collapse">
+                  {/* ── Table head ──────────────────────────────────── */}
+                  <thead className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50">
                     <tr>
-                      <th className="px-4 py-3.5">SIBS ID</th>
-                      <th className="px-4 py-3.5">Official Kronos Name</th>
-                      <th className="px-4 py-3.5">
-                        <span className="text-orange-600">●</span> Fusecom Name
+                      <th className="px-4 py-3 text-[10.5px] font-extrabold uppercase tracking-wider text-slate-500 whitespace-nowrap">
+                        SIBS ID
                       </th>
-                      <th className="px-4 py-3.5">
-                        <span className="text-blue-600">●</span> FuseNet Name
+                      <th className="px-4 py-3 text-[10.5px] font-extrabold uppercase tracking-wider text-slate-500 whitespace-nowrap min-w-[200px]">
+                        Official Kronos Name
                       </th>
-                      <th className="px-4 py-3.5">
-                        <span className="text-amber-600">●</span> HeroDash Name
+                      <th className="px-4 py-3 text-[10.5px] font-extrabold uppercase tracking-wider text-slate-500 whitespace-nowrap min-w-[170px]">
+                        <span className="inline-block h-2 w-2 rounded-full bg-orange-500 mr-1.5 align-middle" />
+                        Fusecom Name
                       </th>
-                      <th className="px-4 py-3.5">Account / Department</th>
+                      <th className="px-4 py-3 text-[10.5px] font-extrabold uppercase tracking-wider text-slate-500 whitespace-nowrap min-w-[170px]">
+                        <span className="inline-block h-2 w-2 rounded-full bg-blue-500 mr-1.5 align-middle" />
+                        FuseNet Name
+                      </th>
+                      <th className="px-4 py-3 text-[10.5px] font-extrabold uppercase tracking-wider text-slate-500 whitespace-nowrap min-w-[170px]">
+                        <span className="inline-block h-2 w-2 rounded-full bg-amber-500 mr-1.5 align-middle" />
+                        HeroDash Name
+                      </th>
+                      <th className="px-4 py-3 text-[10.5px] font-extrabold uppercase tracking-wider text-slate-500 whitespace-nowrap">
+                        Account
+                      </th>
+                      <th className="px-4 py-3 text-[10.5px] font-extrabold uppercase tracking-wider text-slate-500 whitespace-nowrap">
+                        Status
+                      </th>
                     </tr>
                   </thead>
+
+                  {/* ── Table body ──────────────────────────────────── */}
                   <tbody className="divide-y divide-slate-100">
-                    {isLoading ? (
+                    {/* Loading */}
+                    {isLoading && (
                       <tr>
-                        <td colSpan={6} className="py-16 text-center text-slate-400">
-                          <Loader2 className="mx-auto h-7 w-7 animate-spin text-[#ff5c28] mb-2" />
-                          Loading employee identities...
+                        <td colSpan={7} className="py-20 text-center">
+                          <Loader2 className="mx-auto mb-2 h-6 w-6 animate-spin text-[#0b3b68]" />
+                          <p className="text-xs text-slate-400">Loading employee identities…</p>
                         </td>
                       </tr>
-                    ) : !searchTerm.trim() && !selectedAccount ? (
-                      <tr>
-                        <td colSpan={6} className="py-16 text-center text-slate-400">
-                          <Search className="mx-auto h-8 w-8 text-slate-300 mb-2" />
-                          Please enter an employee name, SIBS ID, or tool alias in the search bar above to view their record.
-                        </td>
-                      </tr>
-                    ) : ledgerList.length === 0 ? (
-                      <tr>
-                        <td colSpan={6} className="py-14 text-center text-slate-400">
-                          <Users className="mx-auto h-8 w-8 text-slate-300 mb-2" />
-                          {selectedAccount && selectedAccount.trim().toLowerCase() !== "us visa" ? (
-                            <span>
-                              No master data records found for{" "}
-                              <strong className="text-slate-600 font-semibold">
-                                {selectedAccount}
-                              </strong>
-                              . Tool identity alignment is currently active for{" "}
-                              <strong className="text-slate-600 font-semibold">
-                                US Visa
-                              </strong>{" "}
-                              only.
-                            </span>
-                          ) : (
-                            "No matching employees found for the current search and filter criteria."
-                          )}
-                        </td>
-                      </tr>
-                    ) : (
-                      ledgerList.map((emp) => (
-                        <tr
-                          key={emp.sibsId}
-                          className="hover:bg-slate-50/80 transition-colors"
-                        >
-                          {/* SIBS ID */}
-                          <td className="px-4 py-3.5 font-mono font-bold text-slate-900 whitespace-nowrap">
-                            <span className="rounded-md bg-slate-100 border border-slate-200 px-2 py-1">
-                              {emp.sibsId}
-                            </span>
-                          </td>
-
-                          {/* Official Kronos Name & Email */}
-                          <td className="px-4 py-3.5 whitespace-nowrap">
-                            <div className="font-semibold text-slate-900">
-                              {emp.fullName}
-                            </div>
-                            <div className="text-[10px] text-slate-500">
-                              {emp.email || "No email"}
-                            </div>
-                          </td>
-
-                          {/* Fusecom Name */}
-                          <td className="px-4 py-3.5 whitespace-nowrap">
-                            <div className="text-slate-800 font-medium">
-                              {emp.toolMappings?.fusecom?.name || "—"}
-                            </div>
-                            {emp.toolMappings?.fusecom?.name && emp.toolMappings?.fusecom?.type && (
-                              <span
-                                className={`inline-block mt-0.5 rounded px-1.5 py-0.2 text-[9px] font-bold uppercase tracking-wider ${
-                                  emp.toolMappings?.fusecom?.type === "EXACT"
-                                    ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                                    : "bg-amber-50 text-amber-700 border border-amber-200"
-                                }`}
-                              >
-                                {emp.toolMappings?.fusecom?.type}
-                              </span>
-                            )}
-                          </td>
-
-                          {/* FuseNet Name */}
-                          <td className="px-4 py-3.5 whitespace-nowrap">
-                            <div className="text-slate-800 font-medium">
-                              {emp.toolMappings?.fusenet?.name || "—"}
-                            </div>
-                            {emp.toolMappings?.fusenet?.name && emp.toolMappings?.fusenet?.type && (
-                              <span
-                                className={`inline-block mt-0.5 rounded px-1.5 py-0.2 text-[9px] font-bold uppercase tracking-wider ${
-                                  emp.toolMappings?.fusenet?.type === "EXACT"
-                                    ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                                    : "bg-blue-50 text-blue-700 border border-blue-200"
-                                }`}
-                              >
-                                {emp.toolMappings?.fusenet?.type}
-                              </span>
-                            )}
-                          </td>
-
-                          {/* HeroDash Name */}
-                          <td className="px-4 py-3.5 whitespace-nowrap">
-                            <div className="text-slate-800 font-medium">
-                              {emp.toolMappings?.herodash?.name || "—"}
-                            </div>
-                            {emp.toolMappings?.herodash?.name && emp.toolMappings?.herodash?.type && (
-                              <span
-                                className={`inline-block mt-0.5 rounded px-1.5 py-0.2 text-[9px] font-bold uppercase tracking-wider ${
-                                  emp.toolMappings?.herodash?.type === "EXACT"
-                                    ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                                    : "bg-amber-50 text-amber-700 border border-amber-200"
-                                }`}
-                              >
-                                {emp.toolMappings?.herodash?.type}
-                              </span>
-                            )}
-                          </td>
-
-                          {/* Account / Department */}
-                          <td className="px-4 py-3.5 whitespace-nowrap">
-                            <span className="inline-flex items-center rounded-md bg-slate-100 border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-700">
-                              {emp.account || "Unassigned"}
-                            </span>
-                          </td>
-                        </tr>
-                      ))
                     )}
+
+                    {/* Prompt — no query yet */}
+                    {!isLoading && !hasQuery && (
+                      <tr>
+                        <td colSpan={7} className="py-20 text-center">
+                          <Search className="mx-auto mb-2.5 h-8 w-8 text-slate-200" />
+                          <p className="text-xs font-medium text-slate-400">
+                            Enter a name, SIBS ID, or tool alias to search the ledger.
+                          </p>
+                        </td>
+                      </tr>
+                    )}
+
+                    {/* Empty results */}
+                    {!isLoading && hasQuery && ledgerList.length === 0 && (
+                      <tr>
+                        <td colSpan={7} className="py-20 text-center">
+                          <Users className="mx-auto mb-2.5 h-8 w-8 text-slate-200" />
+                          <p className="text-xs font-medium text-slate-400">
+                            {selectedAccount && selectedAccount.trim().toLowerCase() !== "us visa"
+                              ? <>No records for <strong className="text-slate-600">{selectedAccount}</strong>. Identity alignment is active for <strong className="text-slate-600">US Visa</strong> only.</>
+                              : "No matching employees found."}
+                          </p>
+                        </td>
+                      </tr>
+                    )}
+
+                    {/* Data rows */}
+                    {!isLoading && ledgerList.map((emp, idx) => (
+                      <tr
+                        key={emp.sibsId}
+                        className={`group transition-colors hover:bg-[#f0f7ff] ${idx % 2 === 0 ? "bg-white" : "bg-slate-50/40"}`}
+                      >
+                        {/* SIBS ID */}
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          <span className="inline-flex items-center justify-center rounded-md border border-slate-200 bg-slate-100 px-2 py-0.5 font-mono text-[11px] font-bold text-slate-700 group-hover:border-slate-300">
+                            {emp.sibsId}
+                          </span>
+                        </td>
+
+                        {/* Official name + email */}
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          <div className="font-semibold text-slate-900 leading-tight">
+                            {emp.fullName}
+                          </div>
+                          <div className="text-[10px] text-slate-400 mt-0.5 truncate max-w-[220px]">
+                            {emp.email || "No email"}
+                          </div>
+                        </td>
+
+                        {/* Fusecom */}
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          <ToolCell
+                            name={emp.toolMappings?.fusecom?.name}
+                            type={emp.toolMappings?.fusecom?.type}
+                            accentClass={
+                              emp.toolMappings?.fusecom?.type === "EXACT"
+                                ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                : "bg-orange-50 text-orange-700 border-orange-200"
+                            }
+                          />
+                        </td>
+
+                        {/* FuseNet */}
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          <ToolCell
+                            name={emp.toolMappings?.fusenet?.name}
+                            type={emp.toolMappings?.fusenet?.type}
+                            accentClass={
+                              emp.toolMappings?.fusenet?.type === "EXACT"
+                                ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                : "bg-blue-50 text-blue-700 border-blue-200"
+                            }
+                          />
+                        </td>
+
+                        {/* HeroDash */}
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          <ToolCell
+                            name={emp.toolMappings?.herodash?.name}
+                            type={emp.toolMappings?.herodash?.type}
+                            accentClass={
+                              emp.toolMappings?.herodash?.type === "EXACT"
+                                ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                : "bg-amber-50 text-amber-700 border-amber-200"
+                            }
+                          />
+                        </td>
+
+                        {/* Account */}
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          <span className="inline-flex items-center rounded-md border border-slate-200 bg-slate-100 px-2.5 py-0.5 text-[10.5px] font-semibold text-slate-700">
+                            {emp.account || "Unassigned"}
+                          </span>
+                        </td>
+
+                        {/* Status */}
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          <StatusBadge status={emp.status} />
+                        </td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               </div>
 
-              {/* Pagination Controls */}
-              {totalCount > 0 && (
-                <div className="shrink-0 flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-slate-200 bg-slate-50/70 px-4 py-3 text-xs text-slate-600">
-                  {/* Item counter */}
-                  <div>
-                    Showing{" "}
-                    <span className="font-semibold text-slate-900">
-                      {(currentPage - 1) * pageSize + 1}
-                    </span>{" "}
-                    to{" "}
-                    <span className="font-semibold text-slate-900">
-                      {Math.min(currentPage * pageSize, totalCount)}
-                    </span>{" "}
-                    of{" "}
-                    <span className="font-semibold text-slate-900">
-                      {totalCount}
-                    </span>{" "}
-                    employees
+            {/* ── Pagination footer ────────────────────────────────── */}
+            {totalCount > 0 && (
+              <div className="shrink-0 flex flex-col sm:flex-row items-center justify-between gap-2 border-t border-slate-100 bg-slate-50/60 px-4 py-2.5">
+                {/* Count */}
+                <p className="text-[11px] text-slate-500">
+                  Showing{" "}
+                  <span className="font-semibold text-slate-800">{(currentPage - 1) * pageSize + 1}</span>
+                  {" "}to{" "}
+                  <span className="font-semibold text-slate-800">{Math.min(currentPage * pageSize, totalCount)}</span>
+                  {" "}of{" "}
+                  <span className="font-semibold text-slate-800">{totalCount}</span>
+                  {" "}employees
+                </p>
+
+                {/* Page controls */}
+                {totalPages > 1 && (
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
+                      disabled={currentPage === 1 || isLoading}
+                      className="flex h-7 w-7 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-500 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition"
+                    >
+                      <ChevronLeft className="h-3.5 w-3.5" />
+                    </button>
+
+                    <span className="px-2 text-[11px] font-semibold text-slate-600">
+                      {currentPage} / {totalPages}
+                    </span>
+
+                    <button
+                      type="button"
+                      onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
+                      disabled={currentPage >= totalPages || isLoading}
+                      className="flex h-7 w-7 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-500 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition"
+                    >
+                      <ChevronRight className="h-3.5 w-3.5" />
+                    </button>
                   </div>
-
-                  {/* Pagination Buttons: Only show when multiple pages exist */}
-                  {totalPages > 1 && (
-                    <div className="flex items-center gap-1">
-                      <button
-                        type="button"
-                        onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
-                        disabled={currentPage === 1 || isLoading}
-                        title="Previous page"
-                        className="flex h-8 w-8 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition"
-                      >
-                        <ChevronLeft className="h-4 w-4" />
-                      </button>
-
-                      <span className="px-2 font-medium text-slate-700">
-                        Page {currentPage} of {totalPages}
-                      </span>
-
-                      <button
-                        type="button"
-                        onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
-                        disabled={currentPage >= totalPages || isLoading}
-                        title="Next page"
-                        className="flex h-8 w-8 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition"
-                      >
-                        <ChevronRight className="h-4 w-4" />
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
+                )}
+              </div>
+            )}
           </div>
         </main>
       </div>
 
-      {/* Confirmation & Loading Modals for Logout */}
+      {/* Modals */}
       <ConfirmationModal
         isOpen={dashboard.showLogoutModal}
         title="Sign Out"
@@ -425,11 +415,7 @@ export default function EmployeeMasterDataPage() {
         onConfirm={dashboard.handleLogout}
         onCancel={() => dashboard.setShowLogoutModal(false)}
       />
-
-      <LoadingModal
-        isOpen={dashboard.isLoggingOut}
-        message="Signing out..."
-      />
+      <LoadingModal isOpen={dashboard.isLoggingOut} message="Signing out…" />
     </div>
   );
 }
