@@ -1074,6 +1074,17 @@ function WfmImportDataPage() {
         message: `Imported ${file.name} to ${card.account} - ${card.title}.`,
       });
     } catch (error) {
+      if (
+        isUsVisa &&
+        error?.response?.data?.code === "DUPLICATE_FILE"
+      ) {
+        setDuplicateUploadAlert({
+          fileName: file.name,
+          rawDataTitle: card.title,
+        });
+        return;
+      }
+
       console.error("Import failed:", error);
       setErrorModalInfo({
         title: "Import Failed",
