@@ -155,6 +155,9 @@ function getUserRole(user) {
       case 10:
         return "som";
 
+      case 11:
+        return "masterdata";
+
       default:
         return "employee";
     }
@@ -171,6 +174,7 @@ function getUserRole(user) {
     "tl",
     "wfm",
     "som",
+    "masterdata",
   ];
 
   if (
@@ -179,6 +183,10 @@ function getUserRole(user) {
     )
   ) {
     return normalizedRole;
+  }
+
+  if (normalizedRole === "masterdata") {
+    return "masterdata";
   }
 
   return "employee";
@@ -206,6 +214,9 @@ function getRoleLabel(role) {
 
     case "som":
       return "Senior Operations Manager";
+
+    case "masterdata":
+      return "Master Data / Ledger Admin";
 
     case "employee":
       return "Employee";
@@ -314,6 +325,9 @@ function getDashboardPath(
 
     case "som":
       return "/dashboard/som";
+
+    case "masterdata":
+      return "/dashboard/employee-master-data";
 
     default:
       return "/dashboard/agent";
