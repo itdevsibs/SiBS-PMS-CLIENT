@@ -185,13 +185,13 @@ const AppHeader = ({
                 )}
                 <span className="hidden min-w-0 flex-col text-left md:flex">
                   <span
-                    className="block max-w-[130px] lg:max-w-[180px] truncate text-[12px] font-extrabold uppercase leading-5 text-sibs-primary-1"
+                    className="block max-w-[180px] md:max-w-[240px] lg:max-w-[320px] xl:max-w-[400px] truncate text-[12px] font-extrabold uppercase leading-5 text-sibs-primary-1"
                     title={displayName}
                   >
                     {displayName}
                   </span>
                   <span
-                    className="block max-w-[130px] lg:max-w-[180px] truncate text-[11px] font-semibold leading-4 text-sibs-primary-2"
+                    className="block max-w-[180px] md:max-w-[240px] lg:max-w-[320px] xl:max-w-[400px] truncate text-[11px] font-semibold leading-4 text-sibs-primary-2"
                     title={displayEmail}
                   >
                     {displayEmail}

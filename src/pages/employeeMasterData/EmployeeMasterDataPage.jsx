@@ -143,7 +143,7 @@ export default function EmployeeMasterDataPage() {
           subtitle={
             isAdmin
               ? "Performance Management System"
-              : "Align names and phone IDs per tool (Fusecom, FuseNet, HeroDash)"
+              : "Align tool identities (Fusecom, FuseNet, HeroDash)"
           }
           userName={dashboard.userName}
           onMenuClick={() => dashboard.setIsMobileSidebarOpen(true)}
@@ -151,16 +151,16 @@ export default function EmployeeMasterDataPage() {
         />
 
         {/* Main Body */}
-        <main className="flex-1 overflow-y-auto bg-[#f8fafc] p-4 sm:p-6 lg:p-8">
-          <div className="w-full space-y-6">
+        <main className="min-w-0 flex-1 min-h-0 flex flex-col overflow-hidden bg-[#f8fafc] p-4 sm:p-5">
+          <div className="w-full flex-1 min-h-0 flex flex-col space-y-4">
             {/* Search & Account Filter Toolbar (Inline) */}
-            <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs flex flex-col sm:flex-row items-center gap-3">
+            <div className="shrink-0 bg-white p-3.5 sm:p-4 rounded-xl border border-slate-200 shadow-xs flex flex-col sm:flex-row items-center gap-3">
               {/* Search bar on the left */}
               <div className="relative flex-1 w-full">
                 <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                 <input
                   type="text"
-                  placeholder="Search by SIBS ID, employee name, phone ID, or tool alias..."
+                  placeholder="Search by SIBS ID, employee name, or tool alias..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="h-10 w-full rounded-lg border border-slate-200 bg-white pl-10 pr-9 text-xs text-slate-800 placeholder:text-slate-400 focus:border-[#ff5c28] focus:ring-2 focus:ring-[#ff5c28]/20 focus:outline-none transition"
@@ -209,20 +209,19 @@ export default function EmployeeMasterDataPage() {
 
             {/* Error notice if any */}
             {errorMsg && (
-              <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-xs font-medium text-rose-700">
+              <div className="shrink-0 rounded-xl border border-rose-200 bg-rose-50 p-4 text-xs font-medium text-rose-700">
                 {errorMsg}
               </div>
             )}
 
             {/* Master Identity Ledger Table */}
-            <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs">
-              <div className="overflow-x-auto max-h-[70vh] overflow-y-auto">
+            <div className="flex-1 min-h-0 flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs">
+              <div className="flex-1 min-h-0 overflow-x-auto overflow-y-auto sibs-scrollbar">
                 <table className="w-full text-left text-xs">
                   <thead className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50 text-[11px] font-bold uppercase tracking-wider text-slate-600 shadow-xs">
                     <tr>
                       <th className="px-4 py-3.5">SIBS ID</th>
                       <th className="px-4 py-3.5">Official Kronos Name</th>
-                      <th className="px-4 py-3.5">Phone / Login</th>
                       <th className="px-4 py-3.5">
                         <span className="text-orange-600">●</span> Fusecom Name
                       </th>
@@ -238,21 +237,21 @@ export default function EmployeeMasterDataPage() {
                   <tbody className="divide-y divide-slate-100">
                     {isLoading ? (
                       <tr>
-                        <td colSpan={7} className="py-16 text-center text-slate-400">
+                        <td colSpan={6} className="py-16 text-center text-slate-400">
                           <Loader2 className="mx-auto h-7 w-7 animate-spin text-[#ff5c28] mb-2" />
                           Loading employee identities...
                         </td>
                       </tr>
                     ) : !searchTerm.trim() && !selectedAccount ? (
                       <tr>
-                        <td colSpan={7} className="py-16 text-center text-slate-400">
+                        <td colSpan={6} className="py-16 text-center text-slate-400">
                           <Search className="mx-auto h-8 w-8 text-slate-300 mb-2" />
                           Please enter an employee name, SIBS ID, or tool alias in the search bar above to view their record.
                         </td>
                       </tr>
                     ) : ledgerList.length === 0 ? (
                       <tr>
-                        <td colSpan={7} className="py-14 text-center text-slate-400">
+                        <td colSpan={6} className="py-14 text-center text-slate-400">
                           <Users className="mx-auto h-8 w-8 text-slate-300 mb-2" />
                           {selectedAccount && selectedAccount.trim().toLowerCase() !== "us visa" ? (
                             <span>
@@ -294,30 +293,22 @@ export default function EmployeeMasterDataPage() {
                             </div>
                           </td>
 
-                          {/* Phone ID / Login */}
-                          <td className="px-4 py-3.5 whitespace-nowrap font-mono">
-                            <div className="text-slate-800">
-                              Phone: <span className="font-semibold">{emp.phoneId || "—"}</span>
-                            </div>
-                            <div className="text-[10px] text-slate-500">
-                              Login: {emp.agentLogin || "—"}
-                            </div>
-                          </td>
-
                           {/* Fusecom Name */}
                           <td className="px-4 py-3.5 whitespace-nowrap">
                             <div className="text-slate-800 font-medium">
                               {emp.toolMappings?.fusecom?.name || "—"}
                             </div>
-                            <span
-                              className={`inline-block mt-0.5 rounded px-1.5 py-0.2 text-[9px] font-bold uppercase tracking-wider ${
-                                emp.toolMappings?.fusecom?.type === "EXACT"
-                                  ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                                  : "bg-amber-50 text-amber-700 border border-amber-200"
-                              }`}
-                            >
-                              {emp.toolMappings?.fusecom?.type || "EXACT"}
-                            </span>
+                            {emp.toolMappings?.fusecom?.name && emp.toolMappings?.fusecom?.type && (
+                              <span
+                                className={`inline-block mt-0.5 rounded px-1.5 py-0.2 text-[9px] font-bold uppercase tracking-wider ${
+                                  emp.toolMappings?.fusecom?.type === "EXACT"
+                                    ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                                    : "bg-amber-50 text-amber-700 border border-amber-200"
+                                }`}
+                              >
+                                {emp.toolMappings?.fusecom?.type}
+                              </span>
+                            )}
                           </td>
 
                           {/* FuseNet Name */}
@@ -325,15 +316,17 @@ export default function EmployeeMasterDataPage() {
                             <div className="text-slate-800 font-medium">
                               {emp.toolMappings?.fusenet?.name || "—"}
                             </div>
-                            <span
-                              className={`inline-block mt-0.5 rounded px-1.5 py-0.2 text-[9px] font-bold uppercase tracking-wider ${
-                                emp.toolMappings?.fusenet?.type === "EXACT"
-                                  ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                                  : "bg-blue-50 text-blue-700 border border-blue-200"
-                              }`}
-                            >
-                              {emp.toolMappings?.fusenet?.type || "EXACT"}
-                            </span>
+                            {emp.toolMappings?.fusenet?.name && emp.toolMappings?.fusenet?.type && (
+                              <span
+                                className={`inline-block mt-0.5 rounded px-1.5 py-0.2 text-[9px] font-bold uppercase tracking-wider ${
+                                  emp.toolMappings?.fusenet?.type === "EXACT"
+                                    ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                                    : "bg-blue-50 text-blue-700 border border-blue-200"
+                                }`}
+                              >
+                                {emp.toolMappings?.fusenet?.type}
+                              </span>
+                            )}
                           </td>
 
                           {/* HeroDash Name */}
@@ -341,15 +334,17 @@ export default function EmployeeMasterDataPage() {
                             <div className="text-slate-800 font-medium">
                               {emp.toolMappings?.herodash?.name || "—"}
                             </div>
-                            <span
-                              className={`inline-block mt-0.5 rounded px-1.5 py-0.2 text-[9px] font-bold uppercase tracking-wider ${
-                                emp.toolMappings?.herodash?.type === "EXACT"
-                                  ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                                  : "bg-amber-50 text-amber-700 border border-amber-200"
-                              }`}
-                            >
-                              {emp.toolMappings?.herodash?.type || "EXACT"}
-                            </span>
+                            {emp.toolMappings?.herodash?.name && emp.toolMappings?.herodash?.type && (
+                              <span
+                                className={`inline-block mt-0.5 rounded px-1.5 py-0.2 text-[9px] font-bold uppercase tracking-wider ${
+                                  emp.toolMappings?.herodash?.type === "EXACT"
+                                    ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                                    : "bg-amber-50 text-amber-700 border border-amber-200"
+                                }`}
+                              >
+                                {emp.toolMappings?.herodash?.type}
+                              </span>
+                            )}
                           </td>
 
                           {/* Account / Department */}
@@ -367,7 +362,7 @@ export default function EmployeeMasterDataPage() {
 
               {/* Pagination Controls */}
               {totalCount > 0 && (
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-slate-200 bg-slate-50/70 px-4 py-3 text-xs text-slate-600">
+                <div className="shrink-0 flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-slate-200 bg-slate-50/70 px-4 py-3 text-xs text-slate-600">
                   {/* Item counter */}
                   <div>
                     Showing{" "}
