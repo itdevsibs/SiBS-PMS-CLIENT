@@ -1,608 +1,39 @@
 // WFM page for uploading and managing raw data files.
-import { useEffect, useMemo, useRef, useState } from "react";
-import {
-  AlertCircle,
-  AlertTriangle,
-  ArrowLeft,
-  ArrowRight,
-  CheckCircle2,
-  ChevronLeft,
-  ChevronRight,
-  ChevronsLeft,
-  ChevronsRight,
-  CloudUpload,
-  Eye,
-  FileSpreadsheet,
-  FolderOpen,
-  Layers,
-  ListPlus,
-  Loader2,
-  Search,
-  Trash2,
-} from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import AdminSidebar from "@/components/layout/AdminSidebar";
 import AppHeader from "@/components/layout/AppHeader";
-import AppModal from "@/components/ui/app-modal";
-import SingleSelectDropdown from "@/components/ui/Filter/SingleSelectDropdown";
-import { Button } from "@/components/ui/button";
-import ConfirmationModal from "@/components/ui/confirmation-modal";
-import ImportProgressModal from "@/components/ui/import-progress-modal";
-import LoadingModal from "@/components/ui/loading-modal";
+import WfmAccountWorkspacesGrid from "@/components/ui/import/wfm-account-workspaces-grid";
+import WfmFilterBar from "@/components/ui/import/wfm-filter-bar";
+import WfmImportModals from "@/components/ui/import/wfm-import-modals";
+import WfmImportSummaryBar from "@/components/ui/import/wfm-import-summary-bar";
+import WfmRawDataCardsGrid from "@/components/ui/import/wfm-raw-data-cards-grid";
 import useDashboardPage from "@/hooks/useDashboardPage";
 import { getAuthDisplayName } from "@/lib/auth";
 import { recordWfmHistoryLogQuietly } from "@/lib/axios/wfm-history-logs";
 import { removeWfmGraphReportsForUpload } from "@/lib/wfm-graph-reports";
-import {
-  accountOptions,
-  getRawDataCardByImportProfileCode,
-  getRawDataCards,
-} from "@/lib/wfm-raw-data-cards";
+import { accountOptions, getRawDataCards } from "@/lib/wfm-raw-data-cards";
 import {
   deleteUsVisaImportBatch,
+  getUsVisaImportBatchDetails,
   getUsVisaImportBatchErrors,
   getUsVisaImportHistory,
   getUsVisaImportSummary,
-  uploadUsVisaImport,
 } from "@/lib/axios/us-visa-imports";
-
-const RAW_DATA_UPLOADS_KEY = "sibs-wfm-raw-data-uploads";
-
-const accountFilters = [
-  "All Accounts",
-  ...accountOptions,
-];
-
-const EMPTY_IMPORT_SUMMARY = {
-  totalUploads: 0,
-  uploadsWithIssues: 0,
-  totalRows: 0,
-  validRows: 0,
-  invalidRows: 0,
-  duplicateRows: 0,
-  warningRows: 0,
-};
-
-const IMPORT_SUMMARY_CARDS = [
-  {
-    key: "totalUploads",
-    label: "TOTAL UPLOADS",
-    icon: CloudUpload,
-  },
-  {
-    key: "totalRows",
-    label: "RECORDS PROCESSED",
-    icon: FileSpreadsheet,
-  },
-  {
-    key: "validRows",
-    label: "RECORDS ACCEPTED",
-    icon: CheckCircle2,
-  },
-  {
-    key: "invalidRows",
-    label: "RECORDS REJECTED",
-    icon: AlertCircle,
-  },
-  {
-    key: "duplicateRows",
-    label: "DUPLICATES FOUND",
-    icon: ListPlus,
-  },
-  {
-    key: "warningRows",
-    label: "WARNINGS FOUND",
-    icon: AlertTriangle,
-  },
-];
-
-const importSummaryNumberFormatter = new Intl.NumberFormat("en-US", {
-  notation: "compact",
-  maximumFractionDigits: 1,
-});
-
-function getApiErrorMessage(error, card) {
-  const backendMsg = error?.response?.data?.message || "";
-  const backendCode = error?.response?.data?.code || "";
-
-  if (backendMsg) {
-    return backendMsg;
-  }
-
-  if (backendCode === "CORRUPTED_WORKBOOK") {
-    return "The uploaded XLSX file could not be opened as a valid Excel workbook. Please re-export the report from the source system and try again.";
-  }
-
-  if (backendCode === "INVALID_EXCEL_FILE") {
-    return "The selected file could not be read as an Excel workbook. Please select a valid .xlsx file and try again.";
-  }
-
-  if (backendCode === "INVALID_FILE_TYPE") {
-    const extension = card?.fileExtension || ".xlsx";
-    return `Only ${extension} files are supported for this import.`;
-  }
-
-  if (backendCode === "FILE_TOO_LARGE") {
-    return "The selected file exceeds the maximum allowed upload size.";
-  }
-
-  if (
-    backendCode === "MISSING_REQUIRED_WORKSHEET" ||
-    backendCode === "MISSING_REQUIRED_SHEET" ||
-    backendCode === "MISSING_REQUIRED_COLUMN" ||
-    backendCode === "MISSING_REQUIRED_HEADER" ||
-    backendCode === "WRONG_IMPORT_PROFILE"
-  ) {
-    const profileLabel = card?.title || "valid";
-    const extension = card?.fileExtension || ".xlsx";
-    const reportTypeLabel = /occupancy/i.test(profileLabel)
-      ? "Agent Occupancy"
-      : /agent/i.test(profileLabel)
-        ? "Agent Level"
-        : "Skill Statistics";
-
-    if (/hero/i.test(profileLabel || card?.id || "")) {
-      return `Only HeroDash ${reportTypeLabel} (${extension}) files are allowed for this card. The uploaded file is missing required HeroDash ${reportTypeLabel} sheets or headers.`;
-    }
-    if (/fusenet/i.test(profileLabel || card?.id || "")) {
-      return `Only FuseNet ${reportTypeLabel} (${extension}) files are allowed for this card. The uploaded file is missing required FuseNet ${reportTypeLabel} sheets or headers.`;
-    }
-    if (/fuse/i.test(profileLabel || card?.id || "")) {
-      return `Only Fusecom ${reportTypeLabel} (${extension}) files are allowed for this card. The uploaded file is missing required Fusecom ${reportTypeLabel} sheets or headers.`;
-    }
-    return `Only ${profileLabel} (${extension}) reports are allowed for this card. The uploaded file does not match the required format.`;
-  }
-}
-
-const BATCH_DETAIL_TONES = {
-  blue: {
-    border: "border-sky-100",
-    background: "bg-sky-50/60",
-    iconBackground: "bg-sky-100",
-    icon: "text-sky-600",
-  },
-  emerald: {
-    border: "border-emerald-100",
-    background: "bg-emerald-50/60",
-    iconBackground: "bg-emerald-100",
-    icon: "text-emerald-600",
-  },
-  rose: {
-    border: "border-rose-100",
-    background: "bg-rose-50/60",
-    iconBackground: "bg-rose-100",
-    icon: "text-rose-600",
-  },
-  orange: {
-    border: "border-orange-100",
-    background: "bg-orange-50/60",
-    iconBackground: "bg-orange-100",
-    icon: "text-orange-600",
-  },
-  amber: {
-    border: "border-amber-100",
-    background: "bg-amber-50/60",
-    iconBackground: "bg-amber-100",
-    icon: "text-amber-600",
-  },
-};
-
-function BatchDetailStat({ label, value, icon: Icon, tone = "blue", className = "" }) {
-  const styles = BATCH_DETAIL_TONES[tone] || BATCH_DETAIL_TONES.blue;
-
-  return (
-    <div
-      className={`group relative overflow-hidden rounded-xl sm:rounded-2xl border ${styles.border} ${styles.background} p-3 sm:p-3.5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md ${className}`}
-    >
-      <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-start gap-2">
-        <div className="min-w-0">
-          <p className="m-0 min-w-0 text-[9px] font-extrabold uppercase leading-[1.05] tracking-normal text-sibs-tertiary-5">
-            {label}
-          </p>
-          <p className="mt-1.5 sm:mt-2 mb-0 text-xl sm:text-[22px] font-black leading-none tracking-tight text-sibs-primary-1">
-            {Number(value || 0).toLocaleString()}
-          </p>
-        </div>
-        <span
-          className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-lg ${styles.iconBackground} ${styles.icon}`}
-        >
-          <Icon className="h-3 w-3" aria-hidden="true" />
-        </span>
-      </div>
-    </div>
-  );
-}
-
-function formatUploadTimestamp(date = new Date()) {
-  const d = date instanceof Date ? date : new Date(date);
-  if (Number.isNaN(d.getTime())) return "";
-
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-  }).format(d);
-}
-
-function getUploadTimeMs(upload) {
-  if (upload?.uploadedAtMs && !Number.isNaN(Number(upload.uploadedAtMs))) {
-    return Number(upload.uploadedAtMs);
-  }
-
-  const parsedTime = new Date(upload?.uploadedAt || "").getTime();
-
-  return Number.isNaN(parsedTime) ? Date.now() : parsedTime;
-}
-
-function formatRelativeTime(upload) {
-  const uploadMs = getUploadTimeMs(upload);
-  const elapsedMs = Math.max(0, Date.now() - uploadMs);
-  const elapsedMinutes = Math.floor(elapsedMs / 60000);
-  const elapsedHours = Math.floor(elapsedMinutes / 60);
-  const elapsedDays = Math.floor(elapsedHours / 24);
-
-  if (elapsedMinutes < 1) return "just now";
-  if (elapsedMinutes < 60) {
-    return `${elapsedMinutes} min${elapsedMinutes === 1 ? "" : "s"} ago`;
-  }
-  if (elapsedHours < 24) {
-    return `${elapsedHours} hour${elapsedHours === 1 ? "" : "s"} ago`;
-  }
-
-  return `${elapsedDays} day${elapsedDays === 1 ? "" : "s"} ago`;
-}
-
-function formatImportStatus(status) {
-  switch (status) {
-    case "COMPLETED":
-      return "Completed";
-    case "COMPLETED_WITH_ERRORS":
-      return "Completed with warnings";
-    case "FAILED":
-      return "Failed";
-    case "DUPLICATE":
-      return "Duplicate";
-    default:
-      return status ? String(status).replace(/_/g, " ") : "Completed";
-  }
-}
-
-function getCellText(value) {
-  if (value == null) return "";
-
-  if (typeof value === "object") {
-    if ("text" in value) return String(value.text || "");
-    if ("result" in value) return String(value.result || "");
-    if ("richText" in value) {
-      return value.richText.map((item) => item.text || "").join("");
-    }
-  }
-
-  return String(value);
-}
-
-function normalizeHeaders(headers) {
-  const usedHeaders = new Map();
-  const columns = headers.map((header, index) => {
-    const fallbackHeader = `Column ${index + 1}`;
-    const baseHeader = getCellText(header).trim() || fallbackHeader;
-    const usedCount = usedHeaders.get(baseHeader) || 0;
-
-    usedHeaders.set(baseHeader, usedCount + 1);
-
-    return usedCount > 0 ? `${baseHeader} ${usedCount + 1}` : baseHeader;
-  });
-
-  return columns.length ? columns : ["Column 1"];
-}
-
-function buildRows(columns, dataRows, fileName) {
-  return dataRows.map((cells) => {
-    const row = {};
-
-    columns.forEach((column, index) => {
-      row[column] = getCellText(cells[index]).trim() || "-";
-    });
-    row["Source File"] = fileName;
-
-    return row;
-  });
-}
-
-function parseCsvRows(text, fileName) {
-  const lines = String(text || "").split(/\r?\n/).filter((line) => line.trim());
-
-  if (lines.length <= 1) {
-    return {
-      columns: ["Source File"],
-      rows: [],
-    };
-  }
-
-  const [headerLine, ...dataLines] = lines;
-  const columns = normalizeHeaders(
-    headerLine.split(",").map((cell) => cell.trim().replace(/^"|"$/g, "")),
-  );
-  const rows = buildRows(
-    columns,
-    dataLines.map((line) =>
-      line.split(",").map((cell) => cell.trim().replace(/^"|"$/g, "")),
-    ),
-    fileName,
-  );
-
-  return {
-    columns: [...columns, "Source File"],
-    rows,
-  };
-}
-
-function isDataRow(row) {
-  return row.some((cell) => getCellText(cell).trim());
-}
-
-function getFilledCellCount(row) {
-  return row.filter((cell) => getCellText(cell).trim()).length;
-}
-
-function isLikelyHeaderRow(row, nextRow) {
-  const filledCellCount = getFilledCellCount(row);
-  const nextFilledCellCount = getFilledCellCount(nextRow || []);
-  const joinedRow = row.map((cell) => getCellText(cell).toLowerCase()).join(" ");
-  const knownHeaderWords = [
-    "employee",
-    "record",
-    "date",
-    "skill",
-    "calls",
-    "account",
-    "team",
-    "quality",
-    "score",
-  ];
-  const headerWordMatches = knownHeaderWords.filter((word) =>
-    joinedRow.includes(word),
-  ).length;
-
-  return filledCellCount >= 3 && nextFilledCellCount >= 3 && headerWordMatches >= 2;
-}
-
-function findHeaderRowIndex(rows) {
-  const scanLimit = Math.min(rows.length - 1, 25);
-
-  for (let index = 0; index < scanLimit; index += 1) {
-    if (isLikelyHeaderRow(rows[index], rows[index + 1])) {
-      return index;
-    }
-  }
-
-  return 0;
-}
-
-async function parseWorkbookRows(arrayBuffer, fileName) {
-  const XLSX = await import("xlsx");
-  const workbook = XLSX.read(arrayBuffer, {
-    type: "array",
-    cellDates: true,
-    cellText: false,
-  });
-  const sheetName = workbook.SheetNames.find(
-    (name) => workbook.Sheets[name]?.["!ref"],
-  );
-
-  if (!sheetName) {
-    return {
-      columns: ["Source File"],
-      rows: [],
-    };
-  }
-
-  const sheetRows = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], {
-    header: 1,
-    defval: "",
-    blankrows: false,
-    raw: false,
-  });
-  const normalizedRows = sheetRows
-    .map((row) => row.map((cell) => getCellText(cell).trim()))
-    .filter(isDataRow);
-
-  if (normalizedRows.length <= 1) {
-    return {
-      columns: ["Source File"],
-      rows: [],
-    };
-  }
-
-  const headerRowIndex = findHeaderRowIndex(normalizedRows);
-  const headerRow = normalizedRows[headerRowIndex];
-  const dataRows = normalizedRows.slice(headerRowIndex + 1);
-  const columns = normalizeHeaders(headerRow);
-
-  return {
-    columns: [...columns, "Source File"],
-    rows: buildRows(columns, dataRows, fileName),
-  };
-}
-
-function readJsonCache(key, fallback) {
-  if (typeof window === "undefined") return fallback;
-
-  try {
-    return JSON.parse(window.localStorage.getItem(key) || "") || fallback;
-  } catch {
-    return fallback;
-  }
-}
-
-function writeJsonCache(key, value) {
-  if (typeof window === "undefined") return;
-
-  window.localStorage.setItem(key, JSON.stringify(value));
-}
-
-function normalizeUploadsByCard(uploadsByCard) {
-  return Object.fromEntries(
-    Object.entries(uploadsByCard || {}).map(([cardId, uploads]) => [
-      cardId,
-      Array.isArray(uploads)
-        ? uploads.map((upload, index) => ({
-          ...upload,
-          id:
-            upload.id ||
-            `${cardId}-${upload.fileName || "upload"}-${getUploadTimeMs(upload)}-${index}`,
-          cardId: upload.cardId || cardId,
-          uploadedAtMs: getUploadTimeMs(upload),
-        }))
-        : [],
-    ]),
-  );
-}
-
-async function readSelectedFile(file) {
-  if (/\.csv$/i.test(file.name)) {
-    return new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(parseCsvRows(reader.result, file.name));
-      reader.onerror = () => resolve({ columns: ["Source File"], rows: [] });
-      reader.readAsText(file);
-    });
-  }
-
-  return new Promise((resolve) => {
-    const reader = new FileReader();
-    reader.onload = async () => {
-      try {
-        resolve(await parseWorkbookRows(reader.result, file.name));
-      } catch {
-        resolve({ columns: ["Source File"], rows: [] });
-      }
-    };
-    reader.onerror = () => resolve({ columns: ["Source File"], rows: [] });
-    reader.readAsArrayBuffer(file);
-  });
-}
-
-function createUploadRecordId(cardId, fileName) {
-  const uploadedAtMs = Date.now();
-  const rand = Math.random().toString(36).slice(2);
-
-  return {
-    id: `${cardId}-${fileName}-${uploadedAtMs}-${rand}`,
-    uploadedAtMs,
-  };
-}
-
-function getImportProfileForCard(card) {
-  return String(card?.importProfileCode || "").trim() || null;
-}
-
-function normalizeTaskOrderOption(taskOrder) {
-  if (!taskOrder) return null;
-  if (typeof taskOrder === "string") {
-    return { id: null, label: taskOrder };
-  }
-
-  const id = String(taskOrder.id || "").trim();
-  const label = String(taskOrder.label || id).trim();
-  return id || label ? { id: id || null, label: label || id } : null;
-}
-
-function getTaskOrderSearchText(taskOrder) {
-  const option = normalizeTaskOrderOption(taskOrder);
-  return option ? `${option.id || ""} ${option.label || ""}`.trim().toLowerCase() : "";
-}
-
-function mapBatchToUpload(batch) {
-  if (!batch || batch.status === "FAILED") {
-    return null;
-  }
-
-  const profileCode = String(batch.importProfileCode || "").trim();
-  const card = getRawDataCardByImportProfileCode(profileCode);
-
-  if (!card) {
-    return null;
-  }
-
-  const cardId = card.id;
-  const rawDataTitle = card.title;
-  const account = "US VISA";
-
-  let uploadedAtMs = Date.now();
-  if (batch.createdAt) {
-    const raw = String(batch.createdAt).trim();
-    const normalized =
-      raw.includes("Z") || raw.includes("+")
-        ? raw
-        : `${raw.replace(" ", "T")}+08:00`;
-    const parsed = new Date(normalized).getTime();
-    if (!Number.isNaN(parsed)) {
-      uploadedAtMs = parsed;
-    }
-  }
-
-  const uploadedAt = batch.formattedTime || formatUploadTimestamp(new Date(uploadedAtMs));
-
-  return {
-    id: `batch-${batch.id}`,
-    batchId: batch.id,
-    batchCode: batch.batchCode,
-    cardId,
-    account,
-    rawDataTitle,
-    importProfileCode: profileCode,
-    importProfileName: batch.importProfileName || rawDataTitle,
-    sourceSystem: batch.sourceSystem || card.sourceLabel,
-    taskOrderId: batch.taskOrderId || null,
-    fileName: batch.sourceFilename,
-    fileSize: batch.fileSize || 0,
-    filePath: `${account}/${rawDataTitle}/${batch.sourceFilename}`,
-    uploadedAtMs,
-    uploadedAt,
-    batchStatus: batch.status || "COMPLETED",
-    totalRows: batch.totalRows || 0,
-    validRows: batch.validRows || 0,
-    invalidRows: batch.invalidRows || 0,
-    duplicateRows: batch.duplicateRows || 0,
-    warningRows: batch.warningRows || 0,
-    reportDateFrom: batch.reportDateFrom || null,
-    reportDateTo: batch.reportDateTo || null,
-    uploadedBy: batch.uploadedBy || null,
-  };
-}
-
-function getPageNumbers(currentPage, totalPages) {
-  if (totalPages <= 7) {
-    return Array.from({ length: totalPages }, (_, i) => i + 1);
-  }
-  if (currentPage <= 4) {
-    return [1, 2, 3, 4, 5, "...", totalPages];
-  }
-  if (currentPage >= totalPages - 3) {
-    return [
-      1,
-      "...",
-      totalPages - 4,
-      totalPages - 3,
-      totalPages - 2,
-      totalPages - 1,
-      totalPages,
-    ];
-  }
-  return [
-    1,
-    "...",
-    currentPage - 1,
-    currentPage,
-    currentPage + 1,
-    "...",
-    totalPages,
-  ];
-}
+import {
+  EMPTY_IMPORT_SUMMARY,
+  RAW_DATA_UPLOADS_KEY,
+  accountFilters,
+  executeCardImport,
+  getApiErrorMessage,
+  getTaskOrderSearchText,
+  groupRawDataCards,
+  mapBatchToUpload,
+  normalizeTaskOrderOption,
+  normalizeUploadsByCard,
+  readJsonCache,
+  writeJsonCache,
+} from "@/lib/wfm-import-utils";
 
 function WfmImportDataPage() {
   const dashboard = useDashboardPage();
@@ -631,121 +62,23 @@ function WfmImportDataPage() {
   const [errorSeverityFilter, setErrorSeverityFilter] = useState("ALL");
   const [jumpPageInput, setJumpPageInput] = useState("");
   const [activeOpenCard, setActiveOpenCard] = useState(null);
-  const [isRemovingUpload, setIsRemovingUpload] = useState(false);
   const [uploadToRemove, setUploadToRemove] = useState(null);
   const [selectedUploadDetails, setSelectedUploadDetails] = useState(null);
   const [addedUpload, setAddedUpload] = useState(null);
   const [removedUpload, setRemovedUpload] = useState(null);
   const [duplicateUploadAlert, setDuplicateUploadAlert] = useState(null);
   const [errorModalInfo, setErrorModalInfo] = useState(null);
+  const [isWarningsModalOpen, setIsWarningsModalOpen] = useState(false);
   const [rawDataSearch, setRawDataSearch] = useState("");
   const [uploadedDataSearch, setUploadedDataSearch] = useState("");
   const [selectedAccount, setSelectedAccount] = useState("All Accounts");
   const [pendingTaskOrderUpload, setPendingTaskOrderUpload] = useState(null);
   const [selectedTaskOrderId, setSelectedTaskOrderId] = useState("");
 
-  const errorTableContainerRef = useRef(null);
-  const [canScrollTableLeft, setCanScrollTableLeft] = useState(false);
-  const [canScrollTableRight, setCanScrollTableRight] = useState(false);
-  const isDraggingTableRef = useRef(false);
-  const tableDragStartXRef = useRef(0);
-  const tableDragScrollLeftRef = useRef(0);
-
-  const handleTableScroll = () => {
-    const el = errorTableContainerRef.current;
-    if (el) {
-      setCanScrollTableLeft(el.scrollLeft > 10);
-      setCanScrollTableRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 10);
-    }
-  };
-
-  const handleScrollTableLeft = () => {
-    const el = errorTableContainerRef.current;
-    if (el) {
-      el.scrollBy({ left: -280, behavior: "smooth" });
-      setTimeout(handleTableScroll, 320);
-    }
-  };
-
-  const handleScrollTableRight = () => {
-    const el = errorTableContainerRef.current;
-    if (el) {
-      el.scrollBy({ left: 280, behavior: "smooth" });
-      setTimeout(handleTableScroll, 320);
-    }
-  };
-
-  const handleTablePointerDown = (e) => {
-    if (e.button !== 0 || e.target.closest("button, input, a, select")) return;
-    const el = errorTableContainerRef.current;
-    if (!el || el.scrollWidth <= el.clientWidth + 2) return;
-    try {
-      el.setPointerCapture(e.pointerId);
-    } catch {
-      // Fallback
-    }
-    isDraggingTableRef.current = true;
-    tableDragStartXRef.current = e.clientX;
-    tableDragScrollLeftRef.current = el.scrollLeft;
-  };
-
-  const handleTablePointerMove = (e) => {
-    if (!isDraggingTableRef.current) return;
-    const el = errorTableContainerRef.current;
-    if (!el) return;
-    const dx = e.clientX - tableDragStartXRef.current;
-    el.scrollLeft = tableDragScrollLeftRef.current - dx;
-    handleTableScroll();
-  };
-
-  const handleTablePointerUp = (e) => {
-    if (!isDraggingTableRef.current) return;
-    isDraggingTableRef.current = false;
-    const el = errorTableContainerRef.current;
-    if (el) {
-      try {
-        if (el.hasPointerCapture(e.pointerId)) {
-          el.releasePointerCapture(e.pointerId);
-        }
-      } catch {
-        // Fallback
-      }
-    }
-  };
-
-  useEffect(() => {
-    if (usVisaErrorDetails) {
-      const timer = setTimeout(() => {
-        handleTableScroll();
-      }, 120);
-      return () => clearTimeout(timer);
-    }
-  }, [usVisaErrorDetails]);
-
-  const openCardUploads = useMemo(
-    () => uploadsByCard[activeOpenCard?.id] || [],
-    [activeOpenCard, uploadsByCard],
-  );
-
-  const filteredOpenCardUploads = useMemo(() => {
-    const searchValue = uploadedDataSearch.trim().toLowerCase();
-
-    if (!searchValue) {
-      return openCardUploads;
-    }
-
-    return openCardUploads.filter((upload) =>
-      upload.fileName.toLowerCase().includes(searchValue),
-    );
-  }, [openCardUploads, uploadedDataSearch]);
-
   const filteredRawDataCards = useMemo(() => {
     const cards = getRawDataCards(selectedAccount);
     const searchValue = rawDataSearch.trim().toLowerCase();
-
-    if (!searchValue) {
-      return cards;
-    }
+    if (!searchValue) return cards;
 
     return cards.filter(
       (card) =>
@@ -759,109 +92,70 @@ function WfmImportDataPage() {
 
   const filteredAccountOptions = useMemo(() => {
     const searchValue = rawDataSearch.trim().toLowerCase();
-
-    if (!searchValue) {
-      return accountOptions;
-    }
-
+    if (!searchValue) return accountOptions;
     return accountOptions.filter((account) =>
       account.toLowerCase().includes(searchValue),
     );
   }, [rawDataSearch]);
 
-  const groupedRawDataCards = useMemo(() => {
-    const groups = [];
-
-    for (const card of filteredRawDataCards) {
-      const groupLabel = card.groupLabel || "RAW DATA";
-      let group = groups.find((item) => item.label === groupLabel);
-
-      if (!group) {
-        group = {
-          label: groupLabel,
-          cards: [],
-        };
-        groups.push(group);
-      }
-
-      group.cards.push(card);
+  const sourceSystemCounts = useMemo(() => {
+    const counts = {};
+    for (const acc of accountOptions) {
+      counts[acc] = getRawDataCards(acc).length;
     }
+    return counts;
+  }, []);
 
-    return groups;
-  }, [filteredRawDataCards]);
-
-  const uploadedCardCounts = useMemo(
-    () =>
-      Object.fromEntries(
-        accountFilters.map((account) => {
-          const accCards = getRawDataCards(account);
-          const uploadedCount = accCards.filter(
-            (card) => (uploadsByCard[card.id] || []).length > 0,
-          ).length;
-
-          return [account, uploadedCount];
-        }),
-      ),
-    [uploadsByCard],
-  );
-
-  const sourceSystemCounts = useMemo(
-    () =>
-      Object.fromEntries(
-        accountFilters.map((account) => {
-          if (account === "All Accounts") {
-            return [account, accountOptions.length];
-          }
-
-          const accCards = getRawDataCards(account);
-          return [account, accCards.length];
-        }),
-      ),
-    [],
+  const groupedRawDataCards = useMemo(
+    () => groupRawDataCards(filteredRawDataCards),
+    [filteredRawDataCards],
   );
 
   useEffect(() => {
     writeJsonCache(RAW_DATA_UPLOADS_KEY, uploadsByCard);
   }, [uploadsByCard]);
 
-  const fetchDatabaseUploads = async () => {
+  const fetchDatabaseUploads = useCallback(async () => {
     try {
       const response = await getUsVisaImportHistory({ limit: 100 });
       if (response?.data && Array.isArray(response.data)) {
         const dbUploads = response.data.map(mapBatchToUpload).filter(Boolean);
 
         setUploadsByCard((current) => {
-          const updated = { ...current };
-          const usVisaCards = getRawDataCards("US VISA");
-
-          for (const card of usVisaCards) {
-            updated[card.id] = dbUploads.filter((upload) => upload.cardId === card.id);
+          const next = { ...current };
+          for (const card of getRawDataCards("US VISA")) {
+            const cardDbUploads = dbUploads.filter((u) => u.cardId === card.id);
+            const cardLocalUploads = (next[card.id] || []).filter(
+              (u) => !u.batchId && !u.id?.startsWith("batch-"),
+            );
+            next[card.id] = [...cardDbUploads, ...cardLocalUploads].sort(
+              (a, b) => (b.uploadedAtMs || 0) - (a.uploadedAtMs || 0),
+            );
           }
-
-          writeJsonCache(RAW_DATA_UPLOADS_KEY, updated);
-          return updated;
+          return next;
         });
       }
     } catch (error) {
-      console.warn("Could not sync database import batches:", error?.message);
+      console.warn("Could not sync database uploads:", error?.message);
     }
-  };
-
-  useEffect(() => {
-    fetchDatabaseUploads();
   }, []);
 
   useEffect(() => {
+    let isCancelled = false;
+    const syncInitialUploads = async () => {
+      if (!isCancelled) await fetchDatabaseUploads();
+    };
+    void syncInitialUploads();
+    return () => {
+      isCancelled = true;
+    };
+  }, [fetchDatabaseUploads]);
+
+  useEffect(() => {
     let isActive = true;
-
-    setImportSummary(EMPTY_IMPORT_SUMMARY);
-
     const loadImportSummary = async () => {
       try {
-        const response = await getUsVisaImportSummary({
-          account: selectedAccount,
-        });
-
+        const response = await getUsVisaImportSummary({ account: selectedAccount });
         if (isActive) {
           setImportSummary(response?.summary || EMPTY_IMPORT_SUMMARY);
         }
@@ -872,21 +166,11 @@ function WfmImportDataPage() {
         }
       }
     };
-
     void loadImportSummary();
-
     return () => {
       isActive = false;
     };
   }, [selectedAccount, summaryRefreshVersion]);
-
-  const errorShowingText = useMemo(() => {
-    const { page, limit, total } = errorPagination;
-    if (!total) return "Showing 0 issues";
-    const start = (page - 1) * limit + 1;
-    const end = Math.min(page * limit, total);
-    return `Showing ${start.toLocaleString()} to ${end.toLocaleString()} of ${total.toLocaleString()} issues`;
-  }, [errorPagination]);
 
   const handleOpenUsVisaErrors = async (
     batchId,
@@ -895,11 +179,13 @@ function WfmImportDataPage() {
     targetSearch = errorSearchQuery,
     targetSeverity = errorSeverityFilter,
   ) => {
-    const targetBatchId = batchId || activeErrorBatchId || usVisaBatchResult?.id;
+    const rawBatchId = batchId || activeErrorBatchId || usVisaBatchResult?.id;
+    const targetBatchId =
+      typeof rawBatchId === "string" && rawBatchId.startsWith("batch-")
+        ? rawBatchId.replace("batch-", "")
+        : rawBatchId;
 
-    if (!targetBatchId || isLoadingUsVisaErrors) {
-      return;
-    }
+    if (!targetBatchId || isLoadingUsVisaErrors) return;
 
     const currentLimit = targetLimit || errorPagination.limit || 25;
     setIsLoadingUsVisaErrors(true);
@@ -915,9 +201,7 @@ function WfmImportDataPage() {
 
       setUsVisaErrorDetails(response);
       const totalCount =
-        response?.pagination?.total ??
-        response?.data?.length ??
-        0;
+        response?.pagination?.total ?? response?.data?.length ?? 0;
       const totalPages =
         response?.pagination?.totalPages ??
         Math.max(1, Math.ceil(totalCount / currentLimit));
@@ -942,10 +226,35 @@ function WfmImportDataPage() {
     }
   };
 
-  const processCardFile = async (card, file, uploadContext = {}) => {
-    if (!file) {
-      return;
+  const handleOpenBatchDetails = async (upload) => {
+    setSelectedUploadDetails(upload);
+
+    if (upload?.batchId) {
+      try {
+        const details = await getUsVisaImportBatchDetails(upload.batchId);
+        if (details?.batch) {
+          setSelectedUploadDetails((prev) => {
+            if (!prev || prev.batchId !== upload.batchId) return prev;
+            return {
+              ...prev,
+              totalRows: details.batch.totalRows ?? prev.totalRows,
+              validRows: details.batch.validRows ?? prev.validRows,
+              invalidRows: details.batch.invalidRows ?? prev.invalidRows,
+              duplicateRows: details.batch.duplicateRows ?? prev.duplicateRows,
+              warningRows: details.batch.warningRows ?? prev.warningRows,
+              infoRows: details.batch.infoRows ?? prev.infoRows,
+              batchStatus: details.batch.status ?? prev.batchStatus,
+            };
+          });
+        }
+      } catch (err) {
+        console.warn("Could not fetch latest batch details:", err?.message);
+      }
     }
+  };
+
+  const processCardFile = async (card, file, uploadContext = {}) => {
+    if (!file) return;
 
     const isUsVisa = card.account === "US VISA";
     const currentCardUploads = uploadsByCard[card.id] || [];
@@ -969,106 +278,28 @@ function WfmImportDataPage() {
     setUsVisaBatchResult(null);
 
     try {
-      let importedData = {
-        columns: ["Source File"],
-        rows: [],
-      };
-
-      if (!isUsVisa) {
-        importedData = await readSelectedFile(file);
-        setUploadProgress(30);
-        await new Promise((resolve) => setTimeout(resolve, 200));
-      }
-
-      let batchResult = null;
-
-      if (isUsVisa) {
-        const importProfileId = getImportProfileForCard(card);
-
-        if (!importProfileId) {
-          throw new Error(
-            `${card.title} raw-data import is not configured yet.`,
-          );
-        }
-
-        const uploadPromise = uploadUsVisaImport({
-          file,
-          importProfileId,
-          taskOrderId: uploadContext.taskOrderId || undefined,
-          reportDateFrom: uploadContext.reportDateFrom || undefined,
-          reportDateTo: uploadContext.reportDateTo || undefined,
-          onProgress: (percent) => {
-            const scaledProgress = Math.round(5 + percent * 0.6);
-            setUploadProgress(scaledProgress);
-            if (percent >= 90) {
-              setImportStage("processing");
-            }
-          },
-        });
-
-        const uploadResponse = await uploadPromise;
-        batchResult = uploadResponse?.batch || null;
-
-        if (batchResult?.status === "DUPLICATE") {
-          setDuplicateUploadAlert({
-            fileName: file.name,
-            rawDataTitle: card.title,
-          });
-          return;
-        }
-
-        if (batchResult?.status === "FAILED") {
-          throw new Error(
-            batchResult.errorMessage ||
-            "Import structure validation failed. Please check the required file format.",
-          );
-        }
-
-        setUploadProgress(90);
-      } else {
-        setUploadProgress(75);
-      }
-
-      setImportStage("finalizing");
-      setUploadProgress(95);
-
-      const { id: uploadId, uploadedAtMs } = createUploadRecordId(card.id, file.name);
-
-      const newUpload = {
-        id: uploadId,
-        cardId: card.id,
-        account: card.account,
-        rawDataTitle: card.title,
-        fileName: file.name,
-        fileSize: file.size || 0,
-        filePath: `${card.account}/${card.title}/${file.name}`,
-        uploadedAtMs,
-        uploadedAt: formatUploadTimestamp(new Date(uploadedAtMs)),
-        columns: importedData.columns || ["Source File"],
-        rows: importedData.rows || [],
-        batchId: batchResult?.id || null,
-        batchCode: batchResult?.batchCode || null,
-        batchStatus: batchResult?.status || "COMPLETED",
-        totalRows: batchResult?.totalRows ?? importedData.rows?.length ?? 0,
-        validRows: batchResult?.validRows ?? 0,
-        invalidRows: batchResult?.invalidRows ?? 0,
-        duplicateRows: batchResult?.duplicateRows ?? 0,
-        warningRows: batchResult?.warningRows ?? 0,
-        taskOrderId: batchResult?.taskOrderId || uploadContext.taskOrderId || null,
-        reportDateFrom: batchResult?.reportDateFrom || uploadContext.reportDateFrom || null,
-        reportDateTo: batchResult?.reportDateTo || uploadContext.reportDateTo || null,
-        importProfileCode: card.importProfileCode || null,
-        importProfileName: batchResult?.importProfileName || card.title,
-        sourceSystem: batchResult?.sourceSystem || card.sourceLabel || card.title,
-      };
-
-      setUploadsByCard((current) => {
-        const currentList = current[card.id] || [];
-        return {
-          ...current,
-          [card.id]: [newUpload, ...currentList],
-        };
+      const result = await executeCardImport({
+        card,
+        file,
+        uploadContext,
+        onProgress: setUploadProgress,
+        onStageChange: setImportStage,
       });
+
+      if (result.isDuplicate) {
+        setDuplicateUploadAlert({
+          fileName: file.name,
+          rawDataTitle: card.title,
+        });
+        return;
+      }
+
+      const { newUpload, batchResult } = result;
+
+      setUploadsByCard((current) => ({
+        ...current,
+        [card.id]: [newUpload, ...(current[card.id] || [])],
+      }));
 
       void fetchDatabaseUploads();
       setSummaryRefreshVersion((current) => current + 1);
@@ -1092,10 +323,7 @@ function WfmImportDataPage() {
         message: `Imported ${file.name} to ${card.account} - ${card.title}.`,
       });
     } catch (error) {
-      if (
-        isUsVisa &&
-        error?.response?.data?.code === "DUPLICATE_FILE"
-      ) {
+      if (isUsVisa && error?.response?.data?.code === "DUPLICATE_FILE") {
         setDuplicateUploadAlert({
           fileName: file.name,
           rawDataTitle: card.title,
@@ -1120,10 +348,7 @@ function WfmImportDataPage() {
   const handleCardFileSelect = async (card, event) => {
     const file = event.target.files?.[0];
     event.target.value = "";
-
-    if (!file) {
-      return;
-    }
+    if (!file) return;
 
     if (!card.requiresTaskOrderSelection) {
       await processCardFile(card, file);
@@ -1177,13 +402,10 @@ function WfmImportDataPage() {
   };
 
   const handleRemoveUpload = async () => {
-    if (!uploadToRemove) {
-      return;
-    }
+    if (!uploadToRemove) return;
 
     const selectedUploadToRemove = uploadToRemove;
     setUploadToRemove(null);
-    setIsRemovingUpload(true);
 
     const batchIdentifier =
       selectedUploadToRemove.batchId || selectedUploadToRemove.batchCode;
@@ -1191,11 +413,10 @@ function WfmImportDataPage() {
     if (batchIdentifier) {
       try {
         await deleteUsVisaImportBatch(batchIdentifier);
-        // Small pause for smooth visual UX transition
         await new Promise((resolve) => setTimeout(resolve, 400));
       } catch (error) {
         console.warn(
-          "Backend batch removal encountered an issue, continuing with UI cleanup:",
+          "Backend batch removal issue:",
           error?.response?.data || error?.message || error,
         );
       }
@@ -1205,17 +426,16 @@ function WfmImportDataPage() {
 
     removeWfmGraphReportsForUpload(selectedUploadToRemove.id);
 
-    setUploadsByCard((currentUploads) => ({
-      ...currentUploads,
+    setUploadsByCard((current) => ({
+      ...current,
       [selectedUploadToRemove.cardId]: (
-        currentUploads[selectedUploadToRemove.cardId] || []
-      ).filter((upload) => upload.id !== selectedUploadToRemove.id),
+        current[selectedUploadToRemove.cardId] || []
+      ).filter((u) => u.id !== selectedUploadToRemove.id),
     }));
 
     void fetchDatabaseUploads();
     setSummaryRefreshVersion((current) => current + 1);
 
-    setIsRemovingUpload(false);
     setRemovedUpload(selectedUploadToRemove);
 
     void recordWfmHistoryLogQuietly({
@@ -1226,11 +446,13 @@ function WfmImportDataPage() {
         activeOpenCard?.title ||
         "Raw Data",
       fileName: selectedUploadToRemove.fileName,
-      message: `Removed ${selectedUploadToRemove.fileName} from ${selectedUploadToRemove.account || activeOpenCard?.account || "WFM"
-        } - ${selectedUploadToRemove.rawDataTitle ||
+      message: `Removed ${selectedUploadToRemove.fileName} from ${
+        selectedUploadToRemove.account || activeOpenCard?.account || "WFM"
+      } - ${
+        selectedUploadToRemove.rawDataTitle ||
         activeOpenCard?.title ||
         "Raw Data"
-        }.`,
+      }.`,
     });
   };
 
@@ -1254,1421 +476,108 @@ function WfmImportDataPage() {
         />
 
         <div className="sibs-scrollbar flex-1 overflow-y-auto p-3 sm:p-4 lg:p-5">
-          <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-start">
-            <div className="flex h-9 w-full shrink-0 items-center justify-center truncate rounded-full border border-sibs-tertiary-9 bg-white px-4 text-sm font-extrabold text-sibs-primary-1 sm:w-32">
-              {selectedAccount === "All Accounts" ? "All Accounts" : selectedAccount}
-            </div>
+          <WfmFilterBar
+            selectedAccount={selectedAccount}
+            onSelectAccount={(account) => {
+              setSelectedAccount(account);
+              setRawDataSearch("");
+            }}
+            rawDataSearch={rawDataSearch}
+            onSearchChange={setRawDataSearch}
+            accountFilters={accountFilters}
+            sourceSystemCounts={sourceSystemCounts}
+          />
 
-            <div className="relative w-full shrink-0 sm:w-80">
-              <Search
-                className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-sibs-tertiary-6"
-                aria-hidden="true"
-              />
-              <input
-                value={rawDataSearch}
-                onChange={(event) => setRawDataSearch(event.target.value)}
-                className="h-9 w-full rounded-full border border-sibs-tertiary-9 bg-white pl-9 pr-4 text-sm outline-none focus:border-sibs-primary-2"
-                placeholder="Search data..."
-                type="text"
-              />
-            </div>
-
-            <SingleSelectDropdown
-              className="w-full shrink-0 sm:w-64"
-              buttonClassName="h-9 rounded-full border border-sibs-tertiary-9 bg-white px-4 text-sm font-semibold text-sibs-primary-1"
-              value={selectedAccount}
-              onChange={(event) => setSelectedAccount(event.target.value)}
-              options={accountFilters.map((account) => ({
-                value: account,
-                label: `${account} (${sourceSystemCounts[account] || 0})`,
-              }))}
-            />
-          </div>
-
-          {/* Import Summary Metric Cards */}
-          <div
-            className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6"
-            aria-label="Import summary"
-          >
-            {IMPORT_SUMMARY_CARDS.map((card) => {
-              const value = Number(importSummary?.[card.key] || 0);
-              const uploadsWithIssues = Number(
-                importSummary?.uploadsWithIssues || 0,
-              );
-              const isTotalUploadsCard = card.key === "totalUploads";
-              const isError =
-                (card.key === "invalidRows" || card.key === "warningRows") &&
-                value > 0;
-              const isWarning = card.key === "duplicateRows" && value > 0;
-              const Icon = card.icon;
-
-              return (
-                <div
-                  key={card.key}
-                  className={`group relative min-w-0 rounded-xl border bg-white p-2.5 shadow-2xs transition-all duration-150 hover:border-sibs-primary-1/40 hover:shadow-xs ${
-                    isError
-                      ? "border-red-300 bg-red-50/20 ring-1 ring-red-200"
-                      : isWarning
-                      ? "border-amber-300 bg-amber-50/20 ring-1 ring-amber-200"
-                      : "border-slate-200"
-                  }`}
-                  title={
-                    isTotalUploadsCard && uploadsWithIssues > 0
-                      ? `${card.label}: ${value.toLocaleString()} • ${uploadsWithIssues.toLocaleString()} with issues`
-                      : `${card.label}: ${value.toLocaleString()}`
-                  }
-                >
-                  <div className="flex items-center justify-between gap-1 min-w-0">
-                    <p className="m-0 min-w-0 truncate text-[9px] font-extrabold uppercase tracking-wider text-sibs-tertiary-5 leading-none">
-                      {card.label}
-                    </p>
-
-                    <span
-                      className={`inline-flex h-5.5 w-5.5 shrink-0 items-center justify-center rounded-md ${
-                        isError
-                          ? "bg-red-50 text-red-600 border border-red-200"
-                          : isWarning
-                          ? "bg-amber-50 text-amber-600 border border-amber-100"
-                          : "bg-sibs-primary-3/60 text-sibs-primary-1 border border-sibs-tertiary-10"
-                      }`}
-                    >
-                      <Icon
-                        className="h-3 w-3"
-                        strokeWidth={2}
-                        aria-hidden="true"
-                      />
-                    </span>
-                  </div>
-
-                  <div className="mt-1.5 flex min-w-0 items-baseline justify-between gap-1">
-                    <p
-                      className={`m-0 text-lg font-black leading-none tracking-tight ${
-                        isError
-                          ? "text-red-600"
-                          : isWarning
-                          ? "text-amber-700"
-                          : "text-sibs-primary-1"
-                      }`}
-                    >
-                      {importSummaryNumberFormatter.format(value)}
-                    </p>
-
-                    {isTotalUploadsCard && uploadsWithIssues > 0 ? (
-                      <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-amber-300 bg-amber-50/90 px-2 py-0.5 text-[9.5px] font-extrabold leading-none text-amber-800 shadow-2xs">
-                        <AlertTriangle
-                          className="h-2.5 w-2.5 shrink-0 text-amber-600"
-                          strokeWidth={2.5}
-                          aria-hidden="true"
-                        />
-                        <span>
-                          {importSummaryNumberFormatter.format(uploadsWithIssues)}{" "}
-                          {uploadsWithIssues === 1 ? "issue" : "issues"}
-                        </span>
-                      </span>
-                    ) : null}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+          <WfmImportSummaryBar
+            importSummary={importSummary}
+            onOpenWarnings={() => setIsWarningsModalOpen(true)}
+          />
 
           {selectedAccount === "All Accounts" ? (
-            <div>
-              <div className="mb-2.5 flex items-center gap-1.5">
-                <h2 className="m-0 text-[11px] font-extrabold uppercase tracking-wide text-sibs-tertiary-5">
-                  Accounts & Workspaces
-                </h2>
-              </div>
-
-              <div className="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                {filteredAccountOptions.map((account) => {
-                  const totalSourceSystems =
-                    sourceSystemCounts[account] || 0;
-
-                  return (
-                    <button
-                      key={account}
-                      type="button"
-                      onClick={() => {
-                        setSelectedAccount(account);
-                        setRawDataSearch("");
-                      }}
-                      className="group relative flex min-h-[135px] cursor-pointer flex-col justify-between rounded-2xl border border-slate-300/90 bg-white p-4 text-left shadow-xs transition-all duration-200 hover:-translate-y-1 hover:border-sibs-primary-2 hover:shadow-md ring-1 ring-slate-900/[0.04]"
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#07385f] text-white shadow-2xs group-hover:bg-sibs-primary-2 transition-colors">
-                          <FolderOpen size={16} />
-                        </div>
-                        <span className="rounded-full bg-slate-100 border border-slate-200 px-2 py-0.5 text-[9.5px] font-extrabold uppercase tracking-wider text-slate-600">
-                          Workspace
-                        </span>
-                      </div>
-
-                      <div className="mt-2.5 min-w-0">
-                        <p className="m-0 truncate text-base font-black text-sibs-primary-1 group-hover:text-sibs-primary-2 transition-colors">
-                          {account}
-                        </p>
-                        <p className="mt-1 mb-0 flex items-center gap-1.5 text-xs font-semibold text-slate-500">
-                          <Layers size={13} className="text-sibs-primary-2" />
-                          <span>
-                            {totalSourceSystems}{" "}
-                            {totalSourceSystems === 1
-                              ? "Source System"
-                              : "Source Systems"}
-                          </span>
-                        </p>
-                      </div>
-
-                      <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-2 text-xs font-bold text-sibs-primary-1 group-hover:text-sibs-primary-2 transition-colors">
-                        <span className="text-[11px]">Explore Feeds</span>
-                        <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-slate-100 group-hover:bg-sibs-primary-2 group-hover:text-white transition-all">
-                          <ArrowRight size={11} />
-                        </span>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
+            <WfmAccountWorkspacesGrid
+              accountOptions={filteredAccountOptions}
+              sourceSystemCounts={sourceSystemCounts}
+              onSelectAccount={(account) => {
+                setSelectedAccount(account);
+                setRawDataSearch("");
+              }}
+            />
           ) : (
-            <div className="space-y-5">
-              {groupedRawDataCards.map((group, groupIndex) => (
-                <section key={group.label} className="min-w-0">
-                  <div className="mb-2 flex items-center gap-2">
-                    {groupIndex === 0 ? (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSelectedAccount("All Accounts");
-                          setRawDataSearch("");
-                        }}
-                        className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-bold text-sibs-primary-1 shadow-xs transition hover:border-sibs-primary-1 hover:bg-sibs-primary-1 hover:text-white cursor-pointer shrink-0"
-                        title="Back to All Accounts"
-                      >
-                        <ArrowLeft size={14} />
-                        <span>Back</span>
-                      </button>
-                    ) : null}
-                    <h2 className="m-0 text-[11px] font-extrabold uppercase tracking-wide text-sibs-tertiary-5">
-                      {group.label}
-                    </h2>
-                    <span className="h-px flex-1 bg-slate-200" aria-hidden="true" />
-                  </div>
-
-                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                    {group.cards.map((card) => {
-                      const uploads = uploadsByCard[card.id] || [];
-                      const latestUploads = uploads.slice(0, 3);
-
-                      return (
-                        <section
-                          key={card.id}
-                          className="sibs-card flex min-h-[350px] flex-col justify-between p-4 shadow-xs transition hover:border-sibs-primary-1/40"
-                        >
-                    <div>
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0 flex-1">
-                          <h2 className="m-0 text-base font-extrabold leading-tight text-sibs-primary-1 break-words">
-                            {card.title}
-                          </h2>
-                        </div>
-                        <span
-                          className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-bold ${uploads.length > 0
-                              ? "border border-emerald-200/80 bg-emerald-50 text-emerald-700"
-                              : "border border-slate-200 bg-slate-50 text-slate-500"
-                            }`}
-                        >
-                          {uploads.length > 0 ? (
-                            <>
-                              <CheckCircle2 size={11} className="shrink-0" />
-                              {uploads.length} {uploads.length === 1 ? "file" : "files"}
-                            </>
-                          ) : (
-                            "0 files"
-                          )}
-                        </span>
-                      </div>
-
-                      {card.taskOrders?.length ? (
-                        <div className="mt-2.5 flex min-w-0 flex-wrap items-center gap-1.5 text-xs">
-                          <span className="text-[10px] font-extrabold uppercase text-sibs-tertiary-5 shrink-0">
-                            TASK ORDERS:
-                          </span>
-                          <div className="flex min-w-0 flex-wrap gap-1">
-                            {card.taskOrders.map((taskOrder, index) => {
-                              const option = normalizeTaskOrderOption(taskOrder);
-                              return (
-                                <span
-                                  key={option?.id || option?.label || index}
-                                  className="rounded-md border border-sibs-tertiary-8 bg-white px-2 py-0.5 text-[11px] font-bold text-sibs-primary-1 shadow-2xs whitespace-nowrap"
-                                >
-                                  {option?.id ? `${option.id} - ${option.label}` : option?.label}
-                                </span>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      ) : null}
-                    </div>
-
-                    <div className="mt-3.5 min-h-[175px] flex-1 rounded-xl border border-slate-200/80 bg-slate-50/50 p-2.5">
-                      {latestUploads.length ? (
-                        <div className="space-y-1.5">
-                          {latestUploads.map((upload) => (
-                            <div
-                              key={upload.id || `${upload.fileName}-${upload.uploadedAt}`}
-                              className="rounded-lg border border-slate-200/60 bg-white p-2 shadow-2xs transition hover:border-slate-300"
-                            >
-                              <div className="flex items-start gap-2">
-                                <FileSpreadsheet
-                                  size={15}
-                                  className="mt-0.5 shrink-0 text-sibs-primary-1/70"
-                                />
-                                <div className="min-w-0 flex-1">
-                                  <p
-                                    className="m-0 truncate text-[11px] font-bold text-sibs-primary-1"
-                                    title={upload.fileName}
-                                  >
-                                    {upload.fileName}
-                                  </p>
-                                  <div className="mt-1 flex flex-wrap items-center justify-between gap-1.5 text-[10px] text-sibs-tertiary-5">
-                                    <span className="whitespace-nowrap shrink-0">{formatRelativeTime(upload)}</span>
-                                    {upload.batchCode ? (
-                                      <span
-                                        className="rounded bg-sibs-primary-2/10 px-1.5 py-0.5 font-mono text-[9px] font-bold text-sibs-primary-2 whitespace-nowrap"
-                                        title={upload.batchCode}
-                                      >
-                                        {upload.batchCode}
-                                      </span>
-                                    ) : null}
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="flex h-full min-h-[120px] flex-col items-center justify-center p-3 text-center">
-                          <CloudUpload
-                            size={22}
-                            className="mb-1.5 text-slate-400 opacity-60"
-                          />
-                          <p className="m-0 text-xs font-semibold text-sibs-tertiary-5">
-                            No uploaded data yet
-                          </p>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="mt-3.5 grid grid-cols-2 gap-2.5">
-                      <label className="flex h-9 cursor-pointer items-center justify-center gap-1.5 rounded-lg bg-sibs-primary-1 px-3 text-xs font-bold text-white shadow-xs transition hover:bg-sibs-tertiary-4">
-                        <CloudUpload className="h-4 w-4 shrink-0" aria-hidden="true" />
-                        <span>Import</span>
-                        <input
-                          type="file"
-                          accept={card.account === "US VISA" ? (card.fileExtension || ".xlsx") : ".xlsx,.xls,.csv"}
-                          disabled={isUploading}
-                          onChange={(event) => handleCardFileSelect(card, event)}
-                          className="hidden"
-                        />
-                      </label>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setActiveOpenCard(card);
-                          setUploadedDataSearch("");
-                        }}
-                        className="flex h-9 cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-xs font-bold text-sibs-primary-1 shadow-xs transition hover:border-sibs-primary-1 hover:bg-sibs-primary-1 hover:text-white"
-                      >
-                        <FolderOpen className="h-4 w-4 shrink-0" aria-hidden="true" />
-                        <span>Open</span>
-                      </button>
-                    </div>
-                        </section>
-                      );
-                    })}
-                  </div>
-                </section>
-              ))}
-            </div>
+            <WfmRawDataCardsGrid
+              groupedCards={groupedRawDataCards}
+              hasCards={filteredRawDataCards.length > 0}
+              uploadsByCard={uploadsByCard}
+              isUploading={isUploading}
+              onBackToAll={() => {
+                setSelectedAccount("All Accounts");
+                setRawDataSearch("");
+              }}
+              onFileSelect={handleCardFileSelect}
+              onOpenCard={(card) => {
+                setActiveOpenCard(card);
+                setUploadedDataSearch("");
+              }}
+            />
           )}
-
-          {selectedAccount === "All Accounts" && !filteredAccountOptions.length ? (
-            <div className="mt-4 rounded-lg border border-dashed border-sibs-tertiary-9 bg-[#f8fbfd] px-5 py-8 text-center text-sm text-sibs-tertiary-5">
-              No accounts found.
-            </div>
-          ) : null}
-
-          {selectedAccount !== "All Accounts" && !filteredRawDataCards.length ? (
-            <div className="mt-4 rounded-lg border border-dashed border-sibs-tertiary-9 bg-[#f8fbfd] px-5 py-8 text-center text-sm text-sibs-tertiary-5">
-              <p className="m-0">No raw data cards found.</p>
-              <button
-                type="button"
-                onClick={() => {
-                  setSelectedAccount("All Accounts");
-                  setRawDataSearch("");
-                }}
-                className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-sibs-primary-1 shadow-xs transition hover:border-sibs-primary-1 hover:bg-sibs-primary-1 hover:text-white cursor-pointer"
-              >
-                <ArrowLeft size={14} />
-                <span>Back to All Accounts</span>
-              </button>
-            </div>
-          ) : null}
         </div>
       </main>
 
-      <AppModal
-        isOpen={Boolean(pendingTaskOrderUpload)}
-        className="w-full max-w-md p-5 sm:p-6"
-      >
-        <div>
-          <p className="m-0 text-lg font-bold text-sibs-primary-1">
-            Select Task Order
-          </p>
-          <p className="mt-1 mb-0 text-xs font-semibold leading-5 text-sibs-tertiary-5">
-            Choose the Task Order represented by this Agent Occupancy workbook. The server will validate that it matches the selected source tool.
-          </p>
-        </div>
-
-        <div className="mt-5 space-y-2">
-          {(pendingTaskOrderUpload?.taskOrderOptions || []).map((option) => (
-            <label
-              key={option.id}
-              className={`flex cursor-pointer items-center gap-3 rounded-lg border px-3 py-3 transition ${
-                selectedTaskOrderId === option.id
-                  ? "border-sibs-primary-1 bg-sibs-primary-1/5"
-                  : "border-slate-200 bg-white hover:border-sibs-primary-1/40"
-              }`}
-            >
-              <input
-                type="radio"
-                name="occupancy-task-order"
-                value={option.id}
-                checked={selectedTaskOrderId === option.id}
-                onChange={(event) => setSelectedTaskOrderId(event.target.value)}
-                className="h-4 w-4"
-              />
-              <div className="min-w-0">
-                <p className="m-0 text-sm font-bold text-sibs-primary-1">{option.id}</p>
-                <p className="m-0 text-xs font-semibold text-sibs-tertiary-5">{option.label}</p>
-              </div>
-            </label>
-          ))}
-        </div>
-
-        <div className="mt-6 flex justify-end gap-2">
-          <button
-            type="button"
-            onClick={handleCancelTaskOrderUpload}
-            className="h-9 rounded-lg border border-slate-200 bg-white px-4 text-xs font-bold text-sibs-primary-1 transition hover:bg-slate-50"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            onClick={handleConfirmTaskOrderUpload}
-            disabled={!selectedTaskOrderId}
-            className="h-9 rounded-lg bg-sibs-primary-1 px-4 text-xs font-bold text-white transition hover:bg-sibs-tertiary-4 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            Upload XLSX
-          </button>
-        </div>
-      </AppModal>
-
-      <AppModal
-        isOpen={Boolean(activeOpenCard)}
-        className="!max-w-none w-full sm:!w-[min(92vw,1100px)] flex flex-col p-4 sm:p-6 overflow-hidden max-h-[90vh]"
-      >
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="min-w-0">
-            <p
-              className="m-0 truncate whitespace-nowrap text-sm sm:text-base md:text-lg font-bold text-sibs-primary-1"
-              title={`${activeOpenCard?.title} Uploaded Data`}
-            >
-              {activeOpenCard?.title} Uploaded Data
-            </p>
-            <p className="mt-1 mb-0 text-xs font-semibold text-sibs-tertiary-5">
-              Account: {activeOpenCard?.account}
-            </p>
-          </div>
-          <div className="relative w-full sm:w-80">
-            <Search
-              className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-sibs-tertiary-6"
-              aria-hidden="true"
-            />
-            <input
-              value={uploadedDataSearch}
-              onChange={(event) => setUploadedDataSearch(event.target.value)}
-              className="h-9 w-full rounded-full border border-sibs-tertiary-9 bg-white pl-9 pr-8 text-sm outline-none focus:border-sibs-primary-2"
-              placeholder="Search uploaded data..."
-              type="text"
-            />
-            {uploadedDataSearch ? (
-              <button
-                type="button"
-                onClick={() => setUploadedDataSearch("")}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 hover:text-slate-600"
-              >
-                ✕
-              </button>
-            ) : null}
-          </div>
-        </div>
-
-        <div className="mt-4 max-h-[65vh] min-h-[260px] sm:min-h-[360px] space-y-2.5 overflow-x-hidden overflow-y-auto rounded-xl border border-slate-200/80 bg-slate-50/50 p-2.5 sm:p-3 sibs-scrollbar">
-          {filteredOpenCardUploads.length ? (
-            filteredOpenCardUploads.map((upload) => {
-              const isCompletedWithErrors =
-                upload.batchStatus === "COMPLETED_WITH_ERRORS" ||
-                (upload.batchId &&
-                  (upload.invalidRows > 0 ||
-                    upload.warningRows > 0 ||
-                    upload.duplicateRows > 0));
-
-              return (
-                <div
-                  key={upload.id || `${upload.fileName}-${upload.uploadedAt}`}
-                  className="flex flex-col gap-2.5 sm:gap-3 rounded-xl border border-slate-200 bg-white p-3 sm:p-3.5 shadow-xs transition-all hover:border-slate-300 hover:shadow-sm sm:flex-row sm:items-center sm:justify-between"
-                >
-                  {/* Left content: In desktop, filename + metadata block; in mobile, filename + status badge on top row with wrapping */}
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center justify-between gap-1.5 sm:block">
-                      <p
-                        className="m-0 min-w-0 max-w-full break-words [word-break:break-word] text-sm font-bold text-sibs-primary-1 leading-snug"
-                        title={upload.fileName}
-                      >
-                        {upload.fileName}
-                      </p>
-                      {/* Mobile-only status badge on top right / wraps cleanly on small screens */}
-                      {isCompletedWithErrors ? (
-                        <button
-                          type="button"
-                          disabled={isLoadingUsVisaErrors}
-                          onClick={() => handleOpenUsVisaErrors(upload.batchId)}
-                          className="sm:hidden inline-flex shrink-0 whitespace-nowrap items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-800 transition-all hover:border-amber-400 hover:bg-amber-100"
-                          title="Completed with error - click to view error details"
-                        >
-                          <AlertTriangle className="h-2.5 w-2.5 shrink-0 text-amber-600" aria-hidden="true" />
-                          <span>Completed with error</span>
-                        </button>
-                      ) : null}
-                    </div>
-
-                    <div className="mt-1 flex flex-wrap items-center gap-1.5 sm:gap-2 text-xs text-sibs-tertiary-5">
-                      <span>{upload.uploadedAt} ({formatRelativeTime(upload)})</span>
-                      {upload.batchCode ? (
-                        <span className="rounded bg-sibs-primary-2/10 px-1.5 py-0.5 font-mono text-[10px] font-bold text-sibs-primary-2">
-                          Batch: {upload.batchCode}
-                        </span>
-                      ) : null}
-                      {upload.totalRows ? (
-                        <span className="text-[11px] font-medium text-slate-500">
-                          • {upload.totalRows.toLocaleString()} rows
-                        </span>
-                      ) : null}
-                    </div>
-                  </div>
-
-                  {/* Right side actions:
-                      - In Desktop: flex row at the right with [Completed with error] [View] [Remove]
-                      - In Mobile: grid-cols-2 at the bottom for clean tap targets */}
-                  <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100 sm:border-0 sm:pt-0 sm:flex sm:flex-wrap sm:items-center sm:gap-2 sm:shrink-0">
-                    {/* Desktop-only status badge */}
-                    {isCompletedWithErrors ? (
-                      <button
-                        type="button"
-                        disabled={isLoadingUsVisaErrors}
-                        onClick={() => handleOpenUsVisaErrors(upload.batchId)}
-                        className="hidden sm:inline-flex h-6 shrink-0 whitespace-nowrap items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-2 text-[10px] font-semibold text-amber-800 transition-all hover:border-amber-400 hover:bg-amber-100"
-                        title="Completed with error - click to view error details"
-                      >
-                        <AlertTriangle className="h-2.5 w-2.5 shrink-0 text-amber-600" aria-hidden="true" />
-                        <span>Completed with error</span>
-                      </button>
-                    ) : null}
-
-                    <button
-                      type="button"
-                      onClick={() => setSelectedUploadDetails(upload)}
-                      className="inline-flex h-8 items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 shadow-xs transition-all hover:border-sibs-primary-1 hover:bg-sibs-primary-1 hover:text-white"
-                    >
-                      <Eye className="h-3.5 w-3.5" aria-hidden="true" />
-                      <span>View</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setUploadToRemove(upload)}
-                      className="inline-flex h-8 items-center justify-center gap-1.5 rounded-lg border border-rose-200 bg-rose-50/70 px-3 text-xs font-semibold text-rose-600 shadow-xs transition-all hover:border-rose-600 hover:bg-rose-600 hover:text-white"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
-                      <span>Remove</span>
-                    </button>
-                  </div>
-                </div>
-              );
-            })
-          ) : (
-            <div className="rounded-xl border border-dashed border-slate-200 bg-white px-4 py-12 text-center text-sm text-sibs-tertiary-5">
-              {openCardUploads.length ? "No uploaded data found matching search." : "No uploaded data yet."}
-            </div>
-          )}
-        </div>
-
-        <div className="mt-5 flex items-center justify-between">
-          <span className="text-xs text-slate-500">
-            Showing {filteredOpenCardUploads.length} of {openCardUploads.length} upload{openCardUploads.length === 1 ? "" : "s"}
-          </span>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => setActiveOpenCard(null)}
-            className="h-10 rounded-lg px-4"
-          >
-            Close
-          </Button>
-        </div>
-      </AppModal>
-
-      <AppModal isOpen={Boolean(duplicateUploadAlert)} className="max-w-sm" textAlign="center">
-        <p className="m-0 text-lg font-bold text-sibs-primary-1">
-          Duplicate file name
-        </p>
-        <p className="mt-2 mb-0 text-sm text-sibs-tertiary-5">
-          {duplicateUploadAlert?.fileName} is already imported in {duplicateUploadAlert?.rawDataTitle}. Please choose a different file.
-        </p>
-        <Button
-          type="button"
-          onClick={() => setDuplicateUploadAlert(null)}
-          className="mt-5 h-10 w-full rounded-lg bg-sibs-primary-1 text-white hover:bg-sibs-tertiary-4"
-        >
-          Done
-        </Button>
-      </AppModal>
-
-      <AppModal
-        isOpen={Boolean(errorModalInfo)}
-        className="max-w-md"
-        textAlign="center"
-        zIndex="z-[160]"
-      >
-        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-rose-100 text-rose-600">
-          <AlertCircle className="h-6 w-6" aria-hidden="true" />
-        </div>
-        <p className="mt-4 mb-0 text-lg font-bold text-sibs-primary-1">
-          {errorModalInfo?.title || "Error"}
-        </p>
-        <p className="mt-2 mb-0 text-sm leading-relaxed text-sibs-tertiary-5">
-          {errorModalInfo?.message}
-        </p>
-        <Button
-          type="button"
-          onClick={() => setErrorModalInfo(null)}
-          className="mt-5 h-10 w-full rounded-lg bg-sibs-primary-1 text-white hover:bg-sibs-tertiary-4"
-        >
-          Got It
-        </Button>
-      </AppModal>
-
-      <AppModal
-        isOpen={Boolean(usVisaErrorDetails)}
-        className="!max-w-none !w-[min(96vw,1440px)] !h-[90vh] !max-h-[90vh] flex flex-col p-3.5 sm:p-6 overflow-hidden"
-        zIndex="z-[160]"
-      >
-        {/* Header (fixed) */}
-        <div className="shrink-0 flex flex-col gap-2.5 sm:gap-3 border-b border-sibs-tertiary-10 pb-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
-              <p className="m-0 text-lg sm:text-xl font-bold text-sibs-primary-1">
-                Import Error Details
-              </p>
-              {errorPagination.total > 0 ? (
-                <span className="inline-flex items-center rounded-full border border-rose-200 bg-rose-50 px-2.5 py-0.5 text-xs font-bold text-rose-700">
-                  {errorPagination.total.toLocaleString()} issues
-                </span>
-              ) : null}
-            </div>
-            <p className="mt-1 mb-0 text-xs text-sibs-tertiary-5 truncate max-w-[85vw] sm:max-w-none">
-              Batch:{" "}
-              <span className="font-mono font-semibold text-sibs-primary-1">
-                {usVisaErrorDetails?.batch?.batchCode ||
-                  usVisaBatchResult?.batchCode ||
-                  "-"}
-              </span>
-              {usVisaErrorDetails?.batch?.sourceFilename ? (
-                <span className="ml-1 sm:ml-2 text-slate-400">
-                  • {usVisaErrorDetails.batch.sourceFilename}
-                </span>
-              ) : null}
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2 w-full sm:w-auto">
-            {/* Search Input */}
-            <div className="relative flex-1 sm:w-80 sm:flex-initial">
-              <Search
-                className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-sibs-tertiary-6"
-                aria-hidden="true"
-              />
-              <input
-                value={errorSearchQuery}
-                onChange={(e) => setErrorSearchQuery(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    void handleOpenUsVisaErrors(
-                      activeErrorBatchId,
-                      1,
-                      errorPagination.limit,
-                      errorSearchQuery,
-                      errorSeverityFilter,
-                    );
-                  }
-                }}
-                placeholder="Search error, sheet, code, row..."
-                className="h-9 w-full rounded-lg border border-sibs-tertiary-9 bg-white pl-8 pr-8 text-xs outline-none focus:border-sibs-primary-2"
-                type="text"
-              />
-              {errorSearchQuery ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setErrorSearchQuery("");
-                    void handleOpenUsVisaErrors(
-                      activeErrorBatchId,
-                      1,
-                      errorPagination.limit,
-                      "",
-                      errorSeverityFilter,
-                    );
-                  }}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 hover:text-slate-600"
-                >
-                  ✕
-                </button>
-              ) : null}
-            </div>
-
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => {
-                setUsVisaErrorDetails(null);
-                setActiveErrorBatchId(null);
-                setErrorSearchQuery("");
-                setErrorSeverityFilter("ALL");
-              }}
-              className="h-9 shrink-0 rounded-lg px-3.5 sm:px-4 text-xs font-semibold"
-            >
-              Close
-            </Button>
-          </div>
-        </div>
-
-        {/* Filter Bar (shrink-0) */}
-        <div className="shrink-0 mt-2.5 mb-1.5 flex flex-wrap items-center justify-between gap-2">
-          <div className="flex flex-wrap items-center gap-1.5">
-            {["ALL", "ERROR", "DUPLICATE", "WARNING", "INFO"].map((sev) => {
-              const isActive = errorSeverityFilter === sev;
-              return (
-                <button
-                  key={sev}
-                  type="button"
-                  onClick={() => {
-                    setErrorSeverityFilter(sev);
-                    void handleOpenUsVisaErrors(
-                      activeErrorBatchId,
-                      1,
-                      errorPagination.limit,
-                      errorSearchQuery,
-                      sev,
-                    );
-                  }}
-                  className={`rounded-lg px-2.5 py-1 text-xs font-bold transition-all ${
-                    isActive
-                      ? "bg-sibs-primary-1 text-white shadow-xs"
-                      : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
-                  }`}
-                >
-                  {sev === "ALL" ? "All Severities" : sev}
-                </button>
-              );
-            })}
-          </div>
-
-          <div className="flex items-center gap-1.5">
-            <button
-              type="button"
-              onClick={() =>
-                void handleOpenUsVisaErrors(
-                  activeErrorBatchId,
-                  1,
-                  errorPagination.limit,
-                  errorSearchQuery,
-                  errorSeverityFilter,
-                )
-              }
-              className="inline-flex h-7 items-center gap-1 rounded-md bg-sibs-primary-2/10 px-2.5 text-xs font-bold text-sibs-primary-2 hover:bg-sibs-primary-2/20 shrink-0"
-            >
-              <Search className="h-3 w-3" />
-              <span>Search / Filter</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Table Container (flex-1 min-h-0 overflow-x-auto overflow-y-auto) */}
-        <div
-          ref={errorTableContainerRef}
-          onScroll={handleTableScroll}
-          onPointerDown={handleTablePointerDown}
-          onPointerMove={handleTablePointerMove}
-          onPointerUp={handleTablePointerUp}
-          className="sibs-scrollbar relative flex-1 min-h-0 mt-1 overflow-x-auto overflow-y-auto rounded-lg border border-sibs-tertiary-10 bg-white cursor-auto lg:cursor-default touch-pan-x touch-pan-y"
-          style={{
-            WebkitOverflowScrolling: "touch",
-          }}
-        >
-          {isLoadingUsVisaErrors ? (
-            <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/70 backdrop-blur-xs">
-              <div className="flex items-center gap-2 text-sm font-semibold text-sibs-primary-1">
-                <Loader2 className="h-4 w-4 animate-spin text-sibs-primary-1" />
-                Loading records...
-              </div>
-            </div>
-          ) : null}
-
-          <table className="w-full min-w-[960px] lg:min-w-0 lg:w-full table-fixed border-collapse text-left text-xs">
-            <colgroup className="hidden lg:table-column-group">
-              <col style={{ width: "18%" }} />
-              <col style={{ width: "7%" }} />
-              <col style={{ width: "12%" }} />
-              <col style={{ width: "15%" }} />
-              <col style={{ width: "13%" }} />
-              <col style={{ width: "12%" }} />
-              <col style={{ width: "23%" }} />
-            </colgroup>
-            <colgroup className="lg:hidden">
-              <col style={{ width: "130px" }} />
-              <col style={{ width: "65px" }} />
-              <col style={{ width: "105px" }} />
-              <col style={{ width: "160px" }} />
-              <col style={{ width: "130px" }} />
-              <col style={{ width: "120px" }} />
-              <col style={{ width: "250px" }} />
-            </colgroup>
-            <thead className="sticky top-0 z-5 bg-[#f0f5fa] uppercase text-sibs-tertiary-6 shadow-xs">
-              <tr className="border-b border-sibs-tertiary-10">
-                <th className="w-[18%] lg:w-auto px-3.5 py-3 font-bold whitespace-nowrap">Sheet</th>
-                <th className="w-[7%] lg:w-auto px-2.5 py-3 text-center font-bold whitespace-nowrap">Row</th>
-                <th className="w-[12%] lg:w-auto px-3 py-3 font-bold whitespace-nowrap">Severity</th>
-                <th className="w-[15%] lg:w-auto px-3 py-3 font-bold whitespace-nowrap">Code</th>
-                <th className="w-[13%] lg:w-auto px-3 py-3 font-bold whitespace-nowrap">Column</th>
-                <th className="w-[12%] lg:w-auto px-3 py-3 font-bold whitespace-nowrap">Value</th>
-                <th className="w-[23%] lg:w-auto px-3.5 py-3 font-bold whitespace-nowrap">Message</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-sibs-tertiary-10">
-              {usVisaErrorDetails?.data?.length ? (
-                usVisaErrorDetails.data.map((error) => {
-                  const severityUpper = String(error.severity || "").toUpperCase();
-                  const severityClass =
-                    severityUpper === "ERROR"
-                      ? "border border-rose-200 bg-rose-50 text-rose-700"
-                      : severityUpper === "DUPLICATE" || severityUpper === "WARNING"
-                      ? "border border-amber-200 bg-amber-50 text-amber-800"
-                      : severityUpper === "INFO"
-                        ? "border border-sky-200 bg-sky-50 text-sky-700"
-                        : "border border-slate-200 bg-slate-50 text-slate-700";
-
-                  return (
-                    <tr
-                      key={error.id}
-                      className="bg-[#f8fbfd] transition-colors hover:bg-sky-50/40"
-                    >
-                      <td
-                        className="truncate px-3.5 py-2.5 font-medium text-sibs-primary-1"
-                        title={error.sheetName || "-"}
-                      >
-                        {error.sheetName || "-"}
-                      </td>
-                      <td className="px-2.5 py-2.5 text-center font-mono text-[11px] text-sibs-tertiary-5">
-                        {error.excelRowNumber || "-"}
-                      </td>
-                      <td className="px-3 py-2.5 whitespace-nowrap">
-                        <span
-                          className={`inline-flex items-center rounded-md px-2 py-0.5 text-[10.5px] font-bold ${severityClass}`}
-                        >
-                          {error.severity || "-"}
-                        </span>
-                      </td>
-                      <td
-                        className="truncate px-3 py-2.5 font-mono text-[11px] text-sibs-tertiary-5"
-                        title={error.errorCode || "-"}
-                      >
-                        {error.errorCode || "-"}
-                      </td>
-                      <td
-                        className="truncate px-3 py-2.5 text-sibs-tertiary-5"
-                        title={error.columnName || "-"}
-                      >
-                        {error.columnName || "-"}
-                      </td>
-                      <td
-                        className="truncate px-3 py-2.5 font-mono text-[11px] text-sibs-tertiary-5"
-                        title={String(error.rawValue || "")}
-                      >
-                        {error.rawValue || "-"}
-                      </td>
-                      <td className="break-words px-3.5 py-2.5 text-[11.5px] leading-relaxed text-sibs-tertiary-5">
-                        {error.errorMessage || "-"}
-                      </td>
-                    </tr>
-                  );
-                })
-              ) : (
-                <tr>
-                  <td
-                    colSpan={7}
-                    className="bg-[#f8fbfd] px-5 py-16 text-center text-sm text-sibs-tertiary-5"
-                  >
-                    No error details found matching your search or filters.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Footer (shrink-0) */}
-        <div className="shrink-0 mt-3 flex flex-col gap-2.5 sm:gap-3 border-t border-sibs-tertiary-10 pt-2.5 sm:pt-3 text-xs text-sibs-tertiary-6 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex flex-wrap items-center justify-between sm:justify-start gap-2 sm:gap-3">
-            <span className="font-medium text-slate-600 text-[11px] sm:text-xs">
-              {errorShowingText}
-            </span>
-            <div className="flex items-center gap-1.5 text-slate-500">
-              <span className="text-[11px] sm:text-xs">Per page:</span>
-              <select
-                value={errorPagination.limit}
-                onChange={(e) => {
-                  const newLimit = Number(e.target.value);
-                  void handleOpenUsVisaErrors(
-                    activeErrorBatchId,
-                    1,
-                    newLimit,
-                    errorSearchQuery,
-                    errorSeverityFilter,
-                  );
-                }}
-                disabled={
-                  isLoadingUsVisaErrors || errorPagination.total === 0
-                }
-                className="h-7 rounded border border-slate-200 bg-white px-1.5 text-xs text-slate-700 outline-hidden focus:border-sibs-primary-1"
-              >
-                <option value={10}>10</option>
-                <option value={25}>25</option>
-                <option value={50}>50</option>
-                <option value={100}>100</option>
-                <option value={200}>200</option>
-              </select>
-            </div>
-          </div>
-
-          <div className="flex flex-wrap items-center justify-between sm:justify-end gap-2 sm:gap-2.5">
-            {/* Custom Go to Page Input */}
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                const targetP = Math.min(
-                  Math.max(1, Number(jumpPageInput) || 1),
-                  errorPagination.totalPages,
-                );
-                void handleOpenUsVisaErrors(
-                  activeErrorBatchId,
-                  targetP,
-                  errorPagination.limit,
-                  errorSearchQuery,
-                  errorSeverityFilter,
-                );
-              }}
-              className="flex items-center gap-1.5"
-            >
-              <span className="text-slate-500 text-[11px] sm:text-xs">Go to:</span>
-              <input
-                type="number"
-                min={1}
-                max={errorPagination.totalPages}
-                value={jumpPageInput}
-                onChange={(e) => setJumpPageInput(e.target.value)}
-                className="h-7 sm:h-8 w-12 sm:w-14 rounded-lg border border-slate-200 bg-white px-1 text-center text-xs font-semibold text-slate-700 outline-none focus:border-sibs-primary-1"
-                placeholder={String(errorPagination.page)}
-              />
-              <span className="text-slate-400 text-[11px] sm:text-xs">/ {errorPagination.totalPages}</span>
-              <button
-                type="submit"
-                disabled={isLoadingUsVisaErrors || errorPagination.totalPages <= 1}
-                className="inline-flex h-7 sm:h-8 items-center rounded-lg border border-slate-200 bg-white px-2 text-xs font-semibold text-slate-700 transition hover:border-sibs-primary-1 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                Go
-              </button>
-            </form>
-
-            <div className="flex items-center gap-1">
-              <button
-                type="button"
-                disabled={errorPagination.page <= 1 || isLoadingUsVisaErrors}
-                onClick={() =>
-                  void handleOpenUsVisaErrors(
-                    activeErrorBatchId,
-                    1,
-                    errorPagination.limit,
-                    errorSearchQuery,
-                    errorSeverityFilter,
-                  )
-                }
-                title="First Page"
-                className="inline-flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition-all hover:border-sibs-primary-1 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                <ChevronsLeft className="h-3.5 w-3.5" />
-              </button>
-              <button
-                type="button"
-                disabled={errorPagination.page <= 1 || isLoadingUsVisaErrors}
-                onClick={() =>
-                  void handleOpenUsVisaErrors(
-                    activeErrorBatchId,
-                    Math.max(1, errorPagination.page - 1),
-                    errorPagination.limit,
-                    errorSearchQuery,
-                    errorSeverityFilter,
-                  )
-                }
-                title="Previous Page"
-                className="inline-flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition-all hover:border-sibs-primary-1 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                <ChevronLeft className="h-3.5 w-3.5" />
-              </button>
-
-              {/* Numbered page buttons: shown on sm+ screens */}
-              <div className="hidden sm:flex items-center gap-1 px-1">
-                {getPageNumbers(
-                  errorPagination.page,
-                  errorPagination.totalPages,
-                ).map((p, idx) => {
-                  if (p === "...") {
-                    return (
-                      <span
-                        key={`ellipsis-${idx}`}
-                        className="select-none px-1 text-slate-400"
-                      >
-                        ...
-                      </span>
-                    );
-                  }
-                  const isActivePage = p === errorPagination.page;
-                  return (
-                    <button
-                      key={`page-${p}`}
-                      type="button"
-                      disabled={isLoadingUsVisaErrors}
-                      onClick={() =>
-                        void handleOpenUsVisaErrors(
-                          activeErrorBatchId,
-                          p,
-                          errorPagination.limit,
-                          errorSearchQuery,
-                          errorSeverityFilter,
-                        )
-                      }
-                      className={`inline-flex h-8 min-w-[32px] items-center justify-center rounded-lg px-2 text-xs font-semibold transition-all ${
-                        isActivePage
-                          ? "bg-sibs-primary-1 text-white shadow-xs"
-                          : "border border-slate-200 bg-white text-slate-700 hover:border-sibs-primary-1 hover:bg-slate-50"
-                      }`}
-                    >
-                      {p}
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* Compact page indicator badge on mobile */}
-              <div className="flex sm:hidden items-center px-1.5 text-xs font-medium text-slate-700">
-                <span>{errorPagination.page} / {errorPagination.totalPages}</span>
-              </div>
-
-              <button
-                type="button"
-                disabled={
-                  errorPagination.page >= errorPagination.totalPages ||
-                  isLoadingUsVisaErrors
-                }
-                onClick={() =>
-                  void handleOpenUsVisaErrors(
-                    activeErrorBatchId,
-                    Math.min(
-                      errorPagination.totalPages,
-                      errorPagination.page + 1,
-                    ),
-                    errorPagination.limit,
-                    errorSearchQuery,
-                    errorSeverityFilter,
-                  )
-                }
-                title="Next Page"
-                className="inline-flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition-all hover:border-sibs-primary-1 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                <ChevronRight className="h-3.5 w-3.5" />
-              </button>
-              <button
-                type="button"
-                disabled={
-                  errorPagination.page >= errorPagination.totalPages ||
-                  isLoadingUsVisaErrors
-                }
-                onClick={() =>
-                  void handleOpenUsVisaErrors(
-                    activeErrorBatchId,
-                    errorPagination.totalPages,
-                    errorPagination.limit,
-                    errorSearchQuery,
-                    errorSeverityFilter,
-                  )
-                }
-                title="Last Page"
-                className="inline-flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition-all hover:border-sibs-primary-1 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                <ChevronsRight className="h-3.5 w-3.5" />
-              </button>
-            </div>
-          </div>
-        </div>
-      </AppModal>
-
-      <AppModal
-        isOpen={Boolean(addedUpload)}
-        className="!max-w-none sm:!w-[640px]"
-        textAlign="center"
-      >
-        <p className="m-0 text-lg font-bold text-sibs-primary-1">
-          Import Successful
-        </p>
-        <p className="mt-2 mb-0 text-sm text-sibs-tertiary-5">
-          <span className="font-semibold text-sibs-primary-1">
-            {addedUpload?.fileName}
-          </span>{" "}
-          was imported to{" "}
-          <span className="font-semibold text-sibs-primary-1">
-            {addedUpload?.rawDataTitle}
-          </span>
-          .
-        </p>
-
-        {addedUpload?.batch ? (
-          <div className="mt-4 rounded-xl border border-sibs-tertiary-10 bg-white p-4 text-left">
-            <div className="flex items-center justify-between text-xs font-bold text-sibs-primary-1">
-              <span className="font-mono text-sibs-primary-2">
-                Batch: {addedUpload.batch.batchCode}
-              </span>
-              <span className="rounded border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-bold text-emerald-700">
-                {formatImportStatus(addedUpload.batch.status)}
-              </span>
-            </div>
-            <div className="mt-3 grid grid-cols-2 gap-2.5 sm:grid-cols-5">
-              <BatchDetailStat
-                label="Total Rows"
-                value={addedUpload.batch.totalRows}
-                icon={FileSpreadsheet}
-                tone="blue"
-                className="col-span-2 sm:col-span-1"
-              />
-              <BatchDetailStat
-                label="Valid Rows"
-                value={addedUpload.batch.validRows}
-                icon={CheckCircle2}
-                tone="emerald"
-              />
-              <BatchDetailStat
-                label="Invalid Rows"
-                value={addedUpload.batch.invalidRows}
-                icon={AlertCircle}
-                tone="rose"
-              />
-              <BatchDetailStat
-                label="Duplicate Rows"
-                value={addedUpload.batch.duplicateRows}
-                icon={ListPlus}
-                tone="orange"
-              />
-              <BatchDetailStat
-                label="Warning Rows"
-                value={addedUpload.batch.warningRows}
-                icon={AlertTriangle}
-                tone="amber"
-              />
-            </div>
-          </div>
-        ) : null}
-
-        <div className="mt-5 flex justify-end gap-2">
-          {addedUpload?.batch &&
-          (addedUpload.batch.invalidRows > 0 ||
-            addedUpload.batch.warningRows > 0 ||
-            addedUpload.batch.duplicateRows > 0) ? (
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => {
-                const batchId = addedUpload.batch.id;
-                setAddedUpload(null);
-                handleOpenUsVisaErrors(batchId);
-              }}
-              className="h-10 rounded-lg border-sibs-danger/30 px-4 text-sibs-danger hover:bg-sibs-danger hover:text-white"
-            >
-              View Errors (
-              {(
-                (addedUpload.batch.invalidRows || 0) +
-                (addedUpload.batch.warningRows || 0) +
-                (addedUpload.batch.duplicateRows || 0)
-              ).toLocaleString()}
-              )
-            </Button>
-          ) : null}
-          <Button
-            type="button"
-            onClick={() => setAddedUpload(null)}
-            className="h-10 rounded-lg bg-sibs-primary-1 px-4 text-white hover:bg-sibs-tertiary-4"
-          >
-            Done
-          </Button>
-        </div>
-      </AppModal>
-
-      <AppModal
-        isOpen={Boolean(selectedUploadDetails)}
-        className="!max-w-none w-full max-w-[94vw] sm:!w-[720px] !p-0 overflow-hidden"
-        zIndex="z-[140]"
-      >
-        <div className="overflow-hidden rounded-2xl bg-white">
-          {/* Header */}
-          <div className="bg-gradient-to-br from-slate-50 via-white to-sky-50/50 p-4 sm:p-6 border-b border-sibs-tertiary-10">
-            {/* Top row: Icon + Details on left, Status badge on right */}
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex min-w-0 items-start gap-3 sm:gap-3.5">
-                <div className="flex h-10 w-10 sm:h-11 sm:w-11 shrink-0 items-center justify-center rounded-xl sm:rounded-2xl border border-sky-100 bg-sky-50 text-sky-600 shadow-xs">
-                  <FileSpreadsheet className="h-5 w-5" aria-hidden="true" />
-                </div>
-
-                <div className="min-w-0">
-                  <p className="m-0 text-[10px] font-extrabold uppercase tracking-[0.08em] text-sibs-tertiary-5">
-                    Batch details
-                  </p>
-
-                  {/* Desktop badges shown inline under BATCH DETAILS */}
-                  <div className="hidden sm:flex items-center gap-2 mt-1.5">
-                    <span className="rounded-lg bg-sibs-primary-2/10 px-2.5 py-1 text-[11px] font-extrabold text-sibs-primary-2 whitespace-nowrap">
-                      {activeOpenCard?.title || selectedUploadDetails?.rawDataTitle || "Import"}
-                    </span>
-                    <span className="text-[11px] font-bold text-sibs-tertiary-5 whitespace-nowrap">
-                      {activeOpenCard?.account || selectedUploadDetails?.account}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Status Badge */}
-              {selectedUploadDetails?.batchStatus === "COMPLETED_WITH_ERRORS" ||
-              (selectedUploadDetails?.invalidRows > 0) ||
-              (selectedUploadDetails?.warningRows > 0) ||
-              (selectedUploadDetails?.duplicateRows > 0) ? (
-                <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 sm:px-3 sm:py-1.5 text-[10px] sm:text-[10.5px] font-extrabold uppercase tracking-wide text-amber-800 shadow-xs">
-                  <AlertTriangle className="h-3 w-3 shrink-0 text-amber-600" aria-hidden="true" />
-                  <span>Completed with errors</span>
-                </span>
-              ) : (
-                <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 sm:px-3 sm:py-1.5 text-[10px] sm:text-[10.5px] font-extrabold uppercase tracking-wide text-emerald-700 shadow-xs">
-                  <CheckCircle2 className="h-3 w-3 shrink-0 text-emerald-600" aria-hidden="true" />
-                  <span>Completed</span>
-                </span>
-              )}
-            </div>
-
-            {/* Mobile-only badges row: sits under top bar on mobile across full width */}
-            <div className="flex sm:hidden items-center gap-2 mt-2.5">
-              <span className="rounded-lg bg-sibs-primary-2/10 px-2.5 py-1 text-[10.5px] font-extrabold text-sibs-primary-2 whitespace-nowrap">
-                {activeOpenCard?.title || selectedUploadDetails?.rawDataTitle || "Import"}
-              </span>
-              <span className="text-[10.5px] font-bold text-sibs-tertiary-5 whitespace-nowrap">
-                {activeOpenCard?.account || selectedUploadDetails?.account}
-              </span>
-            </div>
-
-            {/* File Name & Batch Code: full width */}
-            <div className="mt-2.5 sm:mt-3 min-w-0 sm:pl-[58px]">
-              <p className="m-0 break-words text-sm sm:text-[15px] font-extrabold leading-snug text-sibs-primary-1 [overflow-wrap:anywhere]">
-                {selectedUploadDetails?.fileName}
-              </p>
-
-              <div className="mt-1.5 sm:mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-sibs-tertiary-5">
-                {selectedUploadDetails?.batchCode ? (
-                  <span className="rounded-md bg-white px-2 py-0.5 font-mono font-semibold text-sibs-primary-2 shadow-xs ring-1 ring-slate-200/70 whitespace-nowrap">
-                    {selectedUploadDetails.batchCode}
-                  </span>
-                ) : null}
-                <span className="whitespace-nowrap">
-                  {selectedUploadDetails?.uploadedAt} ({formatRelativeTime(selectedUploadDetails)})
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Metric Stats Cards */}
-          <div className="p-4 sm:p-6 bg-white">
-            <div className="grid grid-cols-2 gap-2.5 sm:gap-3 sm:grid-cols-5">
-              <BatchDetailStat
-                label="Total Rows"
-                value={selectedUploadDetails?.totalRows}
-                icon={FileSpreadsheet}
-                tone="blue"
-                className="col-span-2 sm:col-span-1"
-              />
-              <BatchDetailStat
-                label="Valid Rows"
-                value={selectedUploadDetails?.validRows}
-                icon={CheckCircle2}
-                tone="emerald"
-              />
-              <BatchDetailStat
-                label="Invalid Rows"
-                value={selectedUploadDetails?.invalidRows}
-                icon={AlertCircle}
-                tone="rose"
-              />
-              <BatchDetailStat
-                label="Duplicate Rows"
-                value={selectedUploadDetails?.duplicateRows}
-                icon={ListPlus}
-                tone="orange"
-              />
-              <BatchDetailStat
-                label="Warning Rows"
-                value={selectedUploadDetails?.warningRows}
-                icon={AlertTriangle}
-                tone="amber"
-              />
-            </div>
-          </div>
-
-          {/* Footer Actions */}
-          <div className="px-4 pb-4 pt-3 sm:px-6 sm:pb-6 sm:pt-4 border-t border-sibs-tertiary-10 bg-slate-50/50 flex flex-col sm:flex-row sm:items-center sm:justify-end gap-2">
-            {selectedUploadDetails?.batchId &&
-            ((selectedUploadDetails.invalidRows || 0) > 0 ||
-              (selectedUploadDetails.warningRows || 0) > 0 ||
-              (selectedUploadDetails.duplicateRows || 0) > 0) ? (
-              <Button
-                type="button"
-                variant="outline"
-                disabled={isLoadingUsVisaErrors}
-                onClick={() => handleOpenUsVisaErrors(selectedUploadDetails.batchId)}
-                className="h-10 w-full sm:w-auto rounded-xl border-rose-200 bg-rose-50 px-4 text-xs font-bold text-rose-700 shadow-xs hover:border-rose-300 hover:bg-rose-100 hover:text-rose-800"
-              >
-                <AlertCircle className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                <span>
-                  View Error Details (
-                  {(
-                    (selectedUploadDetails.invalidRows || 0) +
-                    (selectedUploadDetails.warningRows || 0) +
-                    (selectedUploadDetails.duplicateRows || 0)
-                  ).toLocaleString()}
-                  )
-                </span>
-              </Button>
-            ) : null}
-            <Button
-              type="button"
-              onClick={() => setSelectedUploadDetails(null)}
-              className="h-10 w-full sm:w-auto rounded-xl bg-sibs-primary-1 px-5 text-xs font-bold text-white shadow-xs hover:bg-sibs-tertiary-4"
-            >
-              Close
-            </Button>
-          </div>
-        </div>
-      </AppModal>
-
-      <ConfirmationModal
-        isOpen={Boolean(uploadToRemove)}
-        title="Remove imported data"
-        message={`Are you sure you want to remove ${uploadToRemove?.fileName || "this file"} from ${activeOpenCard?.title || "this raw data"}? This will permanently delete the batch and all its database records.`}
-        cancelText="Cancel"
-        confirmText="Remove"
-        onCancel={() => setUploadToRemove(null)}
-        onConfirm={handleRemoveUpload}
-        tone="neutral"
-        zIndex="z-[130]"
-      />
-
-      <AppModal
-        isOpen={Boolean(removedUpload)}
-        className="max-w-sm"
-        textAlign="center"
-        zIndex="z-[150]"
-      >
-        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
-          <CheckCircle2 className="h-6 w-6" aria-hidden="true" />
-        </div>
-        <p className="mt-4 mb-0 text-lg font-bold text-sibs-primary-1">
-          Data Removed Successfully
-        </p>
-        <p className="mt-2 mb-0 text-sm text-sibs-tertiary-5">
-          <span className="break-words font-semibold text-sibs-primary-1 [overflow-wrap:anywhere]">
-            {removedUpload?.fileName}
-          </span>{" "}
-          and all associated database records have been deleted.
-        </p>
-        <Button
-          type="button"
-          onClick={() => setRemovedUpload(null)}
-          className="mt-5 h-10 w-full rounded-lg bg-sibs-primary-1 text-white hover:bg-sibs-tertiary-4"
-        >
-          Done
-        </Button>
-      </AppModal>
-
-      <ConfirmationModal
-        isOpen={dashboard.showLogoutModal}
-        title="Confirm logout"
-        message="Are you sure you want to logout?"
-        cancelText="Cancel"
-        confirmText="Logout"
-        onCancel={() => dashboard.setShowLogoutModal(false)}
-        onConfirm={dashboard.handleLogout}
-        tone="neutral"
-      />
-
-      <LoadingModal
-        isOpen={dashboard.isLoggingOut}
-        title="Logging out"
-        message="Please wait while we end your session."
-      />
-
-      <ImportProgressModal
-        isOpen={isUploading}
-        fileName={importFileName}
-        cardTitle={uploadingCardTitle}
-        currentStage={importStage}
-        progressPercent={uploadProgress}
-      />
-
-      <LoadingModal
-        isOpen={isRemovingUpload}
-        title="Removing data"
-        message="Please wait while the file and database records are removed..."
-        zIndex="z-[150]"
-      />
-
-      <LoadingModal
-        isOpen={isLoadingUsVisaErrors}
-        title="Loading error details"
-        message="Please wait while we retrieve the import error records..."
-        zIndex="z-[155]"
+      <WfmImportModals
+        pendingTaskOrderUpload={pendingTaskOrderUpload}
+        selectedTaskOrderId={selectedTaskOrderId}
+        setSelectedTaskOrderId={setSelectedTaskOrderId}
+        onCancelTaskOrderUpload={handleCancelTaskOrderUpload}
+        onConfirmTaskOrderUpload={handleConfirmTaskOrderUpload}
+        activeOpenCard={activeOpenCard}
+        onCloseCardUploads={() => setActiveOpenCard(null)}
+        uploadedDataSearch={uploadedDataSearch}
+        setUploadedDataSearch={setUploadedDataSearch}
+        isLoadingUsVisaErrors={isLoadingUsVisaErrors}
+        handleOpenUsVisaErrors={handleOpenUsVisaErrors}
+        handleOpenBatchDetails={handleOpenBatchDetails}
+        setUploadToRemove={setUploadToRemove}
+        usVisaErrorDetails={usVisaErrorDetails}
+        usVisaBatchResult={usVisaBatchResult}
+        errorPagination={errorPagination}
+        activeErrorBatchId={activeErrorBatchId}
+        errorSearchQuery={errorSearchQuery}
+        setErrorSearchQuery={setErrorSearchQuery}
+        errorSeverityFilter={errorSeverityFilter}
+        setErrorSeverityFilter={setErrorSeverityFilter}
+        jumpPageInput={jumpPageInput}
+        setJumpPageInput={setJumpPageInput}
+        onCloseErrorDetails={() => {
+          setUsVisaErrorDetails(null);
+          setActiveErrorBatchId(null);
+          setErrorSearchQuery("");
+          setErrorSeverityFilter("ALL");
+        }}
+        selectedUploadDetails={selectedUploadDetails}
+        onCloseBatchDetails={() => setSelectedUploadDetails(null)}
+        isWarningsModalOpen={isWarningsModalOpen}
+        onCloseWarnings={() => setIsWarningsModalOpen(false)}
+        uploadsByCard={uploadsByCard}
+        selectedAccount={selectedAccount}
+        duplicateUploadAlert={duplicateUploadAlert}
+        onCloseDuplicateAlert={() => setDuplicateUploadAlert(null)}
+        addedUpload={addedUpload}
+        onCloseAddedUpload={() => setAddedUpload(null)}
+        removedUpload={removedUpload}
+        onCloseRemovedUpload={() => setRemovedUpload(null)}
+        uploadToRemove={uploadToRemove}
+        onCancelRemoveUpload={() => setUploadToRemove(null)}
+        onConfirmRemoveUpload={handleRemoveUpload}
+        showLogoutModal={dashboard.showLogoutModal}
+        onCancelLogout={() => dashboard.setShowLogoutModal(false)}
+        onConfirmLogout={dashboard.handleLogout}
+        isLoggingOut={dashboard.isLoggingOut}
+        isUploading={isUploading}
+        importFileName={importFileName}
+        uploadingCardTitle={uploadingCardTitle}
+        uploadProgress={uploadProgress}
+        importStage={importStage}
+        errorModalInfo={errorModalInfo}
+        onCloseErrorInfo={() => setErrorModalInfo(null)}
       />
     </section>
   );
