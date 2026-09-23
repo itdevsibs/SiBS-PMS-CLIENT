@@ -16,61 +16,86 @@ const accountRawDataCards = {
       title: "Fusecom Skill Statistics",
       sourceLabel: "Fusecom",
       groupLabel: "SERVICE / QUEUE LEVEL",
-      taskOrders: ["Seurica", "Nice"],
+      taskOrders: [
+        { id: "TO16", label: "SEURECA" },
+        { id: "TO12", label: "NICE" },
+      ],
       importProfileCode: "FUSECOM_SKILL_STATISTICS_INBOUND",
     },
     {
       title: "HeroDash Skill Statistics",
       sourceLabel: "HeroDash",
       groupLabel: "SERVICE / QUEUE LEVEL",
-      taskOrders: ["Seasia", "Pac"],
+      taskOrders: [
+        { id: "TO10", label: "SEASIA" },
+        { id: "TO4", label: "PAC" },
+      ],
       importProfileCode: "HERO_SKILL_STATISTICS_INBOUND",
     },
     {
       title: "Fusecom Agent Level",
       sourceLabel: "Fusecom",
       groupLabel: "AGENT LEVEL",
-      taskOrders: ["Seurica", "Nice"],
+      taskOrders: [
+        { id: "TO16", label: "SEURECA" },
+        { id: "TO12", label: "NICE" },
+      ],
       importProfileCode: "FUSECOM_AGENT_LEVEL",
     },
     {
       title: "FuseNet Agent Level",
       sourceLabel: "FuseNet",
       groupLabel: "AGENT LEVEL",
-      taskOrders: ["Nesami"],
+      taskOrders: [
+        { id: "TO14", label: "NESAMI" },
+      ],
       importProfileCode: "FUSENET_AGENT_LEVEL",
     },
     {
       title: "HeroDash Agent Level",
       sourceLabel: "HeroDash",
       groupLabel: "AGENT LEVEL",
-      taskOrders: ["Seasia", "Pac"],
+      taskOrders: [
+        { id: "TO10", label: "SEASIA" },
+        { id: "TO4", label: "PAC" },
+      ],
       importProfileCode: "HERODASH_AGENT_LEVEL",
     },
     {
       title: "Fusecom Agent Occupancy",
       sourceLabel: "Fusecom",
       groupLabel: "AGENT OCCUPANCY",
-      taskOrders: [],
+      taskOrders: [
+        { id: "TO12", label: "NICE" },
+        { id: "TO16", label: "SEURECA" },
+      ],
       importProfileCode: "FUSECOM_AGENT_OCCUPANCY",
-      fileExtension: ".csv",
+      fileExtension: ".xlsx",
+      requiresTaskOrderSelection: true,
     },
     {
       title: "FuseNet Agent Occupancy",
       sourceLabel: "FuseNet",
       groupLabel: "AGENT OCCUPANCY",
-      taskOrders: [],
+      taskOrders: [
+        { id: "TO14", label: "NESAMI" },
+      ],
       importProfileCode: "FUSENET_AGENT_OCCUPANCY",
-      fileExtension: ".csv",
+      fileExtension: ".xlsx",
+      requiresTaskOrderSelection: true,
     },
     {
       title: "HeroDash Agent Occupancy",
       sourceLabel: "HeroDash",
       groupLabel: "AGENT OCCUPANCY",
-      taskOrders: [],
+      taskOrders: [
+        { id: "TO4", label: "PAC" },
+        { id: "TO10", label: "SEASIA" },
+      ],
       importProfileCode: "HERODASH_AGENT_OCCUPANCY",
-      fileExtension: ".csv",
-      requiresReportingPeriod: true,
+      fileExtension: ".xlsx",
+      requiresTaskOrderSelection: true,
+      requiresReportingPeriod: false,
     },
   ],
   "YOMDEL": [
@@ -129,6 +154,8 @@ export function getRawDataCards(account) {
       typeof card === "string" ? null : card.importProfileCode || null,
     fileExtension:
       typeof card === "string" ? null : card.fileExtension || (account === "US VISA" ? ".xlsx" : null),
+    requiresTaskOrderSelection:
+      typeof card === "string" ? false : Boolean(card.requiresTaskOrderSelection),
     requiresReportingPeriod:
       typeof card === "string" ? false : Boolean(card.requiresReportingPeriod),
     };
