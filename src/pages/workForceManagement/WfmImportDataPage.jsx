@@ -500,6 +500,22 @@ function getImportProfileForCard(card) {
   return String(card?.importProfileCode || "").trim() || null;
 }
 
+function normalizeTaskOrderOption(taskOrder) {
+  if (!taskOrder) return null;
+  if (typeof taskOrder === "string") {
+    return { id: null, label: taskOrder };
+  }
+
+  const id = String(taskOrder.id || "").trim();
+  const label = String(taskOrder.label || id).trim();
+  return id || label ? { id: id || null, label: label || id } : null;
+}
+
+function getTaskOrderSearchText(taskOrder) {
+  const option = normalizeTaskOrderOption(taskOrder);
+  return option ? `${option.id || ""} ${option.label || ""}`.trim().toLowerCase() : "";
+}
+
 function mapBatchToUpload(batch) {
   if (!batch || batch.status === "FAILED") {
     return null;
@@ -541,6 +557,7 @@ function mapBatchToUpload(batch) {
     importProfileCode: profileCode,
     importProfileName: batch.importProfileName || rawDataTitle,
     sourceSystem: batch.sourceSystem || card.sourceLabel,
+    taskOrderId: batch.taskOrderId || null,
     fileName: batch.sourceFilename,
     fileSize: batch.fileSize || 0,
     filePath: `${account}/${rawDataTitle}/${batch.sourceFilename}`,
@@ -624,9 +641,8 @@ function WfmImportDataPage() {
   const [rawDataSearch, setRawDataSearch] = useState("");
   const [uploadedDataSearch, setUploadedDataSearch] = useState("");
   const [selectedAccount, setSelectedAccount] = useState("All Accounts");
-  const [pendingReportingPeriodUpload, setPendingReportingPeriodUpload] = useState(null);
-  const [reportDateFrom, setReportDateFrom] = useState("");
-  const [reportDateTo, setReportDateTo] = useState("");
+  const [pendingTaskOrderUpload, setPendingTaskOrderUpload] = useState(null);
+  const [selectedTaskOrderId, setSelectedTaskOrderId] = useState("");
 
   const errorTableContainerRef = useRef(null);
   const [canScrollTableLeft, setCanScrollTableLeft] = useState(false);
@@ -735,8 +751,8 @@ function WfmImportDataPage() {
       (card) =>
         card.title.toLowerCase().includes(searchValue) ||
         card.account.toLowerCase().includes(searchValue) ||
-        (card.taskOrders || []).some((to) =>
-          to.toLowerCase().includes(searchValue),
+        (card.taskOrders || []).some((taskOrder) =>
+          getTaskOrderSearchText(taskOrder).includes(searchValue),
         ),
     );
   }, [rawDataSearch, selectedAccount]);
@@ -926,7 +942,7 @@ function WfmImportDataPage() {
     }
   };
 
-  const processCardFile = async (card, file, reportingPeriod = {}) => {
+  const processCardFile = async (card, file, uploadContext = {}) => {
     if (!file) {
       return;
     }
@@ -978,8 +994,9 @@ function WfmImportDataPage() {
         const uploadPromise = uploadUsVisaImport({
           file,
           importProfileId,
-          reportDateFrom: reportingPeriod.reportDateFrom || undefined,
-          reportDateTo: reportingPeriod.reportDateTo || undefined,
+          taskOrderId: uploadContext.taskOrderId || undefined,
+          reportDateFrom: uploadContext.reportDateFrom || undefined,
+          reportDateTo: uploadContext.reportDateTo || undefined,
           onProgress: (percent) => {
             const scaledProgress = Math.round(5 + percent * 0.6);
             setUploadProgress(scaledProgress);
@@ -1037,8 +1054,9 @@ function WfmImportDataPage() {
         invalidRows: batchResult?.invalidRows ?? 0,
         duplicateRows: batchResult?.duplicateRows ?? 0,
         warningRows: batchResult?.warningRows ?? 0,
-        reportDateFrom: batchResult?.reportDateFrom || reportingPeriod.reportDateFrom || null,
-        reportDateTo: batchResult?.reportDateTo || reportingPeriod.reportDateTo || null,
+        taskOrderId: batchResult?.taskOrderId || uploadContext.taskOrderId || null,
+        reportDateFrom: batchResult?.reportDateFrom || uploadContext.reportDateFrom || null,
+        reportDateTo: batchResult?.reportDateTo || uploadContext.reportDateTo || null,
         importProfileCode: card.importProfileCode || null,
         importProfileName: batchResult?.importProfileName || card.title,
         sourceSystem: batchResult?.sourceSystem || card.sourceLabel || card.title,
@@ -1107,40 +1125,55 @@ function WfmImportDataPage() {
       return;
     }
 
-    if (card.requiresReportingPeriod) {
-      setPendingReportingPeriodUpload({ card, file });
-      setReportDateFrom("");
-      setReportDateTo("");
+    if (!card.requiresTaskOrderSelection) {
+      await processCardFile(card, file);
+      return;
+    }
+
+    const taskOrderOptions = (card.taskOrders || [])
+      .map(normalizeTaskOrderOption)
+      .filter((option) => option?.id);
+
+    if (taskOrderOptions.length === 1) {
+      await processCardFile(card, file, { taskOrderId: taskOrderOptions[0].id });
+      return;
+    }
+
+    if (taskOrderOptions.length > 1) {
+      setPendingTaskOrderUpload({ card, file, taskOrderOptions });
+      setSelectedTaskOrderId("");
       return;
     }
 
     await processCardFile(card, file);
   };
 
-  const handleConfirmReportingPeriodUpload = async () => {
-    if (!pendingReportingPeriodUpload) return;
+  const handleConfirmTaskOrderUpload = async () => {
+    if (!pendingTaskOrderUpload) return;
 
-    if (!reportDateFrom || !reportDateTo || reportDateFrom > reportDateTo) {
+    const validSelection = pendingTaskOrderUpload.taskOrderOptions.some(
+      (option) => option.id === selectedTaskOrderId,
+    );
+    if (!validSelection) {
       setErrorModalInfo({
-        title: "Reporting Period Required",
-        message: "Select a valid reporting start date and end date before uploading HeroDash Agent Occupancy.",
+        title: "Task Order Required",
+        message: "Select the Task Order represented by this Agent Occupancy workbook before uploading.",
       });
       return;
     }
 
-    const pendingUpload = pendingReportingPeriodUpload;
-    setPendingReportingPeriodUpload(null);
+    const pendingUpload = pendingTaskOrderUpload;
+    setPendingTaskOrderUpload(null);
 
     await processCardFile(pendingUpload.card, pendingUpload.file, {
-      reportDateFrom,
-      reportDateTo,
+      taskOrderId: selectedTaskOrderId,
     });
+    setSelectedTaskOrderId("");
   };
 
-  const handleCancelReportingPeriodUpload = () => {
-    setPendingReportingPeriodUpload(null);
-    setReportDateFrom("");
-    setReportDateTo("");
+  const handleCancelTaskOrderUpload = () => {
+    setPendingTaskOrderUpload(null);
+    setSelectedTaskOrderId("");
   };
 
   const handleRemoveUpload = async () => {
@@ -1462,14 +1495,17 @@ function WfmImportDataPage() {
                             TASK ORDERS:
                           </span>
                           <div className="flex min-w-0 flex-wrap gap-1">
-                            {card.taskOrders.map((taskOrder) => (
-                              <span
-                                key={taskOrder}
-                                className="rounded-md border border-sibs-tertiary-8 bg-white px-2 py-0.5 text-[11px] font-bold text-sibs-primary-1 shadow-2xs whitespace-nowrap"
-                              >
-                                {taskOrder}
-                              </span>
-                            ))}
+                            {card.taskOrders.map((taskOrder, index) => {
+                              const option = normalizeTaskOrderOption(taskOrder);
+                              return (
+                                <span
+                                  key={option?.id || option?.label || index}
+                                  className="rounded-md border border-sibs-tertiary-8 bg-white px-2 py-0.5 text-[11px] font-bold text-sibs-primary-1 shadow-2xs whitespace-nowrap"
+                                >
+                                  {option?.id ? `${option.id} - ${option.label}` : option?.label}
+                                </span>
+                              );
+                            })}
                           </div>
                         </div>
                       ) : null}
@@ -1583,57 +1619,59 @@ function WfmImportDataPage() {
       </main>
 
       <AppModal
-        isOpen={Boolean(pendingReportingPeriodUpload)}
+        isOpen={Boolean(pendingTaskOrderUpload)}
         className="w-full max-w-md p-5 sm:p-6"
       >
         <div>
           <p className="m-0 text-lg font-bold text-sibs-primary-1">
-            HeroDash Reporting Period
+            Select Task Order
           </p>
           <p className="mt-1 mb-0 text-xs font-semibold leading-5 text-sibs-tertiary-5">
-            Select the reporting period represented by this HeroDash Agent Occupancy CSV.
-            The source Date column is not used for canonical date attribution.
+            Choose the Task Order represented by this Agent Occupancy workbook. The server will validate that it matches the selected source tool.
           </p>
         </div>
 
-        <div className="mt-5 grid gap-4 sm:grid-cols-2">
-          <label className="block">
-            <span className="mb-1.5 block text-xs font-bold text-sibs-primary-1">Start Date</span>
-            <input
-              type="date"
-              value={reportDateFrom}
-              max={reportDateTo || undefined}
-              onChange={(event) => setReportDateFrom(event.target.value)}
-              className="form-input h-10 w-full rounded-lg"
-            />
-          </label>
-          <label className="block">
-            <span className="mb-1.5 block text-xs font-bold text-sibs-primary-1">End Date</span>
-            <input
-              type="date"
-              value={reportDateTo}
-              min={reportDateFrom || undefined}
-              onChange={(event) => setReportDateTo(event.target.value)}
-              className="form-input h-10 w-full rounded-lg"
-            />
-          </label>
+        <div className="mt-5 space-y-2">
+          {(pendingTaskOrderUpload?.taskOrderOptions || []).map((option) => (
+            <label
+              key={option.id}
+              className={`flex cursor-pointer items-center gap-3 rounded-lg border px-3 py-3 transition ${
+                selectedTaskOrderId === option.id
+                  ? "border-sibs-primary-1 bg-sibs-primary-1/5"
+                  : "border-slate-200 bg-white hover:border-sibs-primary-1/40"
+              }`}
+            >
+              <input
+                type="radio"
+                name="occupancy-task-order"
+                value={option.id}
+                checked={selectedTaskOrderId === option.id}
+                onChange={(event) => setSelectedTaskOrderId(event.target.value)}
+                className="h-4 w-4"
+              />
+              <div className="min-w-0">
+                <p className="m-0 text-sm font-bold text-sibs-primary-1">{option.id}</p>
+                <p className="m-0 text-xs font-semibold text-sibs-tertiary-5">{option.label}</p>
+              </div>
+            </label>
+          ))}
         </div>
 
         <div className="mt-6 flex justify-end gap-2">
           <button
             type="button"
-            onClick={handleCancelReportingPeriodUpload}
+            onClick={handleCancelTaskOrderUpload}
             className="h-9 rounded-lg border border-slate-200 bg-white px-4 text-xs font-bold text-sibs-primary-1 transition hover:bg-slate-50"
           >
             Cancel
           </button>
           <button
             type="button"
-            onClick={handleConfirmReportingPeriodUpload}
-            disabled={!reportDateFrom || !reportDateTo || reportDateFrom > reportDateTo}
+            onClick={handleConfirmTaskOrderUpload}
+            disabled={!selectedTaskOrderId}
             className="h-9 rounded-lg bg-sibs-primary-1 px-4 text-xs font-bold text-white transition hover:bg-sibs-tertiary-4 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            Upload CSV
+            Upload XLSX
           </button>
         </div>
       </AppModal>

@@ -4,6 +4,7 @@ import api from "./api-template";
 export async function uploadUsVisaImport({
   file,
   importProfileId,
+  taskOrderId,
   reportDateFrom,
   reportDateTo,
   onProgress,
@@ -12,6 +13,10 @@ export async function uploadUsVisaImport({
 
   formData.append("file", file);
   formData.append("importProfileId", importProfileId);
+
+  if (taskOrderId) {
+    formData.append("taskOrderId", taskOrderId);
+  }
 
   if (reportDateFrom) {
     formData.append("reportDateFrom", reportDateFrom);
