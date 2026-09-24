@@ -1,3 +1,4 @@
+import { useEffect, useMemo, useState } from "react";
 import {
   AlertCircle,
   AlertTriangle,
@@ -7,18 +8,38 @@ import {
   FolderOpen,
   RotateCw,
 } from "lucide-react";
+import SingleSelectDropdown from "@/components/ui/Filter/SingleSelectDropdown";
 import { formatRelativeTime, normalizeTaskOrderOption } from "@/lib/wfm-import-utils";
 
-export default function WfmRawDataCard({
-  card,
-  uploads = [],
+export default function WfmGroupedRawDataCard({
+  group,
+  uploadsByCard = {},
   isUploading = false,
   onFileSelect,
   onOpenCard,
   onRefreshCard,
   onOpenErrorDetails,
 }) {
-  const latestUpload = uploads[0] || null;
+  const cards = group?.cards || [];
+  const [selectedCardId, setSelectedCardId] = useState(() => cards[0]?.id || "");
+
+  // Keep selected card in sync when cards change (e.g. search filtering)
+  useEffect(() => {
+    if (!cards.some((c) => c.id === selectedCardId)) {
+      setSelectedCardId(cards[0]?.id || "");
+    }
+  }, [cards, selectedCardId]);
+
+  const activeCard = useMemo(() => {
+    return cards.find((c) => c.id === selectedCardId) || cards[0] || null;
+  }, [cards, selectedCardId]);
+
+  const activeUploads = useMemo(() => {
+    if (!activeCard) return [];
+    return uploadsByCard[activeCard.id] || [];
+  }, [activeCard, uploadsByCard]);
+
+  const latestUpload = activeUploads[0] || null;
 
   const isCompletedWithErrors = Boolean(
     latestUpload &&
@@ -28,20 +49,39 @@ export default function WfmRawDataCard({
         (latestUpload.duplicateRows || 0) > 0),
   );
 
+  const dropdownOptions = useMemo(() => {
+    return cards.map((card) => {
+      const fileCount = (uploadsByCard[card.id] || []).length;
+      return {
+        value: card.id,
+        label: fileCount > 0 ? `${card.title} (${fileCount} ${fileCount === 1 ? "file" : "files"})` : card.title,
+      };
+    });
+  }, [cards, uploadsByCard]);
+
+  if (!activeCard) return null;
+
   return (
-    <section className="sibs-card flex min-h-[350px] flex-col justify-between p-4 shadow-xs transition hover:border-sibs-primary-1/40">
+    <section className="sibs-card relative flex min-h-[370px] flex-col justify-between p-4 shadow-xs transition hover:border-sibs-primary-1/40">
       <div>
-        <div className="flex items-start justify-between gap-2">
+        {/* Card Header: Level Name & Refresh Button (stored in Import Repository) */}
+        <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-2.5">
           <div className="min-w-0 flex-1">
-            <h2 className="m-0 text-base font-extrabold leading-tight text-sibs-primary-1 break-words">
-              {card.title}
+            <span className="text-[10px] font-extrabold uppercase tracking-wider text-sibs-tertiary-5 block">
+              LEVEL
+            </span>
+            <h2
+              className="m-0 text-sm font-extrabold text-sibs-primary-1 truncate"
+              title={group.label}
+            >
+              {group.label}
             </h2>
           </div>
           <button
             type="button"
-            onClick={() => onRefreshCard?.(card?.id, [card])}
+            onClick={() => onRefreshCard?.(activeCard?.id, group?.cards)}
             className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-bold transition-all shadow-2xs active:scale-95 ${
-              uploads.length > 0
+              activeUploads.length > 0
                 ? "border border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:border-emerald-400 cursor-pointer"
                 : "border border-slate-200 bg-slate-50 text-slate-500 hover:bg-slate-100 hover:text-slate-700 cursor-pointer"
             }`}
@@ -52,13 +92,25 @@ export default function WfmRawDataCard({
           </button>
         </div>
 
-        {card.taskOrders?.length ? (
+        {/* Dropdown for selecting Report / Source within this level */}
+        <div className="mt-3">
+          <SingleSelectDropdown
+            label="REPORT / SOURCE"
+            value={activeCard.id}
+            onChange={(event) => setSelectedCardId(event.target.value)}
+            options={dropdownOptions}
+            buttonClassName="h-9 rounded-lg border-sibs-tertiary-8 bg-white px-3 text-xs font-bold text-sibs-primary-1 shadow-2xs"
+          />
+        </div>
+
+        {/* Task Orders badges */}
+        {activeCard.taskOrders?.length ? (
           <div className="mt-2.5 flex min-w-0 flex-wrap items-center gap-1.5 text-xs">
             <span className="text-[10px] font-extrabold uppercase text-sibs-tertiary-5 shrink-0">
               TASK ORDERS:
             </span>
             <div className="flex min-w-0 flex-wrap gap-1">
-              {card.taskOrders.map((taskOrder, index) => {
+              {activeCard.taskOrders.map((taskOrder, index) => {
                 const option = normalizeTaskOrderOption(taskOrder);
                 return (
                   <span
@@ -74,6 +126,7 @@ export default function WfmRawDataCard({
         ) : null}
       </div>
 
+      {/* Uploaded file container with rich batch summary fitting the card */}
       <div className="mt-3.5 min-h-[175px] flex-1 rounded-xl border border-slate-200/80 bg-slate-50/50 p-2.5 flex flex-col justify-center">
         {latestUpload ? (
           <div className="rounded-xl border border-slate-200/80 bg-white p-3 shadow-2xs">
@@ -205,21 +258,22 @@ export default function WfmRawDataCard({
         )}
       </div>
 
+      {/* Action buttons: Import & Open */}
       <div className="mt-3.5 grid grid-cols-2 gap-2.5">
         <label className="flex h-9 cursor-pointer items-center justify-center gap-1.5 rounded-lg bg-sibs-primary-1 px-3 text-xs font-bold text-white shadow-xs transition hover:bg-sibs-tertiary-4">
           <CloudUpload className="h-4 w-4 shrink-0" aria-hidden="true" />
           <span>Import</span>
           <input
             type="file"
-            accept={card.account === "US VISA" ? (card.fileExtension || ".xlsx") : ".xlsx,.xls,.csv"}
+            accept={activeCard.account === "US VISA" ? (activeCard.fileExtension || ".xlsx") : ".xlsx,.xls,.csv"}
             disabled={isUploading}
-            onChange={(event) => onFileSelect(card, event)}
+            onChange={(event) => onFileSelect(activeCard, event)}
             className="hidden"
           />
         </label>
         <button
           type="button"
-          onClick={() => onOpenCard(card)}
+          onClick={() => onOpenCard(activeCard)}
           className="flex h-9 cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-xs font-bold text-sibs-primary-1 shadow-xs transition hover:border-sibs-primary-1 hover:bg-sibs-primary-1 hover:text-white"
         >
           <FolderOpen className="h-4 w-4 shrink-0" aria-hidden="true" />

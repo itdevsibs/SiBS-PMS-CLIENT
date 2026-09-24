@@ -12,7 +12,7 @@ import {
   ShieldCheck,
   Users,
 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
 import { getAuthDisplayName, getAuthUser, isAuthenticated } from "@/lib/auth";
 import { handleLogout as handleAuthLogout } from "@/lib/axios/api-template";
@@ -32,6 +32,7 @@ const roleIcons = {
 // Central dashboard state shared by all role-based dashboard pages.
 function useDashboardPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
@@ -61,20 +62,29 @@ function useDashboardPage() {
       icon: Database,
       path: "/dashboard/employee-master-data",
     };
+    const importDataModule = {
+      name: "Import Data",
+      icon: ClipboardList,
+      path: "/dashboard/wfm/import-data",
+    };
+    const importRepositoryModule = {
+      name: "Import Repository",
+      icon: FolderDown,
+      path: "/dashboard/wfm/import-repository",
+    };
 
     if (role === "masterdata") {
       return [employeeLedgerModule];
     }
 
-    if (role === "wfm") {
+    const isWfmView = role === "wfm" || location.pathname.startsWith("/dashboard/wfm");
+
+    if (isWfmView) {
       return [
         dashboardModule,
         employeeLedgerModule,
-        {
-          name: "Import Data",
-          icon: ClipboardList,
-          path: "/dashboard/wfm/import-data",
-        },
+        importDataModule,
+        importRepositoryModule,
         viewGraphsModule,
         occupancyModule,
         {
@@ -109,7 +119,7 @@ function useDashboardPage() {
     }
 
     return [dashboardModule];
-  }, [Icon, authUser, role]);
+  }, [Icon, authUser, role, location.pathname]);
 
   useEffect(() => {
     if (!isAuthenticated()) {
