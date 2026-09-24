@@ -47,6 +47,7 @@ export default function WfmCardUploadsModal({
           </p>
           <p className="mt-1 mb-0 text-xs font-semibold text-sibs-tertiary-5">
             Account: {activeOpenCard?.account}
+            {activeOpenCard?.groupLabel ? ` • Level: ${activeOpenCard.groupLabel}` : ""}
           </p>
         </div>
         <div className="relative w-full sm:w-80">
@@ -112,7 +113,7 @@ export default function WfmCardUploadsModal({
                   </div>
 
                   <div className="mt-1 flex flex-wrap items-center gap-1.5 sm:gap-2 text-xs text-sibs-tertiary-5">
-                    <span>{upload.uploadedAt} ({formatRelativeTime(upload)})</span>
+                    <span>({formatRelativeTime(upload)}) {upload.uploadedAt}</span>
                     {upload.batchCode ? (
                       <span className="rounded bg-sibs-primary-2/10 px-1.5 py-0.5 font-mono text-[10px] font-bold text-sibs-primary-2">
                         Batch: {upload.batchCode}

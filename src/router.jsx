@@ -10,6 +10,7 @@ import SuperAdminHistoryLogs from "./pages/historyLogs/SuperAdminHistoryLogs";
 import TeamLeaderPage from "./pages/teamLeader/TeamLeaderPage";
 import WfmHistoryLogs from "./pages/workForceManagement/wfmHistoryLogs";
 import WfmImportDataPage from "./pages/workForceManagement/WfmImportDataPage";
+import WfmImportedRepository from "./pages/workForceManagement/WfmImportedRepository";
 import ViewGraphsPage from "./pages/graphs/viewGraphsPage";
 import WorkforceManagementPage from "./pages/dashboard/WorkforceManagementPage";
 import SeniorOperationsManagerPage from "@/pages/dashboard/SeniorOperationsManagerPage";
@@ -36,6 +37,10 @@ const Router = () => {
       <Route
         path="/dashboard/wfm/import-data"
         element={<WfmImportDataPage />}
+      />
+      <Route
+        path="/dashboard/wfm/import-repository"
+        element={<WfmImportedRepository />}
       />
       <Route
         path="/dashboard/wfm/history-logs"

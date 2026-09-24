@@ -13,6 +13,8 @@ export async function fetchMasterDataLedger({
   page = 1,
   limit = 25,
   offset = 0,
+  sortBy = "",
+  sortOrder = "desc",
 } = {}) {
   const params = new URLSearchParams();
 
@@ -27,6 +29,10 @@ export async function fetchMasterDataLedger({
   }
   if (viewAll) {
     params.set("viewAll", "true");
+  }
+  if (sortBy) {
+    params.set("sortBy", sortBy);
+    params.set("sortOrder", sortOrder);
   }
 
   params.set("page", String(page));

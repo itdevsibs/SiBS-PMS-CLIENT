@@ -41,6 +41,8 @@ function WfmImportDataPage() {
   const [uploadsByCard, setUploadsByCard] = useState(() =>
     normalizeUploadsByCard(readJsonCache(RAW_DATA_UPLOADS_KEY, {})),
   );
+  // Only newly imported files in the current session are reflected on the cards
+  const [newlyImportedByCard, setNewlyImportedByCard] = useState({});
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadingCardTitle, setUploadingCardTitle] = useState("");
@@ -301,6 +303,12 @@ function WfmImportDataPage() {
         [card.id]: [newUpload, ...(current[card.id] || [])],
       }));
 
+      // Only the newly imported file is reflected on the card in this module
+      setNewlyImportedByCard((current) => ({
+        ...current,
+        [card.id]: [newUpload],
+      }));
+
       void fetchDatabaseUploads();
       setSummaryRefreshVersion((current) => current + 1);
 
@@ -433,6 +441,13 @@ function WfmImportDataPage() {
       ).filter((u) => u.id !== selectedUploadToRemove.id),
     }));
 
+    setNewlyImportedByCard((current) => ({
+      ...current,
+      [selectedUploadToRemove.cardId]: (
+        current[selectedUploadToRemove.cardId] || []
+      ).filter((u) => u.id !== selectedUploadToRemove.id),
+    }));
+
     void fetchDatabaseUploads();
     setSummaryRefreshVersion((current) => current + 1);
 
@@ -454,6 +469,21 @@ function WfmImportDataPage() {
         "Raw Data"
       }.`,
     });
+  };
+
+  const handleRefreshCard = (cardId, groupCards = []) => {
+    setNewlyImportedByCard((current) => {
+      const next = { ...current };
+      if (cardId) delete next[cardId];
+      if (Array.isArray(groupCards)) {
+        groupCards.forEach((c) => {
+          if (c?.id) delete next[c.id];
+        });
+      }
+      return next;
+    });
+    void fetchDatabaseUploads();
+    setSummaryRefreshVersion((current) => current + 1);
   };
 
   return (
@@ -506,7 +536,7 @@ function WfmImportDataPage() {
             <WfmRawDataCardsGrid
               groupedCards={groupedRawDataCards}
               hasCards={filteredRawDataCards.length > 0}
-              uploadsByCard={uploadsByCard}
+              uploadsByCard={newlyImportedByCard}
               isUploading={isUploading}
               onBackToAll={() => {
                 setSelectedAccount("All Accounts");
@@ -517,6 +547,8 @@ function WfmImportDataPage() {
                 setActiveOpenCard(card);
                 setUploadedDataSearch("");
               }}
+              onRefreshCard={handleRefreshCard}
+              onOpenErrorDetails={handleOpenUsVisaErrors}
             />
           )}
         </div>

@@ -101,7 +101,7 @@ export default function WfmBatchDetailsModal({
                 </span>
               ) : null}
               <span className="whitespace-nowrap">
-                {selectedUploadDetails?.uploadedAt} ({formatRelativeTime(selectedUploadDetails)})
+                ({formatRelativeTime(selectedUploadDetails)}) {selectedUploadDetails?.uploadedAt}
               </span>
             </div>
           </div>
