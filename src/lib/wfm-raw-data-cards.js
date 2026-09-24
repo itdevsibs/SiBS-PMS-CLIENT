@@ -97,6 +97,21 @@ const accountRawDataCards = {
       requiresTaskOrderSelection: true,
       requiresReportingPeriod: false,
     },
+    {
+      title: "Email Raw Data",
+      sourceLabel: "Email",
+      groupLabel: "EMAIL LEVEL",
+      taskOrders: [
+        { id: "TO4", label: "PAC" },
+        { id: "TO10", label: "SEASIA" },
+        { id: "TO12", label: "NICE" },
+        { id: "TO14", label: "NESAMI" },
+        { id: "TO16", label: "SEURECA" },
+      ],
+      importProfileCode: "US_VISA_EMAIL_RAW_DATA",
+      fileExtension: ".xlsx",
+      requiresTaskOrderSelection: true,
+    },
   ],
   "YOMDEL": [
     "Raw Data 1",

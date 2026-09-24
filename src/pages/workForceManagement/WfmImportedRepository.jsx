@@ -184,6 +184,7 @@ export default function WfmImportedRepository() {
       "SERVICE / QUEUE LEVEL": 0,
       "AGENT LEVEL": 0,
       "AGENT OCCUPANCY": 0,
+      "EMAIL LEVEL": 0,
     };
     allUploads.forEach((u) => {
       const lvl = getUploadLevel(u);
@@ -214,6 +215,10 @@ export default function WfmImportedRepository() {
       {
         value: "AGENT OCCUPANCY",
         label: "AGENT OCCUPANCY",
+      },
+      {
+        value: "EMAIL LEVEL",
+        label: "EMAIL RAW DATA",
       },
     ],
     [],
@@ -306,6 +311,7 @@ export default function WfmImportedRepository() {
     if (selectedLevel === "ALL") base = "All Level";
     else if (selectedLevel === "AGENT LEVEL") base = "Agent Level";
     else if (selectedLevel === "AGENT OCCUPANCY") base = "Agent Occupancy";
+    else if (selectedLevel === "EMAIL LEVEL") base = "Email Raw Data";
 
     if (selectedTool !== "ALL") {
       return `${selectedTool} ${base} Uploaded Data`;
@@ -495,7 +501,11 @@ export default function WfmImportedRepository() {
                   </span>
                   {" "}• Level:{" "}
                   <span className="font-bold text-sibs-primary-1">
-                    {selectedLevel === "ALL" ? "ALL LEVEL" : selectedLevel}
+                    {selectedLevel === "ALL"
+                      ? "ALL LEVEL"
+                      : selectedLevel === "EMAIL LEVEL"
+                        ? "EMAIL RAW DATA"
+                        : selectedLevel}
                   </span>
                   {selectedTool !== "ALL" ? (
                     <>

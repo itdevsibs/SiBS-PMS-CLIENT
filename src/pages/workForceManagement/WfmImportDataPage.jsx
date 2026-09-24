@@ -46,7 +46,12 @@ function WfmImportDataPage() {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadingCardTitle, setUploadingCardTitle] = useState("");
-  const [importStage, setImportStage] = useState("reading");
+  const [importStage, setImportStage] = useState("uploading");
+  const [importProgressDetail, setImportProgressDetail] = useState({
+    message: "",
+    processedRows: null,
+    totalRows: null,
+  });
   const [importFileName, setImportFileName] = useState("");
   const [usVisaBatchResult, setUsVisaBatchResult] = useState(null);
   const [importSummary, setImportSummary] = useState(EMPTY_IMPORT_SUMMARY);
@@ -276,7 +281,14 @@ function WfmImportDataPage() {
     setUploadingCardTitle(card.title);
     setImportFileName(file.name);
     setImportStage(isUsVisa ? "uploading" : "reading");
-    setUploadProgress(isUsVisa ? 5 : 15);
+    setUploadProgress(isUsVisa ? 0 : 15);
+    setImportProgressDetail({
+      message: isUsVisa
+        ? "Uploading workbook to the ingestion service."
+        : "Reading selected file.",
+      processedRows: null,
+      totalRows: null,
+    });
     setUsVisaBatchResult(null);
 
     try {
@@ -286,6 +298,7 @@ function WfmImportDataPage() {
         uploadContext,
         onProgress: setUploadProgress,
         onStageChange: setImportStage,
+        onProgressDetail: setImportProgressDetail,
       });
 
       if (result.isDuplicate) {
@@ -349,7 +362,12 @@ function WfmImportDataPage() {
       setUploadingCardTitle("");
       setImportFileName("");
       setUploadProgress(0);
-      setImportStage("reading");
+      setImportStage("uploading");
+      setImportProgressDetail({
+        message: "",
+        processedRows: null,
+        totalRows: null,
+      });
     }
   };
 
@@ -390,7 +408,7 @@ function WfmImportDataPage() {
     if (!validSelection) {
       setErrorModalInfo({
         title: "Task Order Required",
-        message: "Select the Task Order represented by this Agent Occupancy workbook before uploading.",
+        message: `Select the Task Order represented by this ${pendingTaskOrderUpload.card?.title || "workbook"} before uploading.`,
       });
       return;
     }
@@ -608,6 +626,7 @@ function WfmImportDataPage() {
         uploadingCardTitle={uploadingCardTitle}
         uploadProgress={uploadProgress}
         importStage={importStage}
+        importProgressDetail={importProgressDetail}
         errorModalInfo={errorModalInfo}
         onCloseErrorInfo={() => setErrorModalInfo(null)}
       />
