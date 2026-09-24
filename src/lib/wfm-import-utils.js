@@ -99,15 +99,18 @@ export function getApiErrorMessage(error, card) {
     backendCode === "MISSING_REQUIRED_SHEET" ||
     backendCode === "MISSING_REQUIRED_COLUMN" ||
     backendCode === "MISSING_REQUIRED_HEADER" ||
-    backendCode === "WRONG_IMPORT_PROFILE"
+    backendCode === "WRONG_IMPORT_PROFILE" ||
+    backendCode === "EMAIL_HEADER_STRUCTURE_MISMATCH"
   ) {
     const profileLabel = card?.title || "valid";
     const extension = card?.fileExtension || ".xlsx";
-    const reportTypeLabel = /occupancy/i.test(profileLabel)
-      ? "Agent Occupancy"
-      : /agent/i.test(profileLabel)
-        ? "Agent Level"
-        : "Skill Statistics";
+    const reportTypeLabel = /email/i.test(profileLabel)
+      ? "Email Raw Data"
+      : /occupancy/i.test(profileLabel)
+        ? "Agent Occupancy"
+        : /agent/i.test(profileLabel)
+          ? "Agent Level"
+          : "Skill Statistics";
 
     if (/hero/i.test(profileLabel || card?.id || "")) {
       return `Only HeroDash ${reportTypeLabel} (${extension}) files are allowed for this card. The uploaded file is missing required HeroDash ${reportTypeLabel} sheets or headers.`;
@@ -475,6 +478,7 @@ export const WARNING_CATEGORY_LABELS = [
   "SERVICE / QUEUE LEVEL",
   "AGENT LEVEL",
   "AGENT OCCUPANCY",
+  "EMAIL LEVEL",
 ];
 
 export function getBatchCategory(batch) {
@@ -497,6 +501,7 @@ export function getBatchCategory(batch) {
   }
 
   const text = `${batch.rawDataTitle || ""} ${batch.fileName || ""} ${batch.importProfileName || ""}`.toLowerCase();
+  if (text.includes("email")) return "EMAIL LEVEL";
   if (text.includes("occupancy")) return "AGENT OCCUPANCY";
   if (text.includes("agent level")) return "AGENT LEVEL";
   if (
@@ -545,6 +550,7 @@ export async function executeCardImport({
   uploadContext = {},
   onProgress,
   onStageChange,
+  onProgressDetail,
 }) {
   const isUsVisa = card.account === "US VISA";
 
@@ -575,11 +581,23 @@ export async function executeCardImport({
       reportDateFrom: uploadContext.reportDateFrom || undefined,
       reportDateTo: uploadContext.reportDateTo || undefined,
       onProgress: (percent) => {
-        const scaledProgress = Math.round(5 + percent * 0.6);
-        onProgress?.(scaledProgress);
-        if (percent >= 90) {
-          onStageChange?.("processing");
-        }
+        onStageChange?.("uploading");
+        onProgress?.(Math.round(percent * 0.2));
+        onProgressDetail?.({
+          message: "Uploading workbook to the ingestion service.",
+          processedRows: null,
+          totalRows: null,
+        });
+      },
+      onServerProgress: (progress) => {
+        if (!progress) return;
+        onStageChange?.(progress.stage || "processing");
+        onProgress?.(progress.percent ?? 0);
+        onProgressDetail?.({
+          message: progress.message || "",
+          processedRows: progress.processedRows ?? null,
+          totalRows: progress.totalRows ?? null,
+        });
       },
     });
 
@@ -596,13 +614,19 @@ export async function executeCardImport({
       );
     }
 
-    onProgress?.(90);
+    onStageChange?.("complete");
+    onProgress?.(100);
+    onProgressDetail?.({
+      message: "Import completed successfully.",
+      processedRows: batchResult?.totalRows ?? null,
+      totalRows: batchResult?.totalRows ?? null,
+    });
+    await new Promise((resolve) => setTimeout(resolve, 200));
   } else {
     onProgress?.(75);
+    onStageChange?.("finalizing");
+    onProgress?.(95);
   }
-
-  onStageChange?.("finalizing");
-  onProgress?.(95);
 
   const { id: uploadId, uploadedAtMs } = createUploadRecordId(card.id, file.name);
 
@@ -644,6 +668,7 @@ export function groupRawDataCards(cards = []) {
     "SERVICE / QUEUE LEVEL",
     "AGENT LEVEL",
     "AGENT OCCUPANCY",
+    "EMAIL LEVEL",
   ];
 
   const grouped = groupOrder.map((label) => ({ label, cards: [] }));

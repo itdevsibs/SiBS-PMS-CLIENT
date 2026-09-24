@@ -17,7 +17,7 @@ export default function WfmTaskOrderModal({
           Select Task Order
         </p>
         <p className="mt-1 mb-0 text-xs font-semibold leading-5 text-sibs-tertiary-5">
-          Choose the Task Order represented by this Agent Occupancy workbook. The server will validate that it matches the selected source tool.
+          Choose the Task Order represented by this {pendingTaskOrderUpload?.card?.title || "workbook"}. The server will validate the selected import structure.
         </p>
       </div>
 
@@ -33,7 +33,7 @@ export default function WfmTaskOrderModal({
           >
             <input
               type="radio"
-              name="occupancy-task-order"
+              name="wfm-task-order"
               value={option.id}
               checked={selectedTaskOrderId === option.id}
               onChange={(event) => setSelectedTaskOrderId(event.target.value)}

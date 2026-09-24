@@ -22,7 +22,12 @@ const WARNING_LEVEL_ORDER = [
   "SERVICE / QUEUE LEVEL",
   "AGENT LEVEL",
   "AGENT OCCUPANCY",
+  "EMAIL LEVEL",
 ];
+
+function getWarningLevelDisplayLabel(level) {
+  return level === "EMAIL LEVEL" ? "EMAIL RAW DATA" : level;
+}
 
 export default function WfmWarningsModal({
   isOpen,
@@ -75,6 +80,7 @@ export default function WfmWarningsModal({
       "SERVICE / QUEUE LEVEL": 0,
       "AGENT LEVEL": 0,
       "AGENT OCCUPANCY": 0,
+      "EMAIL LEVEL": 0,
     };
     for (const batch of warningBatches) {
       const cat = getBatchCategory(batch);
@@ -112,6 +118,7 @@ export default function WfmWarningsModal({
       "SERVICE / QUEUE LEVEL": 0,
       "AGENT LEVEL": 0,
       "AGENT OCCUPANCY": 0,
+      "EMAIL LEVEL": 0,
     };
     for (const batch of filteredWarningBatches) {
       const cat = getBatchCategory(batch);
@@ -135,6 +142,10 @@ export default function WfmWarningsModal({
       {
         value: "AGENT OCCUPANCY",
         label: `AGENT OCCUPANCY (${levelCounts["AGENT OCCUPANCY"] || 0})`,
+      },
+      {
+        value: "EMAIL LEVEL",
+        label: `EMAIL RAW DATA (${levelCounts["EMAIL LEVEL"] || 0})`,
       },
     ];
   }, [levelCounts]);
@@ -163,7 +174,7 @@ export default function WfmWarningsModal({
   const displayedWarningGroups = useMemo(() => {
     return [
       {
-        label: activeWarningLevel,
+        label: getWarningLevelDisplayLabel(activeWarningLevel),
         batches: pagedWarningBatches,
         totalCount: targetWarningBatches.length,
       },
@@ -387,7 +398,7 @@ export default function WfmWarningsModal({
             {warningDataSearch
               ? `No uploaded data found matching "${warningDataSearch}".`
               : warningBatches.length
-                ? `No uploaded data with warnings in ${activeWarningLevel.toLowerCase()}.`
+                ? `No uploaded data with warnings in ${getWarningLevelDisplayLabel(activeWarningLevel).toLowerCase()}.`
                 : "No uploaded data yet."}
           </div>
         )}
@@ -416,7 +427,7 @@ export default function WfmWarningsModal({
                   {targetWarningBatches.length}
                 </strong>{" "}
                 upload{targetWarningBatches.length === 1 ? "" : "s"}
-                {` in ${activeWarningLevel}`}
+                {` in ${getWarningLevelDisplayLabel(activeWarningLevel)}`}
               </>
             )}
           </span>

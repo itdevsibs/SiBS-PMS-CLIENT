@@ -4,50 +4,76 @@ import AppModal from "@/components/ui/app-modal";
 
 const STAGES = [
   {
-    id: "reading",
-    label: "Reading Workbook",
-    desc: "Inspecting worksheets, column headers, and structure",
-  },
-  {
     id: "uploading",
     label: "Uploading to Backend",
-    desc: "Streaming file payload to the ingestion pipeline",
+    desc: "Transferring the workbook to the ingestion service",
+  },
+  {
+    id: "reading",
+    label: "Reading Workbook",
+    desc: "Inspecting worksheets, column headers, and source structure",
   },
   {
     id: "validating",
     label: "Schema & Format Validation",
-    desc: "Checking required fields, dates, and metric types",
+    desc: "Validating the selected profile and required source fields",
   },
   {
     id: "processing",
-    label: "Hashing & Deduplication",
-    desc: "Deriving intervals, canonical columns, and row hashes",
+    label: "Processing & Deduplication",
+    desc: "Mapping records, resolving identities, and checking duplicates",
   },
   {
     id: "finalizing",
     label: "Database Staging",
-    desc: "Storing batch, raw rows, and skill statistics",
+    desc: "Storing raw and normalized import records",
   },
 ];
 
-const STAGE_ORDER = ["reading", "uploading", "validating", "processing", "finalizing", "complete"];
+const STAGE_ORDER = [
+  "uploading",
+  "reading",
+  "validating",
+  "processing",
+  "finalizing",
+  "complete",
+];
 
 function getStageIndex(stageId) {
   const index = STAGE_ORDER.indexOf(stageId);
   return index === -1 ? 0 : index;
 }
 
+function formatRowCount(value) {
+  const number = Number(value);
+  return Number.isFinite(number) && number >= 0
+    ? new Intl.NumberFormat("en-US").format(number)
+    : null;
+}
+
 const ImportProgressModal = ({
   isOpen,
   fileName = "",
   cardTitle = "",
-  currentStage = "reading",
+  currentStage = "uploading",
   progressPercent = 0,
+  progressMessage = "",
+  processedRows = null,
+  totalRows = null,
 }) => {
   if (!isOpen) return null;
 
   const currentStageIndex = getStageIndex(currentStage);
-  const clampedProgress = Math.min(Math.max(Math.round(progressPercent || 0), 0), 100);
+  const clampedProgress = Math.min(
+    Math.max(Math.round(progressPercent || 0), 0),
+    100,
+  );
+  const formattedProcessedRows = formatRowCount(processedRows);
+  const formattedTotalRows = formatRowCount(totalRows);
+  const hasRowProgress =
+    formattedProcessedRows !== null &&
+    formattedTotalRows !== null &&
+    Number(totalRows) > 0;
 
   return (
     <AppModal
@@ -69,7 +95,10 @@ const ImportProgressModal = ({
             Importing Raw Data
           </h2>
           <div className="mt-1 flex items-center gap-1.5 text-xs text-sibs-tertiary-5">
-            <FileSpreadsheet className="h-3.5 w-3.5 shrink-0 text-sibs-primary-2" aria-hidden="true" />
+            <FileSpreadsheet
+              className="h-3.5 w-3.5 shrink-0 text-sibs-primary-2"
+              aria-hidden="true"
+            />
             <span className="truncate max-w-[340px]" title={fileName}>
               {fileName || "Workbook.xlsx"}
             </span>
@@ -77,15 +106,19 @@ const ImportProgressModal = ({
         </div>
 
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#f0f6fa]">
-          <Loader2 className="h-5 w-5 text-sibs-primary-2 animate-spin" aria-hidden="true" />
+          <Loader2
+            className="h-5 w-5 text-sibs-primary-2 animate-spin"
+            aria-hidden="true"
+          />
         </div>
       </div>
 
-      {/* Progress Bar */}
       <div className="mt-5 rounded-xl border border-sibs-tertiary-10 bg-[#f8fbfd] p-3">
         <div className="flex items-center justify-between text-xs font-bold text-sibs-primary-1">
           <span>Overall Progress</span>
-          <span className="font-mono text-sibs-primary-2">{clampedProgress}%</span>
+          <span className="font-mono text-sibs-primary-2">
+            {clampedProgress}%
+          </span>
         </div>
         <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-sibs-tertiary-10">
           <div
@@ -93,9 +126,20 @@ const ImportProgressModal = ({
             style={{ width: `${clampedProgress}%` }}
           />
         </div>
+        {(progressMessage || hasRowProgress) && (
+          <div className="mt-2 flex items-center justify-between gap-3 text-[11px] text-sibs-tertiary-5">
+            <span className="truncate" title={progressMessage}>
+              {progressMessage}
+            </span>
+            {hasRowProgress && (
+              <span className="shrink-0 font-mono font-semibold text-sibs-primary-1">
+                {formattedProcessedRows} / {formattedTotalRows} rows
+              </span>
+            )}
+          </div>
+        )}
       </div>
 
-      {/* Stages Checklist */}
       <div className="mt-4 space-y-2">
         {STAGES.map((stage, index) => {
           const isDone = currentStageIndex > index;
@@ -108,15 +152,21 @@ const ImportProgressModal = ({
                 isCurrent
                   ? "border-sibs-primary-2/40 bg-sibs-primary-2/5 shadow-sm"
                   : isDone
-                  ? "border-emerald-200 bg-emerald-50/40"
-                  : "border-sibs-tertiary-10 bg-white opacity-60"
+                    ? "border-emerald-200 bg-emerald-50/40"
+                    : "border-sibs-tertiary-10 bg-white opacity-60"
               }`}
             >
               <div className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center">
                 {isDone ? (
-                  <CheckCircle2 className="h-4 w-4 text-emerald-600" aria-hidden="true" />
+                  <CheckCircle2
+                    className="h-4 w-4 text-emerald-600"
+                    aria-hidden="true"
+                  />
                 ) : isCurrent ? (
-                  <Loader2 className="h-4 w-4 text-sibs-primary-2 animate-spin" aria-hidden="true" />
+                  <Loader2
+                    className="h-4 w-4 text-sibs-primary-2 animate-spin"
+                    aria-hidden="true"
+                  />
                 ) : (
                   <div className="h-2 w-2 rounded-full bg-sibs-tertiary-8" />
                 )}
@@ -129,8 +179,8 @@ const ImportProgressModal = ({
                       isCurrent
                         ? "text-sibs-primary-1"
                         : isDone
-                        ? "text-emerald-950"
-                        : "text-sibs-tertiary-6"
+                          ? "text-emerald-950"
+                          : "text-sibs-tertiary-6"
                     }`}
                   >
                     {stage.label}

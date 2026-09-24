@@ -74,6 +74,7 @@ export default function WfmImportModals({
   uploadingCardTitle,
   uploadProgress,
   importStage,
+  importProgressDetail,
   errorModalInfo,
   onCloseErrorInfo,
 }) {
@@ -189,8 +190,11 @@ export default function WfmImportModals({
         isOpen={isUploading}
         fileName={importFileName}
         cardTitle={uploadingCardTitle}
-        progress={uploadProgress}
-        stage={importStage}
+        progressPercent={uploadProgress}
+        currentStage={importStage}
+        progressMessage={importProgressDetail?.message || ""}
+        processedRows={importProgressDetail?.processedRows}
+        totalRows={importProgressDetail?.totalRows}
       />
 
       <ConfirmationModal
