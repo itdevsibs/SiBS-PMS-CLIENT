@@ -114,7 +114,7 @@ export default function SingleSelectDropdown({
                   key={opt.value || opt.label}
                   type="button"
                   onClick={() => handleSelect(opt.value)}
-                  className={`group/opt flex w-full cursor-pointer items-center justify-between px-3 py-2 text-left text-xs sm:text-sm transition-colors ${
+                  className={`group/opt flex w-full cursor-pointer items-center justify-between px-3 py-2 text-left text-xs transition-colors ${
                     isSelected
                       ? "bg-sky-50/70 font-bold text-sibs-primary-1 hover:bg-sky-50"
                       : "font-medium text-slate-700 hover:bg-slate-50 hover:text-slate-900"

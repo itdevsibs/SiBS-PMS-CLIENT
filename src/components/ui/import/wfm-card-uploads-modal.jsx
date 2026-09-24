@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { AlertTriangle, Eye, Search, Trash2 } from "lucide-react";
+import { AlertTriangle, Eye, FileSpreadsheet, Search, Trash2 } from "lucide-react";
 import AppModal from "@/components/ui/app-modal";
 import { Button } from "@/components/ui/button";
 import { formatRelativeTime } from "@/lib/wfm-import-utils";
@@ -15,6 +15,7 @@ export default function WfmCardUploadsModal({
   isLoadingUsVisaErrors,
   handleOpenUsVisaErrors,
   handleOpenBatchDetails,
+  onOpenRawData,
   setUploadToRemove,
 }) {
   const cardUploads = useMemo(
@@ -140,6 +141,18 @@ export default function WfmCardUploadsModal({
                     >
                       <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-amber-600" aria-hidden="true" />
                       <span>Completed with error</span>
+                    </button>
+                  ) : null}
+
+                  {onOpenRawData ? (
+                    <button
+                      type="button"
+                      onClick={() => onOpenRawData(upload)}
+                      className="inline-flex h-8 items-center justify-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50/70 px-2.5 text-xs font-semibold text-emerald-700 shadow-xs transition-all hover:border-emerald-600 hover:bg-emerald-600 hover:text-white cursor-pointer"
+                      title="View raw Excel spreadsheet data"
+                    >
+                      <FileSpreadsheet className="h-3.5 w-3.5" aria-hidden="true" />
+                      <span>View raw data</span>
                     </button>
                   ) : null}
 

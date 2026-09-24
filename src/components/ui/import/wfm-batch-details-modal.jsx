@@ -16,6 +16,7 @@ export default function WfmBatchDetailsModal({
   activeOpenCard,
   isLoadingUsVisaErrors,
   handleOpenUsVisaErrors,
+  onOpenRawData,
   onClose,
 }) {
   return (
@@ -172,6 +173,17 @@ export default function WfmBatchDetailsModal({
                 ).toLocaleString()}
                 )
               </span>
+            </Button>
+          ) : null}
+          {selectedUploadDetails?.batchId && onOpenRawData ? (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenRawData(selectedUploadDetails)}
+              className="h-10 w-full sm:w-auto rounded-xl border-emerald-300 bg-emerald-50 px-4 text-xs font-bold text-emerald-800 shadow-xs hover:border-emerald-400 hover:bg-emerald-100 hover:text-emerald-900 cursor-pointer"
+            >
+              <FileSpreadsheet className="h-3.5 w-3.5 shrink-0 text-emerald-700" aria-hidden="true" />
+              <span>View Raw Data</span>
             </Button>
           ) : null}
           <Button
