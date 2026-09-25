@@ -27,6 +27,69 @@ function getColumnLetter(colIndex) {
   return letter;
 }
 
+/* Helper to format cell value, sanitizing any ISO dates/times to clean Excel representations */
+function formatCellValue(val) {
+  if (val === null || val === undefined) return "";
+  if (val instanceof Date && !Number.isNaN(val.getTime())) {
+    const year = val.getUTCFullYear();
+    if (year === 1899 || year === 1900) {
+      const epoch = Date.UTC(1899, 11, 30);
+      const totalSec = Math.round((val.getTime() - epoch) / 1000);
+      if (totalSec >= 0) {
+        const h = Math.floor(totalSec / 3600);
+        const m = Math.floor((totalSec % 3600) / 60);
+        const s = totalSec % 60;
+        return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+      }
+      return [val.getUTCHours(), val.getUTCMinutes(), val.getUTCSeconds()]
+        .map((n) => String(n).padStart(2, "0"))
+        .join(":");
+    }
+    const yyyy = val.getUTCFullYear();
+    const mm = String(val.getUTCMonth() + 1).padStart(2, "0");
+    const dd = String(val.getUTCDate()).padStart(2, "0");
+    const hh = String(val.getUTCHours()).padStart(2, "0");
+    const min = String(val.getUTCMinutes()).padStart(2, "0");
+    const ss = String(val.getUTCSeconds()).padStart(2, "0");
+
+    if (
+      val.getUTCHours() === 0 &&
+      val.getUTCMinutes() === 0 &&
+      val.getUTCSeconds() === 0 &&
+      val.getUTCMilliseconds() === 0
+    ) {
+      return `${yyyy}-${mm}-${dd}`;
+    }
+    return `${yyyy}-${mm}-${dd} ${hh}:${min}:${ss}`;
+  }
+  if (typeof val === "string") {
+    const match = val.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d+)?Z?$/i);
+    if (match) {
+      const year = parseInt(match[1], 10);
+      if (year === 1899 || year === 1900) {
+        const d = new Date(val);
+        if (!Number.isNaN(d.getTime())) {
+          const epoch = Date.UTC(1899, 11, 30);
+          const totalSec = Math.round((d.getTime() - epoch) / 1000);
+          if (totalSec >= 0) {
+            const h = Math.floor(totalSec / 3600);
+            const m = Math.floor((totalSec % 3600) / 60);
+            const s = totalSec % 60;
+            return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+          }
+        }
+        return `${match[4]}:${match[5]}:${match[6]}`;
+      }
+      return `${match[1]}-${match[2]}-${match[3]} ${match[4]}:${match[5]}:${match[6]}`;
+    }
+    return val;
+  }
+  if (typeof val === "object") {
+    return JSON.stringify(val);
+  }
+  return String(val);
+}
+
 export default function WfmReadOnlyExcelModal({
   isOpen,
   batch,
@@ -51,23 +114,50 @@ export default function WfmReadOnlyExcelModal({
   const [errorMsg, setErrorMsg] = useState("");
   const [isDownloading, setIsDownloading] = useState(false);
 
-  const batchId = batch?.batchId || batch?.id;
+  const batchId =
+    batch?.batchId ||
+    (typeof batch?.id === "string" && batch?.id.startsWith("batch-")
+      ? batch.id.replace("batch-", "")
+      : batch?.id);
   const fileName = batch?.fileName || batch?.sourceFilename || "Spreadsheet.xlsx";
   const batchCode = batch?.batchCode;
   const rawDataTitle = batch?.rawDataTitle || batch?.importProfileName;
 
-  // Determine if this batch represents Agent Level or Agent Occupancy
+  // Determine if this batch represents Agent Level, Agent Occupancy, or Email Raw Data
   const isAgentOrOccupancyFromBatch = useMemo(() => {
     const label = (batch?.groupLabel || "").toUpperCase();
     const text = `${batch?.rawDataTitle || ""} ${batch?.fileName || ""} ${batch?.importProfileName || ""}`.toUpperCase();
-    return label.includes("AGENT") || text.includes("AGENT LEVEL") || text.includes("AGENT OCCUPANCY");
+    return (
+      label.includes("AGENT") ||
+      label.includes("EMAIL") ||
+      text.includes("AGENT LEVEL") ||
+      text.includes("AGENT OCCUPANCY") ||
+      text.includes("EMAIL")
+    );
   }, [batch]);
+
+  const isEmail = useMemo(() => {
+    const label = (batch?.groupLabel || "").toUpperCase();
+    const text = `${batch?.rawDataTitle || ""} ${batch?.fileName || ""} ${batch?.importProfileName || ""} ${batch?.importProfileCode || ""}`.toUpperCase();
+    return (
+      label.includes("EMAIL") ||
+      text.includes("EMAIL") ||
+      batch?.importProfileCode === "US_VISA_EMAIL_RAW_DATA"
+    );
+  }, [batch]);
+
+  const visibleHeaders = useMemo(() => {
+    if (!isEmail) return headers;
+    return headers.filter(
+      (h) => !String(h || "").trim().toLowerCase().startsWith("(do not modify)"),
+    );
+  }, [headers, isEmail]);
 
   const isSibsFilterActive = supportsSibsFilter || isAgentOrOccupancyFromBatch;
 
   // Reset state when modal opens or batch changes
   useEffect(() => {
-    if (isOpen && batchId) {
+    if (isOpen && (batchId || (batch?.rows && Array.isArray(batch.rows)))) {
       setActiveSheet("");
       setSearchQuery("");
       setSibsFilter("ALL");
@@ -76,7 +166,7 @@ export default function WfmReadOnlyExcelModal({
       setErrorMsg("");
       loadRawData(1, "", "", "ALL");
     }
-  }, [isOpen, batchId]);
+  }, [isOpen, batchId, batch]);
 
   const loadRawData = async (
     targetPage = 1,
@@ -84,7 +174,51 @@ export default function WfmReadOnlyExcelModal({
     targetSheet = activeSheet,
     targetSibsFilter = sibsFilter,
   ) => {
-    if (!batchId) return;
+    if (!batchId) {
+      if (batch?.rows && Array.isArray(batch.rows)) {
+        setIsLoading(true);
+        setErrorMsg("");
+        const rawLocalCols = Array.isArray(batch.columns)
+          ? batch.columns
+          : Object.keys(batch.rows[0] || {});
+        const localColumns = isEmail
+          ? rawLocalCols.filter(
+              (h) => !String(h || "").trim().toLowerCase().startsWith("(do not modify)"),
+            )
+          : rawLocalCols;
+        let filtered = batch.rows;
+        if (targetSearch) {
+          const q = targetSearch.toLowerCase();
+          filtered = filtered.filter((r) =>
+            Object.values(r).some((v) => String(v).toLowerCase().includes(q)),
+          );
+        }
+        const totalRows = filtered.length;
+        const totalPages = Math.ceil(totalRows / pagination.limit) || 1;
+        const offset = (targetPage - 1) * pagination.limit;
+        const pageRows = filtered
+          .slice(offset, offset + pagination.limit)
+          .map((r, idx) => ({
+            id: `local-${offset + idx}`,
+            excelRowNumber: offset + idx + 2,
+            sheetName: "Sheet1",
+            data: r,
+          }));
+        setSheets(["Sheet1"]);
+        setActiveSheet("Sheet1");
+        setHeaders(localColumns);
+        setRows(pageRows);
+        setPagination((prev) => ({
+          ...prev,
+          page: targetPage,
+          totalRows,
+          totalPages,
+          search: targetSearch,
+        }));
+        setIsLoading(false);
+      }
+      return;
+    }
 
     try {
       setIsLoading(true);
@@ -162,31 +296,40 @@ export default function WfmReadOnlyExcelModal({
 
   // Download raw data as XLSX
   const handleExportXlsx = async () => {
-    if (isDownloading || rows.length === 0 || !batch?.id) return;
+    if (isDownloading || rows.length === 0 || !batchId) return;
     try {
       setIsDownloading(true);
       const XLSX = await import("xlsx");
 
-      let exportRows = rows.map((r) => r.data || {});
+      const formatRowForExport = (rowObj) => {
+        const out = {};
+        for (const [k, v] of Object.entries(rowObj || {})) {
+          out[k] = formatCellValue(v);
+        }
+        return out;
+      };
+
+      let exportRows = rows.map((r) => formatRowForExport(r.data || {}));
 
       // If there are more rows than currently displayed on page, fetch all sheet rows
       if (pagination.totalRows > rows.length) {
         try {
-          const allRes = await getUsVisaImportRawData(batch.id, {
+          const allRes = await getUsVisaImportRawData(batchId, {
             sheet: activeSheet,
             exportAll: "true",
             search: searchQuery.trim(),
             sibsFilter,
           });
-          if (allRes?.success && Array.isArray(allRes.data?.rows) && allRes.data.rows.length > 0) {
-            exportRows = allRes.data.rows.map((r) => r.data || {});
+          const fetchedRows = allRes?.rows || allRes?.data?.rows;
+          if (allRes?.success && Array.isArray(fetchedRows) && fetchedRows.length > 0) {
+            exportRows = fetchedRows.map((r) => formatRowForExport(r.data || {}));
           }
         } catch (fetchErr) {
           console.warn("Export all fallback to current page:", fetchErr);
         }
       }
 
-      const worksheet = XLSX.utils.json_to_sheet(exportRows, { header: headers });
+      const worksheet = XLSX.utils.json_to_sheet(exportRows, { header: visibleHeaders });
       const workbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(workbook, worksheet, activeSheet || "Sheet1");
 
@@ -250,9 +393,9 @@ export default function WfmReadOnlyExcelModal({
                     • <strong className="text-slate-800">{pagination.totalRows.toLocaleString()}</strong> total rows
                   </span>
                 )}
-                {headers.length > 0 && (
+                {visibleHeaders.length > 0 && (
                   <span>
-                    • <strong className="text-slate-800">{headers.length}</strong> columns
+                    • <strong className="text-slate-800">{visibleHeaders.length}</strong> columns
                   </span>
                 )}
               </div>
@@ -317,7 +460,7 @@ export default function WfmReadOnlyExcelModal({
           </div>
 
           {/* Search + Per Page + SIBS Filter */}
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto shrink-0">
             {/* SIBS vs Non-SIBS Filter dropdown (Only for Agent Level & Agent Occupancy) */}
             {isSibsFilterActive && (
               <div className="relative">
@@ -423,7 +566,7 @@ export default function WfmReadOnlyExcelModal({
                   </th>
 
                   {/* Header Columns with Column Letter & Name */}
-                  {headers.map((header, idx) => (
+                  {visibleHeaders.map((header, idx) => (
                     <th
                       key={header || idx}
                       className="border-r border-b border-slate-300 bg-slate-100 px-3 py-1.5 text-left font-bold text-slate-800 whitespace-nowrap min-w-[140px] max-w-[320px] select-none"
@@ -472,14 +615,9 @@ export default function WfmReadOnlyExcelModal({
                       </td>
 
                       {/* Data Cells */}
-                      {headers.map((header, cIdx) => {
+                      {visibleHeaders.map((header, cIdx) => {
                         const cellVal = rowData[header];
-                        const displayVal =
-                          cellVal === null || cellVal === undefined
-                            ? ""
-                            : typeof cellVal === "object"
-                              ? JSON.stringify(cellVal)
-                              : String(cellVal);
+                        const displayVal = formatCellValue(cellVal);
 
                         const isNumber = !isNaN(Number(displayVal)) && displayVal.trim() !== "";
 

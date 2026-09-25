@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  ArrowUpDown,
   Check,
   CheckCircle2,
   ChevronDown,
@@ -389,15 +390,15 @@ export default function EmployeeMasterDataPage() {
           onLogoutClick={() => dashboard.setShowLogoutModal(true)}
         />
 
-        <main className="flex flex-1 min-h-0 flex-col gap-3 overflow-hidden px-3 sm:px-4 lg:px-5 pt-3 sm:pt-4 lg:pt-5 pb-0">
+        <main className="flex flex-1 min-h-0 flex-col gap-2.5 sm:gap-3 overflow-hidden px-2.5 sm:px-4 lg:px-5 pt-2.5 sm:pt-4 lg:pt-5 pb-2.5 sm:pb-4 lg:pb-5">
 
           {/* ── Toolbar ────────────────────────────────────────────── */}
-          <div className="shrink-0 flex flex-col sm:flex-row items-center gap-2.5 rounded-xl border border-slate-200 bg-white px-3.5 py-3 shadow-xs">
+          <div className="shrink-0 flex flex-col lg:flex-row lg:items-center gap-2.5 sm:gap-3 rounded-xl border border-slate-200 bg-white p-3 sm:px-4 sm:py-3 shadow-xs">
             {/* Account select + Reset (Left) */}
-            <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto">
-              <div className="relative flex-1 sm:flex-none" ref={accountDropdownRef}>
+            <div className="flex items-center gap-2 shrink-0 w-full lg:w-auto">
+              <div className="relative flex-1 sm:w-64 md:w-72 sm:flex-none" ref={accountDropdownRef}>
                 {isSearchingAccount ? (
-                  <div className="relative h-9 w-full sm:w-72">
+                  <div className="relative h-9 w-full sm:w-64 md:w-72">
                     <Search className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
                     <input
                       ref={accountSearchInputRef}
@@ -436,7 +437,7 @@ export default function EmployeeMasterDataPage() {
                       setIsAccountDropdownOpen(true);
                     }}
                     title="Click to select, double-click to search departments"
-                    className="flex h-9 w-full sm:w-72 cursor-pointer items-center justify-between gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 text-xs font-semibold text-slate-800 transition hover:border-slate-300 hover:bg-slate-100 focus:border-[#0b3b68] focus:outline-none"
+                    className="flex h-9 w-full sm:w-64 md:w-72 cursor-pointer items-center justify-between gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 text-xs font-semibold text-slate-800 transition hover:border-slate-300 hover:bg-slate-100 focus:border-[#0b3b68] focus:outline-none"
                   >
                     <span className="truncate">
                       {selectedAccount || "All Accounts"}
@@ -451,7 +452,7 @@ export default function EmployeeMasterDataPage() {
 
                 {/* Dropdown Menu */}
                 {isAccountDropdownOpen && (
-                  <div className="absolute left-0 top-full z-50 mt-1 max-h-96 w-full sm:w-72 overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-lg shadow-slate-900/10">
+                  <div className="absolute left-0 top-full z-50 mt-1 max-h-96 w-full sm:w-64 md:w-72 overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-lg shadow-slate-900/10">
                     {!isSearchingAccount && (
                       <div className="border-b border-slate-100 p-1.5">
                         <div className="relative">
@@ -544,10 +545,10 @@ export default function EmployeeMasterDataPage() {
             </div>
 
             {/* Template Actions (Right) */}
-            <div className="shrink-0 w-full sm:w-auto flex items-center gap-2 justify-end">
+            <div className="shrink-0 w-full sm:w-auto flex items-center gap-2 justify-end sm:justify-start lg:justify-end">
               <button
                 type="button"
-                className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:border-slate-300 hover:text-slate-900 transition cursor-pointer shadow-2xs shrink-0"
+                className="flex-1 sm:flex-none inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:border-slate-300 hover:text-slate-900 transition cursor-pointer shadow-2xs shrink-0"
                 title="Import template"
               >
                 <Upload className="h-3.5 w-3.5 text-slate-500" />
@@ -558,7 +559,7 @@ export default function EmployeeMasterDataPage() {
                 type="button"
                 onClick={handleDownloadTemplate}
                 disabled={isDownloadingTemplate}
-                className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:border-slate-300 hover:text-slate-900 transition cursor-pointer shadow-2xs shrink-0 disabled:opacity-60 disabled:cursor-not-allowed"
+                className="flex-1 sm:flex-none inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:border-slate-300 hover:text-slate-900 transition cursor-pointer shadow-2xs shrink-0 disabled:opacity-60 disabled:cursor-not-allowed"
                 title="Download template with employee ledger data"
               >
                 {isDownloadingTemplate ? (
@@ -573,7 +574,7 @@ export default function EmployeeMasterDataPage() {
 
           {/* ── Success Toast (Upper Right Floating) ───────────────── */}
           {saveSuccessMsg && (
-            <div className="fixed top-5 right-6 z-50 flex items-center gap-2.5 rounded-xl border border-emerald-200 bg-emerald-50/95 px-3.5 py-2.5 text-xs font-semibold text-emerald-900 shadow-lg backdrop-blur-xs max-w-sm transition-all duration-200">
+            <div className="fixed top-4 right-4 sm:top-5 sm:right-6 z-50 flex items-center gap-2.5 rounded-xl border border-emerald-200 bg-emerald-50/95 px-3.5 py-2.5 text-xs font-semibold text-emerald-900 shadow-lg backdrop-blur-xs max-w-[calc(100vw-2rem)] sm:max-w-sm transition-all duration-200">
               <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
               <span className="flex-1 truncate">{saveSuccessMsg}</span>
               <button
@@ -594,7 +595,7 @@ export default function EmployeeMasterDataPage() {
           )}
 
           {/* ── Table card ─────────────────────────────────────────── */}
-          <div className="flex-1 min-h-0 flex flex-col overflow-hidden rounded-t-xl rounded-b-none border border-b-0 border-slate-200 bg-white shadow-xs">
+          <div className="flex-1 min-h-0 flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs">
 
             {/* Scrollable table wrapper */}
             <div
@@ -629,7 +630,7 @@ export default function EmployeeMasterDataPage() {
                             ? "Filter ON: Showing employees with Fusecom aliases (click to turn OFF)"
                             : "Filter OFF: Click to show employees with Fusecom aliases"
                         }
-                        className={`px-4 py-3 text-xs font-bold uppercase tracking-wider select-none cursor-pointer transition whitespace-nowrap overflow-hidden ${
+                        className={`group/th px-4 py-3 text-xs font-bold uppercase tracking-wider select-none cursor-pointer transition whitespace-nowrap overflow-hidden ${
                           sortBy === "fusecom"
                             ? "bg-orange-100/80 text-orange-950"
                             : "text-slate-600 hover:bg-orange-50/80 hover:text-orange-900"
@@ -637,6 +638,14 @@ export default function EmployeeMasterDataPage() {
                       >
                         <span className="inline-block h-2 w-2 rounded-full bg-orange-500 mr-1.5 align-middle" />
                         <span>Fusecom Name</span>
+                        <ArrowUpDown
+                          className={`inline-block ml-1.5 h-3 w-3 align-middle transition-opacity ${
+                            sortBy === "fusecom"
+                              ? "opacity-100 text-orange-950"
+                              : "opacity-45 text-slate-400 group-hover/th:opacity-100 group-hover/th:text-slate-700"
+                          }`}
+                          aria-hidden="true"
+                        />
                       </th>
                       <th
                         onClick={() => handleToggleToolSort("fusenet")}
@@ -645,7 +654,7 @@ export default function EmployeeMasterDataPage() {
                             ? "Filter ON: Showing employees with FuseNet aliases (click to turn OFF)"
                             : "Filter OFF: Click to show employees with FuseNet aliases"
                         }
-                        className={`px-4 py-3 text-xs font-bold uppercase tracking-wider select-none cursor-pointer transition whitespace-nowrap overflow-hidden ${
+                        className={`group/th px-4 py-3 text-xs font-bold uppercase tracking-wider select-none cursor-pointer transition whitespace-nowrap overflow-hidden ${
                           sortBy === "fusenet"
                             ? "bg-blue-100/80 text-blue-950"
                             : "text-slate-600 hover:bg-blue-50/80 hover:text-blue-900"
@@ -653,6 +662,14 @@ export default function EmployeeMasterDataPage() {
                       >
                         <span className="inline-block h-2 w-2 rounded-full bg-blue-500 mr-1.5 align-middle" />
                         <span>FuseNet Name</span>
+                        <ArrowUpDown
+                          className={`inline-block ml-1.5 h-3 w-3 align-middle transition-opacity ${
+                            sortBy === "fusenet"
+                              ? "opacity-100 text-blue-950"
+                              : "opacity-45 text-slate-400 group-hover/th:opacity-100 group-hover/th:text-slate-700"
+                          }`}
+                          aria-hidden="true"
+                        />
                       </th>
                       <th
                         onClick={() => handleToggleToolSort("herodash")}
@@ -661,7 +678,7 @@ export default function EmployeeMasterDataPage() {
                             ? "Filter ON: Showing employees with HeroDash aliases (click to turn OFF)"
                             : "Filter OFF: Click to show employees with HeroDash aliases"
                         }
-                        className={`px-4 py-3 text-xs font-bold uppercase tracking-wider select-none cursor-pointer transition whitespace-nowrap overflow-hidden ${
+                        className={`group/th px-4 py-3 text-xs font-bold uppercase tracking-wider select-none cursor-pointer transition whitespace-nowrap overflow-hidden ${
                           sortBy === "herodash"
                             ? "bg-amber-100/80 text-amber-950"
                             : "text-slate-600 hover:bg-amber-50/80 hover:text-amber-900"
@@ -669,6 +686,14 @@ export default function EmployeeMasterDataPage() {
                       >
                         <span className="inline-block h-2 w-2 rounded-full bg-amber-500 mr-1.5 align-middle" />
                         <span>HeroDash Name</span>
+                        <ArrowUpDown
+                          className={`inline-block ml-1.5 h-3 w-3 align-middle transition-opacity ${
+                            sortBy === "herodash"
+                              ? "opacity-100 text-amber-950"
+                              : "opacity-45 text-slate-400 group-hover/th:opacity-100 group-hover/th:text-slate-700"
+                          }`}
+                          aria-hidden="true"
+                        />
                       </th>
                       <th
                         onClick={() => handleToggleToolSort("ms-d")}
@@ -677,7 +702,7 @@ export default function EmployeeMasterDataPage() {
                             ? "Filter ON: Showing employees with MS-D aliases (click to turn OFF)"
                             : "Filter OFF: Click to show employees with MS-D aliases"
                         }
-                        className={`px-4 py-3 text-xs font-bold uppercase tracking-wider select-none cursor-pointer transition whitespace-nowrap overflow-hidden ${
+                        className={`group/th px-4 py-3 text-xs font-bold uppercase tracking-wider select-none cursor-pointer transition whitespace-nowrap overflow-hidden ${
                           sortBy === "ms-d" || sortBy === "msd"
                             ? "bg-purple-100/80 text-purple-950"
                             : "text-slate-600 hover:bg-purple-50/80 hover:text-purple-900"
@@ -685,6 +710,14 @@ export default function EmployeeMasterDataPage() {
                       >
                         <span className="inline-block h-2 w-2 rounded-full bg-purple-500 mr-1.5 align-middle" />
                         <span>MS-D Name</span>
+                        <ArrowUpDown
+                          className={`inline-block ml-1.5 h-3 w-3 align-middle transition-opacity ${
+                            sortBy === "ms-d" || sortBy === "msd"
+                              ? "opacity-100 text-purple-950"
+                              : "opacity-45 text-slate-400 group-hover/th:opacity-100 group-hover/th:text-slate-700"
+                          }`}
+                          aria-hidden="true"
+                        />
                       </th>
                       <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-600 whitespace-nowrap overflow-hidden">
                         Account
@@ -831,9 +864,9 @@ export default function EmployeeMasterDataPage() {
 
             {/* ── Pagination footer ────────────────────────────────── */}
             {totalCount > 0 && (
-              <div className="shrink-0 flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-slate-200/90 bg-slate-50/80 px-5 py-3 sm:py-3.5">
+              <div className="shrink-0 flex flex-col sm:flex-row items-center justify-between gap-2.5 sm:gap-3 border-t border-slate-200/90 bg-slate-50/80 px-3.5 sm:px-5 py-2.5 sm:py-3.5">
                 {/* Count */}
-                <p className="text-xs sm:text-[13px] text-slate-600">
+                <p className="text-xs sm:text-[13px] text-slate-600 m-0 text-center sm:text-left">
                   Showing{" "}
                   <span className="font-bold text-slate-900">{(currentPage - 1) * pageSize + 1}</span>
                   {" "}to{" "}

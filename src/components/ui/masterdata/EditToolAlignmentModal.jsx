@@ -64,7 +64,7 @@ export default function EditToolAlignmentModal({
   return (
     <AppModal
       isOpen={isOpen}
-      className="!max-w-none w-full sm:!w-[580px] p-5 sm:p-6 overflow-hidden"
+      className="!max-w-none w-full max-w-[95vw] sm:!w-[580px] p-4 sm:p-6 overflow-hidden"
     >
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         {/* Modal Header */}
@@ -84,7 +84,7 @@ export default function EditToolAlignmentModal({
 
           {/* Official Kronos Identity Cover Box - Single Line */}
           <div className="mt-2.5 rounded-xl border border-slate-200/90 bg-slate-50/90 px-3 py-2">
-            <div className="flex items-center justify-between gap-2.5 min-w-0">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-2.5 min-w-0">
               <div className="flex items-center gap-2 min-w-0 flex-1">
                 <span className="inline-flex items-center gap-1.5 rounded-md border border-slate-300/80 bg-slate-200/80 px-2 py-0.5 text-[10.5px] font-bold text-slate-700 shadow-2xs shrink-0 select-none">
                   <span className="inline-block h-1.5 w-1.5 rounded-full bg-slate-500 shrink-0" />
