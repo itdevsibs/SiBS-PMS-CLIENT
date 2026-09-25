@@ -1,9 +1,11 @@
+import { useState } from "react";
 import ConfirmationModal from "@/components/ui/confirmation-modal";
 import ImportProgressModal from "@/components/ui/import-progress-modal";
 import LoadingModal from "@/components/ui/loading-modal";
 import WfmBatchDetailsModal from "@/components/ui/import/wfm-batch-details-modal";
 import WfmCardUploadsModal from "@/components/ui/import/wfm-card-uploads-modal";
 import WfmErrorDetailsModal from "@/components/ui/import/wfm-error-details-modal";
+import WfmReadOnlyExcelModal from "@/components/ui/import/wfm-read-only-excel-modal";
 import {
   AddedUploadSuccessModal,
   DuplicateUploadAlertModal,
@@ -78,6 +80,8 @@ export default function WfmImportModals({
   errorModalInfo,
   onCloseErrorInfo,
 }) {
+  const [selectedRawBatch, setSelectedRawBatch] = useState(null);
+
   return (
     <>
       {/* Task Order Selection Modal */}
@@ -99,6 +103,7 @@ export default function WfmImportModals({
         isLoadingUsVisaErrors={isLoadingUsVisaErrors}
         handleOpenUsVisaErrors={handleOpenUsVisaErrors}
         handleOpenBatchDetails={handleOpenBatchDetails}
+        onOpenRawData={(batch) => setSelectedRawBatch(batch)}
         setUploadToRemove={setUploadToRemove}
       />
 
@@ -125,7 +130,15 @@ export default function WfmImportModals({
         activeOpenCard={activeOpenCard}
         isLoadingUsVisaErrors={isLoadingUsVisaErrors}
         handleOpenUsVisaErrors={handleOpenUsVisaErrors}
+        onOpenRawData={(batch) => setSelectedRawBatch(batch)}
         onClose={onCloseBatchDetails}
+      />
+
+      {/* Read-Only Excel Preview Modal */}
+      <WfmReadOnlyExcelModal
+        isOpen={Boolean(selectedRawBatch)}
+        batch={selectedRawBatch}
+        onClose={() => setSelectedRawBatch(null)}
       />
 
       {/* Warnings Overview Modal */}

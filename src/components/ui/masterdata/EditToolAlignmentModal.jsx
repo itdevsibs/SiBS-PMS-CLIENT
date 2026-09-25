@@ -64,7 +64,7 @@ export default function EditToolAlignmentModal({
   return (
     <AppModal
       isOpen={isOpen}
-      className="!max-w-none w-full sm:!w-[560px] p-5 sm:p-6 overflow-hidden"
+      className="!max-w-none w-full max-w-[95vw] sm:!w-[580px] p-4 sm:p-6 overflow-hidden"
     >
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         {/* Modal Header */}
@@ -83,23 +83,26 @@ export default function EditToolAlignmentModal({
           </div>
 
           {/* Official Kronos Identity Cover Box - Single Line */}
-          <div className="mt-2.5 rounded-xl border border-slate-200/90 bg-slate-50/80 px-3 py-2">
-            <div className="flex items-center justify-between gap-3 min-w-0">
-              <div className="flex items-center gap-2 min-w-0">
-                <span className="inline-flex items-center gap-1.5 rounded-md border border-slate-300/80 bg-slate-200/80 px-2 py-0.5 text-[11px] font-bold text-slate-700 shadow-2xs shrink-0 select-none">
+          <div className="mt-2.5 rounded-xl border border-slate-200/90 bg-slate-50/90 px-3 py-2">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-2.5 min-w-0">
+              <div className="flex items-center gap-2 min-w-0 flex-1">
+                <span className="inline-flex items-center gap-1.5 rounded-md border border-slate-300/80 bg-slate-200/80 px-2 py-0.5 text-[10.5px] font-bold text-slate-700 shadow-2xs shrink-0 select-none">
                   <span className="inline-block h-1.5 w-1.5 rounded-full bg-slate-500 shrink-0" />
                   <span>Official Kronos Name</span>
                 </span>
-                <span className="text-xs sm:text-sm font-bold text-slate-900 tracking-tight truncate">
+                <span
+                  title={employee.fullName}
+                  className="text-xs sm:text-[13px] font-bold text-slate-900 tracking-tight truncate min-w-0"
+                >
                   {employee.fullName}
                 </span>
               </div>
-              <div className="flex items-center gap-1.5 text-xs shrink-0 select-none">
-                <span className="font-mono font-semibold text-slate-600 rounded bg-white border border-slate-200 px-2 py-0.5 text-[11px] shadow-2xs">
-                  SIBS ID: {employee.sibsId}
+              <div className="flex items-center gap-1.5 shrink-0 select-none">
+                <span className="inline-flex items-center h-[21px] font-mono rounded-md bg-white border border-slate-200 px-1.5 text-[10px] font-semibold text-slate-600 shadow-2xs leading-none">
+                  SIBS ID:&nbsp;<span className="font-bold text-slate-900">{employee.sibsId}</span>
                 </span>
-                <span className="text-slate-300">•</span>
-                <span className="rounded bg-white border border-slate-200 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-slate-700 shadow-2xs">
+                <span className="text-slate-300 text-[10px] select-none leading-none">•</span>
+                <span className="inline-flex items-center h-[21px] rounded-md bg-white border border-slate-200 px-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-700 shadow-2xs leading-none">
                   {employee.account || "US Visa"}
                 </span>
               </div>

@@ -171,6 +171,38 @@ export function getCellText(value) {
   if (value == null) return "";
 
   if (typeof value === "object") {
+    if (value instanceof Date && !Number.isNaN(value.getTime())) {
+      const year = value.getUTCFullYear();
+      if (year === 1899 || year === 1900) {
+        const epoch = Date.UTC(1899, 11, 30);
+        const totalSec = Math.round((value.getTime() - epoch) / 1000);
+        if (totalSec >= 0) {
+          const h = Math.floor(totalSec / 3600);
+          const m = Math.floor((totalSec % 3600) / 60);
+          const s = totalSec % 60;
+          return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+        }
+        return [value.getUTCHours(), value.getUTCMinutes(), value.getUTCSeconds()]
+          .map((n) => String(n).padStart(2, "0"))
+          .join(":");
+      }
+      const yyyy = value.getUTCFullYear();
+      const mm = String(value.getUTCMonth() + 1).padStart(2, "0");
+      const dd = String(value.getUTCDate()).padStart(2, "0");
+      const hh = String(value.getUTCHours()).padStart(2, "0");
+      const min = String(value.getUTCMinutes()).padStart(2, "0");
+      const ss = String(value.getUTCSeconds()).padStart(2, "0");
+
+      if (
+        value.getUTCHours() === 0 &&
+        value.getUTCMinutes() === 0 &&
+        value.getUTCSeconds() === 0 &&
+        value.getUTCMilliseconds() === 0
+      ) {
+        return `${yyyy}-${mm}-${dd}`;
+      }
+      return `${yyyy}-${mm}-${dd} ${hh}:${min}:${ss}`;
+    }
     if ("text" in value) return String(value.text || "");
     if ("result" in value) return String(value.result || "");
     if ("richText" in value) {
@@ -178,7 +210,28 @@ export function getCellText(value) {
     }
   }
 
-  return String(value);
+  const str = String(value);
+  const match = str.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d+)?Z?$/i);
+  if (match) {
+    const year = parseInt(match[1], 10);
+    if (year === 1899 || year === 1900) {
+      const d = new Date(str);
+      if (!Number.isNaN(d.getTime())) {
+        const epoch = Date.UTC(1899, 11, 30);
+        const totalSec = Math.round((d.getTime() - epoch) / 1000);
+        if (totalSec >= 0) {
+          const h = Math.floor(totalSec / 3600);
+          const m = Math.floor((totalSec % 3600) / 60);
+          const s = totalSec % 60;
+          return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+        }
+      }
+      return `${match[4]}:${match[5]}:${match[6]}`;
+    }
+    return `${match[1]}-${match[2]}-${match[3]} ${match[4]}:${match[5]}:${match[6]}`;
+  }
+
+  return str;
 }
 
 export function normalizeHeaders(headers) {

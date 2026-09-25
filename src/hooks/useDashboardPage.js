@@ -44,8 +44,8 @@ function useDashboardPage() {
     // Builds the sidebar modules allowed for the signed-in user's role.
     const dashboardModule = {
       name: "Dashboard",
-      icon: Icon,
-      path: authUser?.dashboardPath || "/dashboard",
+      icon: role === "wfm" ? LayoutDashboard : Icon,
+      path: role === "wfm" ? "/dashboard/wfm" : (authUser?.dashboardPath || "/dashboard"),
     };
     const viewGraphsModule = {
       name: "View Graphs",
@@ -77,24 +77,6 @@ function useDashboardPage() {
       return [employeeLedgerModule];
     }
 
-    const isWfmView = role === "wfm" || location.pathname.startsWith("/dashboard/wfm");
-
-    if (isWfmView) {
-      return [
-        dashboardModule,
-        employeeLedgerModule,
-        importDataModule,
-        importRepositoryModule,
-        viewGraphsModule,
-        occupancyModule,
-        {
-          name: "History Logs",
-          icon: ClipboardList,
-          path: "/dashboard/wfm/history-logs",
-        },
-      ];
-    }
-
     const adminAccessNum = Number(
       authUser?.adminAccess ?? authUser?.admin_access ?? 0,
     );
@@ -116,6 +98,24 @@ function useDashboardPage() {
       }
 
       return adminModules;
+    }
+
+    const isWfmView = role === "wfm" || location.pathname.startsWith("/dashboard/wfm");
+
+    if (isWfmView) {
+      return [
+        viewGraphsModule,
+        dashboardModule,
+        employeeLedgerModule,
+        importDataModule,
+        importRepositoryModule,
+        occupancyModule,
+        {
+          name: "History Logs",
+          icon: ClipboardList,
+          path: "/dashboard/wfm/history-logs",
+        },
+      ];
     }
 
     return [dashboardModule];

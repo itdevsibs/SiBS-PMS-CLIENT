@@ -257,7 +257,10 @@ function normalizeDashboardPath(path) {
       WFM legacy path compatibility
     */
     "/wfm/dashboard":
-      "/dashboard/wfm",
+      "/dashboard/wfm/view-graphs",
+
+    "/dashboard/wfm":
+      "/dashboard/wfm/view-graphs",
 
     /*
       SOM legacy path compatibility
@@ -279,6 +282,15 @@ function getDashboardPath(
   user,
   result = {},
 ) {
+  const role = getUserRole(user);
+
+  /*
+    Workforce Management users land directly on the View Graphs module on login.
+  */
+  if (role === "wfm") {
+    return "/dashboard/wfm/view-graphs";
+  }
+
   /*
     Prefer the route returned
     by the backend users.js.
@@ -305,8 +317,6 @@ function getDashboardPath(
     Fallback if the backend does not
     return redirectTo/dashboard.
   */
-  const role = getUserRole(user);
-
   switch (role) {
     case "admin":
       return "/dashboard/superadmin";
@@ -321,7 +331,7 @@ function getDashboardPath(
       return "/dashboard/tl";
 
     case "wfm":
-      return "/dashboard/wfm";
+      return "/dashboard/wfm/view-graphs";
 
     case "som":
       return "/dashboard/som";

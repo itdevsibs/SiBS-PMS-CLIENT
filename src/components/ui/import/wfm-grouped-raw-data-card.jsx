@@ -273,7 +273,7 @@ export default function WfmGroupedRawDataCard({
         </label>
         <button
           type="button"
-          onClick={() => onOpenCard(activeCard)}
+          onClick={() => onOpenCard?.(activeCard, group)}
           className="flex h-9 cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-xs font-bold text-sibs-primary-1 shadow-xs transition hover:border-sibs-primary-1 hover:bg-sibs-primary-1 hover:text-white"
         >
           <FolderOpen className="h-4 w-4 shrink-0" aria-hidden="true" />

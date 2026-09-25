@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useLocation, useSearchParams } from "react-router-dom";
 import {
   AlertTriangle,
   ChevronLeft,
   ChevronRight,
   Eye,
+  FileSpreadsheet,
   FolderOpen,
   Search,
   Trash2,
@@ -16,6 +18,7 @@ import ConfirmationModal from "@/components/ui/confirmation-modal";
 import LoadingModal from "@/components/ui/loading-modal";
 import WfmBatchDetailsModal from "@/components/ui/import/wfm-batch-details-modal";
 import WfmErrorDetailsModal from "@/components/ui/import/wfm-error-details-modal";
+import WfmReadOnlyExcelModal from "@/components/ui/import/wfm-read-only-excel-modal";
 import WfmFilterBar from "@/components/ui/import/wfm-filter-bar";
 import WfmImportSummaryBar from "@/components/ui/import/wfm-import-summary-bar";
 import { RemovedUploadSuccessModal } from "@/components/ui/import/wfm-status-feedback-modals";
@@ -44,12 +47,41 @@ import {
   writeJsonCache,
 } from "@/lib/wfm-import-utils";
 
+function normalizeLevelValue(val) {
+  if (!val) return "ALL";
+  const upper = String(val).trim().toUpperCase();
+  if (upper === "ALL" || upper === "ALL LEVEL") return "ALL";
+  if (upper.includes("SERVICE") || upper.includes("QUEUE")) return "SERVICE / QUEUE LEVEL";
+  if (upper.includes("OCCUPANCY")) return "AGENT OCCUPANCY";
+  if (upper.includes("AGENT")) return "AGENT LEVEL";
+  if (upper.includes("EMAIL")) return "EMAIL LEVEL";
+  return val;
+}
+
+function normalizeToolValue(val) {
+  if (!val) return "ALL";
+  const raw = String(val).toLowerCase();
+  if (raw.includes("fusenet")) return "FuseNet";
+  if (raw.includes("fusecom")) return "Fusecom";
+  if (raw.includes("hero")) return "HeroDash";
+  return "ALL";
+}
+
 export default function WfmImportedRepository() {
+  const location = useLocation();
+  const [searchParams] = useSearchParams();
   const dashboard = useDashboardPage();
   const userName = dashboard.userName || getAuthDisplayName(dashboard.authUser);
 
   // Filter Bar state
-  const [selectedAccount, setSelectedAccount] = useState("All Accounts");
+  const [selectedAccount, setSelectedAccount] = useState(() => {
+    return (
+      location.state?.selectedAccount ||
+      location.state?.account ||
+      searchParams.get("account") ||
+      "All Accounts"
+    );
+  });
   const [importSummary, setImportSummary] = useState(EMPTY_IMPORT_SUMMARY);
   const [summaryRefreshVersion, setSummaryRefreshVersion] = useState(0);
   const [isWarningsModalOpen, setIsWarningsModalOpen] = useState(false);
@@ -60,12 +92,57 @@ export default function WfmImportedRepository() {
   );
 
   // Filters: Selected Level, Selected Tool & Search query
-  const [selectedLevel, setSelectedLevel] = useState("ALL");
-  const [selectedTool, setSelectedTool] = useState("ALL");
+  const [selectedLevel, setSelectedLevel] = useState(() => {
+    return normalizeLevelValue(
+      location.state?.selectedLevel ||
+      location.state?.level ||
+      searchParams.get("level") ||
+      "ALL",
+    );
+  });
+  const [selectedTool, setSelectedTool] = useState(() => {
+    return normalizeToolValue(
+      location.state?.selectedTool ||
+      location.state?.tool ||
+      searchParams.get("tool") ||
+      "ALL",
+    );
+  });
   const [uploadedDataSearch, setUploadedDataSearch] = useState("");
+
+  // Sync filters when navigated from another page (e.g. Open button in Import Data)
+  useEffect(() => {
+    const rawLevel =
+      location.state?.selectedLevel ||
+      location.state?.level ||
+      searchParams.get("level");
+    const rawTool =
+      location.state?.selectedTool ||
+      location.state?.tool ||
+      searchParams.get("tool");
+
+    if (rawLevel) {
+      setSelectedLevel(normalizeLevelValue(rawLevel));
+    }
+    if (rawTool) {
+      setSelectedTool(normalizeToolValue(rawTool));
+    } else if (rawLevel) {
+      setSelectedTool("ALL");
+    }
+    setUploadedDataSearch("");
+
+    const rawAccount =
+      location.state?.selectedAccount ||
+      location.state?.account ||
+      searchParams.get("account");
+    if (rawAccount) {
+      setSelectedAccount(rawAccount);
+    }
+  }, [location.key]);
 
   // Modals state
   const [selectedUploadDetails, setSelectedUploadDetails] = useState(null);
+  const [selectedRawBatch, setSelectedRawBatch] = useState(null);
   const [uploadToRemove, setUploadToRemove] = useState(null);
   const [removedUpload, setRemovedUpload] = useState(null);
   const [isLoadingUsVisaErrors, setIsLoadingUsVisaErrors] = useState(false);
@@ -305,19 +382,8 @@ export default function WfmImportedRepository() {
     return displayedUploads.slice(start, start + pageSize);
   }, [displayedUploads, currentPage, pageSize]);
 
-  // Dynamic header title based on selected level and tool
-  const headerTitle = useMemo(() => {
-    let base = "Service / Queue Level";
-    if (selectedLevel === "ALL") base = "All Level";
-    else if (selectedLevel === "AGENT LEVEL") base = "Agent Level";
-    else if (selectedLevel === "AGENT OCCUPANCY") base = "Agent Occupancy";
-    else if (selectedLevel === "EMAIL LEVEL") base = "Email Raw Data";
-
-    if (selectedTool !== "ALL") {
-      return `${selectedTool} ${base} Uploaded Data`;
-    }
-    return `${base} Uploaded Data`;
-  }, [selectedLevel, selectedTool]);
+  // Fixed header title so the font, text, and layout never shift when changing filters
+  const headerTitle = "Uploaded Data Repository";
 
   // View Batch Details
   const handleOpenBatchDetails = async (upload) => {
@@ -463,7 +529,7 @@ export default function WfmImportedRepository() {
           onLogoutClick={() => dashboard.setShowLogoutModal(true)}
         />
 
-        <div className="sibs-scrollbar flex-1 overflow-y-auto p-3 sm:p-4 lg:p-5">
+        <div className="sibs-scrollbar flex-1 overflow-y-auto [scrollbar-gutter:stable] p-2.5 sm:p-4 lg:p-5">
           {/* Top Filter Bar */}
           <WfmFilterBar
             selectedAccount={selectedAccount}
@@ -484,44 +550,29 @@ export default function WfmImportedRepository() {
           />
 
           {/* Main Repository Box Container */}
-          <div className="rounded-2xl border border-slate-200/80 bg-white p-5 sm:p-6 shadow-xs">
+          <div className="rounded-xl sm:rounded-2xl border border-slate-200/80 bg-white p-3.5 sm:p-5 lg:p-6 shadow-xs">
             {/* Header: Title/Subtitle on Left, Level dropdown & Search on Right */}
-            <div className="flex flex-col gap-3.5 lg:flex-row lg:items-center lg:justify-between border-b border-slate-100 pb-4">
-              <div className="min-w-0">
+            <div className="flex flex-col gap-3.5 lg:flex-row lg:items-center lg:justify-between border-b border-slate-100 pb-3.5 sm:pb-4">
+              <div className="min-w-0 flex-1">
                 <h2
                   className="m-0 truncate text-base sm:text-lg md:text-xl font-bold text-sibs-primary-1"
                   title={headerTitle}
                 >
                   {headerTitle}
                 </h2>
-                <p className="mt-1 mb-0 text-xs font-semibold text-sibs-tertiary-5">
+                <p className="mt-1 mb-0 text-xs font-semibold text-sibs-tertiary-5 truncate">
                   Account:{" "}
                   <span className="font-bold text-sibs-primary-1">
                     {selectedAccount === "All Accounts" ? "US VISA" : selectedAccount}
                   </span>
-                  {" "}• Level:{" "}
-                  <span className="font-bold text-sibs-primary-1">
-                    {selectedLevel === "ALL"
-                      ? "ALL LEVEL"
-                      : selectedLevel === "EMAIL LEVEL"
-                        ? "EMAIL RAW DATA"
-                        : selectedLevel}
-                  </span>
-                  {selectedTool !== "ALL" ? (
-                    <>
-                      {" "}• Tool:{" "}
-                      <span className="font-bold text-sibs-primary-1">
-                        {selectedTool}
-                      </span>
-                    </>
-                  ) : null}
+                  {" "}• <span className="font-medium text-slate-500">Repository of imported raw data batches</span>
                 </p>
               </div>
 
-              {/* Controls: Search Input, Level Dropdown, Tool Dropdown, Clear Button */}
-              <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
+              {/* Controls: Search Input, Level Dropdown, Tool Dropdown, Clear Button - FIXED POSITIONS */}
+              <div className="flex flex-col sm:flex-row sm:flex-wrap xl:flex-nowrap items-stretch sm:items-center gap-2 sm:gap-2.5 lg:gap-3 w-full lg:w-auto">
                 {/* Search uploaded data input */}
-                <div className="relative w-full sm:w-64">
+                <div className="relative w-full sm:w-60 md:w-64 lg:w-56 xl:w-64 shrink-0">
                   <Search
                     className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-sibs-tertiary-6"
                     aria-hidden="true"
@@ -529,7 +580,7 @@ export default function WfmImportedRepository() {
                   <input
                     value={uploadedDataSearch}
                     onChange={(e) => setUploadedDataSearch(e.target.value)}
-                    className="h-10 w-full rounded-full border border-sibs-tertiary-9 bg-white pl-9 pr-8 text-sm outline-none focus:border-sibs-primary-2"
+                    className="h-9 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-8 text-xs sm:text-sm outline-none transition focus:border-sibs-primary-2 shadow-2xs"
                     placeholder="Search uploaded data..."
                     type="text"
                   />
@@ -544,23 +595,25 @@ export default function WfmImportedRepository() {
                   ) : null}
                 </div>
 
-                {/* Level selector dropdown */}
-                <div className="w-full sm:w-56">
+                {/* Level selector dropdown - fixed width so it never moves when changing options */}
+                <div className="w-full sm:w-52 md:w-56 shrink-0">
                   <SingleSelectDropdown
                     value={selectedLevel}
                     onChange={(e) => setSelectedLevel(e.target.value)}
                     options={levelOptions}
                     placeholder="Select Level..."
+                    buttonClassName="h-9 rounded-lg border-slate-200 px-2.5 text-xs font-semibold shadow-2xs"
                   />
                 </div>
 
-                {/* Tool selector dropdown */}
-                <div className="w-full sm:w-44">
+                {/* Tool selector dropdown - fixed width so changing count text never resizes */}
+                <div className="w-full sm:w-40 md:w-44 shrink-0">
                   <SingleSelectDropdown
                     value={selectedTool}
                     onChange={(e) => setSelectedTool(e.target.value)}
                     options={toolOptions}
                     placeholder="Select Tool..."
+                    buttonClassName="h-9 rounded-lg border-slate-200 px-2.5 text-xs font-semibold shadow-2xs"
                   />
                 </div>
 
@@ -572,7 +625,7 @@ export default function WfmImportedRepository() {
                     setSelectedTool("ALL");
                     setUploadedDataSearch("");
                   }}
-                  className="h-8 shrink-0 rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-600 shadow-2xs transition-colors hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900 cursor-pointer"
+                  className="h-9 w-full sm:w-auto shrink-0 rounded-lg border border-slate-200 bg-white px-3.5 text-xs font-semibold text-slate-600 shadow-2xs transition-colors hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900 cursor-pointer text-center"
                   title="Reset to All Level and All Tools"
                 >
                   Clear
@@ -581,7 +634,7 @@ export default function WfmImportedRepository() {
             </div>
 
             {/* 1 Single Clean Table Container */}
-            <div className="mt-5 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs">
+            <div className="mt-4 sm:mt-5 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs">
               {displayedUploads.length > 0 ? (
                 <div className="divide-y divide-slate-100">
                   {paginatedUploads.map((upload) => {
@@ -594,52 +647,52 @@ export default function WfmImportedRepository() {
                     return (
                       <div
                         key={upload.id || `${upload.fileName}-${upload.uploadedAt}`}
-                        className="flex flex-col gap-2.5 sm:gap-3 p-4 sm:px-5 sm:py-4 transition-colors hover:bg-slate-50/70 sm:flex-row sm:items-center sm:justify-between"
+                        className="flex flex-col gap-3 p-3.5 sm:p-4 lg:px-5 lg:py-4 transition-colors hover:bg-slate-50/70 lg:flex-row lg:items-center lg:justify-between"
                       >
                         {/* Left: File details, batch badge, time & row counts */}
                         <div className="min-w-0 flex-1">
                           <p
-                            className="m-0 min-w-0 max-w-full break-words [word-break:break-word] text-sm font-bold text-sibs-primary-1 leading-snug"
+                            className="m-0 min-w-0 max-w-full break-words [word-break:break-word] text-xs sm:text-sm font-bold text-sibs-primary-1 leading-snug"
                             title={upload.fileName}
                           >
                             {upload.fileName}
                           </p>
 
-                          <div className="mt-1 flex flex-wrap items-center gap-1.5 sm:gap-2 text-xs text-sibs-tertiary-5">
-                            <span>
+                          <div className="mt-1.5 flex flex-wrap items-center gap-1.5 sm:gap-2 text-[11px] sm:text-xs text-sibs-tertiary-5">
+                            <span className="whitespace-nowrap">
                               ({formatRelativeTime(upload)}) {upload.uploadedAt}
                             </span>
 
                             {upload.batchCode ? (
-                              <span className="rounded bg-sibs-primary-2/10 px-1.5 py-0.5 font-mono text-[10px] font-bold text-sibs-primary-2">
+                              <span className="rounded bg-sibs-primary-2/10 px-1.5 py-0.5 font-mono text-[10px] font-bold text-sibs-primary-2 whitespace-nowrap">
                                 Batch: {upload.batchCode}
                               </span>
                             ) : null}
 
                             {upload.rawDataTitle ? (
-                              <span className="inline-flex items-center rounded-md border border-slate-200 bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-700 shadow-2xs">
+                              <span className="inline-flex items-center rounded-md border border-slate-200 bg-slate-100 px-2 py-0.5 sm:px-2.5 sm:py-1 text-[11px] sm:text-xs font-bold text-slate-700 shadow-2xs whitespace-nowrap">
                                 {upload.rawDataTitle}
                               </span>
                             ) : null}
 
                             {upload.totalRows ? (
-                              <span className="text-[11px] font-medium text-slate-500">
+                              <span className="text-[11px] font-medium text-slate-500 whitespace-nowrap">
                                 • {upload.totalRows.toLocaleString()} rows
                               </span>
                             ) : null}
                           </div>
                         </div>
 
-                        {/* Right: Actions (Completed with error, View & Remove buttons) */}
-                        <div className="flex items-center gap-2 pt-2 border-t border-slate-100 sm:border-0 sm:pt-0 sm:shrink-0">
-                          {isCompletedWithErrors ? (
+                        {/* Right: Actions */}
+                        <div className="flex flex-wrap items-center justify-start lg:justify-end gap-1.5 sm:gap-2 pt-2.5 lg:pt-0 border-t border-slate-100 lg:border-0 shrink-0 w-full lg:w-auto">
+                          {isCompletedWithErrors && (
                             <button
                               type="button"
                               disabled={isLoadingUsVisaErrors}
                               onClick={() =>
                                 handleOpenUsVisaErrors(upload.batchId || upload.id)
                               }
-                              className="inline-flex h-8 shrink-0 whitespace-nowrap items-center gap-1.5 rounded-lg border border-amber-400 bg-amber-50 px-2.5 text-xs font-semibold text-amber-800 transition-all hover:border-amber-500 hover:bg-amber-100 shadow-xs cursor-pointer"
+                              className="inline-flex h-8 shrink-0 whitespace-nowrap items-center gap-1.5 rounded-lg border border-amber-400 bg-amber-50 px-2 sm:px-2.5 text-xs font-semibold text-amber-800 transition-all hover:border-amber-500 hover:bg-amber-100 shadow-xs cursor-pointer"
                               title="Completed with error - click to view error details"
                             >
                               <AlertTriangle
@@ -648,12 +701,22 @@ export default function WfmImportedRepository() {
                               />
                               <span>Completed with error</span>
                             </button>
-                          ) : null}
+                          )}
+
+                          <button
+                            type="button"
+                            onClick={() => setSelectedRawBatch(upload)}
+                            className="inline-flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50/70 px-2.5 sm:px-3 text-xs font-semibold text-emerald-700 shadow-xs transition-all hover:border-emerald-600 hover:bg-emerald-600 hover:text-white cursor-pointer"
+                            title="View raw Excel spreadsheet data"
+                          >
+                            <FileSpreadsheet className="h-3.5 w-3.5" aria-hidden="true" />
+                            <span>View raw data</span>
+                          </button>
 
                           <button
                             type="button"
                             onClick={() => handleOpenBatchDetails(upload)}
-                            className="inline-flex h-8 items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 shadow-xs transition-all hover:border-sibs-primary-1 hover:bg-sibs-primary-1 hover:text-white cursor-pointer"
+                            className="inline-flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 sm:px-3 text-xs font-semibold text-slate-700 shadow-xs transition-all hover:border-sibs-primary-1 hover:bg-sibs-primary-1 hover:text-white cursor-pointer"
                           >
                             <Eye className="h-3.5 w-3.5" aria-hidden="true" />
                             <span>View</span>
@@ -662,7 +725,7 @@ export default function WfmImportedRepository() {
                           <button
                             type="button"
                             onClick={() => setUploadToRemove(upload)}
-                            className="inline-flex h-8 items-center justify-center gap-1.5 rounded-lg border border-rose-200 bg-rose-50/70 px-3 text-xs font-semibold text-rose-600 shadow-xs transition-all hover:border-rose-600 hover:bg-rose-600 hover:text-white cursor-pointer"
+                            className="inline-flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-rose-200 bg-rose-50/70 px-2.5 sm:px-3 text-xs font-semibold text-rose-600 shadow-xs transition-all hover:border-rose-600 hover:bg-rose-600 hover:text-white cursor-pointer"
                           >
                             <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
                             <span>Remove</span>
@@ -685,9 +748,9 @@ export default function WfmImportedRepository() {
 
               {/* ── Pagination footer (matching Employee Ledger) ── */}
               {totalCount > 0 && (
-                <div className="shrink-0 flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-slate-200/90 bg-slate-50/80 px-5 py-3 sm:py-3.5">
+                <div className="shrink-0 flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-slate-200/90 bg-slate-50/80 px-3.5 sm:px-5 py-3 sm:py-3.5">
                   {/* Count */}
-                  <p className="text-xs sm:text-[13px] text-slate-600 m-0">
+                  <p className="text-xs sm:text-[13px] text-slate-600 m-0 text-center sm:text-left">
                     Showing{" "}
                     <span className="font-bold text-slate-900">
                       {(currentPage - 1) * pageSize + 1}
@@ -750,7 +813,15 @@ export default function WfmImportedRepository() {
         }
         isLoadingUsVisaErrors={isLoadingUsVisaErrors}
         handleOpenUsVisaErrors={handleOpenUsVisaErrors}
+        onOpenRawData={(batch) => setSelectedRawBatch(batch)}
         onClose={() => setSelectedUploadDetails(null)}
+      />
+
+      {/* Read-Only Excel Preview Modal */}
+      <WfmReadOnlyExcelModal
+        isOpen={Boolean(selectedRawBatch)}
+        batch={selectedRawBatch}
+        onClose={() => setSelectedRawBatch(null)}
       />
 
       {/* Error Details Modal */}

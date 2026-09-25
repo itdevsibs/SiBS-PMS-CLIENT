@@ -1,5 +1,6 @@
 // WFM page for uploading and managing raw data files.
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 import AdminSidebar from "@/components/layout/AdminSidebar";
 import AppHeader from "@/components/layout/AppHeader";
@@ -36,6 +37,7 @@ import {
 } from "@/lib/wfm-import-utils";
 
 function WfmImportDataPage() {
+  const navigate = useNavigate();
   const dashboard = useDashboardPage();
   const userName = dashboard.userName || getAuthDisplayName(dashboard.authUser);
   const [uploadsByCard, setUploadsByCard] = useState(() =>
@@ -504,6 +506,39 @@ function WfmImportDataPage() {
     setSummaryRefreshVersion((current) => current + 1);
   };
 
+  function normalizeToolValue(val) {
+  if (!val) return "ALL";
+  const raw = String(val).toLowerCase();
+  if (raw.includes("fusenet")) return "FuseNet";
+  if (raw.includes("fusecom")) return "Fusecom";
+  if (raw.includes("hero")) return "HeroDash";
+  return "ALL";
+}
+
+  const handleOpenCard = (card, group) => {
+    const targetLevel = card?.groupLabel || group?.label || "ALL";
+    const rawTool = card?.sourceLabel || card?.sourceSystem || card?.title || "";
+    const targetTool = normalizeToolValue(rawTool);
+    const targetAccount = card?.account || selectedAccount;
+
+    const params = new URLSearchParams();
+    if (targetLevel && targetLevel !== "ALL") {
+      params.set("level", targetLevel);
+    }
+    if (targetTool && targetTool !== "ALL") {
+      params.set("tool", targetTool);
+    }
+    const queryString = params.toString() ? `?${params.toString()}` : "";
+
+    navigate(`/dashboard/wfm/import-repository${queryString}`, {
+      state: {
+        selectedLevel: targetLevel,
+        selectedTool: targetTool,
+        selectedAccount: targetAccount === "All Accounts" ? "US VISA" : targetAccount,
+      },
+    });
+  };
+
   return (
     <section className="font-jakarta flex h-screen max-h-[100dvh] min-h-screen bg-[#eef3f7] text-sibs-primary-1 overflow-hidden">
       <AdminSidebar
@@ -561,10 +596,7 @@ function WfmImportDataPage() {
                 setRawDataSearch("");
               }}
               onFileSelect={handleCardFileSelect}
-              onOpenCard={(card) => {
-                setActiveOpenCard(card);
-                setUploadedDataSearch("");
-              }}
+              onOpenCard={handleOpenCard}
               onRefreshCard={handleRefreshCard}
               onOpenErrorDetails={handleOpenUsVisaErrors}
             />
