@@ -1,4 +1,3 @@
-import { useEffect, useRef, useState } from "react";
 import { CheckCircle2, Clock3, Gauge, PhoneCall } from "lucide-react";
 import {
   buildVolumeBarItems,
@@ -184,7 +183,7 @@ function VolumeChart({ series }) {
                   className="group/period flex h-full min-w-0 flex-1 items-end justify-center px-0.5 sm:px-1"
                 >
                   {/* Clustered 3-bar group with no space and crisp border outline on each bar */}
-                  <div className="flex h-full w-full max-w-[96px] items-end justify-center gap-0">
+                  <div className="flex h-full w-full max-w-[120px] items-end justify-center gap-0">
                     {buildVolumeBarItems(item).map(
                       ({ metric, value, className }, barIndex) => {
                         const numericValue = Number(value || 0);
@@ -196,10 +195,10 @@ function VolumeChart({ series }) {
 
                         // Middle bar (Handled) is elevated cleanly above the Volume bar so it never touches adjacent labels
                         // Side bars (Volume & Handled w/SLA) rest neatly above their bar caps
-                        const labelBottom =
-                          barIndex === 1
-                            ? `calc(${volumeHeightPercent}% + 17px)`
-                            : `calc(${heightPercent}% + 4px)`;
+                        const isInsideBar = heightPercent > 10;
+                        const labelBottom = isInsideBar
+                          ? `calc(${heightPercent}% - 17px)`
+                          : `calc(${heightPercent}% + 4px)`;
 
                         return (
                           <div
@@ -211,15 +210,17 @@ function VolumeChart({ series }) {
                           >
                             {numericValue > 0 ? (
                               <span
-                                className="pointer-events-none absolute left-1/2 z-10 -translate-x-1/2 whitespace-nowrap text-[8.5px] sm:text-[9px] font-extrabold text-sibs-primary-1 transition-all duration-200 group-hover/bar:-translate-y-0.5 sibs-graph-number-in"
+                                className={`pointer-events-none absolute left-1/2 z-10 -translate-x-1/2 whitespace-nowrap text-[8px] sm:text-[8.5px] 2xl:text-[9px] font-black tracking-tight transition-all duration-200 group-hover/bar:-translate-y-0.5 sibs-graph-number-in ${
+                                  isInsideBar
+                                    ? "text-white drop-shadow-xs"
+                                    : "text-sibs-primary-1 font-extrabold"
+                                }`}
                                 style={{
                                   bottom: labelBottom,
                                   animationDelay: `${Math.min(periodIndex * 80 + barIndex * 40, 650)}ms`,
                                 }}
                               >
-                                {numericValue >= 1000
-                                  ? `${(numericValue / 1000).toFixed(1)}k`
-                                  : numericValue}
+                                {formatNumber(numericValue)}
                               </span>
                             ) : null}
 
@@ -326,23 +327,6 @@ function VolumeChart({ series }) {
 }
 
 function LineChart({ series, target = 90 }) {
-  const containerRef = useRef(null);
-  const [containerWidth, setContainerWidth] = useState(0);
-  const [hoveredIndex, setHoveredIndex] = useState(null);
-
-  useEffect(() => {
-    if (!containerRef.current) return;
-    const updateWidth = () => {
-      if (containerRef.current) {
-        setContainerWidth(containerRef.current.clientWidth);
-      }
-    };
-    updateWidth();
-    const observer = new ResizeObserver(updateWidth);
-    observer.observe(containerRef.current);
-    return () => observer.disconnect();
-  }, []);
-
   if (!series.length) return <EmptyChart message="No answer rate or service level data available for this reporting range." />;
 
   const activeSeries = series.filter(
@@ -357,79 +341,25 @@ function LineChart({ series, target = 90 }) {
 
   const numericTarget = Number(target || 90);
   const axisTicks = [100, 75, 50, 25, 0];
-  const width = Math.max(100, (containerWidth || 400) - 48);
-  const height = 300;
 
-  const getX = (index) =>
-    series.length > 1
-      ? ((index + 0.5) / series.length) * width
-      : width / 2;
-
-  const getY = (val) => {
-    const clamped = Math.max(0, Math.min(100, Number(val || 0)));
-    return height - (clamped / 100) * height;
-  };
-
-  const answerPts = series.map((item, index) => ({
-    x: getX(index),
-    y: getY(item.answerRatePct),
-  }));
-
-  const slPts = series.map((item, index) => ({
-    x: getX(index),
-    y: getY(item.serviceLevelPct),
-  }));
-
-  const getCurvedPath = (pts) => {
-    if (!pts || pts.length === 0) return "";
-    if (pts.length === 1) return `M ${pts[0].x},${pts[0].y}`;
-    if (pts.length === 2) {
-      return `M ${pts[0].x},${pts[0].y} L ${pts[1].x},${pts[1].y}`;
-    }
-
-    let d = `M ${pts[0].x.toFixed(1)},${pts[0].y.toFixed(1)}`;
-    for (let i = 0; i < pts.length - 1; i += 1) {
-      const p0 = pts[Math.max(0, i - 1)];
-      const p1 = pts[i];
-      const p2 = pts[i + 1];
-      const p3 = pts[Math.min(pts.length - 1, i + 2)];
-
-      if (Math.abs(p1.y - p2.y) < 0.1) {
-        d += ` L ${p2.x.toFixed(1)},${p2.y.toFixed(1)}`;
-        continue;
-      }
-
-      const tension = 0.2;
-      let cp1x = p1.x + (p2.x - p0.x) * tension;
-      let cp1y = p1.y + (p2.y - p0.y) * tension;
-      let cp2x = p2.x - (p3.x - p1.x) * tension;
-      let cp2y = p2.y - (p3.y - p1.y) * tension;
-
-      const minY = Math.min(p1.y, p2.y);
-      const maxY = Math.max(p1.y, p2.y);
-      cp1y = Math.max(minY, Math.min(maxY, cp1y));
-      cp2y = Math.max(minY, Math.min(maxY, cp2y));
-
-      d += ` C ${cp1x.toFixed(1)},${cp1y.toFixed(1)} ${cp2x.toFixed(1)},${cp2y.toFixed(1)} ${p2.x.toFixed(1)},${p2.y.toFixed(1)}`;
-    }
-    return d;
-  };
-
-  const answerCurve = getCurvedPath(answerPts);
-  const slCurve = getCurvedPath(slPts);
-
-  const firstX = answerPts[0]?.x || 0;
-  const lastX = answerPts[answerPts.length - 1]?.x || width;
-
-  const answerArea = `${answerCurve} L ${lastX.toFixed(1)},${height} L ${firstX.toFixed(1)},${height} Z`;
-  const slArea = `${slCurve} L ${lastX.toFixed(1)},${height} L ${firstX.toFixed(1)},${height} Z`;
-
-  const targetY = getY(numericTarget);
-
-
+  const rateBarItems = (item) => [
+    {
+      metric: "Answer",
+      value: Number(item.answerRatePct || 0),
+      className: "bg-[#0b3b68]",
+      color: "#0b3b68",
+    },
+    {
+      metric: "Service Level",
+      value: Number(item.serviceLevelPct || 0),
+      className: "bg-[#0284c7]",
+      color: "#0284c7",
+    },
+  ];
 
   return (
-    <div ref={containerRef} className="w-full min-w-0 select-none">
+    <div className="w-full min-w-0 select-none">
+      {/* 1. Header Legend */}
       <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-bold text-sibs-tertiary-5">
         <span className="inline-flex items-center gap-1.5 text-[#0b3b68]">
           <i className="h-2.5 w-2.5 rounded-full bg-[#0b3b68]" />
@@ -442,12 +372,13 @@ function LineChart({ series, target = 90 }) {
         </span>
 
         <span className="inline-flex items-center gap-1 text-red-500">
-          <i className="inline-block h-0.5 w-3.5 bg-red-500" />
+          <i className="inline-block h-0.5 w-3.5 bg-red-500 border-t border-dashed border-red-500" />
           Target: {numericTarget}%
         </span>
       </div>
 
       <div className="flex w-full min-w-0">
+        {/* 2. Y-Axis Ticks */}
         <div className="relative h-[300px] w-12 shrink-0 border-r border-sibs-tertiary-8 pr-1.5">
           {axisTicks.map((tick, index) => (
             <span
@@ -462,7 +393,9 @@ function LineChart({ series, target = 90 }) {
           ))}
         </div>
 
+        {/* 3. Main Chart Canvas */}
         <div className="relative min-w-0 flex-1">
+          {/* Horizontal Grid Lines */}
           <div className="pointer-events-none absolute inset-x-0 top-0 h-[300px]">
             {axisTicks.map((tick, index) => (
               <div
@@ -475,205 +408,146 @@ function LineChart({ series, target = 90 }) {
             ))}
           </div>
 
+          {/* Target Reference Line */}
           <div
-            className="relative h-[300px] w-full min-w-0 border-b border-sibs-tertiary-8"
-            onMouseLeave={() => setHoveredIndex(null)}
+            className="pointer-events-none absolute right-0 left-0 z-10 flex items-center"
+            style={{
+              bottom: `${Math.min(100, Math.max(0, numericTarget))}%`,
+            }}
           >
-            <svg
-              width="100%"
-              height="100%"
-              viewBox={`0 0 ${width} ${height}`}
-              preserveAspectRatio="none"
-              className="h-full w-full overflow-visible sibs-graph-fade-up"
-              role="img"
-              aria-label="Answer rate and service level trend"
-            >
-              <defs>
-                <linearGradient
-                  id="answerRateGradient"
-                  x1="0"
-                  y1="0"
-                  x2="0"
-                  y2="1"
-                >
-                  <stop offset="0%" stopColor="#0b3b68" stopOpacity="0.25" />
-                  <stop offset="100%" stopColor="#0b3b68" stopOpacity="0.0" />
-                </linearGradient>
-
-                <linearGradient id="slGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#0284c7" stopOpacity="0.30" />
-                  <stop offset="100%" stopColor="#0284c7" stopOpacity="0.0" />
-                </linearGradient>
-              </defs>
-
-              {/* Target Line */}
-              <line
-                x1={0}
-                x2={width}
-                y1={targetY}
-                y2={targetY}
-                stroke="#ef4444"
-                strokeWidth="1.5"
-                strokeDasharray="5 3"
-              />
-
-              {/* Dynamic Left-to-Right Sweep & Rising Animation */}
-              <g className="sibs-graph-sweep-rise">
-                {/* Fills */}
-                <path
-                  d={answerArea}
-                  fill="url(#answerRateGradient)"
-                  className="pointer-events-none"
-                />
-                <path
-                  d={slArea}
-                  fill="url(#slGradient)"
-                  className="pointer-events-none"
-                />
-
-                {/* Lines */}
-                <path
-                  d={answerCurve}
-                  fill="none"
-                  stroke="#0b3b68"
-                  strokeWidth="2.75"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-                <path
-                  d={slCurve}
-                  fill="none"
-                  stroke="#0284c7"
-                  strokeWidth="2.75"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-
-                {/* Data Points */}
-                {series.map((item, index) => {
-                  const ptAnswer = answerPts[index];
-                  const ptSl = slPts[index];
-                  const hasData = Number(item.callsOffered || 0) > 0;
-                  const isHovered = hoveredIndex === index;
-
-                  if (!hasData) return null;
-
-                  return (
-                    <g key={`pts-${item.key || index}`}>
-                      <circle
-                        cx={ptAnswer.x}
-                        cy={ptAnswer.y}
-                        r={isHovered ? 5.5 : 4}
-                        fill="#0b3b68"
-                        stroke="#ffffff"
-                        strokeWidth="1.5"
-                      />
-                      <circle
-                        cx={ptSl.x}
-                        cy={ptSl.y}
-                        r={isHovered ? 5.5 : 4}
-                        fill="#0284c7"
-                        stroke="#ffffff"
-                        strokeWidth="1.5"
-                      />
-                    </g>
-                  );
-                })}
-              </g>
-
-              {/* Hover Crosshairs & Hitboxes */}
-              {series.map((item, index) => {
-                const ptAnswer = answerPts[index];
-                const isHovered = hoveredIndex === index;
-
-                return (
-                  <g key={`hitbox-${item.key || index}`}>
-                    {isHovered ? (
-                      <line
-                        x1={ptAnswer.x}
-                        x2={ptAnswer.x}
-                        y1={0}
-                        y2={height}
-                        stroke="#94a3b8"
-                        strokeWidth="1"
-                        strokeDasharray="2 2"
-                      />
-                    ) : null}
-
-                    <rect
-                      x={ptAnswer.x - width / (series.length * 2)}
-                      y={0}
-                      width={width / series.length}
-                      height={height}
-                      fill="transparent"
-                      className="cursor-pointer"
-                      onMouseEnter={() => setHoveredIndex(index)}
-                    />
-                  </g>
-                );
-              })}
-            </svg>
-
-            {/* Hover Tooltip */}
-            {hoveredIndex !== null && series[hoveredIndex] && (
-              <div
-                className="pointer-events-none absolute z-30 min-w-[160px] rounded-xl border border-sibs-tertiary-10/80 bg-white/95 p-2.5 shadow-xl backdrop-blur-md"
-                style={
-                  hoveredIndex >= series.length - 1
-                    ? { right: "10px", top: "14px" }
-                    : hoveredIndex === 0
-                    ? { left: "10px", top: "14px" }
-                    : {
-                        left: `${Math.min(
-                          Math.max(10, (answerPts[hoveredIndex]?.x || 0) - 80),
-                          width - 175,
-                        )}px`,
-                        top: "14px",
-                      }
-                }
-              >
-                <div className="flex items-center justify-between border-b border-slate-100 pb-1">
-                  <span className="text-xs font-black text-sibs-primary-1">
-                    {series[hoveredIndex].label}
-                  </span>
-                  <span className="text-[10px] font-bold text-sibs-tertiary-5">
-                    Period {hoveredIndex + 1}
-                  </span>
-                </div>
-
-                <div className="mt-1.5 space-y-1 text-[11px]">
-                  <div className="flex items-center justify-between font-bold text-[#0b3b68]">
-                    <span>Answer %:</span>
-                    <span>{formatPercent(series[hoveredIndex].answerRatePct)}</span>
-                  </div>
-
-                  <div className="flex items-center justify-between font-bold text-[#0284c7]">
-                    <span>Service Level:</span>
-                    <span>{formatPercent(series[hoveredIndex].serviceLevelPct)}</span>
-                  </div>
-
-                  <div className="flex items-center justify-between text-slate-500">
-                    <span>Offered:</span>
-                    <span className="font-bold text-slate-700">
-                      {formatNumber(series[hoveredIndex].callsOffered)}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center justify-between text-slate-500">
-                    <span>Handled:</span>
-                    <span className="font-bold text-slate-700">
-                      {formatNumber(series[hoveredIndex].callsHandled)}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            )}
+            <div className="w-full border-t border-dashed border-red-500" />
           </div>
 
+          {/* Clustered Bars Container */}
+          <div className="relative flex h-[300px] min-w-0 items-end gap-1.5 border-b border-sibs-tertiary-8 px-1 sm:gap-2.5">
+            {series.map((item, periodIndex) => {
+              const hasData = Number(item.callsOffered || 0) > 0;
+              const bars = rateBarItems(item);
+
+              return (
+                <div
+                  key={item.key || periodIndex}
+                  className="group/period flex h-full min-w-0 flex-1 items-end justify-center px-0.5 sm:px-1"
+                >
+                  <div className="flex h-full w-full max-w-[72px] items-end justify-center gap-0">
+                    {bars.map(({ metric, value, className, color }, barIndex) => {
+                      const numericValue = hasData ? Math.max(0, Math.min(100, Number(value || 0))) : 0;
+                      const heightPercent = hasData && numericValue > 0 ? numericValue : 0;
+
+                      return (
+                        <div
+                          key={metric}
+                          className="group/bar relative flex h-full min-w-0 flex-1 items-end justify-center"
+                          aria-label={`${item.label} ${metric}: ${formatPercent(numericValue)}`}
+                        >
+                          {/* Value inside bar */}
+                          {hasData && numericValue > 0 ? (
+                            <span
+                              className={`pointer-events-none absolute left-1/2 z-10 -translate-x-1/2 whitespace-nowrap text-[8px] sm:text-[8.5px] 2xl:text-[9px] font-black tracking-tight transition-all duration-200 group-hover/bar:-translate-y-0.5 sibs-graph-number-in ${
+                                heightPercent > 10
+                                  ? "text-white drop-shadow-xs"
+                                  : "text-sibs-primary-1 font-extrabold"
+                              }`}
+                              style={{
+                                bottom:
+                                  heightPercent > 10
+                                    ? `calc(${heightPercent}% - 17px)`
+                                    : `calc(${heightPercent}% + 4px)`,
+                                animationDelay: `${Math.min(periodIndex * 80 + barIndex * 40, 650)}ms`,
+                              }}
+                            >
+                              {numericValue.toFixed(1)}%
+                            </span>
+                          ) : null}
+
+                          {/* Hover Tooltip Modal */}
+                          {hasData ? (
+                            <div
+                              className={`pointer-events-none absolute z-50 hidden min-w-[165px] rounded-xl border border-sibs-tertiary-10/80 bg-white/95 p-2.5 shadow-xl backdrop-blur-md group-hover/bar:block ${
+                                periodIndex >= series.length - 1
+                                  ? "left-1/2 -translate-x-[75%]"
+                                  : periodIndex === 0
+                                  ? "left-1/2 -translate-x-[25%]"
+                                  : "left-1/2 -translate-x-1/2"
+                              }`}
+                              style={{
+                                bottom: `calc(${Math.max(15, heightPercent)}% + 44px)`,
+                              }}
+                            >
+                              <div className="flex items-center justify-between border-b border-slate-100 pb-1">
+                                <span className="text-xs font-black text-sibs-primary-1">
+                                  {item.label}
+                                </span>
+                                <span className="text-[10px] font-bold text-sibs-tertiary-5">
+                                  {metric}
+                                </span>
+                              </div>
+
+                              <div className="mt-1.5 flex items-center justify-between text-xs">
+                                <span className="flex items-center gap-1.5 font-bold text-slate-600">
+                                  <span
+                                    className="h-2.5 w-2.5 rounded-full"
+                                    style={{ backgroundColor: color }}
+                                  />
+                                  {metric}:
+                                </span>
+                                <span className="font-extrabold text-sibs-primary-1">
+                                  {formatPercent(numericValue)}
+                                </span>
+                              </div>
+
+                              {metric === "Service Level" && (
+                                <div className="mt-1 flex items-center justify-between border-t border-slate-100 pt-1 text-[11px]">
+                                  <span className="font-semibold text-slate-500">
+                                    Target ({numericTarget}%):
+                                  </span>
+                                  <span
+                                    className={`font-extrabold ${
+                                      numericValue >= numericTarget
+                                        ? "text-green-600"
+                                        : "text-amber-600"
+                                    }`}
+                                  >
+                                    {numericValue >= numericTarget ? "Target met" : "Below target"}
+                                  </span>
+                                </div>
+                              )}
+
+                              <div className="mt-1 flex items-center justify-between border-t border-slate-100 pt-1 text-[10.5px] text-slate-500">
+                                <span>Calls Handled:</span>
+                                <span className="font-bold text-slate-700">
+                                  {formatNumber(item.callsHandled)}
+                                </span>
+                              </div>
+                            </div>
+                          ) : null}
+
+                          {/* Bar Element */}
+                          {hasData && heightPercent > 0 ? (
+                            <div
+                              className={`w-full rounded-t-[4px] shadow-xs transition-all duration-200 ease-out group-hover/bar:-translate-y-0.5 group-hover/bar:brightness-110 sibs-graph-bar-rise border border-white ${className}`}
+                              style={{
+                                height: `${heightPercent}%`,
+                                animationDelay: `${Math.min(periodIndex * 80 + barIndex * 40, 650)}ms`,
+                              }}
+                            />
+                          ) : (
+                            <div className="h-0 w-full" />
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* 4. X-Axis Labels */}
           <div className="flex w-full min-w-0 gap-1 px-0.5 sm:gap-2 sm:px-1">
             {series.map((item, periodIndex) => (
               <div
-                key={item.key}
+                key={item.key || periodIndex}
                 className="mt-2 min-w-0 flex-1 px-0.5 text-center"
               >
                 <p
@@ -790,9 +664,16 @@ function AhtChart({ series, target }) {
                 >
                   {hasAht ? (
                     <p
-                      className="pointer-events-none absolute left-1/2 z-10 -translate-x-1/2 whitespace-nowrap text-[11px] font-black text-sibs-primary-1 transition-all duration-200 group-hover/aht:-translate-y-0.5 sibs-graph-number-in"
+                      className={`pointer-events-none absolute left-1/2 z-10 -translate-x-1/2 whitespace-nowrap text-[9px] sm:text-[10px] 2xl:text-[11px] font-black tracking-tight transition-all duration-200 group-hover/aht:-translate-y-0.5 sibs-graph-number-in ${
+                        heightPct > 10
+                          ? "text-white drop-shadow-xs"
+                          : "text-sibs-primary-1 font-extrabold"
+                      }`}
                       style={{
-                        bottom: `calc(${heightPct}% + 4px)`,
+                        bottom:
+                          heightPct > 10
+                            ? `calc(${heightPct}% - 18px)`
+                            : `calc(${heightPct}% + 4px)`,
                         animationDelay: `${Math.min(itemIndex * 60, 500)}ms`,
                       }}
                     >
@@ -898,7 +779,7 @@ function AhtChart({ series, target }) {
   );
 }
 
-export default function CallKpiDashboard({ data }) {
+export default function CallKpiDashboard({ data, showSummaryCards = true }) {
   const summary = data?.summary || {};
   const series = Array.isArray(data?.series)
     ? data.series
@@ -941,7 +822,8 @@ export default function CallKpiDashboard({ data }) {
   return (
     <div className="space-y-3">
       {/* 7 Compact KPI Stat Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-7 gap-2">
+      {showSummaryCards ? (
+        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-7 gap-2">
         <KpiCard
           icon={PhoneCall}
           label="Call Volume"
@@ -1024,11 +906,12 @@ export default function CallKpiDashboard({ data }) {
           }
         />
       </div>
+      ) : null}
 
       {/* 3 Prominent Graphs: Stacked on Mobile/Tablet/iPad, Side-by-Side on Ultra-wide Desktop */}
       <div
         key={`kpi-charts-${series.map((s) => s.key || s.label).join("-")}`}
-        className="grid grid-cols-1 2xl:grid-cols-3 gap-3.5"
+        className="grid grid-cols-1 2xl:[grid-template-columns:1.45fr_1fr_1fr] gap-3.5"
       >
         <ChartShell
           title="Calls"

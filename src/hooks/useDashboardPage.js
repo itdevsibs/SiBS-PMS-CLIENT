@@ -42,13 +42,8 @@ function useDashboardPage() {
   const Icon = roleIcons[role] || Gauge;
   const modules = useMemo(() => {
     // Builds the sidebar modules allowed for the signed-in user's role.
-    const dashboardModule = {
-      name: "Dashboard",
-      icon: role === "wfm" ? LayoutDashboard : Icon,
-      path: role === "wfm" ? "/dashboard/wfm" : (authUser?.dashboardPath || "/dashboard"),
-    };
     const viewGraphsModule = {
-      name: "View Graphs",
+      name: "Wow Report",
       icon: BarChart3,
       path: "/dashboard/wfm/view-graphs",
     };
@@ -83,7 +78,6 @@ function useDashboardPage() {
 
     if (["admin", "bod", "som"].includes(role) || adminAccessNum === 7) {
       const adminModules = [
-        dashboardModule,
         employeeLedgerModule,
         viewGraphsModule,
         occupancyModule,
@@ -105,7 +99,6 @@ function useDashboardPage() {
     if (isWfmView) {
       return [
         viewGraphsModule,
-        dashboardModule,
         employeeLedgerModule,
         importDataModule,
         importRepositoryModule,
@@ -118,8 +111,8 @@ function useDashboardPage() {
       ];
     }
 
-    return [dashboardModule];
-  }, [Icon, authUser, role, location.pathname]);
+    return [viewGraphsModule];
+  }, [authUser, role, location.pathname]);
 
   useEffect(() => {
     if (!isAuthenticated()) {

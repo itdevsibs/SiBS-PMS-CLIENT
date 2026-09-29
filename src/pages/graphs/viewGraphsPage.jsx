@@ -2,8 +2,10 @@ import { useCallback, useEffect, useState } from "react";
 import {
   AlertCircle,
   BarChart3,
+  ChevronDown,
   Clock,
   Database,
+  Filter,
   RefreshCw,
 } from "lucide-react";
 
@@ -16,7 +18,7 @@ import DatePicker from "@/components/ui/Filter/DatePicker";
 import MultiSelectDropdown from "@/components/ui/Filter/MultiSelectDropdown";
 import SingleSelectDropdown from "@/components/ui/Filter/SingleSelectDropdown";
 import useDashboardPage from "@/hooks/useDashboardPage";
-import { getWfmCallKpis } from "@/lib/axios/wfm-kpis";
+import { getWfmCallKpis, getWfmCallSkills } from "@/lib/axios/wfm-kpis";
 
 const PERIOD_OPTIONS = [
   {
@@ -59,38 +61,448 @@ const TASK_ORDER_OPTIONS_BY_SOURCE = {
     { value: "TO10", label: "TO10 - SEASIA" },
     { value: "TO12", label: "TO12 - NICE" },
     { value: "TO16", label: "TO16 - SEURECA" },
+    { value: "TO18", label: "TO18 - NEA" },
+    { value: "TO22", label: "TO22 - SAMI" },
+    { value: "OTHER", label: "Other" },
   ],
   FUSECOM: [
     { value: "", label: "All Task Orders" },
     { value: "TO12", label: "TO12 - NICE" },
     { value: "TO16", label: "TO16 - SEURECA" },
+    { value: "OTHER", label: "Other" },
   ],
   HERODASH: [
     { value: "", label: "All Task Orders" },
     { value: "TO4", label: "TO4 - PAC" },
     { value: "TO10", label: "TO10 - SEASIA" },
+    { value: "OTHER", label: "Other" },
   ],
 };
 
+const GENERIC_SKILL_OPTIONS = [
+  { value: "All English", label: "All English", isCategory: true },
+  { value: "English NIV", label: "English NIV", isCategory: true },
+  { value: "English IV", label: "English IV", isCategory: true },
+  { value: "English ACS", label: "English ACS", isCategory: true },
+  { value: "Non English", label: "Non English", isCategory: true },
+  { value: "Non English IV", label: "Non English IV", isCategory: true },
+];
+
 const SKILL_OPTIONS = [
   { value: "", label: "All Skills" },
-  { value: "English All", label: "English All" },
-  { value: "English NIV", label: "English NIV" },
-  { value: "English IV", label: "English IV" },
-  { value: "English ACS", label: "English ACS" },
-  { value: "Non English", label: "Non English" },
+  ...GENERIC_SKILL_OPTIONS,
+];
+
+const SKILLS_BY_COUNTRY = {
+  Albania: [
+    "GSS 2.0 :: Albania - Albanian NIV",
+    "GSS 2.0 :: Albania - English NIV",
+  ],
+  Algeria: [
+    "ALGERIA English IV",
+    "ALGERIA English NIV",
+  ],
+  Armenia: [
+    "GSS 2.0 :: Armenia - Armenian NIV",
+    "GSS 2.0 :: Armenia - English IV",
+    "GSS 2.0 :: Armenia - English NIV",
+    "GSS 2.0 :: Armenia - Farsi NIV",
+  ],
+  Australia: [
+    "GSS 2.0 :: Australia - English NIV",
+    "GSS 2.0 :: Australia - English ACS",
+    "GSS 2.0 :: Australia - English IV",
+    "GSS 2.0 :: Australia - VCH English NIV",
+  ],
+  Austria: [
+    "GSS 2.0 :: Austria - English NIV",
+    "GSS 2.0 :: Austria - English IV",
+    "GSS 2.0 :: Austria - German IV",
+    "GSS 2.0 :: Austria - German NIV",
+  ],
+  Azerbaijan: [
+    "GSS 2.0 :: Azerbaijan - Azerbaijani NIV",
+    "GSS 2.0 :: Azerbaijan - English NIV",
+    "GSS 2.0 :: Azerbaijan - Russian NIV",
+  ],
+  Bahrain: [
+    "BAHRAIN English IV",
+    "BAHRAIN English NIV",
+  ],
+  Bangladesh: [
+    "BANGLADESH English IV",
+    "BANGLADESH English NIV",
+  ],
+  "Bosnia and Herzegovina": [
+    "GSS 2.0 :: Bosnia&Herzegovina - Bosnian ACS",
+    "GSS 2.0 :: Bosnia&Herzegovina - Bosnian IV",
+    "GSS 2.0 :: Bosnia&Herzegovina - Bosnian NIV",
+    "GSS 2.0 :: Bosnia&Herzegovina - English ACS",
+    "GSS 2.0 :: Bosnia&Herzegovina - English NIV",
+  ],
+  Bulgaria: [
+    "GSS 2.0 :: Bulgaria - Bulgarian IV",
+    "GSS 2.0 :: Bulgaria - Bulgarian NIV",
+    "GSS 2.0 :: Bulgaria - English NIV",
+  ],
+  Cambodia: [
+    "GSS 2.0 :: Cambodia - English NIV",
+    "GSS 2.0 :: Cambodia - English IV",
+    "GSS 2.0 :: Cambodia - Khmer IV",
+    "GSS 2.0 :: Cambodia - Khmer NIV",
+  ],
+  Croatia: [
+    "GSS 2.0 :: Croatia - English ACS",
+    "GSS 2.0 :: Croatia - English NIV",
+  ],
+  Cyprus: [
+    "GSS 2.0 :: Cyprus - English ACS",
+    "GSS 2.0 :: Cyprus - English NIV",
+    "GSS 2.0 :: Cyprus - Greek ACS",
+    "GSS 2.0 :: Cyprus - Greek NIV",
+  ],
+  "Czech Republic": [
+    "GSS 2.0 :: Czech Republic - English NIV",
+    "GSS 2.0 :: Czech Republic - English IV",
+    "GSS 2.0 :: Czech Republic - Czech IV",
+    "GSS 2.0 :: Czech Republic - Czech NIV",
+  ],
+  Denmark: [
+    "GSS 2.0 :: Denmark - English NIV",
+    "GSS 2.0 :: Denmark - English ACS",
+    "GSS 2.0 :: Denmark - English IV",
+    "GSS 2.0 :: Denmark - Danish ACS",
+    "GSS 2.0 :: Denmark - Danish IV",
+    "GSS 2.0 :: Denmark - Danish NIV",
+  ],
+  Egypt: [
+    "EGYPT English IV",
+    "EGYPT English NIV",
+  ],
+  Estonia: [
+    "GSS 2.0 :: Estonia - English NIV",
+    "GSS 2.0 :: Estonia - Estonian NIV",
+    "GSS 2.0 :: Estonia - English IV",
+    "GSS 2.0 :: Estonia - Russian NIV",
+  ],
+  Fiji: [
+    "GSS 2.0 :: Fiji - English ACS",
+    "GSS 2.0 :: Fiji - English IV",
+    "GSS 2.0 :: Fiji - English NIV",
+  ],
+  Finland: [
+    "GSS 2.0 :: Finland - English NIV",
+    "GSS 2.0 :: Finland - English IV",
+    "GSS 2.0 :: Finland - English ACS",
+    "GSS 2.0 :: Finland - Finish NIV",
+  ],
+  Georgia: [
+    "GSS 2.0 :: Georgia - English IV",
+    "GSS 2.0 :: Georgia - English NIV",
+    "GSS 2.0 :: Georgia - Georgian ACS",
+    "GSS 2.0 :: Georgia - Georgian IV",
+    "GSS 2.0 :: Georgia - Georgian NIV",
+    "GSS 2.0 :: Georgia - Russian IV",
+    "GSS 2.0 :: Georgia - Russian NIV",
+  ],
+  Germany: [
+    "GSS 2.0 :: Germany - English NIV",
+    "GSS 2.0 :: Germany - English ACS",
+    "GSS 2.0 :: Germany - English IV",
+    "GSS 2.0 :: Germany - German ACS",
+    "GSS 2.0 :: Germany - German IV",
+    "GSS 2.0 :: Germany - German NIV",
+  ],
+  Greece: [
+    "GSS 2.0 :: Greece - English NIV",
+    "GSS 2.0 :: Greece - Greek ACS",
+    "GSS 2.0 :: Greece - Greek IV",
+    "GSS 2.0 :: Greece - Greek NIV",
+  ],
+  Hungary: [
+    "GSS 2.0 :: Hungary - English NIV",
+    "GSS 2.0 :: Hungary - English IV",
+    "GSS 2.0 :: Hungary - Hungarian IV",
+    "GSS 2.0 :: Hungary - Hungarian NIV",
+  ],
+  Indonesia: [
+    "GSS 2.0 :: Indonesia - English IV",
+    "GSS 2.0 :: Indonesia - English NIV",
+    "GSS 2.0 :: Indonesia - English ACS",
+    "GSS 2.0 :: Indonesia - Indonesian ACS",
+    "GSS 2.0 :: Indonesia - Indonesian IV",
+    "GSS 2.0 :: Indonesia - Indonesian NIV",
+  ],
+  Israel: [
+    "GSS 2.0 :: Israel - Arabic ACS",
+    "GSS 2.0 :: Israel - Arabic IV",
+    "GSS 2.0 :: Israel - Arabic NIV",
+    "GSS 2.0 :: Israel - English ACS",
+    "GSS 2.0 :: Israel - English IV",
+    "GSS 2.0 :: Israel - English NIV",
+    "GSS 2.0 :: Israel - Hebrew ACS",
+    "GSS 2.0 :: Israel - Hebrew IV",
+    "GSS 2.0 :: Israel - Hebrew NIV",
+  ],
+  Japan: [
+    "GSS 2.0 :: Japan - English IV",
+    "GSS 2.0 :: Japan - English ACS",
+    "GSS 2.0 :: Japan - English NIV",
+    "GSS 2.0 :: Japan - Japanese NIV",
+    "GSS 2.0 :: Japan - Japanese ACS",
+    "GSS 2.0 :: Japan - Japanese IV",
+  ],
+  Jordan: [
+    "JORDAN English IV",
+    "JORDAN English NIV",
+  ],
+  Korea: [
+    "GSS 2.0 :: Korea - English NIV",
+    "GSS 2.0 :: Korea - English ACS",
+    "GSS 2.0 :: Korea - English IV",
+    "GSS 2.0 :: Korea - Korean ACS",
+    "GSS 2.0 :: Korea - Korean IV",
+    "GSS 2.0 :: Korea - Korean NIV",
+  ],
+  Kosovo: [
+    "GSS 2.0 :: Kosovo - Albanian IV",
+    "GSS 2.0 :: Kosovo - Albanian NIV",
+  ],
+  Kuwait: [
+    "KUWAIT English IV",
+    "KUWAIT English NIV",
+  ],
+  Laos: [
+    "GSS 2.0 :: Laos - English ACS",
+    "GSS 2.0 :: Laos - English IV",
+    "GSS 2.0 :: Laos - English NIV",
+    "GSS 2.0 :: Laos - Lao NIV",
+  ],
+  Latvia: [
+    "GSS 2.0 :: Latvia - English NIV",
+    "GSS 2.0 :: Latvia - English IV",
+    "GSS 2.0 :: Latvia - English ACS",
+    "GSS 2.0 :: Latvia - Latvian NIV",
+  ],
+  Lebanon: [
+    "LEBANON English IV",
+    "LEBANON English NIV",
+  ],
+  Lithuania: [
+    "GSS 2.0 :: Lithuania - English NIV",
+    "GSS 2.0 :: Lithuania - Lithuanian NIV",
+  ],
+  Malaysia: [
+    "GSS 2.0 :: Malaysia - English ACS",
+    "GSS 2.0 :: Malaysia - English IV",
+    "GSS 2.0 :: Malaysia - English NIV",
+    "GSS 2.0 :: Malaysia - Malay NIV",
+    "GSS 2.0 :: Malaysia - Mandarin NIV",
+  ],
+  Moldova: [
+    "GSS 2.0 :: Rep. of Moldova - English ACS",
+    "GSS 2.0 :: Rep. of Moldova - English NIV",
+    "GSS 2.0 :: Rep. of Moldova - Romanian NIV",
+    "GSS 2.0 :: Rep. of Moldova - Russian IV",
+    "GSS 2.0 :: Rep. of Moldova - Russian NIV",
+  ],
+  Montenegro: [
+    "GSS 2.0 :: Montenegro - English NIV",
+    "GSS 2.0 :: Montenegro - Montenegrin NIV",
+  ],
+  Morocco: [
+    "MOROCCO English IV",
+    "MOROCCO English NIV",
+  ],
+  Nepal: [
+    "NEPAL English IV",
+    "NEPAL English NIV",
+  ],
+  "New Zealand": [
+    "GSS 2.0 :: New Zealand - English IV",
+    "GSS 2.0 :: New Zealand - English ACS",
+    "GSS 2.0 :: New Zealand - English NIV",
+  ],
+  "Northern Macedonia": [
+    "GSS 2.0 :: Northern Macedonia - Macedonian NIV",
+  ],
+  Norway: [
+    "GSS 2.0 :: Norway - English NIV",
+    "GSS 2.0 :: Norway - English ACS",
+    "GSS 2.0 :: Norway - Norwegian ACS",
+    "GSS 2.0 :: Norway - Norwegian NIV",
+  ],
+  Oman: [
+    "OMAN English IV",
+    "OMAN English NIV",
+  ],
+  Pakistan: [
+    "PAKISTAN English IV",
+    "PAKISTAN English NIV",
+  ],
+  Philippines: [
+    "GSS 2.0 :: Philippines - English ACS",
+    "GSS 2.0 :: Philippines - English IV",
+    "GSS 2.0 :: Philippines - English NIV",
+    "GSS 2.0 :: Philippines - Tagalog ACS",
+    "GSS 2.0 :: Philippines - Tagalog IV",
+    "GSS 2.0 :: Philippines - Tagalog NIV",
+  ],
+  Poland: [
+    "GSS 2.0 :: Poland - English ACS",
+    "GSS 2.0 :: Poland - English IV",
+    "GSS 2.0 :: Poland - English NIV",
+    "GSS 2.0 :: Poland - Polish ACS",
+    "GSS 2.0 :: Poland - Polish IV",
+    "GSS 2.0 :: Poland - Polish NIV",
+    "GSS 2.0 :: Poland - Russian ACS",
+    "GSS 2.0 :: Poland - Russian IV",
+    "GSS 2.0 :: Poland - Russian NIV",
+  ],
+  Qatar: [
+    "QATAR English IV",
+    "QATAR English NIV",
+  ],
+  Romania: [
+    "GSS 2.0 :: Romania - English IV",
+    "GSS 2.0 :: Romania - English NIV",
+    "GSS 2.0 :: Romania - Romanian IV",
+    "GSS 2.0 :: Romania - Romanian NIV",
+  ],
+  "Saudi Arabia": [
+    "SAUDI_ARABIA English IV",
+    "SAUDI_ARABIA English NIV",
+  ],
+  Serbia: [
+    "GSS 2.0 :: Serbia - English IV",
+    "GSS 2.0 :: Serbia - English NIV",
+    "GSS 2.0 :: Serbia - Russian NIV",
+    "GSS 2.0 :: Serbia - Serbian IV",
+    "GSS 2.0 :: Serbia - Serbian NIV",
+  ],
+  Singapore: [
+    "GSS 2.0 :: Singapore - English ACS",
+    "GSS 2.0 :: Singapore - English IV",
+    "GSS 2.0 :: Singapore - English NIV",
+    "GSS 2.0 :: Singapore - Mandarin IV",
+    "GSS 2.0 :: Singapore - Mandarin NIV",
+  ],
+  Slovakia: [
+    "GSS 2.0 :: Slovakia - English NIV",
+    "GSS 2.0 :: Slovakia  - English ACS",
+    "GSS 2.0 :: Slovakia - English IV",
+    "GSS 2.0 :: Slovakia - Slovak NIV",
+  ],
+  "Sri Lanka": [
+    "SRI_LANKA English IV",
+    "SRI_LANKA English NIV",
+  ],
+  Sweden: [
+    "GSS 2.0 :: Sweden - English NIV",
+    "GSS 2.0 :: Sweden - English ACS",
+    "GSS 2.0 :: Sweden - English IV",
+    "GSS 2.0 :: Sweden - Swedish NIV",
+    "GSS 2.0 :: Sweden - Swedish ACS",
+    "GSS 2.0 :: Sweden - Swedish IV",
+  ],
+  Switzerland: [
+    "GSS 2.0 :: Switzerland - English NIV",
+    "GSS 2.0 :: Switzerland - English IV",
+    "GSS 2.0 :: Switzerland - English ACS",
+    "GSS 2.0 :: Switzerland - French NIV",
+    "GSS 2.0 :: Switzerland - German ACS",
+    "GSS 2.0 :: Switzerland - German IV",
+    "GSS 2.0 :: Switzerland - German NIV",
+  ],
+  Taiwan: [
+    "GSS 2.0 :: Taiwan - English ACS",
+    "GSS 2.0 :: Taiwan - English NIV",
+    "GSS 2.0 :: Taiwan - English IV",
+    "GSS 2.0 :: Taiwan - Mandarin ACS",
+    "GSS 2.0 :: Taiwan - Mandarin IV",
+    "GSS 2.0 :: Taiwan - Mandarin NIV",
+  ],
+  Thailand: [
+    "GSS 2.0 :: Thailand - English ACS",
+    "GSS 2.0 :: Thailand - English IV",
+    "GSS 2.0 :: Thailand - English NIV",
+    "GSS 2.0 :: Thailand - Thai IV",
+    "GSS 2.0 :: Thailand - Thai NIV",
+  ],
+  Tunisia: [
+    "TUNISIA English IV",
+    "TUNISIA English NIV",
+  ],
+  Turkiye: [
+    "GSS 2.0 :: Turkiye - English ACS",
+    "GSS 2.0 :: Turkiye - English IV",
+    "GSS 2.0 :: Turkiye - English NIV",
+    "GSS 2.0 :: Turkiye - Turkish ACS",
+    "GSS 2.0 :: Turkiye - Turkish IV",
+    "GSS 2.0 :: Turkiye - Turkish NIV",
+    "GSS 2.0 :: Turkiye - Farsi IV",
+  ],
+  Ukraine: [
+    "GSS 2.0 :: Ukraine - English IV",
+    "GSS 2.0 :: Ukraine - English NIV",
+    "GSS 2.0 :: Ukraine - Ukrainian ACS",
+    "GSS 2.0 :: Ukraine - Ukrainian IV",
+    "GSS 2.0 :: Ukraine - Ukrainian NIV",
+  ],
+  "United Arab Emirates": [
+    "GSS 2.0 :: United Arab Emirates - Arabic ACS",
+    "GSS 2.0 :: United Arab Emirates - Arabic NIV",
+    "GSS 2.0 :: United Arab Emirates - English ACS",
+    "GSS 2.0 :: United Arab Emirates - English IV",
+    "GSS 2.0 :: United Arab Emirates - English NIV",
+  ],
+  Vietnam: [
+    "GSS 2.0 :: Vietnam - English IV",
+    "GSS 2.0 :: Vietnam - English NIV",
+    "GSS 2.0 :: Vietnam - English ACS",
+    "GSS 2.0 :: Vietnam - Vietnamese ACS",
+    "GSS 2.0 :: Vietnam - Vietnamese IV",
+    "GSS 2.0 :: Vietnam - Vietnamese NIV",
+  ],
+};
+
+const OTHER_COUNTRY_OPTIONS = [
+  { value: "albania", label: "Albania" },
+  { value: "armenia", label: "Armenia" },
+  { value: "azerbaijan", label: "Azerbaijan" },
+  { value: "bosnia & herzegovina", label: "Bosnia & Herzegovina" },
+  { value: "bulgaria", label: "Bulgaria" },
+  { value: "croatia", label: "Croatia" },
+  { value: "cyprus", label: "Cyprus" },
+  { value: "georgia", label: "Georgia" },
+  { value: "greece", label: "Greece" },
+  { value: "israel", label: "Israel" },
+  { value: "kosovo", label: "Kosovo" },
+  { value: "lithuania", label: "Lithuania" },
+  { value: "northern macedonia", label: "Northern Macedonia" },
+  { value: "poland", label: "Poland" },
+  { value: "rep. of moldova", label: "Rep. of Moldova" },
+  { value: "romania", label: "Romania" },
+  { value: "serbia", label: "Serbia" },
+  { value: "turkiye", label: "Turkiye" },
+  { value: "ukraine", label: "Ukraine" },
+  { value: "united arab emirates", label: "United Arab Emirates" },
 ];
 
 const COUNTRY_OPTIONS_BY_SOURCE_AND_TO = {
   US_VISA: {
     "": [
       { value: "", label: "All Countries" },
+      { value: "algeria", label: "Algeria" },
       { value: "australia", label: "Australia" },
       { value: "austria", label: "Austria" },
+      { value: "bahrain", label: "Bahrain" },
+      { value: "bangladesh", label: "Bangladesh" },
       { value: "cambodia", label: "Cambodia" },
       { value: "china", label: "China" },
       { value: "czech republic", label: "Czech Republic" },
       { value: "denmark", label: "Denmark" },
+      { value: "egypt", label: "Egypt" },
       { value: "estonia", label: "Estonia" },
       { value: "fiji", label: "Fiji" },
       { value: "finland", label: "Finland" },
@@ -99,20 +511,31 @@ const COUNTRY_OPTIONS_BY_SOURCE_AND_TO = {
       { value: "hungary", label: "Hungary" },
       { value: "indonesia", label: "Indonesia" },
       { value: "japan", label: "Japan" },
+      { value: "jordan", label: "Jordan" },
       { value: "korea", label: "Korea" },
+      { value: "kuwait", label: "Kuwait" },
       { value: "laos", label: "Laos" },
       { value: "latvia", label: "Latvia" },
+      { value: "lebanon", label: "Lebanon" },
       { value: "malaysia", label: "Malaysia" },
       { value: "montenegro", label: "Montenegro" },
+      { value: "morocco", label: "Morocco" },
+      { value: "nepal", label: "Nepal" },
       { value: "new zealand", label: "New Zealand" },
       { value: "norway", label: "Norway" },
+      { value: "oman", label: "Oman" },
+      { value: "pakistan", label: "Pakistan" },
       { value: "philippines", label: "Philippines" },
+      { value: "qatar", label: "Qatar" },
+      { value: "saudi arabia", label: "Saudi Arabia" },
       { value: "singapore", label: "Singapore" },
       { value: "slovakia", label: "Slovakia" },
+      { value: "sri lanka", label: "Sri Lanka" },
       { value: "sweden", label: "Sweden" },
       { value: "switzerland", label: "Switzerland" },
       { value: "taiwan", label: "Taiwan" },
       { value: "thailand", label: "Thailand" },
+      { value: "tunisia", label: "Tunisia" },
       { value: "vietnam", label: "Vietnam" },
     ],
     TO4: [
@@ -156,6 +579,31 @@ const COUNTRY_OPTIONS_BY_SOURCE_AND_TO = {
       { value: "china", label: "China" },
       { value: "hong kong", label: "Hong Kong" },
     ],
+    TO18: [
+      { value: "", label: "All Countries (TO18)" },
+      { value: "algeria", label: "Algeria" },
+      { value: "bahrain", label: "Bahrain" },
+      { value: "egypt", label: "Egypt" },
+      { value: "jordan", label: "Jordan" },
+      { value: "kuwait", label: "Kuwait" },
+      { value: "lebanon", label: "Lebanon" },
+      { value: "morocco", label: "Morocco" },
+      { value: "oman", label: "Oman" },
+      { value: "qatar", label: "Qatar" },
+      { value: "saudi arabia", label: "Saudi Arabia" },
+      { value: "tunisia", label: "Tunisia" },
+    ],
+    TO22: [
+      { value: "", label: "All Countries (TO22)" },
+      { value: "bangladesh", label: "Bangladesh" },
+      { value: "nepal", label: "Nepal" },
+      { value: "pakistan", label: "Pakistan" },
+      { value: "sri lanka", label: "Sri Lanka" },
+    ],
+    OTHER: [
+      { value: "", label: "All Other Countries" },
+      ...OTHER_COUNTRY_OPTIONS,
+    ],
   },
   FUSECOM: {
     "": [
@@ -175,6 +623,7 @@ const COUNTRY_OPTIONS_BY_SOURCE_AND_TO = {
       { value: "slovakia", label: "Slovakia" },
       { value: "sweden", label: "Sweden" },
       { value: "switzerland", label: "Switzerland" },
+      ...OTHER_COUNTRY_OPTIONS,
     ],
     TO12: [
       { value: "", label: "All Countries (TO12)" },
@@ -196,6 +645,10 @@ const COUNTRY_OPTIONS_BY_SOURCE_AND_TO = {
       { value: "", label: "All Countries (TO16)" },
       { value: "china", label: "China" },
       { value: "hong kong", label: "Hong Kong" },
+    ],
+    OTHER: [
+      { value: "", label: "All Other Countries" },
+      ...OTHER_COUNTRY_OPTIONS,
     ],
   },
   HERODASH: {
@@ -235,6 +688,9 @@ const COUNTRY_OPTIONS_BY_SOURCE_AND_TO = {
       { value: "taiwan", label: "Taiwan" },
       { value: "thailand", label: "Thailand" },
       { value: "vietnam", label: "Vietnam" },
+    ],
+    OTHER: [
+      { value: "", label: "All Other Countries" },
     ],
   },
 };
@@ -384,11 +840,71 @@ function getTaskOrderLabel(sourceSystem, value) {
     .join(", ");
 }
 
-function getSkillOptions() {
-  return SKILL_OPTIONS.filter((opt) => opt.value !== "");
+function getSkillsForCountries(countryList = [], skillsMap = SKILLS_BY_COUNTRY) {
+  const normalizedSelected = countryList
+    .map((c) => String(c || "").trim().toLowerCase())
+    .filter(Boolean);
+
+  if (!normalizedSelected.length) return [];
+
+  const matchedSkills = [];
+  const mapToUse = skillsMap || SKILLS_BY_COUNTRY;
+  for (const [countryName, skills] of Object.entries(mapToUse)) {
+    if (normalizedSelected.includes(countryName.toLowerCase())) {
+      for (const s of skills) {
+        if (!matchedSkills.includes(s)) {
+          matchedSkills.push(s);
+        }
+      }
+    }
+  }
+
+  return matchedSkills;
 }
 
-function getSkillLabel(_sourceSystem, value) {
+function getSkillOptions(sourceSystem, selectedCountries, selectedTaskOrders, skillsMap = SKILLS_BY_COUNTRY) {
+  const genericOptions = GENERIC_SKILL_OPTIONS;
+
+  const countryList = Array.isArray(selectedCountries)
+    ? selectedCountries.filter((c) => c && c !== "__NONE__")
+    : selectedCountries
+    ? [selectedCountries]
+    : [];
+
+  if (countryList.length > 0) {
+    const countrySkills = getSkillsForCountries(countryList, skillsMap);
+    const specificOptions = countrySkills.map((s) => ({ value: s, label: s }));
+    return [...genericOptions, ...specificOptions];
+  }
+
+  const toList = Array.isArray(selectedTaskOrders)
+    ? selectedTaskOrders.filter((to) => to && to !== "__NONE__")
+    : selectedTaskOrders
+    ? [selectedTaskOrders]
+    : [];
+
+  if (toList.length > 0) {
+    const toCountries = getCountryOptions(sourceSystem, toList).map((c) => c.value);
+    const toSkills = getSkillsForCountries(toCountries, skillsMap);
+    const specificOptions = toSkills.map((s) => ({ value: s, label: s }));
+    return [...genericOptions, ...specificOptions];
+  }
+
+  const allCountrySkills = [];
+  const seen = new Set();
+  for (const skills of Object.values(skillsMap || SKILLS_BY_COUNTRY)) {
+    for (const s of skills) {
+      if (!seen.has(s)) {
+        seen.add(s);
+        allCountrySkills.push({ value: s, label: s });
+      }
+    }
+  }
+
+  return [...genericOptions, ...allCountrySkills];
+}
+
+function getSkillLabel(sourceSystem, value, selectedCountries, selectedTaskOrders, skillsMap = SKILLS_BY_COUNTRY) {
   if (!value || (Array.isArray(value) && !value.length)) return "All Skills";
   const list = Array.isArray(value)
     ? value.filter((v) => v && v !== "__NONE__")
@@ -398,11 +914,15 @@ function getSkillLabel(_sourceSystem, value) {
         .filter(Boolean);
   if (!list.length) return "All Skills";
 
+  const allOpts = getSkillOptions(sourceSystem, selectedCountries, selectedTaskOrders, skillsMap);
   return list
     .map(
       (val) =>
+        allOpts.find((o) => o.value.toLowerCase() === val.toLowerCase())
+          ?.label ||
         SKILL_OPTIONS.find((o) => o.value.toLowerCase() === val.toLowerCase())
-          ?.label || val,
+          ?.label ||
+        val,
     )
     .join(", ");
 }
@@ -557,6 +1077,41 @@ export default function ViewGraphsPage() {
   const [kpiResponse, setKpiResponse] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
+  const [skillsByCountryState, setSkillsByCountryState] = useState(SKILLS_BY_COUNTRY);
+  const [showFilters, setShowFilters] = useState(true);
+
+  useEffect(() => {
+    let isMounted = true;
+    getWfmCallSkills()
+      .then((res) => {
+        if (!isMounted || !res?.data) return;
+        const serverMap = res.data;
+        setSkillsByCountryState((prev) => {
+          const merged = { ...prev };
+          for (const [country, skills] of Object.entries(serverMap)) {
+            if (!merged[country]) {
+              merged[country] = skills;
+            } else {
+              const current = [...merged[country]];
+              for (const s of skills) {
+                const key = s.toLowerCase().replace(/[^a-z0-9]/g, "");
+                if (!current.some((c) => c.toLowerCase().replace(/[^a-z0-9]/g, "") === key)) {
+                  current.push(s);
+                }
+              }
+              merged[country] = current;
+            }
+          }
+          return merged;
+        });
+      })
+      .catch((err) => {
+        console.warn("Could not load dynamic source skills:", err?.message);
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const loadKpis = useCallback(async () => {
     if (!canViewGraphs) {
@@ -626,11 +1181,24 @@ export default function ViewGraphsPage() {
         ? current.country.filter((c) => validCountries.has(c))
         : [];
 
+      const newSkillOptions = getSkillOptions(
+        nextSource,
+        nextCountry,
+        nextTaskOrder,
+      );
+      const validSkills = new Set(
+        newSkillOptions.map((s) => s.value.toLowerCase()),
+      );
+      const nextSkill = Array.isArray(current.skill)
+        ? current.skill.filter((s) => validSkills.has(s.toLowerCase()))
+        : [];
+
       return {
         ...current,
         sourceSystem: newSources,
         taskOrder: nextTaskOrder,
         country: nextCountry,
+        skill: nextSkill,
         referenceDate: "",
         from: "",
         to: "",
@@ -654,10 +1222,53 @@ export default function ViewGraphsPage() {
         ? current.country.filter((c) => validCountryValues.has(c))
         : [];
 
+      const newSkillOptions = getSkillOptions(
+        current.sourceSystem,
+        nextCountry,
+        nextTaskOrders,
+        skillsByCountryState,
+      );
+      const validSkills = new Set(
+        newSkillOptions.map((s) => s.value.toLowerCase()),
+      );
+      const nextSkill = Array.isArray(current.skill)
+        ? current.skill.filter((s) => validSkills.has(s.toLowerCase()))
+        : [];
+
       return {
         ...current,
         taskOrder: newTaskOrders,
         country: nextCountry,
+        skill: nextSkill,
+        referenceDate: "",
+        from: "",
+        to: "",
+      };
+    });
+  };
+
+  const handleCountryChange = (newCountries) => {
+    setFilters((current) => {
+      const nextCountries = Array.isArray(newCountries)
+        ? newCountries
+        : [newCountries];
+      const newSkillOptions = getSkillOptions(
+        current.sourceSystem,
+        nextCountries,
+        current.taskOrder,
+        skillsByCountryState,
+      );
+      const validSkills = new Set(
+        newSkillOptions.map((s) => s.value.toLowerCase()),
+      );
+      const nextSkill = Array.isArray(current.skill)
+        ? current.skill.filter((s) => validSkills.has(s.toLowerCase()))
+        : [];
+
+      return {
+        ...current,
+        country: newCountries,
+        skill: nextSkill,
         referenceDate: "",
         from: "",
         to: "",
@@ -669,16 +1280,6 @@ export default function ViewGraphsPage() {
     setFilters((current) => ({
       ...current,
       skill: newSkills,
-      referenceDate: "",
-      from: "",
-      to: "",
-    }));
-  };
-
-  const handleCountryChange = (newCountries) => {
-    setFilters((current) => ({
-      ...current,
-      country: newCountries,
       referenceDate: "",
       from: "",
       to: "",
@@ -741,13 +1342,16 @@ export default function ViewGraphsPage() {
     filters.sourceSystem,
   );
 
-  const skillOptions = getSkillOptions(
-    filters.sourceSystem,
-  );
-
   const countryOptions = getCountryOptions(
     filters.sourceSystem,
     filters.taskOrder,
+  );
+
+  const skillOptions = getSkillOptions(
+    filters.sourceSystem,
+    filters.country,
+    filters.taskOrder,
+    skillsByCountryState,
   );
 
   const activeTaskOrder =
@@ -819,7 +1423,12 @@ export default function ViewGraphsPage() {
           ) : (
             <div className="space-y-2">
               <section className="sibs-card relative z-40 overflow-visible shadow-xs">
-                <div className="border-b border-sibs-tertiary-10 bg-sibs-primary-3/30 px-3.5 py-1.5">
+                <div
+                  onClick={() => setShowFilters((prev) => !prev)}
+                  className={`flex cursor-pointer select-none items-center justify-between bg-sibs-primary-3/30 px-3.5 py-1.5 transition-colors hover:bg-sibs-primary-3/50 ${
+                    showFilters ? "border-b border-sibs-tertiary-10" : ""
+                  }`}
+                >
                   <div className="flex items-center gap-2">
                     <BarChart3
                       size={16}
@@ -830,9 +1439,29 @@ export default function ViewGraphsPage() {
                       Calls KPI Performance
                     </h1>
                   </div>
+
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowFilters((prev) => !prev);
+                    }}
+                    className="inline-flex cursor-pointer items-center gap-1.5 rounded-md px-2 py-0.5 text-xs font-semibold text-sibs-primary-1 hover:bg-sibs-primary-1/10 transition-colors"
+                    title={showFilters ? "Hide filters and KPI cards to conserve space" : "Show filters and KPI cards"}
+                  >
+                    <Filter size={12} className="shrink-0" />
+                    <span>{showFilters ? "Hide Filters & KPIs" : "Show Filters & KPIs"}</span>
+                    <ChevronDown
+                      size={14}
+                      className={`shrink-0 transition-transform duration-200 ${
+                        showFilters ? "rotate-180" : ""
+                      }`}
+                    />
+                  </button>
                 </div>
 
-                <div className="grid grid-cols-1 gap-2 p-2.5 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 xl:items-end">
+                {showFilters && (
+                  <div className="grid grid-cols-1 gap-2 p-2.5 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 xl:items-end">
                   {/* 1. Account / Source */}
                   <MultiSelectDropdown
                     label="Account / Source"
@@ -853,17 +1482,7 @@ export default function ViewGraphsPage() {
                     allOptionLabel="All Task Orders"
                   />
 
-                  {/* 3. Skill */}
-                  <MultiSelectDropdown
-                    label="Skill"
-                    value={filters.skill}
-                    onChange={handleSkillChange}
-                    options={skillOptions}
-                    placeholder="All Skills"
-                    allOptionLabel="All Skills"
-                  />
-
-                  {/* 4. Country */}
+                  {/* 3. Country */}
                   <MultiSelectDropdown
                     label="Country"
                     value={filters.country}
@@ -871,6 +1490,16 @@ export default function ViewGraphsPage() {
                     options={countryOptions}
                     placeholder="All Countries"
                     allOptionLabel="All Countries"
+                  />
+
+                  {/* 4. Skill */}
+                  <MultiSelectDropdown
+                    label="Skill"
+                    value={filters.skill}
+                    onChange={handleSkillChange}
+                    options={skillOptions}
+                    placeholder="All Skills"
+                    allOptionLabel="All Skills"
                   />
 
                   {/* 5. Reporting Period */}
@@ -931,92 +1560,7 @@ export default function ViewGraphsPage() {
                     </>
                   )}
                 </div>
-
-                <div className="flex flex-wrap items-center gap-x-3.5 gap-y-1 border-t border-sibs-tertiary-10 px-3.5 py-1 text-[10px] font-semibold text-sibs-tertiary-5">
-                  <span className="inline-flex items-center gap-1">
-                    <Database size={11} />
-
-                    {formatGrain(
-                      dashboardData.filters?.dataGrain,
-                    )}
-                  </span>
-
-                  <span>
-                    Source:{" "}
-                    {dashboardData.filters?.sourceSystem ||
-                      "No source returned"}
-                  </span>
-
-                  <span>
-                    Task Order:{" "}
-                    {getTaskOrderLabel(
-                      activeSourceSystem,
-                      activeTaskOrder,
-                    )}
-                  </span>
-
-                  {filters.skill ? (
-                    <span>
-                      Skill:{" "}
-                      {getSkillLabel(
-                        activeSourceSystem,
-                        filters.skill,
-                      )}
-                    </span>
-                  ) : null}
-
-                  {filters.country ? (
-                    <span>
-                      Country:{" "}
-                      {getCountryLabel(
-                        activeSourceSystem,
-                        activeTaskOrder,
-                        filters.country,
-                      )}
-                    </span>
-                  ) : null}
-
-                  {dashboardData.filters?.period !==
-                  "custom" ? (
-                    <span>
-                      Reference date:{" "}
-                      {dashboardData.filters
-                        ?.referenceDate ||
-                        "Not available"}
-                    </span>
-                  ) : null}
-
-                  <span>
-                    Range:{" "}
-                    {dashboardData.filters?.dateFrom ||
-                      "Not available"}{" "}
-                    to{" "}
-                    {dashboardData.filters?.dateTo ||
-                      "Not available"}
-                  </span>
-
-                  {dashboardData.filters?.period !==
-                  "custom" ? (
-                    <span>
-                      Comparison: 6 periods
-                    </span>
-                  ) : (
-                    <span>
-                      Comparison: Custom range
-                    </span>
-                  )}
-
-                  <span>
-                    Available:{" "}
-                    {dashboardData.availableDateRange
-                      ?.minDate ||
-                      "Not available"}{" "}
-                    to{" "}
-                    {dashboardData.availableDateRange
-                      ?.maxDate ||
-                      "Not available"}
-                  </span>
-                </div>
+                )}
               </section>
 
               {error ? (
@@ -1078,6 +1622,7 @@ export default function ViewGraphsPage() {
 
                   <CallKpiDashboard
                     data={dashboardData || {}}
+                    showSummaryCards={showFilters}
                   />
                 </div>
               )}

@@ -144,6 +144,8 @@ export default function WfmImportedRepository() {
   const [selectedUploadDetails, setSelectedUploadDetails] = useState(null);
   const [selectedRawBatch, setSelectedRawBatch] = useState(null);
   const [uploadToRemove, setUploadToRemove] = useState(null);
+  const [isRemovingUpload, setIsRemovingUpload] = useState(false);
+  const [removingUploadFileName, setRemovingUploadFileName] = useState("");
   const [removedUpload, setRemovedUpload] = useState(null);
   const [isLoadingUsVisaErrors, setIsLoadingUsVisaErrors] = useState(false);
   const [usVisaErrorDetails, setUsVisaErrorDetails] = useState(null);
@@ -467,47 +469,55 @@ export default function WfmImportedRepository() {
     if (!uploadToRemove) return;
 
     const selectedUploadToRemove = uploadToRemove;
+    const targetFileName = selectedUploadToRemove.fileName || "data file";
+    setRemovingUploadFileName(targetFileName);
     setUploadToRemove(null);
+    setIsRemovingUpload(true);
 
     const batchIdentifier =
       selectedUploadToRemove.batchId || selectedUploadToRemove.batchCode;
 
-    if (batchIdentifier) {
-      try {
-        await deleteUsVisaImportBatch(batchIdentifier);
-        await new Promise((resolve) => setTimeout(resolve, 400));
-      } catch (error) {
-        console.warn(
-          "Backend batch removal issue:",
-          error?.response?.data || error?.message || error,
-        );
+    try {
+      if (batchIdentifier) {
+        try {
+          await deleteUsVisaImportBatch(batchIdentifier);
+          await new Promise((resolve) => setTimeout(resolve, 600));
+        } catch (error) {
+          console.warn(
+            "Backend batch removal issue:",
+            error?.response?.data || error?.message || error,
+          );
+        }
+      } else {
+        await new Promise((resolve) => setTimeout(resolve, 600));
       }
-    } else {
-      await new Promise((resolve) => setTimeout(resolve, 300));
+
+      removeWfmGraphReportsForUpload(selectedUploadToRemove.id);
+
+      setUploadsByCard((current) => ({
+        ...current,
+        [selectedUploadToRemove.cardId]: (
+          current[selectedUploadToRemove.cardId] || []
+        ).filter((u) => u.id !== selectedUploadToRemove.id),
+      }));
+
+      await fetchDatabaseUploads();
+      setSummaryRefreshVersion((current) => current + 1);
+
+      void recordWfmHistoryLogQuietly({
+        action: "removed",
+        account: selectedUploadToRemove.account || "US VISA",
+        rawDataTitle: selectedUploadToRemove.rawDataTitle || "Raw Data",
+        fileName: selectedUploadToRemove.fileName,
+        message: `Removed ${selectedUploadToRemove.fileName} from ${
+          selectedUploadToRemove.account || "US VISA"
+        } - ${selectedUploadToRemove.rawDataTitle || "Raw Data"} via Import Repository.`,
+      });
+    } finally {
+      setIsRemovingUpload(false);
+      setRemovingUploadFileName("");
+      setRemovedUpload(selectedUploadToRemove);
     }
-
-    removeWfmGraphReportsForUpload(selectedUploadToRemove.id);
-
-    setUploadsByCard((current) => ({
-      ...current,
-      [selectedUploadToRemove.cardId]: (
-        current[selectedUploadToRemove.cardId] || []
-      ).filter((u) => u.id !== selectedUploadToRemove.id),
-    }));
-
-    void fetchDatabaseUploads();
-    setSummaryRefreshVersion((current) => current + 1);
-    setRemovedUpload(selectedUploadToRemove);
-
-    void recordWfmHistoryLogQuietly({
-      action: "removed",
-      account: selectedUploadToRemove.account || "US VISA",
-      rawDataTitle: selectedUploadToRemove.rawDataTitle || "Raw Data",
-      fileName: selectedUploadToRemove.fileName,
-      message: `Removed ${selectedUploadToRemove.fileName} from ${
-        selectedUploadToRemove.account || "US VISA"
-      } - ${selectedUploadToRemove.rawDataTitle || "Raw Data"} via Import Repository.`,
-    });
   };
 
   return (
@@ -868,6 +878,13 @@ export default function WfmImportedRepository() {
         variant="danger"
         onConfirm={handleRemoveUpload}
         onCancel={() => setUploadToRemove(null)}
+      />
+
+      {/* Removing Upload Loading Modal */}
+      <LoadingModal
+        isOpen={isRemovingUpload}
+        title="Removing Data..."
+        message={`Deleting "${removingUploadFileName}" and cleaning associated database records...`}
       />
 
       {/* Successfully Removed Feedback Modal */}

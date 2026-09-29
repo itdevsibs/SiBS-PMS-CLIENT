@@ -23,6 +23,7 @@ import LoadingModal from "@/components/ui/loading-modal";
 import EditToolAlignmentModal from "@/components/ui/masterdata/EditToolAlignmentModal";
 import useDashboardPage from "@/hooks/useDashboardPage";
 import {
+  batchImportEmployeeToolAliases,
   fetchMasterDataAccounts,
   fetchMasterDataLedger,
   updateEmployeeToolAliases,
@@ -363,6 +364,137 @@ export default function EmployeeMasterDataPage() {
     }
   };
 
+  const fileInputRef = useRef(null);
+  const [isImportingTemplate, setIsImportingTemplate] = useState(false);
+  const [isExecutingImport, setIsExecutingImport]     = useState(false);
+  const [pendingImport, setPendingImport]             = useState(null);
+
+  const handleFileSelect = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setIsImportingTemplate(true);
+      setErrorMsg("");
+
+      const buffer = await file.arrayBuffer();
+      const XLSX = await import("xlsx");
+      const workbook = XLSX.read(buffer, { type: "array" });
+      const firstSheetName = workbook.SheetNames[0];
+
+      if (!firstSheetName) {
+        throw new Error("The uploaded file does not contain any sheets.");
+      }
+
+      const worksheet = workbook.Sheets[firstSheetName];
+      const rawRows = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
+
+      if (!rawRows || rawRows.length === 0) {
+        throw new Error("The uploaded sheet contains no data rows.");
+      }
+
+      const findKey = (row, patterns) => {
+        const keys = Object.keys(row);
+        for (const p of patterns) {
+          const found = keys.find((k) => p.test(k.trim()));
+          if (found) return found;
+        }
+        return null;
+      };
+
+      const sample = rawRows[0] || {};
+      const sibsIdKey   = findKey(sample, [/sibs\s*id/i, /employee\s*id/i, /^id$/i]);
+      const nameKey     = findKey(sample, [/kronos/i, /official.*name/i, /full\s*name/i, /employee\s*name/i, /^name$/i]);
+      const fusecomKey  = findKey(sample, [/fusecom/i]);
+      const fusenetKey  = findKey(sample, [/fusenet/i]);
+      const herodashKey = findKey(sample, [/herodash/i]);
+      const msdKey      = findKey(sample, [/ms-?d/i]);
+
+      if (!sibsIdKey && !nameKey) {
+        throw new Error(
+          "Could not identify employee columns in the template. Expected columns: 'SIBS ID' and/or 'OFFICIAL KRONOS NAME'."
+        );
+      }
+
+      if (!fusecomKey && !fusenetKey && !herodashKey && !msdKey) {
+        throw new Error(
+          "Could not identify any tool columns (e.g. FUSECOM NAME, FUSENET NAME, HERODASH NAME, MS-D NAME) in the template."
+        );
+      }
+
+      const itemsToUpdate = [];
+
+      for (const row of rawRows) {
+        const sibsId = sibsIdKey ? String(row[sibsIdKey] ?? "").trim() : "";
+        const fullName = nameKey ? String(row[nameKey] ?? "").trim() : "";
+
+        if (!sibsId && !fullName) continue;
+
+        // If the column exists in the file, pass its string value (empty string if cleared by user)
+        // If the column was omitted entirely, pass undefined so it's not touched
+        const fusecomName  = fusecomKey  ? String(row[fusecomKey] ?? "").trim() : undefined;
+        const fusenetName  = fusenetKey  ? String(row[fusenetKey] ?? "").trim() : undefined;
+        const herodashName = herodashKey ? String(row[herodashKey] ?? "").trim() : undefined;
+        const msdName      = msdKey      ? String(row[msdKey] ?? "").trim() : undefined;
+
+        itemsToUpdate.push({
+          sibsId,
+          fullName,
+          fusecomName,
+          fusenetName,
+          herodashName,
+          msdName,
+        });
+      }
+
+      if (itemsToUpdate.length === 0) {
+        throw new Error(
+          "No employee records were found in the uploaded file."
+        );
+      }
+
+      setPendingImport({
+        fileName: file.name,
+        items: itemsToUpdate,
+      });
+    } catch (err) {
+      console.error("Failed to parse import template:", err);
+      setErrorMsg(err.message || "Failed to parse the template file.");
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    } finally {
+      setIsImportingTemplate(false);
+    }
+  };
+
+  const handleConfirmImport = async () => {
+    if (!pendingImport?.items?.length) return;
+
+    try {
+      setIsExecutingImport(true);
+      setErrorMsg("");
+
+      const res = await batchImportEmployeeToolAliases(pendingImport.items);
+      if (res?.success) {
+        setSaveSuccessMsg(
+          res.message ||
+            `Successfully imported template and updated ${res.count || pendingImport.items.length} employee tool identities.`
+        );
+        setTimeout(() => setSaveSuccessMsg(""), 5000);
+        setPendingImport(null);
+        if (fileInputRef.current) fileInputRef.current.value = "";
+        // Re-fetch ledger so the table updates immediately
+        void loadLedgerData(searchTerm, selectedAccount, currentPage, pageSize, sortBy, sortOrder);
+      } else {
+        setErrorMsg(res?.message || "Failed to update tool identities.");
+      }
+    } catch (err) {
+      console.error("Import error:", err);
+      setErrorMsg(err?.response?.data?.message || err.message || "Unable to save tool alignment.");
+    } finally {
+      setIsExecutingImport(false);
+    }
+  };
+
   const isAdmin =
     dashboard.authUser?.role === "admin" ||
     Number(dashboard.authUser?.adminAccess ?? dashboard.authUser?.admin_access ?? 0) === 7 ||
@@ -546,13 +678,33 @@ export default function EmployeeMasterDataPage() {
 
             {/* Template Actions (Right) */}
             <div className="shrink-0 w-full sm:w-auto flex items-center gap-2 justify-end sm:justify-start lg:justify-end">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".xlsx,.xls,.csv"
+                className="hidden"
+                onChange={handleFileSelect}
+              />
+
               <button
                 type="button"
-                className="flex-1 sm:flex-none inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:border-slate-300 hover:text-slate-900 transition cursor-pointer shadow-2xs shrink-0"
-                title="Import template"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isImportingTemplate || isExecutingImport}
+                className="flex-1 sm:flex-none inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:border-slate-300 hover:text-slate-900 transition cursor-pointer shadow-2xs shrink-0 disabled:opacity-60 disabled:cursor-not-allowed"
+                title="Import template with updated tool identities"
               >
-                <Upload className="h-3.5 w-3.5 text-slate-500" />
-                <span>Import template</span>
+                {isImportingTemplate || isExecutingImport ? (
+                  <Loader2 className="h-3.5 w-3.5 text-slate-500 animate-spin" />
+                ) : (
+                  <Upload className="h-3.5 w-3.5 text-slate-500" />
+                )}
+                <span>
+                  {isImportingTemplate
+                    ? "Reading…"
+                    : isExecutingImport
+                    ? "Importing…"
+                    : "Import template"}
+                </span>
               </button>
 
               <button
@@ -602,17 +754,18 @@ export default function EmployeeMasterDataPage() {
               className="flex-1 min-h-0 overflow-x-auto overflow-y-auto sibs-scrollbar scroll-smooth"
               style={{ WebkitOverflowScrolling: "touch" }}
             >
-                <table className="w-full min-w-[1410px] table-fixed text-left text-xs border-collapse">
+                <table className="w-full min-w-[1665px] table-fixed text-left text-xs border-collapse">
                   <colgroup>
-                    <col style={{ width: "95px" }} />
+                    <col style={{ width: "115px" }} />
                     <col style={{ width: "240px" }} />
                     <col style={{ width: "190px" }} />
                     <col style={{ width: "190px" }} />
                     <col style={{ width: "190px" }} />
                     <col style={{ width: "190px" }} />
+                    <col style={{ width: "130px" }} />
+                    <col style={{ width: "170px" }} />
+                    <col style={{ width: "170px" }} />
                     <col style={{ width: "110px" }} />
-                    <col style={{ width: "110px" }} />
-                    <col style={{ width: "95px" }} />
                   </colgroup>
                   {/* ── Table head ──────────────────────────────────── */}
                   <thead className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50">
@@ -720,13 +873,16 @@ export default function EmployeeMasterDataPage() {
                         />
                       </th>
                       <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-600 whitespace-nowrap overflow-hidden">
-                        Account
+                        Task Order
                       </th>
                       <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-600 whitespace-nowrap overflow-hidden">
-                        Status
+                        US Visa Joined Date
                       </th>
-                      <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-600 whitespace-nowrap text-center overflow-hidden">
-                        Action
+                      <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-600 whitespace-nowrap overflow-hidden">
+                        Team Leader
+                      </th>
+                      <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-600 whitespace-nowrap overflow-hidden">
+                        Account
                       </th>
                     </tr>
                   </thead>
@@ -736,7 +892,7 @@ export default function EmployeeMasterDataPage() {
                     {/* Loading */}
                     {isLoading && (
                       <tr>
-                        <td colSpan={9} className="py-20 text-center">
+                        <td colSpan={10} className="py-20 text-center">
                           <Loader2 className="mx-auto mb-2 h-6 w-6 animate-spin text-[#0b3b68]" />
                           <p className="text-xs text-slate-400">Loading employee identities…</p>
                         </td>
@@ -746,7 +902,7 @@ export default function EmployeeMasterDataPage() {
                     {/* Prompt — no query yet */}
                     {!isLoading && !hasQuery && (
                       <tr>
-                        <td colSpan={9} className="py-20 text-center">
+                        <td colSpan={10} className="py-20 text-center">
                           <Search className="mx-auto mb-2.5 h-8 w-8 text-slate-200" />
                           <p className="text-xs font-medium text-slate-400">
                             Enter a name, SIBS ID, or tool alias to search the ledger.
@@ -758,7 +914,7 @@ export default function EmployeeMasterDataPage() {
                     {/* Empty results */}
                     {!isLoading && hasQuery && ledgerList.length === 0 && (
                       <tr>
-                        <td colSpan={9} className="py-20 text-center">
+                        <td colSpan={10} className="py-20 text-center">
                           <Users className="mx-auto mb-2.5 h-8 w-8 text-slate-200" />
                           <p className="text-xs font-medium text-slate-400">
                             {selectedAccount && selectedAccount.trim().toLowerCase() !== "us visa"
@@ -775,11 +931,21 @@ export default function EmployeeMasterDataPage() {
                         key={emp.sibsId}
                         className={`group transition-colors hover:bg-[#f0f7ff] ${idx % 2 === 0 ? "bg-white" : "bg-slate-50/40"}`}
                       >
-                        {/* SIBS ID */}
+                        {/* SIBS ID + Edit */}
                         <td className="px-4 py-3 whitespace-nowrap overflow-hidden">
-                          <span className="inline-flex items-center justify-center rounded-md border border-slate-200 bg-slate-100 px-2 py-0.5 font-mono text-[11px] font-bold text-slate-700 group-hover:border-slate-300">
-                            {emp.sibsId}
-                          </span>
+                          <div className="flex items-center gap-1.5">
+                            <span className="inline-flex items-center justify-center rounded-md border border-slate-200 bg-slate-100 px-2 py-0.5 font-mono text-[11px] font-bold text-slate-700 group-hover:border-slate-300">
+                              {emp.sibsId}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleOpenEditModal(emp)}
+                              className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded border border-slate-200 bg-white text-slate-400 shadow-2xs hover:border-[#0b3b68] hover:bg-[#0b3b68]/10 hover:text-[#0b3b68] transition cursor-pointer"
+                              title={`Edit tool alignment for ${emp.fullName}`}
+                            >
+                              <Pencil size={10} />
+                            </button>
+                          </div>
                         </td>
 
                         {/* Official name + email */}
@@ -832,29 +998,44 @@ export default function EmployeeMasterDataPage() {
                           />
                         </td>
 
+                        {/* Task Order */}
+                        <td className="px-4 py-3 whitespace-nowrap overflow-hidden min-w-0">
+                          {emp.taskOrder || emp.task_order_id ? (
+                            <span className="font-semibold text-slate-800">
+                              {emp.taskOrder || emp.task_order_id}
+                            </span>
+                          ) : (
+                            <span className="text-slate-300 select-none">—</span>
+                          )}
+                        </td>
+
+                        {/* US Visa Joined Date */}
+                        <td className="px-4 py-3 whitespace-nowrap overflow-hidden min-w-0">
+                          {emp.usVisaJoinedDate || emp.joinedDate ? (
+                            <span className="font-medium text-slate-700">
+                              {emp.usVisaJoinedDate || emp.joinedDate}
+                            </span>
+                          ) : (
+                            <span className="text-slate-300 select-none">—</span>
+                          )}
+                        </td>
+
+                        {/* Team Leader */}
+                        <td className="px-4 py-3 whitespace-nowrap overflow-hidden min-w-0">
+                          {emp.teamLeader ? (
+                            <span className="font-medium text-slate-800 truncate block" title={emp.teamLeader}>
+                              {emp.teamLeader}
+                            </span>
+                          ) : (
+                            <span className="text-slate-300 select-none">—</span>
+                          )}
+                        </td>
+
                         {/* Account */}
                         <td className="px-4 py-3 whitespace-nowrap overflow-hidden">
                           <span className="inline-flex items-center rounded-md border border-slate-200 bg-slate-100 px-2.5 py-0.5 text-[10.5px] font-semibold text-slate-700">
                             {emp.account || "Unassigned"}
                           </span>
-                        </td>
-
-                        {/* Status */}
-                        <td className="px-4 py-3 whitespace-nowrap overflow-hidden">
-                          <StatusBadge status={emp.status} />
-                        </td>
-
-                        {/* Action */}
-                        <td className="px-4 py-3 whitespace-nowrap text-center overflow-hidden">
-                          <button
-                            type="button"
-                            onClick={() => handleOpenEditModal(emp)}
-                            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-bold text-[#0b3b68] shadow-2xs hover:border-[#0b3b68] hover:bg-[#0b3b68]/5 transition cursor-pointer"
-                            title={`Edit tool alignment for ${emp.fullName}`}
-                          >
-                            <Pencil size={11} className="text-[#0b3b68]" />
-                            <span>Edit</span>
-                          </button>
                         </td>
                       </tr>
                     ))}
@@ -920,6 +1101,26 @@ export default function EmployeeMasterDataPage() {
       />
 
       {/* Modals */}
+      <ConfirmationModal
+        isOpen={Boolean(pendingImport)}
+        title="Import Employee Tool Template"
+        message={`Ready to import "${pendingImport?.fileName}". Found ${pendingImport?.items?.length} employee record(s) with tool identities to update. Do you want to proceed?`}
+        confirmText="Confirm & Update"
+        cancelText="Cancel"
+        onConfirm={handleConfirmImport}
+        onCancel={() => {
+          if (isExecutingImport) return;
+          setPendingImport(null);
+          if (fileInputRef.current) fileInputRef.current.value = "";
+        }}
+      />
+
+      <LoadingModal
+        isOpen={isExecutingImport}
+        title="Importing Template"
+        message="Saving updated tool alignments to the database and refreshing table…"
+      />
+
       <ConfirmationModal
         isOpen={dashboard.showLogoutModal}
         title="Sign Out"

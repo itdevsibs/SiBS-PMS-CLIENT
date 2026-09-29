@@ -379,7 +379,7 @@ function WorkforceManagementPage() {
                     </div>
                     <div>
                       <h3 className="m-0 text-sm font-bold text-sibs-primary-1 group-hover:text-sibs-primary-2 transition-colors">
-                        View Graphs
+                        Wow Report
                       </h3>
                       <p className="m-0 text-xs font-semibold text-slate-400">
                         View call performance and KPI charts
@@ -409,7 +409,7 @@ function WorkforceManagementPage() {
               </div>
 
               <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3 text-xs font-bold text-sibs-primary-1 group-hover:text-sibs-primary-2 transition-colors">
-                <span>Go to View Graphs</span>
+                <span>Go to Wow Report</span>
                 <span className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-100 text-slate-600 group-hover:bg-sibs-primary-2 group-hover:text-white transition-all">
                   <ArrowRight size={12} />
                 </span>
