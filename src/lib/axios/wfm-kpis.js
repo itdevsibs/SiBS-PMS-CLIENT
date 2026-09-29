@@ -5,3 +5,8 @@ export async function getWfmCallKpis(params = {}) {
   const response = await api.get("/wfm/kpis/calls", { params });
   return response;
 }
+
+export async function getWfmCallSkills() {
+  const response = await api.get("/wfm/kpis/skills");
+  return response?.data || response;
+}

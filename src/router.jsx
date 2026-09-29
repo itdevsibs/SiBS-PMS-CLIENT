@@ -33,7 +33,7 @@ const Router = () => {
       <Route path="/dashboard" element={<AgentsPage />} />
       <Route path="/dashboard/agent" element={<AgentsPage />} />
       <Route path="/dashboard/agents" element={<AgentsPage />} />
-      <Route path="/dashboard/wfm" element={<WorkforceManagementPage />} />
+      <Route path="/dashboard/wfm" element={<Navigate to="/dashboard/wfm/view-graphs" replace />} />
       <Route
         path="/dashboard/wfm/import-data"
         element={<WfmImportDataPage />}

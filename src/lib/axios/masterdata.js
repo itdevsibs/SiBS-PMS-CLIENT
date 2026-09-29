@@ -1,5 +1,5 @@
 // API helper for Master Data & Employee Identity Ledger
-import { apiGet, apiPut } from "./api";
+import { apiGet, apiPost, apiPut } from "./api";
 
 export async function fetchMasterDataAccounts() {
   return apiGet("/masterdata/accounts");
@@ -46,5 +46,9 @@ export async function fetchMasterDataLedger({
 
 export async function updateEmployeeToolAliases(sibsId, payload) {
   return apiPut(`/masterdata/ledger/${encodeURIComponent(sibsId)}`, payload);
+}
+
+export async function batchImportEmployeeToolAliases(items) {
+  return apiPost("/masterdata/ledger/batch-import", { items });
 }
 
