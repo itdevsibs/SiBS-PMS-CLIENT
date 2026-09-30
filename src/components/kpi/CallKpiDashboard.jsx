@@ -220,8 +220,7 @@ function VolumeChart({ series }) {
                                   isInsideBar
                                     ? "text-white drop-shadow-xs"
                                     : "text-sibs-primary-1"
-                                    : "text-sibs-primary-1"
-                                }`}
+                                }`} 
                                 style={{
                                   bottom: labelBottom,
                                   animationDelay: `${Math.min(periodIndex * 80 + barIndex * 40, 650)}ms`,
@@ -448,7 +447,6 @@ function LineChart({ series, target = 90 }) {
                                 heightPercent > 10
                                   ? "text-white drop-shadow-xs"
                                   : "text-sibs-primary-1"
-                                  : "text-sibs-primary-1"
                               }`}
                               style={{
                                 bottom:
@@ -663,7 +661,6 @@ function AhtChart({ series, target }) {
                       className={`pointer-events-none absolute left-1/2 z-10 -translate-x-1/2 whitespace-nowrap text-[9px] sm:text-[10px] 2xl:text-[11px] font-medium tracking-tight transition-all duration-200 group-hover/aht:-translate-y-0.5 sibs-graph-number-in ${
                         heightPct > 10
                           ? "text-white drop-shadow-xs"
-                          : "text-sibs-primary-1"
                           : "text-sibs-primary-1"
                       }`}
                       style={{
