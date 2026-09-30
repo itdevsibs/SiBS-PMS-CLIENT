@@ -63,3 +63,109 @@ export function buildVolumeBarItems(item = {}) {
     { metric: "Handled w/SLA", value: Number(item.handledWithinSla || 0), className: "bg-[#4c9aca]" },
   ];
 }
+
+export async function downloadKpiGraphsAsPdf(targetElementOrId = "kpi-graphs-container") {
+  const element =
+    typeof targetElementOrId === "string"
+      ? document.getElementById(targetElementOrId)
+      : targetElementOrId;
+
+  if (!element) {
+    console.warn("PDF Export: Target graphs element not found.");
+    return false;
+  }
+
+  const html2canvasModule = await import("html2canvas-pro");
+  const html2canvas = html2canvasModule.default || html2canvasModule.html2canvas;
+  const { jsPDF } = await import("jspdf");
+
+  // Short delay to allow transitions to settle
+  await new Promise((resolve) => setTimeout(resolve, 150));
+
+  const canvas = await html2canvas(element, {
+    scale: 2,
+    useCORS: true,
+    logging: false,
+    backgroundColor: "#f8fbfd",
+    onclone: (clonedDoc) => {
+      const clonedCharts = clonedDoc.querySelector("[data-pdf-charts]");
+      if (clonedCharts) {
+        clonedCharts.style.width = "1350px";
+        clonedCharts.style.display = "grid";
+        clonedCharts.style.gridTemplateColumns = "1.3fr 1.1fr 0.95fr";
+        clonedCharts.style.gap = "14px";
+      }
+    },
+  });
+
+  const imgData = canvas.toDataURL("image/png");
+  const pdf = new jsPDF({
+    orientation: "landscape",
+    unit: "mm",
+    format: "a4",
+  });
+
+  const pdfWidth = pdf.internal.pageSize.getWidth();
+  const pdfHeight = pdf.internal.pageSize.getHeight();
+
+  // Report Header
+  pdf.setFont("helvetica", "bold");
+  pdf.setFontSize(13);
+  pdf.setTextColor(4, 44, 81);
+  pdf.text("CALLS KPI PERFORMANCE GRAPHS", 12, 14);
+
+  pdf.setFont("helvetica", "normal");
+  pdf.setFontSize(8.5);
+  pdf.setTextColor(100, 116, 139);
+  const now = new Date();
+  const timestamp =
+    now.toLocaleDateString("en-US", {
+      weekday: "short",
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    }) +
+    ` at ${now.toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+    })}`;
+  pdf.text(
+    `Exported on ${timestamp} • Performance Management System`,
+    12,
+    19,
+  );
+
+  // Fit chart image centered on landscape page
+  const marginX = 12;
+  const startY = 23;
+  const availableWidth = pdfWidth - marginX * 2;
+  const availableHeight = pdfHeight - startY - 10;
+
+  const imgRatio = canvas.width / canvas.height;
+  let finalWidth = availableWidth;
+  let finalHeight = finalWidth / imgRatio;
+
+  if (finalHeight > availableHeight) {
+    finalHeight = availableHeight;
+    finalWidth = finalHeight * imgRatio;
+  }
+
+  const finalX = marginX + (availableWidth - finalWidth) / 2;
+  const finalY = startY + (availableHeight - finalHeight) / 2;
+
+  pdf.addImage(
+    imgData,
+    "PNG",
+    finalX,
+    finalY,
+    finalWidth,
+    finalHeight,
+    undefined,
+    "FAST",
+  );
+
+  const fileDate = now.toISOString().slice(0, 10);
+  pdf.save(`Calls-KPI-Graphs-${fileDate}.pdf`);
+  return true;
+}
+

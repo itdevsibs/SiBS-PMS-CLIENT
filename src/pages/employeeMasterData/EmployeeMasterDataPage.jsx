@@ -18,18 +18,20 @@ import {
 
 import AdminSidebar from "@/components/layout/AdminSidebar";
 import AppHeader from "@/components/layout/AppHeader";
+import AppModal from "@/components/ui/app-modal";
 import ConfirmationModal from "@/components/ui/confirmation-modal";
 import LoadingModal from "@/components/ui/loading-modal";
-import EditToolAlignmentModal from "@/components/ui/masterdata/EditToolAlignmentModal";
+import EditEmployeeLedgerModal from "@/components/ui/masterdata/EditEmployeeLedgerModal";
 import useDashboardPage from "@/hooks/useDashboardPage";
 import {
-  batchImportEmployeeToolAliases,
   fetchMasterDataAccounts,
   fetchMasterDataLedger,
+  importUsVisaEmployeeLedger,
   updateEmployeeToolAliases,
 } from "@/lib/axios/masterdata";
 
 /* ─── Status badge ──────────────────────────────────────────────── */
+// eslint-disable-next-line no-unused-vars
 function StatusBadge({ status }) {
   const map = {
     UNIFIED: "bg-emerald-50 text-emerald-700 border-emerald-200",
@@ -47,6 +49,7 @@ function StatusBadge({ status }) {
 }
 
 /* ─── Tool name cell ─────────────────────────────────────────────── */
+// eslint-disable-next-line no-unused-vars
 function ToolCell({ name, type }) {
   if (!name) return <span className="text-slate-300 select-none">—</span>;
   const isExact = type === "EXACT";
@@ -68,6 +71,25 @@ function ToolCell({ name, type }) {
       )}
     </div>
   );
+}
+
+/* ─── Tenurity Calculator (Join Date to Today in Days) ───────────── */
+function calculateTenurityDays(joinDate, departureDate) {
+  if (!joinDate) return "";
+  const str = String(joinDate).trim();
+  if (!str || str === "0000-00-00" || str === "—") return "";
+  const start = new Date(str);
+  if (isNaN(start.getTime()) || start.getFullYear() < 1990) return "";
+
+  const endStr = departureDate ? String(departureDate).trim() : "";
+  const end = endStr && endStr !== "—" ? new Date(endStr) : new Date();
+  if (isNaN(end.getTime())) return "";
+
+  const utcStart = Date.UTC(start.getFullYear(), start.getMonth(), start.getDate());
+  const utcEnd = Date.UTC(end.getFullYear(), end.getMonth(), end.getDate());
+
+  const diffDays = Math.floor((utcEnd - utcStart) / (1000 * 60 * 60 * 24));
+  return diffDays >= 0 ? String(diffDays) : "";
 }
 
 /* ─── Main Page ──────────────────────────────────────────────────── */
@@ -159,8 +181,6 @@ export default function EmployeeMasterDataPage() {
     setCurrentPage(1);
   };
 
-  useEffect(() => { setCurrentPage(1); }, [searchTerm, selectedAccount]);
-
   useEffect(() => {
     const t = setTimeout(() => {
       void loadLedgerData(searchTerm, selectedAccount, currentPage, pageSize, sortBy, sortOrder);
@@ -240,6 +260,7 @@ export default function EmployeeMasterDataPage() {
   const [editingEmployee, setEditingEmployee] = useState(null);
   const [isSavingEdit, setIsSavingEdit]       = useState(false);
   const [saveSuccessMsg, setSaveSuccessMsg]   = useState("");
+  const [savedEmployeeSuccess, setSavedEmployeeSuccess] = useState(null);
 
   const handleOpenEditModal = (emp) => {
     setEditingEmployee(emp);
@@ -250,23 +271,38 @@ export default function EmployeeMasterDataPage() {
     setEditingEmployee(null);
   };
 
-  const handleSaveToolAlignment = async (updatedAliases) => {
+  const handleSaveEmployeeRecord = async (formData) => {
     if (!editingEmployee?.sibsId) return;
     try {
       setIsSavingEdit(true);
       setErrorMsg("");
-      const res = await updateEmployeeToolAliases(editingEmployee.sibsId, updatedAliases);
+      const res = await updateEmployeeToolAliases(editingEmployee.sibsId, formData);
       if (res?.success) {
-        setSaveSuccessMsg(`Successfully updated tool alignment for ${editingEmployee.fullName}.`);
-        setTimeout(() => setSaveSuccessMsg(""), 4000);
+        const empName = formData.agentName || editingEmployee.agentName || editingEmployee.kronosName || editingEmployee.sibsId;
+        const empSibsId = editingEmployee.sibsId;
+
+        // Close edit modal and open success modal
         setEditingEmployee(null);
+        setSavedEmployeeSuccess({
+          name: empName,
+          sibsId: empSibsId,
+        });
+
+        // Optimistically update current view and reload data in background
+        setLedgerList((prev) =>
+          prev.map((emp) =>
+            emp.sibsId === editingEmployee.sibsId
+              ? { ...emp, ...formData }
+              : emp
+          )
+        );
         void loadLedgerData(searchTerm, selectedAccount, currentPage, pageSize, sortBy, sortOrder);
       } else {
-        setErrorMsg(res?.message || "Failed to update tool alignment.");
+        setErrorMsg(res?.message || "Failed to update employee record.");
       }
     } catch (err) {
       console.error("Save error:", err);
-      setErrorMsg(err?.response?.data?.message || "Unable to save tool alignment.");
+      setErrorMsg(err?.response?.data?.message || "Unable to save employee record changes.");
     } finally {
       setIsSavingEdit(false);
     }
@@ -282,7 +318,6 @@ export default function EmployeeMasterDataPage() {
 
       let exportRecords = ledgerList;
 
-      // If there are more records than currently loaded in the page, fetch all matching records
       if (totalCount > ledgerList.length) {
         const res = await fetchMasterDataLedger({
           search: searchTerm.trim(),
@@ -299,44 +334,79 @@ export default function EmployeeMasterDataPage() {
       }
 
       const rows = exportRecords.map((emp) => ({
-        "SIBS ID": emp.sibsId || "",
-        "OFFICIAL KRONOS NAME": emp.fullName || "",
-        "FUSECOM NAME": emp.toolMappings?.fusecom?.name || "",
-        "FUSENET NAME": emp.toolMappings?.fusenet?.name || "",
-        "HERODASH NAME": emp.toolMappings?.herodash?.name || "",
-        "MS-D NAME":
-          emp.toolMappings?.msd?.name ||
-          emp.toolMappings?.["ms-d"]?.name ||
-          emp.toolMappings?.ms_d?.name ||
-          "",
-        "ACCOUNT": emp.account || selectedAccount || "US Visa",
+        "SIBS ID #": emp.sibsId || "",
+        "Kronos Name": emp.kronosName || "",
+        "Call Novo email add": emp.callNovoEmail || "",
+        "Agent Name": emp.agentName || "",
+        "FuseCom  Name": emp.fusecomName || "",
+        "FuseNet  Name": emp.fusenetName || "",
+        "HeroDash Name": emp.herodashName || "",
+        "MSD Name": emp.msdName || "",
+        "Site": emp.site || "",
+        "Status": emp.status || "",
+        "Phase": emp.phase || "",
+        "Task Order": emp.taskOrder || "",
+        "Task Order Discription": emp.taskOrderDescription || "",
+        "US Visa Join Date": emp.usVisaJoinDate || "",
+        "US Visa Departure Date": emp.usVisaDepartureDate || "",
+        "Team Leader": emp.teamLeader || "",
+        "Manager": emp.manager || "",
+        "Senior Manager": emp.seniorManager || "",
+        "Tenurity": calculateTenurityDays(emp.usVisaJoinDate, emp.usVisaDepartureDate, emp.tenurity),
+        "Modality (Voice, Chat, Email)": emp.modality || "",
       }));
 
       const XLSX = await import("xlsx");
       const worksheet = XLSX.utils.json_to_sheet(rows, {
         header: [
-          "SIBS ID",
-          "OFFICIAL KRONOS NAME",
-          "FUSECOM NAME",
-          "FUSENET NAME",
-          "HERODASH NAME",
-          "MS-D NAME",
-          "ACCOUNT",
+          "SIBS ID #",
+          "Kronos Name",
+          "Call Novo email add",
+          "Agent Name",
+          "FuseCom  Name",
+          "FuseNet  Name",
+          "HeroDash Name",
+          "MSD Name",
+          "Site",
+          "Status",
+          "Phase",
+          "Task Order",
+          "Task Order Discription",
+          "US Visa Join Date",
+          "US Visa Departure Date",
+          "Team Leader",
+          "Manager",
+          "Senior Manager",
+          "Tenurity",
+          "Modality (Voice, Chat, Email)",
         ],
       });
 
       worksheet["!cols"] = [
-        { wch: 12 },
-        { wch: 32 },
+        { wch: 14 },
+        { wch: 26 },
         { wch: 28 },
-        { wch: 28 },
-        { wch: 28 },
-        { wch: 28 },
+        { wch: 24 },
+        { wch: 22 },
+        { wch: 22 },
+        { wch: 22 },
+        { wch: 22 },
         { wch: 16 },
+        { wch: 16 },
+        { wch: 16 },
+        { wch: 18 },
+        { wch: 30 },
+        { wch: 20 },
+        { wch: 22 },
+        { wch: 24 },
+        { wch: 24 },
+        { wch: 24 },
+        { wch: 16 },
+        { wch: 28 },
       ];
 
       const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, "Sheet1");
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Employee Ledger");
 
       const excelBuffer = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
       const blob = new Blob([excelBuffer], {
@@ -345,20 +415,14 @@ export default function EmployeeMasterDataPage() {
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = "SIBS_PMS_Employee_Roster_Template.xlsx";
+      link.download = "US_Visa_Employee_Ledger_Template.xlsx";
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
     } catch (err) {
       console.error("Failed to generate populated template download:", err);
-      // Fallback: direct download of the static template if dynamic generation encounters an issue
-      const fallbackLink = document.createElement("a");
-      fallbackLink.href = "/template/SIBS_PMS_Employee_Roster_Template.xlsx";
-      fallbackLink.download = "SIBS_PMS_Employee_Roster_Template.xlsx";
-      document.body.appendChild(fallbackLink);
-      fallbackLink.click();
-      document.body.removeChild(fallbackLink);
+      setErrorMsg("Failed to generate Excel download template.");
     } finally {
       setIsDownloadingTemplate(false);
     }
@@ -377,84 +441,198 @@ export default function EmployeeMasterDataPage() {
       setIsImportingTemplate(true);
       setErrorMsg("");
 
+      // Validate file extension
+      if (!file.name.match(/\.(xlsx|xls)$/i)) {
+        throw new Error("Invalid file format. Please upload an Excel spreadsheet (.xlsx or .xls).");
+      }
+
       const buffer = await file.arrayBuffer();
       const XLSX = await import("xlsx");
       const workbook = XLSX.read(buffer, { type: "array" });
-      const firstSheetName = workbook.SheetNames[0];
 
-      if (!firstSheetName) {
-        throw new Error("The uploaded file does not contain any sheets.");
+      if (!workbook.SheetNames || workbook.SheetNames.length === 0) {
+        throw new Error("The uploaded Excel file does not contain any sheets.");
       }
 
-      const worksheet = workbook.Sheets[firstSheetName];
-      const rawRows = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
+      // Define all 20 columns and patterns for matching
+      const EXPECTED_HEADERS = [
+        { key: "sibsId", label: "SIBS ID #", patterns: [/sibs\s*id/i, /^id$/i] },
+        { key: "kronosName", label: "Kronos Name", patterns: [/kronos/i] },
+        { key: "callNovoEmail", label: "Call Novo email add", patterns: [/call\s*novo/i, /novo.*email/i, /^email\s*add/i, /^email$/i] },
+        { key: "agentName", label: "Agent Name", patterns: [/agent\s*name/i, /^name$/i, /full\s*name/i, /employee\s*name/i] },
+        { key: "fusecomName", label: "FuseCom  Name", patterns: [/fuse\s*com/i, /^fuse\s*name$/i] },
+        { key: "fusenetName", label: "FuseNet  Name", patterns: [/fuse\s*net/i] },
+        { key: "herodashName", label: "HeroDash Name", patterns: [/hero\s*dash/i] },
+        { key: "msdName", label: "MSD Name", patterns: [/ms-?d/i] },
+        { key: "site", label: "Site", patterns: [/^site/i] },
+        { key: "status", label: "Status", patterns: [/^status/i] },
+        { key: "phase", label: "Phase", patterns: [/^phase/i] },
+        { key: "taskOrder", label: "Task Order", patterns: [/^task\s*order$/i, /skill.*task.*order/i] },
+        { key: "taskOrderDescription", label: "Task Order Discription", patterns: [/task\s*order\s*desc/i, /to\s*desc/i] },
+        { key: "usVisaDepartureDate", label: "US Visa Departure Date", patterns: [/departure.*date/i, /departure/i] },
+        { key: "usVisaJoinDate", label: "US Visa Join Date", patterns: [/join.*date/i, /join/i] },
+        { key: "teamLeader", label: "Team Leader", patterns: [/team\s*leader/i, /^tl$/i] },
+        { key: "manager", label: "Manager", patterns: [/^manager/i, /^om$/i, /operations\s*manager/i] },
+        { key: "seniorManager", label: "Senior Manager", patterns: [/senior\s*manager/i, /^som$/i] },
+        { key: "tenurity", label: "Tenurity", patterns: [/tenur/i, /tenurity/i] },
+        { key: "modality", label: "Modality (Voice, Chat, Email)", patterns: [/modal/i, /channel/i] },
+      ];
 
-      if (!rawRows || rawRows.length === 0) {
-        throw new Error("The uploaded sheet contains no data rows.");
-      }
+      // Smart sheet and header row scanner:
+      // In large master workbooks, the roster sheet might be sheet 5 or 11, or header row might not be row 0.
+      let bestSheetName = null;
+      let bestScore = -1;
+      let bestRowIndex = -1;
+      let bestMapping = {};
 
-      const findKey = (row, patterns) => {
-        const keys = Object.keys(row);
-        for (const p of patterns) {
-          const found = keys.find((k) => p.test(k.trim()));
-          if (found) return found;
+      for (const sName of workbook.SheetNames) {
+        const ws = workbook.Sheets[sName];
+        if (!ws || !ws["!ref"]) continue;
+        const sheetRows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" });
+
+        for (let r = 0; r < Math.min(15, sheetRows.length); r++) {
+          const row = sheetRows[r];
+          if (!Array.isArray(row) || row.length === 0) continue;
+
+          const mapping = {};
+          let score = 0;
+
+          for (const col of EXPECTED_HEADERS) {
+            for (let colIdx = 0; colIdx < row.length; colIdx++) {
+              const cellVal = String(row[colIdx] || "").trim();
+              if (!cellVal) continue;
+              if (col.patterns.some((p) => p.test(cellVal))) {
+                mapping[col.key] = colIdx;
+                score++;
+                break;
+              }
+            }
+          }
+
+          // Check if separate Voice / Chat / Email columns exist if modality column wasn't explicitly found
+          if (mapping.modality === undefined) {
+            const vCol = row.findIndex((c) => /^voice$/i.test(String(c || "").trim()));
+            const cCol = row.findIndex((c) => /^chat$/i.test(String(c || "").trim()));
+            const eCol = row.findIndex((c) => /^email$/i.test(String(c || "").trim()));
+            if (vCol !== -1 || cCol !== -1 || eCol !== -1) {
+              mapping._voiceCol = vCol;
+              mapping._chatCol = cCol;
+              mapping._emailCol = eCol;
+              score++;
+            }
+          }
+
+          if (score > bestScore) {
+            bestScore = score;
+            bestSheetName = sName;
+            bestRowIndex = r;
+            bestMapping = mapping;
+          }
         }
-        return null;
+      }
+
+      if (!bestSheetName || bestScore < 3 || bestMapping.sibsId === undefined) {
+        throw new Error(
+          "Invalid template. Could not locate employee ledger headers (SIBS ID #, Agent Name, etc.) in any sheet of this Excel file. Please ensure you are uploading a valid Employee Ledger template or Master Roster."
+        );
+      }
+
+      const activeWorksheet = workbook.Sheets[bestSheetName];
+      const allRows = XLSX.utils.sheet_to_json(activeWorksheet, { header: 1, defval: "" });
+      const headerRow = allRows[bestRowIndex] || [];
+
+      const voiceCol = bestMapping._voiceCol ?? headerRow.findIndex((c) => /^voice$/i.test(String(c || "").trim()));
+      const chatCol = bestMapping._chatCol ?? headerRow.findIndex((c) => /^chat$/i.test(String(c || "").trim()));
+      const emailCol = bestMapping._emailCol ?? headerRow.findIndex((c) => /^email$/i.test(String(c || "").trim()));
+
+      const formatExcelDate = (val) => {
+        if (val === null || val === undefined || val === "") return "";
+        if (typeof val === "number") {
+          const d = new Date(Math.round((val - 25569) * 86400 * 1000));
+          if (!isNaN(d.getTime())) return d.toISOString().split("T")[0];
+        }
+        const str = String(val).trim();
+        if (!str) return "";
+        if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
+        const mdy = str.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);
+        if (mdy) {
+          const [, m, d, y] = mdy;
+          return `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
+        }
+        const parsed = new Date(str);
+        if (!isNaN(parsed.getTime())) return parsed.toISOString().split("T")[0];
+        return str;
       };
 
-      const sample = rawRows[0] || {};
-      const sibsIdKey   = findKey(sample, [/sibs\s*id/i, /employee\s*id/i, /^id$/i]);
-      const nameKey     = findKey(sample, [/kronos/i, /official.*name/i, /full\s*name/i, /employee\s*name/i, /^name$/i]);
-      const fusecomKey  = findKey(sample, [/fusecom/i]);
-      const fusenetKey  = findKey(sample, [/fusenet/i]);
-      const herodashKey = findKey(sample, [/herodash/i]);
-      const msdKey      = findKey(sample, [/ms-?d/i]);
-
-      if (!sibsIdKey && !nameKey) {
-        throw new Error(
-          "Could not identify employee columns in the template. Expected columns: 'SIBS ID' and/or 'OFFICIAL KRONOS NAME'."
-        );
-      }
-
-      if (!fusecomKey && !fusenetKey && !herodashKey && !msdKey) {
-        throw new Error(
-          "Could not identify any tool columns (e.g. FUSECOM NAME, FUSENET NAME, HERODASH NAME, MS-D NAME) in the template."
-        );
-      }
+      const getColVal = (row, key) => {
+        const idx = bestMapping[key];
+        if (idx === undefined || idx === null || idx < 0) return "";
+        const val = String(row[idx] ?? "").trim();
+        if (val.includes("#REF!") || val.includes("#N/A") || val.includes("#VALUE!") || val.includes("#NAME?")) {
+          return "";
+        }
+        return val;
+      };
 
       const itemsToUpdate = [];
 
-      for (const row of rawRows) {
-        const sibsId = sibsIdKey ? String(row[sibsIdKey] ?? "").trim() : "";
-        const fullName = nameKey ? String(row[nameKey] ?? "").trim() : "";
+      for (let r = bestRowIndex + 1; r < allRows.length; r++) {
+        const row = allRows[r];
+        if (!row || !Array.isArray(row)) continue;
 
-        if (!sibsId && !fullName) continue;
+        const sibsId = getColVal(row, "sibsId");
+        const kronosName = getColVal(row, "kronosName");
+        const agentName = getColVal(row, "agentName");
 
-        // If the column exists in the file, pass its string value (empty string if cleared by user)
-        // If the column was omitted entirely, pass undefined so it's not touched
-        const fusecomName  = fusecomKey  ? String(row[fusecomKey] ?? "").trim() : undefined;
-        const fusenetName  = fusenetKey  ? String(row[fusenetKey] ?? "").trim() : undefined;
-        const herodashName = herodashKey ? String(row[herodashKey] ?? "").trim() : undefined;
-        const msdName      = msdKey      ? String(row[msdKey] ?? "").trim() : undefined;
+        // Skip non-data or summary rows without identifiers
+        if (!sibsId && !kronosName && !agentName) continue;
+
+        let modalityVal = getColVal(row, "modality");
+        if (!modalityVal && (voiceCol !== -1 || chatCol !== -1 || emailCol !== -1)) {
+          const channels = [];
+          if (voiceCol !== -1 && (row[voiceCol] === true || /^(true|yes|1|voice)$/i.test(String(row[voiceCol] || "").trim()))) {
+            channels.push("Voice");
+          }
+          if (chatCol !== -1 && (row[chatCol] === true || /^(true|yes|1|chat)$/i.test(String(row[chatCol] || "").trim()))) {
+            channels.push("Chat");
+          }
+          if (emailCol !== -1 && (row[emailCol] === true || /^(true|yes|1|email)$/i.test(String(row[emailCol] || "").trim()))) {
+            channels.push("Email");
+          }
+          if (channels.length > 0) modalityVal = channels.join(", ");
+        }
 
         itemsToUpdate.push({
           sibsId,
-          fullName,
-          fusecomName,
-          fusenetName,
-          herodashName,
-          msdName,
+          kronosName,
+          callNovoEmail: getColVal(row, "callNovoEmail"),
+          agentName,
+          fusecomName: getColVal(row, "fusecomName"),
+          fusenetName: getColVal(row, "fusenetName"),
+          herodashName: getColVal(row, "herodashName"),
+          msdName: getColVal(row, "msdName"),
+          site: getColVal(row, "site"),
+          status: getColVal(row, "status"),
+          phase: getColVal(row, "phase"),
+          taskOrder: getColVal(row, "taskOrder"),
+          taskOrderDescription: getColVal(row, "taskOrderDescription"),
+          usVisaDepartureDate: formatExcelDate(row[bestMapping.usVisaDepartureDate]),
+          usVisaJoinDate: formatExcelDate(row[bestMapping.usVisaJoinDate]),
+          teamLeader: getColVal(row, "teamLeader"),
+          manager: getColVal(row, "manager"),
+          seniorManager: getColVal(row, "seniorManager"),
+          tenurity: getColVal(row, "tenurity"),
+          modality: modalityVal,
         });
       }
 
       if (itemsToUpdate.length === 0) {
-        throw new Error(
-          "No employee records were found in the uploaded file."
-        );
+        throw new Error("No valid employee rows found in the uploaded file.");
       }
 
       setPendingImport({
         fileName: file.name,
+        sheetName: bestSheetName,
         items: itemsToUpdate,
       });
     } catch (err) {
@@ -473,11 +651,11 @@ export default function EmployeeMasterDataPage() {
       setIsExecutingImport(true);
       setErrorMsg("");
 
-      const res = await batchImportEmployeeToolAliases(pendingImport.items);
+      const res = await importUsVisaEmployeeLedger(pendingImport.items);
       if (res?.success) {
         setSaveSuccessMsg(
           res.message ||
-            `Successfully imported template and updated ${res.count || pendingImport.items.length} employee tool identities.`
+            `Successfully imported and saved ${res.count || pendingImport.items.length} employee records to us_visa_employee_ledger.`
         );
         setTimeout(() => setSaveSuccessMsg(""), 5000);
         setPendingImport(null);
@@ -485,11 +663,11 @@ export default function EmployeeMasterDataPage() {
         // Re-fetch ledger so the table updates immediately
         void loadLedgerData(searchTerm, selectedAccount, currentPage, pageSize, sortBy, sortOrder);
       } else {
-        setErrorMsg(res?.message || "Failed to update tool identities.");
+        setErrorMsg(res?.message || "Failed to save employee records.");
       }
     } catch (err) {
       console.error("Import error:", err);
-      setErrorMsg(err?.response?.data?.message || err.message || "Unable to save tool alignment.");
+      setErrorMsg(err?.response?.data?.message || err.message || "Unable to save employee records.");
     } finally {
       setIsExecutingImport(false);
     }
@@ -500,7 +678,6 @@ export default function EmployeeMasterDataPage() {
     Number(dashboard.authUser?.adminAccess ?? dashboard.authUser?.admin_access ?? 0) === 7 ||
     ["admin", "bod", "som"].includes(dashboard.authUser?.role);
 
-  const hasQuery = true;
 
   /* ─── RENDER ───────────────────────────────────────────────────── */
   return (
@@ -662,13 +839,19 @@ export default function EmployeeMasterDataPage() {
                 type="text"
                 placeholder="Search by SIBS ID, employee name, or tool alias…"
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  setCurrentPage(1);
+                }}
                 className="h-9 w-full rounded-lg border border-slate-200 bg-slate-50 pl-9 pr-8 text-xs text-slate-800 placeholder:text-slate-400 focus:border-[#0b3b68] focus:bg-white focus:ring-2 focus:ring-[#0b3b68]/10 focus:outline-none transition"
               />
               {searchTerm && (
                 <button
                   type="button"
-                  onClick={() => setSearchTerm("")}
+                  onClick={() => {
+                    setSearchTerm("");
+                    setCurrentPage(1);
+                  }}
                   className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
                 >
                   <X className="h-3 w-3" />
@@ -754,35 +937,56 @@ export default function EmployeeMasterDataPage() {
               className="flex-1 min-h-0 overflow-x-auto overflow-y-auto sibs-scrollbar scroll-smooth"
               style={{ WebkitOverflowScrolling: "touch" }}
             >
-                <table className="w-full min-w-[1665px] table-fixed text-left text-xs border-collapse">
+                <table className="w-full min-w-[3590px] table-fixed text-left text-xs border-collapse">
                   <colgroup>
-                    <col style={{ width: "115px" }} />
-                    <col style={{ width: "240px" }} />
-                    <col style={{ width: "190px" }} />
-                    <col style={{ width: "190px" }} />
-                    <col style={{ width: "190px" }} />
-                    <col style={{ width: "190px" }} />
+                    <col style={{ width: "145px" }} />
+                    <col style={{ width: "200px" }} />
+                    <col style={{ width: "220px" }} />
+                    <col style={{ width: "200px" }} />
+                    <col style={{ width: "180px" }} />
+                    <col style={{ width: "180px" }} />
+                    <col style={{ width: "180px" }} />
+                    <col style={{ width: "180px" }} />
                     <col style={{ width: "130px" }} />
-                    <col style={{ width: "170px" }} />
-                    <col style={{ width: "170px" }} />
-                    <col style={{ width: "110px" }} />
+                    <col style={{ width: "130px" }} />
+                    <col style={{ width: "130px" }} />
+                    <col style={{ width: "150px" }} />
+                    <col style={{ width: "240px" }} />
+                    <col style={{ width: "180px" }} />
+                    <col style={{ width: "190px" }} />
+                    <col style={{ width: "190px" }} />
+                    <col style={{ width: "190px" }} />
+                    <col style={{ width: "190px" }} />
+                    <col style={{ width: "140px" }} />
+                    <col style={{ width: "230px" }} />
                   </colgroup>
                   {/* ── Table head ──────────────────────────────────── */}
-                  <thead className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50">
+                  <thead className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50 shadow-xs">
                     <tr>
+                      {/* 1. SIBS ID # */}
                       <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-600 whitespace-nowrap overflow-hidden">
-                        SIBS ID
+                        SIBS ID #
                       </th>
+
+                      {/* 2. Kronos Name */}
                       <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-600 whitespace-nowrap overflow-hidden">
-                        Official Kronos Name
+                        Kronos Name
                       </th>
+
+                      {/* 3. Call Novo email add */}
+                      <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-600 whitespace-nowrap overflow-hidden">
+                        Call Novo email add
+                      </th>
+
+                      {/* 4. Agent Name */}
+                      <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-600 whitespace-nowrap overflow-hidden">
+                        Agent Name
+                      </th>
+
+                      {/* 5. FuseCom  Name */}
                       <th
                         onClick={() => handleToggleToolSort("fusecom")}
-                        title={
-                          sortBy === "fusecom"
-                            ? "Filter ON: Showing employees with Fusecom aliases (click to turn OFF)"
-                            : "Filter OFF: Click to show employees with Fusecom aliases"
-                        }
+                        title="Click to toggle filter for FuseCom aliases"
                         className={`group/th px-4 py-3 text-xs font-bold uppercase tracking-wider select-none cursor-pointer transition whitespace-nowrap overflow-hidden ${
                           sortBy === "fusecom"
                             ? "bg-orange-100/80 text-orange-950"
@@ -790,7 +994,7 @@ export default function EmployeeMasterDataPage() {
                         }`}
                       >
                         <span className="inline-block h-2 w-2 rounded-full bg-orange-500 mr-1.5 align-middle" />
-                        <span>Fusecom Name</span>
+                        <span>FuseCom  Name</span>
                         <ArrowUpDown
                           className={`inline-block ml-1.5 h-3 w-3 align-middle transition-opacity ${
                             sortBy === "fusecom"
@@ -800,13 +1004,11 @@ export default function EmployeeMasterDataPage() {
                           aria-hidden="true"
                         />
                       </th>
+
+                      {/* 6. FuseNet  Name */}
                       <th
                         onClick={() => handleToggleToolSort("fusenet")}
-                        title={
-                          sortBy === "fusenet"
-                            ? "Filter ON: Showing employees with FuseNet aliases (click to turn OFF)"
-                            : "Filter OFF: Click to show employees with FuseNet aliases"
-                        }
+                        title="Click to toggle filter for FuseNet aliases"
                         className={`group/th px-4 py-3 text-xs font-bold uppercase tracking-wider select-none cursor-pointer transition whitespace-nowrap overflow-hidden ${
                           sortBy === "fusenet"
                             ? "bg-blue-100/80 text-blue-950"
@@ -814,7 +1016,7 @@ export default function EmployeeMasterDataPage() {
                         }`}
                       >
                         <span className="inline-block h-2 w-2 rounded-full bg-blue-500 mr-1.5 align-middle" />
-                        <span>FuseNet Name</span>
+                        <span>FuseNet  Name</span>
                         <ArrowUpDown
                           className={`inline-block ml-1.5 h-3 w-3 align-middle transition-opacity ${
                             sortBy === "fusenet"
@@ -824,13 +1026,11 @@ export default function EmployeeMasterDataPage() {
                           aria-hidden="true"
                         />
                       </th>
+
+                      {/* 7. HeroDash Name */}
                       <th
                         onClick={() => handleToggleToolSort("herodash")}
-                        title={
-                          sortBy === "herodash"
-                            ? "Filter ON: Showing employees with HeroDash aliases (click to turn OFF)"
-                            : "Filter OFF: Click to show employees with HeroDash aliases"
-                        }
+                        title="Click to toggle filter for HeroDash aliases"
                         className={`group/th px-4 py-3 text-xs font-bold uppercase tracking-wider select-none cursor-pointer transition whitespace-nowrap overflow-hidden ${
                           sortBy === "herodash"
                             ? "bg-amber-100/80 text-amber-950"
@@ -848,13 +1048,11 @@ export default function EmployeeMasterDataPage() {
                           aria-hidden="true"
                         />
                       </th>
+
+                      {/* 8. MSD Name */}
                       <th
                         onClick={() => handleToggleToolSort("ms-d")}
-                        title={
-                          sortBy === "ms-d" || sortBy === "msd"
-                            ? "Filter ON: Showing employees with MS-D aliases (click to turn OFF)"
-                            : "Filter OFF: Click to show employees with MS-D aliases"
-                        }
+                        title="Click to toggle filter for MSD aliases"
                         className={`group/th px-4 py-3 text-xs font-bold uppercase tracking-wider select-none cursor-pointer transition whitespace-nowrap overflow-hidden ${
                           sortBy === "ms-d" || sortBy === "msd"
                             ? "bg-purple-100/80 text-purple-950"
@@ -862,7 +1060,7 @@ export default function EmployeeMasterDataPage() {
                         }`}
                       >
                         <span className="inline-block h-2 w-2 rounded-full bg-purple-500 mr-1.5 align-middle" />
-                        <span>MS-D Name</span>
+                        <span>MSD Name</span>
                         <ArrowUpDown
                           className={`inline-block ml-1.5 h-3 w-3 align-middle transition-opacity ${
                             sortBy === "ms-d" || sortBy === "msd"
@@ -872,173 +1070,237 @@ export default function EmployeeMasterDataPage() {
                           aria-hidden="true"
                         />
                       </th>
+
+                      {/* 9. Site */}
+                      <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-600 whitespace-nowrap overflow-hidden">
+                        Site
+                      </th>
+
+                      {/* 10. Status */}
+                      <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-600 whitespace-nowrap overflow-hidden">
+                        Status
+                      </th>
+
+                      {/* 11. Phase */}
+                      <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-600 whitespace-nowrap overflow-hidden">
+                        Phase
+                      </th>
+
+                      {/* 12. Task Order */}
                       <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-600 whitespace-nowrap overflow-hidden">
                         Task Order
                       </th>
+
+                      {/* 13. Task Order Discription */}
                       <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-600 whitespace-nowrap overflow-hidden">
-                        US Visa Joined Date
+                        Task Order Discription
                       </th>
+
+                      {/* 14. US Visa Join Date */}
+                      <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-600 whitespace-nowrap overflow-hidden">
+                        US Visa Join Date
+                      </th>
+
+                      {/* 15. US Visa Departure Date */}
+                      <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-600 whitespace-nowrap overflow-hidden">
+                        US Visa Departure Date
+                      </th>
+
+                      {/* 16. Team Leader */}
                       <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-600 whitespace-nowrap overflow-hidden">
                         Team Leader
                       </th>
+
+                      {/* 17. Manager */}
                       <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-600 whitespace-nowrap overflow-hidden">
-                        Account
+                        Manager
+                      </th>
+
+                      {/* 18. Senior Manager */}
+                      <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-600 whitespace-nowrap overflow-hidden">
+                        Senior Manager
+                      </th>
+
+                      {/* 19. Tenurity */}
+                      <th className="px-4 py-3 text-xs font-bold text-slate-600 whitespace-nowrap overflow-hidden">
+                        <div className="inline-flex items-baseline gap-1">
+                          <span className="uppercase tracking-wider">TENURITY</span>
+                          <span className="text-[10px] font-semibold lowercase tracking-normal text-slate-400">days</span>
+                        </div>
+                      </th>
+
+                      {/* 20. Modality (Voice, Chat, Email) */}
+                      <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-600 whitespace-nowrap overflow-hidden">
+                        Modality (Voice, Chat, Email)
                       </th>
                     </tr>
                   </thead>
 
                   {/* ── Table body ──────────────────────────────────── */}
                   <tbody className="divide-y divide-slate-100">
-                    {/* Loading */}
-                    {isLoading && (
+                    {isLoading ? (
                       <tr>
-                        <td colSpan={10} className="py-20 text-center">
-                          <Loader2 className="mx-auto mb-2 h-6 w-6 animate-spin text-[#0b3b68]" />
-                          <p className="text-xs text-slate-400">Loading employee identities…</p>
-                        </td>
-                      </tr>
-                    )}
-
-                    {/* Prompt — no query yet */}
-                    {!isLoading && !hasQuery && (
-                      <tr>
-                        <td colSpan={10} className="py-20 text-center">
-                          <Search className="mx-auto mb-2.5 h-8 w-8 text-slate-200" />
-                          <p className="text-xs font-medium text-slate-400">
-                            Enter a name, SIBS ID, or tool alias to search the ledger.
+                        <td colSpan={20} className="py-24 text-center">
+                          <Loader2 className="mx-auto mb-2.5 h-8 w-8 animate-spin text-slate-400" />
+                          <p className="text-xs font-medium text-slate-500">
+                            Loading employee records…
                           </p>
                         </td>
                       </tr>
-                    )}
-
-                    {/* Empty results */}
-                    {!isLoading && hasQuery && ledgerList.length === 0 && (
+                    ) : ledgerList.length === 0 ? (
                       <tr>
-                        <td colSpan={10} className="py-20 text-center">
+                        <td colSpan={20} className="py-24 text-center">
                           <Users className="mx-auto mb-2.5 h-8 w-8 text-slate-200" />
-                          <p className="text-xs font-medium text-slate-400">
-                            {selectedAccount && selectedAccount.trim().toLowerCase() !== "us visa"
-                              ? <>No records for <strong className="text-slate-600">{selectedAccount}</strong>. Identity alignment is active for <strong className="text-slate-600">US Visa</strong> only.</>
-                              : "No matching employees found."}
+                          <p className="text-xs font-semibold text-slate-600 mb-1">
+                            No employee records found
+                          </p>
+                          <p className="text-xs text-slate-400">
+                            Upload an Excel template to populate the US Visa employee ledger.
                           </p>
                         </td>
                       </tr>
+                    ) : (
+                      ledgerList.map((emp, idx) => (
+                        <tr
+                          key={emp.id || emp.sibsId || idx}
+                          className="hover:bg-slate-50/70 transition-colors"
+                        >
+                          {/* 1. SIBS ID # */}
+                          <td className="px-3.5 py-3 font-semibold text-slate-900 truncate">
+                            <div className="flex items-center justify-between gap-1.5 min-w-0">
+                              <span className="font-mono text-xs font-bold text-slate-900 truncate">
+                                {emp.sibsId || <span className="text-slate-300 font-normal select-none">—</span>}
+                              </span>
+                              {emp.sibsId && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenEditModal(emp)}
+                                  className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-400 shadow-2xs hover:border-[#0b3b68] hover:bg-[#0b3b68]/10 hover:text-[#0b3b68] transition cursor-pointer"
+                                  title={`Edit details for ${emp.agentName || emp.kronosName || emp.sibsId}`}
+                                >
+                                  <Pencil size={11} />
+                                </button>
+                              )}
+                            </div>
+                          </td>
+
+                          {/* 2. Kronos Name */}
+                          <td className="px-4 py-3 text-slate-800 truncate" title={emp.kronosName}>
+                            {emp.kronosName || <span className="text-slate-300 select-none">—</span>}
+                          </td>
+
+                          {/* 3. Call Novo email add */}
+                          <td className="px-4 py-3 text-slate-700 truncate" title={emp.callNovoEmail}>
+                            {emp.callNovoEmail || <span className="text-slate-300 select-none">—</span>}
+                          </td>
+
+                          {/* 4. Agent Name */}
+                          <td className="px-4 py-3 font-medium text-slate-900 truncate" title={emp.agentName}>
+                            {emp.agentName || <span className="text-slate-300 select-none">—</span>}
+                          </td>
+
+                          {/* 5. FuseCom  Name */}
+                          <td className="px-4 py-3 text-slate-700 truncate" title={emp.fusecomName}>
+                            {emp.fusecomName || <span className="text-slate-300 select-none">—</span>}
+                          </td>
+
+                          {/* 6. FuseNet  Name */}
+                          <td className="px-4 py-3 text-slate-700 truncate" title={emp.fusenetName}>
+                            {emp.fusenetName || <span className="text-slate-300 select-none">—</span>}
+                          </td>
+
+                          {/* 7. HeroDash Name */}
+                          <td className="px-4 py-3 text-slate-700 truncate" title={emp.herodashName}>
+                            {emp.herodashName || <span className="text-slate-300 select-none">—</span>}
+                          </td>
+
+                          {/* 8. MSD Name */}
+                          <td className="px-4 py-3 text-slate-700 truncate" title={emp.msdName}>
+                            {emp.msdName || <span className="text-slate-300 select-none">—</span>}
+                          </td>
+
+                          {/* 9. Site */}
+                          <td className="px-4 py-3 text-slate-700 truncate" title={emp.site}>
+                            {emp.site || <span className="text-slate-300 select-none">—</span>}
+                          </td>
+
+                          {/* 10. Status */}
+                          <td className="px-4 py-3 text-slate-700 truncate">
+                            {emp.status ? (
+                              <span
+                                className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${
+                                  String(emp.status).toLowerCase().includes("active")
+                                    ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                    : "bg-slate-100 text-slate-600 border-slate-200"
+                                }`}
+                              >
+                                {emp.status}
+                              </span>
+                            ) : (
+                              <span className="text-slate-300 select-none">—</span>
+                            )}
+                          </td>
+
+                          {/* 11. Phase */}
+                          <td className="px-4 py-3 text-slate-700 truncate" title={emp.phase}>
+                            {emp.phase || <span className="text-slate-300 select-none">—</span>}
+                          </td>
+
+                          {/* 12. Task Order */}
+                          <td className="px-4 py-3 text-slate-700 truncate" title={emp.taskOrder}>
+                            {emp.taskOrder && !String(emp.taskOrder).includes("#REF!") ? (
+                              emp.taskOrder
+                            ) : (
+                              <span className="text-slate-300 select-none">—</span>
+                            )}
+                          </td>
+
+                          {/* 13. Task Order Discription */}
+                          <td className="px-4 py-3 text-slate-700 truncate" title={emp.taskOrderDescription}>
+                            {emp.taskOrderDescription && !String(emp.taskOrderDescription).includes("#REF!") ? (
+                              emp.taskOrderDescription
+                            ) : (
+                              <span className="text-slate-300 select-none">—</span>
+                            )}
+                          </td>
+
+                          {/* 14. US Visa Join Date */}
+                          <td className="px-4 py-3 text-slate-700 truncate" title={emp.usVisaJoinDate}>
+                            {emp.usVisaJoinDate || <span className="text-slate-300 select-none">—</span>}
+                          </td>
+
+                          {/* 15. US Visa Departure Date */}
+                          <td className="px-4 py-3 text-slate-700 truncate" title={emp.usVisaDepartureDate}>
+                            {emp.usVisaDepartureDate || <span className="text-slate-300 select-none">—</span>}
+                          </td>
+
+                          {/* 16. Team Leader */}
+                          <td className="px-4 py-3 text-slate-700 truncate" title={emp.teamLeader}>
+                            {emp.teamLeader || <span className="text-slate-300 select-none">—</span>}
+                          </td>
+
+                          {/* 17. Manager */}
+                          <td className="px-4 py-3 text-slate-700 truncate" title={emp.manager}>
+                            {emp.manager || <span className="text-slate-300 select-none">—</span>}
+                          </td>
+
+                          {/* 18. Senior Manager */}
+                          <td className="px-4 py-3 text-slate-700 truncate" title={emp.seniorManager}>
+                            {emp.seniorManager || <span className="text-slate-300 select-none">—</span>}
+                          </td>
+
+                          {/* 19. Tenurity */}
+                          <td className="px-4 py-3 text-slate-700 truncate" title={calculateTenurityDays(emp.usVisaJoinDate, emp.usVisaDepartureDate, emp.tenurity)}>
+                            {calculateTenurityDays(emp.usVisaJoinDate, emp.usVisaDepartureDate, emp.tenurity) || <span className="text-slate-300 select-none">—</span>}
+                          </td>
+
+                          {/* 20. Modality (Voice, Chat, Email) */}
+                          <td className="px-4 py-3 text-slate-700 truncate" title={emp.modality}>
+                            {emp.modality || <span className="text-slate-300 select-none">—</span>}
+                          </td>
+                        </tr>
+                      ))
                     )}
-
-                    {/* Data rows */}
-                    {!isLoading && ledgerList.map((emp, idx) => (
-                      <tr
-                        key={emp.sibsId}
-                        className={`group transition-colors hover:bg-[#f0f7ff] ${idx % 2 === 0 ? "bg-white" : "bg-slate-50/40"}`}
-                      >
-                        {/* SIBS ID + Edit */}
-                        <td className="px-4 py-3 whitespace-nowrap overflow-hidden">
-                          <div className="flex items-center gap-1.5">
-                            <span className="inline-flex items-center justify-center rounded-md border border-slate-200 bg-slate-100 px-2 py-0.5 font-mono text-[11px] font-bold text-slate-700 group-hover:border-slate-300">
-                              {emp.sibsId}
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => handleOpenEditModal(emp)}
-                              className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded border border-slate-200 bg-white text-slate-400 shadow-2xs hover:border-[#0b3b68] hover:bg-[#0b3b68]/10 hover:text-[#0b3b68] transition cursor-pointer"
-                              title={`Edit tool alignment for ${emp.fullName}`}
-                            >
-                              <Pencil size={10} />
-                            </button>
-                          </div>
-                        </td>
-
-                        {/* Official name + email */}
-                        <td className="px-4 py-3 whitespace-nowrap overflow-hidden min-w-0">
-                          <div className="font-semibold text-slate-900 leading-tight truncate" title={emp.fullName}>
-                            {emp.fullName}
-                          </div>
-                          <div className="text-[10px] text-slate-400 mt-0.5 truncate" title={emp.email}>
-                            {emp.email || "No email"}
-                          </div>
-                        </td>
-
-                        {/* Fusecom */}
-                        <td className="px-4 py-3 whitespace-nowrap overflow-hidden min-w-0">
-                          <ToolCell
-                            name={emp.toolMappings?.fusecom?.name}
-                            type={emp.toolMappings?.fusecom?.type}
-                          />
-                        </td>
-
-                        {/* FuseNet */}
-                        <td className="px-4 py-3 whitespace-nowrap overflow-hidden min-w-0">
-                          <ToolCell
-                            name={emp.toolMappings?.fusenet?.name}
-                            type={emp.toolMappings?.fusenet?.type}
-                          />
-                        </td>
-
-                        {/* HeroDash */}
-                        <td className="px-4 py-3 whitespace-nowrap overflow-hidden min-w-0">
-                          <ToolCell
-                            name={emp.toolMappings?.herodash?.name}
-                            type={emp.toolMappings?.herodash?.type}
-                          />
-                        </td>
-
-                        {/* MS-D */}
-                        <td className="px-4 py-3 whitespace-nowrap overflow-hidden min-w-0">
-                          <ToolCell
-                            name={
-                              emp.toolMappings?.msd?.name ||
-                              emp.toolMappings?.["ms-d"]?.name ||
-                              emp.toolMappings?.ms_d?.name
-                            }
-                            type={
-                              emp.toolMappings?.msd?.type ||
-                              emp.toolMappings?.["ms-d"]?.type ||
-                              emp.toolMappings?.ms_d?.type
-                            }
-                          />
-                        </td>
-
-                        {/* Task Order */}
-                        <td className="px-4 py-3 whitespace-nowrap overflow-hidden min-w-0">
-                          {emp.taskOrder || emp.task_order_id ? (
-                            <span className="font-semibold text-slate-800">
-                              {emp.taskOrder || emp.task_order_id}
-                            </span>
-                          ) : (
-                            <span className="text-slate-300 select-none">—</span>
-                          )}
-                        </td>
-
-                        {/* US Visa Joined Date */}
-                        <td className="px-4 py-3 whitespace-nowrap overflow-hidden min-w-0">
-                          {emp.usVisaJoinedDate || emp.joinedDate ? (
-                            <span className="font-medium text-slate-700">
-                              {emp.usVisaJoinedDate || emp.joinedDate}
-                            </span>
-                          ) : (
-                            <span className="text-slate-300 select-none">—</span>
-                          )}
-                        </td>
-
-                        {/* Team Leader */}
-                        <td className="px-4 py-3 whitespace-nowrap overflow-hidden min-w-0">
-                          {emp.teamLeader ? (
-                            <span className="font-medium text-slate-800 truncate block" title={emp.teamLeader}>
-                              {emp.teamLeader}
-                            </span>
-                          ) : (
-                            <span className="text-slate-300 select-none">—</span>
-                          )}
-                        </td>
-
-                        {/* Account */}
-                        <td className="px-4 py-3 whitespace-nowrap overflow-hidden">
-                          <span className="inline-flex items-center rounded-md border border-slate-200 bg-slate-100 px-2.5 py-0.5 text-[10.5px] font-semibold text-slate-700">
-                            {emp.account || "Unassigned"}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
                   </tbody>
                 </table>
               </div>
@@ -1091,21 +1353,54 @@ export default function EmployeeMasterDataPage() {
         </main>
       </div>
 
-      {/* Edit Tool Alignment Modal */}
-      <EditToolAlignmentModal
+      {/* Edit Employee Ledger Modal */}
+      <EditEmployeeLedgerModal
         isOpen={Boolean(editingEmployee)}
         employee={editingEmployee}
         onClose={handleCloseEditModal}
-        onSave={handleSaveToolAlignment}
+        onSave={handleSaveEmployeeRecord}
         isSaving={isSavingEdit}
       />
+
+      {/* Record Saved Success Modal */}
+      <AppModal
+        isOpen={Boolean(savedEmployeeSuccess)}
+        className="max-w-md p-6 text-center rounded-2xl shadow-2xl border border-slate-200"
+        textAlign="center"
+        zIndex="z-[140]"
+      >
+        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 shadow-xs mb-3.5">
+          <CheckCircle2 className="h-8 w-8 text-emerald-600" aria-hidden="true" />
+        </div>
+        <h3 className="m-0 text-lg font-extrabold text-slate-900 leading-snug">
+          Saved Successfully!
+        </h3>
+        <p className="mt-2 mb-0 text-xs sm:text-sm text-slate-600 leading-relaxed">
+          Employee details for{" "}
+          <span className="font-extrabold text-slate-900">
+            {savedEmployeeSuccess?.name}
+          </span>{" "}
+          (<span className="font-mono text-xs font-bold text-[#0b3b68] bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200">
+            {savedEmployeeSuccess?.sibsId}
+          </span>) have been updated and saved to the database.
+        </p>
+        <div className="mt-6 flex justify-center">
+          <button
+            type="button"
+            onClick={() => setSavedEmployeeSuccess(null)}
+            className="inline-flex h-9.5 w-full items-center justify-center rounded-xl bg-[#0b3b68] px-6 text-xs font-bold text-white shadow-xs hover:bg-[#082b4d] transition cursor-pointer"
+          >
+            Done
+          </button>
+        </div>
+      </AppModal>
 
       {/* Modals */}
       <ConfirmationModal
         isOpen={Boolean(pendingImport)}
-        title="Import Employee Tool Template"
-        message={`Ready to import "${pendingImport?.fileName}". Found ${pendingImport?.items?.length} employee record(s) with tool identities to update. Do you want to proceed?`}
-        confirmText="Confirm & Update"
+        title="Import US Visa Employee Ledger"
+        message={`Ready to import "${pendingImport?.fileName}"${pendingImport?.sheetName ? ` (Sheet: "${pendingImport.sheetName}")` : ""}. Found ${pendingImport?.items?.length} employee record(s). These will be saved into the "us_visa_employee_ledger" table under pms_db. Do you want to proceed?`}
+        confirmText="Confirm & Save"
         cancelText="Cancel"
         onConfirm={handleConfirmImport}
         onCancel={() => {
@@ -1117,8 +1412,8 @@ export default function EmployeeMasterDataPage() {
 
       <LoadingModal
         isOpen={isExecutingImport}
-        title="Importing Template"
-        message="Saving updated tool alignments to the database and refreshing table…"
+        title="Importing Employee Ledger"
+        message="Saving records to us_visa_employee_ledger in pms_db and refreshing table…"
       />
 
       <ConfirmationModal

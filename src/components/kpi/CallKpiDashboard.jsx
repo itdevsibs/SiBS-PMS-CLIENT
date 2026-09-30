@@ -71,9 +71,9 @@ function KpiCard({ icon: Icon, label, value, hint, status, title }) {
 
 function ChartShell({ title, subtitle, children }) {
   return (
-    <article className="sibs-card relative z-10 flex flex-col h-full shadow-xs overflow-visible">
+    <article className="sibs-card relative z-10 flex flex-col h-full shadow-xs min-w-0">
       <div className="border-b border-sibs-tertiary-10 bg-sibs-primary-3/30 px-4 py-2.5 rounded-t-xl">
-        <h3 className="m-0 text-xs font-extrabold uppercase tracking-[0.14em] text-sibs-primary-1">
+        <h3 className="m-0 text-xs font-extrabold uppercase tracking-[0.14em] text-sibs-primary-1 truncate">
           {title}
         </h3>
 
@@ -84,7 +84,7 @@ function ChartShell({ title, subtitle, children }) {
         ) : null}
       </div>
 
-      <div className="p-3 pb-2.5 flex-1 flex flex-col min-w-0 overflow-visible">
+      <div className="px-2 sm:px-2.5 pt-3 pb-2.5 flex-1 flex flex-col min-w-0">
         {children}
       </div>
     </article>
@@ -143,11 +143,11 @@ function VolumeChart({ series }) {
       </div>
 
       <div className="flex w-full min-w-0">
-        <div className="relative h-[300px] w-12 shrink-0 border-r border-sibs-tertiary-8 pr-1.5">
+        <div className="relative h-[300px] w-7 shrink-0 border-r border-sibs-tertiary-8 pr-0.5">
           {axisTicks.map((tick, index) => (
             <span
               key={`${tick}-${index}`}
-              className="absolute right-1.5 -translate-y-1/2 text-[10px] font-semibold text-sibs-tertiary-5"
+              className="absolute right-0.5 -translate-y-1/2 text-[8.5px] font-semibold tracking-tight text-sibs-tertiary-5"
               style={{
                 top: `${(index / (axisTicks.length - 1)) * 100}%`,
               }}
@@ -170,19 +170,14 @@ function VolumeChart({ series }) {
             ))}
           </div>
 
-          <div className="relative flex h-[300px] min-w-0 items-end gap-1.5 border-b border-sibs-tertiary-8 px-1 sm:gap-2.5">
+          <div className="relative flex h-[300px] w-full min-w-0 items-end gap-1 border-b border-sibs-tertiary-8 px-1">
             {series.map((item, periodIndex) => {
-              const volumeHeightPercent = Math.max(
-                2,
-                (Number(item.callsOffered || 0) / axisMax) * 100,
-              );
-
               return (
                 <div
                   key={item.key}
-                  className="group/period flex h-full min-w-0 flex-1 items-end justify-center px-0.5 sm:px-1"
+                  className="group/period flex h-full min-w-0 flex-1 items-end justify-center px-0.5"
                 >
-                  {/* Clustered 3-bar group with no space and crisp border outline on each bar */}
+                  {/* Clustered 3-bar group with chunky width matching the 5-day daily view */}
                   <div className="flex h-full w-full max-w-[120px] items-end justify-center gap-0">
                     {buildVolumeBarItems(item).map(
                       ({ metric, value, className }, barIndex) => {
@@ -210,17 +205,17 @@ function VolumeChart({ series }) {
                           >
                             {numericValue > 0 ? (
                               <span
-                                className={`pointer-events-none absolute left-1/2 z-10 -translate-x-1/2 whitespace-nowrap text-[8px] sm:text-[8.5px] 2xl:text-[9px] font-black tracking-tight transition-all duration-200 group-hover/bar:-translate-y-0.5 sibs-graph-number-in ${
+                                className={`pointer-events-none absolute left-1/2 z-10 -translate-x-1/2 whitespace-nowrap text-[8px] sm:text-[8.5px] 2xl:text-[9px] font-semibold tracking-tight transition-all duration-200 group-hover/bar:-translate-y-0.5 sibs-graph-number-in ${
                                   isInsideBar
                                     ? "text-white drop-shadow-xs"
-                                    : "text-sibs-primary-1 font-extrabold"
+                                    : "text-sibs-primary-1"
                                 }`}
                                 style={{
                                   bottom: labelBottom,
                                   animationDelay: `${Math.min(periodIndex * 80 + barIndex * 40, 650)}ms`,
                                 }}
                               >
-                                {formatNumber(numericValue)}
+                                {Math.round(numericValue)}
                               </span>
                             ) : null}
 
@@ -228,14 +223,16 @@ function VolumeChart({ series }) {
                           <div
                             className={`pointer-events-none absolute z-50 hidden min-w-[160px] rounded-xl border border-sibs-tertiary-10/80 bg-white/95 p-2.5 shadow-xl backdrop-blur-md group-hover/bar:block ${
                               periodIndex >= series.length - 1
-                                ? "left-1/2 -translate-x-[75%]"
+                                ? "right-0"
                                 : periodIndex === 0
-                                ? "left-1/2 -translate-x-[25%]"
+                                ? "left-0"
                                 : "left-1/2 -translate-x-1/2"
                             }`}
-                            style={{
-                              bottom: `calc(${heightPercent}% + 44px)`,
-                            }}
+                            style={
+                              heightPercent > 55
+                                ? { top: `calc(${100 - heightPercent}% + 32px)` }
+                                : { bottom: `calc(${heightPercent}% + 12px)` }
+                            }
                           >
                             <div className="flex items-center justify-between border-b border-slate-100 pb-1">
                               <span className="text-xs font-black text-sibs-primary-1">
@@ -298,7 +295,7 @@ function VolumeChart({ series }) {
           })}
           </div>
 
-          <div className="flex w-full min-w-0 gap-1 px-0.5 sm:gap-2 sm:px-1">
+          <div className="flex w-full min-w-0 gap-1 px-1">
             {series.map((item, periodIndex) => (
               <div
                 key={item.key}
@@ -379,11 +376,11 @@ function LineChart({ series, target = 90 }) {
 
       <div className="flex w-full min-w-0">
         {/* 2. Y-Axis Ticks */}
-        <div className="relative h-[300px] w-12 shrink-0 border-r border-sibs-tertiary-8 pr-1.5">
+        <div className="relative h-[300px] w-5 shrink-0 border-r border-sibs-tertiary-8 pr-0.5">
           {axisTicks.map((tick, index) => (
             <span
               key={`${tick}-${index}`}
-              className="absolute right-1.5 -translate-y-1/2 text-[10px] font-semibold text-sibs-tertiary-5"
+              className="absolute right-0.5 -translate-y-1/2 text-[8.5px] font-semibold tracking-tight text-sibs-tertiary-5"
               style={{
                 top: `${(index / (axisTicks.length - 1)) * 100}%`,
               }}
@@ -419,7 +416,7 @@ function LineChart({ series, target = 90 }) {
           </div>
 
           {/* Clustered Bars Container */}
-          <div className="relative flex h-[300px] min-w-0 items-end gap-1.5 border-b border-sibs-tertiary-8 px-1 sm:gap-2.5">
+          <div className="relative flex h-[300px] w-full min-w-0 items-end gap-2.5 sm:gap-3.5 border-b border-sibs-tertiary-8 px-1 sm:px-1.5">
             {series.map((item, periodIndex) => {
               const hasData = Number(item.callsOffered || 0) > 0;
               const bars = rateBarItems(item);
@@ -427,9 +424,9 @@ function LineChart({ series, target = 90 }) {
               return (
                 <div
                   key={item.key || periodIndex}
-                  className="group/period flex h-full min-w-0 flex-1 items-end justify-center px-0.5 sm:px-1"
+                  className="group/period flex h-full min-w-0 flex-1 items-end justify-center px-0.5"
                 >
-                  <div className="flex h-full w-full max-w-[72px] items-end justify-center gap-0">
+                  <div className="flex h-full w-full max-w-[88px] items-end justify-center gap-0">
                     {bars.map(({ metric, value, className, color }, barIndex) => {
                       const numericValue = hasData ? Math.max(0, Math.min(100, Number(value || 0))) : 0;
                       const heightPercent = hasData && numericValue > 0 ? numericValue : 0;
@@ -443,15 +440,15 @@ function LineChart({ series, target = 90 }) {
                           {/* Value inside bar */}
                           {hasData && numericValue > 0 ? (
                             <span
-                              className={`pointer-events-none absolute left-1/2 z-10 -translate-x-1/2 whitespace-nowrap text-[8px] sm:text-[8.5px] 2xl:text-[9px] font-black tracking-tight transition-all duration-200 group-hover/bar:-translate-y-0.5 sibs-graph-number-in ${
+                              className={`pointer-events-none absolute left-1/2 z-10 -translate-x-1/2 whitespace-nowrap text-[7px] sm:text-[7.5px] 2xl:text-[8px] font-medium tracking-tight transition-all duration-200 group-hover/bar:-translate-y-0.5 sibs-graph-number-in ${
                                 heightPercent > 10
                                   ? "text-white drop-shadow-xs"
-                                  : "text-sibs-primary-1 font-extrabold"
+                                  : "text-sibs-primary-1"
                               }`}
                               style={{
                                 bottom:
                                   heightPercent > 10
-                                    ? `calc(${heightPercent}% - 17px)`
+                                    ? `calc(${heightPercent}% - 16px)`
                                     : `calc(${heightPercent}% + 4px)`,
                                 animationDelay: `${Math.min(periodIndex * 80 + barIndex * 40, 650)}ms`,
                               }}
@@ -465,14 +462,16 @@ function LineChart({ series, target = 90 }) {
                             <div
                               className={`pointer-events-none absolute z-50 hidden min-w-[165px] rounded-xl border border-sibs-tertiary-10/80 bg-white/95 p-2.5 shadow-xl backdrop-blur-md group-hover/bar:block ${
                                 periodIndex >= series.length - 1
-                                  ? "left-1/2 -translate-x-[75%]"
+                                  ? "right-0"
                                   : periodIndex === 0
-                                  ? "left-1/2 -translate-x-[25%]"
+                                  ? "left-0"
                                   : "left-1/2 -translate-x-1/2"
                               }`}
-                              style={{
-                                bottom: `calc(${Math.max(15, heightPercent)}% + 44px)`,
-                              }}
+                              style={
+                                heightPercent > 55
+                                  ? { top: `calc(${100 - heightPercent}% + 30px)` }
+                                  : { bottom: `calc(${heightPercent}% + 12px)` }
+                              }
                             >
                               <div className="flex items-center justify-between border-b border-slate-100 pb-1">
                                 <span className="text-xs font-black text-sibs-primary-1">
@@ -544,7 +543,7 @@ function LineChart({ series, target = 90 }) {
           </div>
 
           {/* 4. X-Axis Labels */}
-          <div className="flex w-full min-w-0 gap-1 px-0.5 sm:gap-2 sm:px-1">
+          <div className="flex w-full min-w-0 gap-2.5 sm:gap-3.5 px-1 sm:px-1.5">
             {series.map((item, periodIndex) => (
               <div
                 key={item.key || periodIndex}
@@ -615,11 +614,11 @@ function AhtChart({ series, target }) {
       </div>
 
       <div className="flex w-full min-w-0">
-        <div className="relative h-[300px] w-12 shrink-0 border-r border-sibs-tertiary-8 pr-1.5">
+        <div className="relative h-[300px] w-5 shrink-0 border-r border-sibs-tertiary-8 pr-0.5">
           {axisTicks.map((tick, index) => (
             <span
               key={`${tick}-${index}`}
-              className="absolute right-1.5 -translate-y-1/2 text-[10px] font-semibold text-sibs-tertiary-5"
+              className="absolute right-0.5 -translate-y-1/2 text-[8.5px] font-semibold tracking-tight text-sibs-tertiary-5"
               style={{
                 top: `${(index / (axisTicks.length - 1)) * 100}%`,
               }}
@@ -642,7 +641,7 @@ function AhtChart({ series, target }) {
             ))}
           </div>
 
-          <div className="relative flex h-[300px] items-end gap-1.5 border-b border-sibs-tertiary-8 px-1 sm:gap-2.5">
+          <div className="relative flex h-[300px] w-full min-w-0 items-end gap-1 border-b border-sibs-tertiary-8 px-1">
             <div
               className="pointer-events-none absolute right-0 left-0 z-10 flex items-center"
               style={{
@@ -664,10 +663,10 @@ function AhtChart({ series, target }) {
                 >
                   {hasAht ? (
                     <p
-                      className={`pointer-events-none absolute left-1/2 z-10 -translate-x-1/2 whitespace-nowrap text-[9px] sm:text-[10px] 2xl:text-[11px] font-black tracking-tight transition-all duration-200 group-hover/aht:-translate-y-0.5 sibs-graph-number-in ${
+                      className={`pointer-events-none absolute left-1/2 z-10 -translate-x-1/2 whitespace-nowrap text-[9px] sm:text-[10px] 2xl:text-[11px] font-normal tracking-tight transition-all duration-200 group-hover/aht:-translate-y-0.5 sibs-graph-number-in ${
                         heightPct > 10
                           ? "text-white drop-shadow-xs"
-                          : "text-sibs-primary-1 font-extrabold"
+                          : "text-sibs-primary-1"
                       }`}
                       style={{
                         bottom:
@@ -677,7 +676,7 @@ function AhtChart({ series, target }) {
                         animationDelay: `${Math.min(itemIndex * 60, 500)}ms`,
                       }}
                     >
-                      {formatNumber(ahtSec, 0)}s
+                      {Math.round(ahtSec)}s
                     </p>
                   ) : (
                     <span className="mb-1.5 text-[10px] font-semibold text-slate-400">-</span>
@@ -688,14 +687,16 @@ function AhtChart({ series, target }) {
                     <div
                       className={`pointer-events-none absolute z-50 hidden min-w-[160px] rounded-xl border border-sibs-tertiary-10 bg-white p-2.5 shadow-xl group-hover/aht:block ${
                         itemIndex >= series.length - 1
-                          ? "left-1/2 -translate-x-[75%]"
+                          ? "right-0"
                           : itemIndex === 0
-                          ? "left-1/2 -translate-x-[25%]"
+                          ? "left-0"
                           : "left-1/2 -translate-x-1/2"
                       }`}
-                      style={{
-                        bottom: `calc(${heightPct}% + 44px)`,
-                      }}
+                      style={
+                        heightPct > 55
+                          ? { top: `calc(${100 - heightPct}% + 32px)` }
+                          : { bottom: `calc(${heightPct}% + 12px)` }
+                      }
                     >
                       <div className="flex items-center justify-between border-b border-slate-100 pb-1">
                         <span className="text-xs font-black text-sibs-primary-1">
@@ -737,7 +738,7 @@ function AhtChart({ series, target }) {
 
                   {hasAht ? (
                     <div
-                      className="w-full max-w-[42px] rounded-t-[4px] bg-[#0b3b68] transition-all duration-200 group-hover/aht:brightness-110 group-hover/aht:-translate-y-0.5 shadow-xs sibs-graph-bar-rise"
+                      className="w-full max-w-[54px] rounded-t-[4px] bg-[#0b3b68] transition-all duration-200 group-hover/aht:brightness-110 group-hover/aht:-translate-y-0.5 shadow-xs sibs-graph-bar-rise"
                       style={{
                         height: `${heightPct}%`,
                         animationDelay: `${Math.min(itemIndex * 60, 500)}ms`,
@@ -751,7 +752,7 @@ function AhtChart({ series, target }) {
             })}
           </div>
 
-          <div className="flex w-full min-w-0 gap-1 px-0.5 sm:gap-2 sm:px-1">
+          <div className="flex w-full min-w-0 gap-1 px-1">
             {series.map((item, periodIndex) => (
               <div
                 key={item.key}
@@ -910,8 +911,10 @@ export default function CallKpiDashboard({ data, showSummaryCards = true }) {
 
       {/* 3 Prominent Graphs: Stacked on Mobile/Tablet/iPad, Side-by-Side on Ultra-wide Desktop */}
       <div
+        id="kpi-graphs-container"
+        data-pdf-charts="true"
         key={`kpi-charts-${series.map((s) => s.key || s.label).join("-")}`}
-        className="grid grid-cols-1 2xl:[grid-template-columns:1.45fr_1fr_1fr] gap-3.5"
+        className="grid grid-cols-1 2xl:grid-cols-[minmax(0,1.3fr)_minmax(0,1.1fr)_minmax(0,0.95fr)] gap-3.5 w-full min-w-0"
       >
         <ChartShell
           title="Calls"
