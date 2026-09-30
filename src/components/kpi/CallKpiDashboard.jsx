@@ -10,6 +10,11 @@ function formatNumber(value, digits = 0) {
   return number.toLocaleString(undefined, { maximumFractionDigits: digits });
 }
 
+function formatGraphNumber(value, digits = 0) {
+  const number = Number(value || 0);
+  return digits > 0 ? number.toFixed(digits) : String(Math.round(number));
+}
+
 function formatPercent(value) {
   return `${formatNumber(value, 2)}%`;
 }
@@ -22,6 +27,12 @@ function formatDuration(seconds) {
   return minutes > 0
     ? `${minutes}m ${String(remainingSeconds).padStart(2, "0")}s`
     : `${remainingSeconds}s`;
+}
+
+function getTooltipPositionClass(periodIndex, seriesLength) {
+  if (periodIndex === 0) return "left-0";
+  if (periodIndex >= seriesLength - 1) return "right-0";
+  return "left-1/2 -translate-x-1/2";
 }
 
 function KpiCard({ icon: Icon, label, value, hint, status, title }) {
@@ -71,7 +82,7 @@ function KpiCard({ icon: Icon, label, value, hint, status, title }) {
 
 function ChartShell({ title, subtitle, children }) {
   return (
-    <article className="sibs-card relative z-10 flex flex-col h-full shadow-xs min-w-0">
+    <article className="sibs-card relative z-10 flex flex-col h-full shadow-xs overflow-hidden">
       <div className="border-b border-sibs-tertiary-10 bg-sibs-primary-3/30 px-4 py-2.5 rounded-t-xl">
         <h3 className="m-0 text-xs font-extrabold uppercase tracking-[0.14em] text-sibs-primary-1 truncate">
           {title}
@@ -84,7 +95,7 @@ function ChartShell({ title, subtitle, children }) {
         ) : null}
       </div>
 
-      <div className="px-2 sm:px-2.5 pt-3 pb-2.5 flex-1 flex flex-col min-w-0">
+      <div className="p-3 pb-2.5 flex-1 flex flex-col min-w-0 overflow-hidden">
         {children}
       </div>
     </article>
@@ -143,16 +154,16 @@ function VolumeChart({ series }) {
       </div>
 
       <div className="flex w-full min-w-0">
-        <div className="relative h-[300px] w-7 shrink-0 border-r border-sibs-tertiary-8 pr-0.5">
+        <div className="relative h-[300px] w-9 shrink-0 border-r border-sibs-tertiary-8 pr-1">
           {axisTicks.map((tick, index) => (
             <span
               key={`${tick}-${index}`}
-              className="absolute right-0.5 -translate-y-1/2 text-[8.5px] font-semibold tracking-tight text-sibs-tertiary-5"
+              className="absolute right-1 -translate-y-1/2 text-[10px] font-semibold text-sibs-tertiary-5"
               style={{
                 top: `${(index / (axisTicks.length - 1)) * 100}%`,
               }}
             >
-              {formatNumber(tick)}
+              {formatGraphNumber(tick)}
             </span>
           ))}
         </div>
@@ -199,40 +210,32 @@ function VolumeChart({ series }) {
                           <div
                             key={metric}
                             className="group/bar relative flex h-full min-w-0 flex-1 items-end justify-center"
-                            aria-label={`${item.label} ${metric}: ${formatNumber(
+                            aria-label={`${item.label} ${metric}: ${formatGraphNumber(
                               numericValue,
                             )}`}
                           >
                             {numericValue > 0 ? (
                               <span
-                                className={`pointer-events-none absolute left-1/2 z-10 -translate-x-1/2 whitespace-nowrap text-[8px] sm:text-[8.5px] 2xl:text-[9px] font-semibold tracking-tight transition-all duration-200 group-hover/bar:-translate-y-0.5 sibs-graph-number-in ${
+                                className={`pointer-events-none absolute left-1/2 z-10 -translate-x-1/2 whitespace-nowrap text-[8px] sm:text-[8.5px] 2xl:text-[9px] font-medium tracking-tight transition-all duration-200 group-hover/bar:-translate-y-0.5 sibs-graph-number-in ${
                                   isInsideBar
                                     ? "text-white drop-shadow-xs"
                                     : "text-sibs-primary-1"
-                                }`}
+                                }`} 
                                 style={{
                                   bottom: labelBottom,
                                   animationDelay: `${Math.min(periodIndex * 80 + barIndex * 40, 650)}ms`,
                                 }}
                               >
-                                {Math.round(numericValue)}
+                                {formatGraphNumber(numericValue)}
                               </span>
                             ) : null}
 
                           {/* Tooltip Modal */}
                           <div
-                            className={`pointer-events-none absolute z-50 hidden min-w-[160px] rounded-xl border border-sibs-tertiary-10/80 bg-white/95 p-2.5 shadow-xl backdrop-blur-md group-hover/bar:block ${
-                              periodIndex >= series.length - 1
-                                ? "right-0"
-                                : periodIndex === 0
-                                ? "left-0"
-                                : "left-1/2 -translate-x-1/2"
-                            }`}
-                            style={
-                              heightPercent > 55
-                                ? { top: `calc(${100 - heightPercent}% + 32px)` }
-                                : { bottom: `calc(${heightPercent}% + 12px)` }
-                            }
+                            className={`pointer-events-none absolute top-3 z-40 hidden w-44 max-w-[calc(100vw-2rem)] rounded-xl border border-sibs-tertiary-10/80 bg-white/95 p-2.5 shadow-xl backdrop-blur-md group-hover/bar:block ${getTooltipPositionClass(
+                              periodIndex,
+                              series.length,
+                            )}`}
                           >
                             <div className="flex items-center justify-between border-b border-slate-100 pb-1">
                               <span className="text-xs font-black text-sibs-primary-1">
@@ -257,7 +260,7 @@ function VolumeChart({ series }) {
                                 Calls:
                               </span>
                               <span className="font-extrabold text-sibs-primary-1">
-                                {formatNumber(numericValue)}
+                                {formatGraphNumber(numericValue)}
                               </span>
                             </div>
 
@@ -279,7 +282,7 @@ function VolumeChart({ series }) {
                           </div>
 
                           <div
-                            className={`w-full rounded-t-[4px] shadow-xs transition-all duration-200 ease-out group-hover/bar:-translate-y-0.5 group-hover/bar:brightness-110 sibs-graph-bar-rise border border-white ${className}`}
+                            className={`w-full max-w-[42px] rounded-t-[4px] ${className} transition-all duration-200 ease-out group-hover/bar:-translate-y-0.5 group-hover/bar:brightness-110 shadow-xs sibs-graph-bar-rise`}
                             style={{
                               height: `${heightPercent}%`,
                               animationDelay: `${Math.min(periodIndex * 80 + barIndex * 40, 650)}ms`,
@@ -376,11 +379,11 @@ function LineChart({ series, target = 90 }) {
 
       <div className="flex w-full min-w-0">
         {/* 2. Y-Axis Ticks */}
-        <div className="relative h-[300px] w-5 shrink-0 border-r border-sibs-tertiary-8 pr-0.5">
+        <div className="relative h-[300px] w-9 shrink-0 border-r border-sibs-tertiary-8 pr-1">
           {axisTicks.map((tick, index) => (
             <span
               key={`${tick}-${index}`}
-              className="absolute right-0.5 -translate-y-1/2 text-[8.5px] font-semibold tracking-tight text-sibs-tertiary-5"
+              className="absolute right-1 -translate-y-1/2 text-[10px] font-semibold text-sibs-tertiary-5"
               style={{
                 top: `${(index / (axisTicks.length - 1)) * 100}%`,
               }}
@@ -426,7 +429,7 @@ function LineChart({ series, target = 90 }) {
                   key={item.key || periodIndex}
                   className="group/period flex h-full min-w-0 flex-1 items-end justify-center px-0.5"
                 >
-                  <div className="flex h-full w-full max-w-[88px] items-end justify-center gap-0">
+                  <div className="flex h-full w-full max-w-[82px] items-end justify-center gap-0">
                     {bars.map(({ metric, value, className, color }, barIndex) => {
                       const numericValue = hasData ? Math.max(0, Math.min(100, Number(value || 0))) : 0;
                       const heightPercent = hasData && numericValue > 0 ? numericValue : 0;
@@ -440,7 +443,7 @@ function LineChart({ series, target = 90 }) {
                           {/* Value inside bar */}
                           {hasData && numericValue > 0 ? (
                             <span
-                              className={`pointer-events-none absolute left-1/2 z-10 -translate-x-1/2 whitespace-nowrap text-[7px] sm:text-[7.5px] 2xl:text-[8px] font-medium tracking-tight transition-all duration-200 group-hover/bar:-translate-y-0.5 sibs-graph-number-in ${
+                              className={`pointer-events-none absolute left-1/2 z-10 -translate-x-1/2 whitespace-nowrap text-[8px] sm:text-[8.5px] 2xl:text-[9px] font-medium tracking-tight transition-all duration-200 group-hover/bar:-translate-y-0.5 sibs-graph-number-in ${
                                 heightPercent > 10
                                   ? "text-white drop-shadow-xs"
                                   : "text-sibs-primary-1"
@@ -460,18 +463,10 @@ function LineChart({ series, target = 90 }) {
                           {/* Hover Tooltip Modal */}
                           {hasData ? (
                             <div
-                              className={`pointer-events-none absolute z-50 hidden min-w-[165px] rounded-xl border border-sibs-tertiary-10/80 bg-white/95 p-2.5 shadow-xl backdrop-blur-md group-hover/bar:block ${
-                                periodIndex >= series.length - 1
-                                  ? "right-0"
-                                  : periodIndex === 0
-                                  ? "left-0"
-                                  : "left-1/2 -translate-x-1/2"
-                              }`}
-                              style={
-                                heightPercent > 55
-                                  ? { top: `calc(${100 - heightPercent}% + 30px)` }
-                                  : { bottom: `calc(${heightPercent}% + 12px)` }
-                              }
+                              className={`pointer-events-none absolute top-3 z-40 hidden w-44 max-w-[calc(100vw-2rem)] rounded-xl border border-sibs-tertiary-10/80 bg-white/95 p-2.5 shadow-xl backdrop-blur-md group-hover/bar:block ${getTooltipPositionClass(
+                                periodIndex,
+                                series.length,
+                              )}`}
                             >
                               <div className="flex items-center justify-between border-b border-slate-100 pb-1">
                                 <span className="text-xs font-black text-sibs-primary-1">
@@ -515,7 +510,7 @@ function LineChart({ series, target = 90 }) {
                               <div className="mt-1 flex items-center justify-between border-t border-slate-100 pt-1 text-[10.5px] text-slate-500">
                                 <span>Calls Handled:</span>
                                 <span className="font-bold text-slate-700">
-                                  {formatNumber(item.callsHandled)}
+                                  {formatGraphNumber(item.callsHandled)}
                                 </span>
                               </div>
                             </div>
@@ -524,7 +519,7 @@ function LineChart({ series, target = 90 }) {
                           {/* Bar Element */}
                           {hasData && heightPercent > 0 ? (
                             <div
-                              className={`w-full rounded-t-[4px] shadow-xs transition-all duration-200 ease-out group-hover/bar:-translate-y-0.5 group-hover/bar:brightness-110 sibs-graph-bar-rise border border-white ${className}`}
+                              className={`w-full max-w-[42px] rounded-t-[4px] ${className} transition-all duration-200 ease-out group-hover/bar:-translate-y-0.5 group-hover/bar:brightness-110 shadow-xs sibs-graph-bar-rise`}
                               style={{
                                 height: `${heightPercent}%`,
                                 animationDelay: `${Math.min(periodIndex * 80 + barIndex * 40, 650)}ms`,
@@ -614,11 +609,11 @@ function AhtChart({ series, target }) {
       </div>
 
       <div className="flex w-full min-w-0">
-        <div className="relative h-[300px] w-5 shrink-0 border-r border-sibs-tertiary-8 pr-0.5">
+        <div className="relative h-[300px] w-9 shrink-0 border-r border-sibs-tertiary-8 pr-1">
           {axisTicks.map((tick, index) => (
             <span
               key={`${tick}-${index}`}
-              className="absolute right-0.5 -translate-y-1/2 text-[8.5px] font-semibold tracking-tight text-sibs-tertiary-5"
+              className="absolute right-1 -translate-y-1/2 text-[10px] font-semibold text-sibs-tertiary-5"
               style={{
                 top: `${(index / (axisTicks.length - 1)) * 100}%`,
               }}
@@ -663,7 +658,7 @@ function AhtChart({ series, target }) {
                 >
                   {hasAht ? (
                     <p
-                      className={`pointer-events-none absolute left-1/2 z-10 -translate-x-1/2 whitespace-nowrap text-[9px] sm:text-[10px] 2xl:text-[11px] font-normal tracking-tight transition-all duration-200 group-hover/aht:-translate-y-0.5 sibs-graph-number-in ${
+                      className={`pointer-events-none absolute left-1/2 z-10 -translate-x-1/2 whitespace-nowrap text-[9px] sm:text-[10px] 2xl:text-[11px] font-medium tracking-tight transition-all duration-200 group-hover/aht:-translate-y-0.5 sibs-graph-number-in ${
                         heightPct > 10
                           ? "text-white drop-shadow-xs"
                           : "text-sibs-primary-1"
@@ -685,18 +680,10 @@ function AhtChart({ series, target }) {
                   {/* Tooltip Modal */}
                   {hasAht ? (
                     <div
-                      className={`pointer-events-none absolute z-50 hidden min-w-[160px] rounded-xl border border-sibs-tertiary-10 bg-white p-2.5 shadow-xl group-hover/aht:block ${
-                        itemIndex >= series.length - 1
-                          ? "right-0"
-                          : itemIndex === 0
-                          ? "left-0"
-                          : "left-1/2 -translate-x-1/2"
-                      }`}
-                      style={
-                        heightPct > 55
-                          ? { top: `calc(${100 - heightPct}% + 32px)` }
-                          : { bottom: `calc(${heightPct}% + 12px)` }
-                      }
+                      className={`pointer-events-none absolute top-3 z-40 hidden w-44 max-w-[calc(100vw-2rem)] rounded-xl border border-sibs-tertiary-10 bg-white/95 p-2.5 shadow-xl backdrop-blur-md group-hover/aht:block ${getTooltipPositionClass(
+                        itemIndex,
+                        series.length,
+                      )}`}
                     >
                       <div className="flex items-center justify-between border-b border-slate-100 pb-1">
                         <span className="text-xs font-black text-sibs-primary-1">

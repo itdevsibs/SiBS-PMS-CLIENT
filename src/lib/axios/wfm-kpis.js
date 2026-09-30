@@ -10,3 +10,8 @@ export async function getWfmCallSkills() {
   const response = await api.get("/wfm/kpis/skills");
   return response?.data || response;
 }
+
+export async function getWfmEmailKpis(params = {}) {
+  const response = await api.get("/wfm/kpis/emails", { params });
+  return response;
+}
