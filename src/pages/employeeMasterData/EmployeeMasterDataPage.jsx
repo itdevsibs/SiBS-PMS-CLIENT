@@ -27,7 +27,7 @@ import {
   fetchMasterDataAccounts,
   fetchMasterDataLedger,
   importUsVisaEmployeeLedger,
-  updateEmployeeToolAliases,
+  updateEmployeeLedgerRecord,
 } from "@/lib/axios/masterdata";
 
 /* ─── Status badge ──────────────────────────────────────────────── */
@@ -106,7 +106,7 @@ export default function EmployeeMasterDataPage() {
   const [currentPage, setCurrentPage]         = useState(1);
   const [totalPages, setTotalPages]           = useState(1);
   const [sortBy, setSortBy]                   = useState(null); // 'fusecom' | 'fusenet' | 'herodash' | 'ms-d' | null
-  const [sortOrder, setSortOrder]             = useState("desc"); // 'desc' (aliases first) | 'asc' (no aliases first)
+  const [sortOrder, setSortOrder]             = useState("desc"); // 'desc' (tool names first) | 'asc' (missing tool names first)
   const pageSize = 25;
 
   /* Fetch accounts */
@@ -276,7 +276,7 @@ export default function EmployeeMasterDataPage() {
     try {
       setIsSavingEdit(true);
       setErrorMsg("");
-      const res = await updateEmployeeToolAliases(editingEmployee.sibsId, formData);
+      const res = await updateEmployeeLedgerRecord(editingEmployee.sibsId, formData);
       if (res?.success) {
         const empName = formData.agentName || editingEmployee.agentName || editingEmployee.kronosName || editingEmployee.sibsId;
         const empSibsId = editingEmployee.sibsId;
@@ -837,7 +837,7 @@ export default function EmployeeMasterDataPage() {
               <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
               <input
                 type="text"
-                placeholder="Search by SIBS ID, employee name, or tool alias…"
+                placeholder="Search by SIBS ID, employee name, or tool name…"
                 value={searchTerm}
                 onChange={(e) => {
                   setSearchTerm(e.target.value);
@@ -986,7 +986,7 @@ export default function EmployeeMasterDataPage() {
                       {/* 5. FuseCom  Name */}
                       <th
                         onClick={() => handleToggleToolSort("fusecom")}
-                        title="Click to toggle filter for FuseCom aliases"
+                        title="Click to toggle filter for FuseCom names"
                         className={`group/th px-4 py-3 text-xs font-bold uppercase tracking-wider select-none cursor-pointer transition whitespace-nowrap overflow-hidden ${
                           sortBy === "fusecom"
                             ? "bg-orange-100/80 text-orange-950"
@@ -1008,7 +1008,7 @@ export default function EmployeeMasterDataPage() {
                       {/* 6. FuseNet  Name */}
                       <th
                         onClick={() => handleToggleToolSort("fusenet")}
-                        title="Click to toggle filter for FuseNet aliases"
+                        title="Click to toggle filter for FuseNet names"
                         className={`group/th px-4 py-3 text-xs font-bold uppercase tracking-wider select-none cursor-pointer transition whitespace-nowrap overflow-hidden ${
                           sortBy === "fusenet"
                             ? "bg-blue-100/80 text-blue-950"
@@ -1030,7 +1030,7 @@ export default function EmployeeMasterDataPage() {
                       {/* 7. HeroDash Name */}
                       <th
                         onClick={() => handleToggleToolSort("herodash")}
-                        title="Click to toggle filter for HeroDash aliases"
+                        title="Click to toggle filter for HeroDash names"
                         className={`group/th px-4 py-3 text-xs font-bold uppercase tracking-wider select-none cursor-pointer transition whitespace-nowrap overflow-hidden ${
                           sortBy === "herodash"
                             ? "bg-amber-100/80 text-amber-950"
@@ -1052,7 +1052,7 @@ export default function EmployeeMasterDataPage() {
                       {/* 8. MSD Name */}
                       <th
                         onClick={() => handleToggleToolSort("ms-d")}
-                        title="Click to toggle filter for MSD aliases"
+                        title="Click to toggle filter for MSD names"
                         className={`group/th px-4 py-3 text-xs font-bold uppercase tracking-wider select-none cursor-pointer transition whitespace-nowrap overflow-hidden ${
                           sortBy === "ms-d" || sortBy === "msd"
                             ? "bg-purple-100/80 text-purple-950"
