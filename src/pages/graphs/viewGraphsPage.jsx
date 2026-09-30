@@ -16,12 +16,13 @@ import AppHeader from "@/components/layout/AppHeader";
 import ConfirmationModal from "@/components/ui/confirmation-modal";
 import LoadingModal from "@/components/ui/loading-modal";
 import CallKpiDashboard from "@/components/kpi/CallKpiDashboard";
+import EmailKpiDashboard from "@/components/kpi/EmailKpiDashboard";
 import { downloadKpiGraphsAsPdf } from "@/components/kpi/callKpiDashboardUtils";
 import DatePicker from "@/components/ui/Filter/DatePicker";
 import MultiSelectDropdown from "@/components/ui/Filter/MultiSelectDropdown";
 import SingleSelectDropdown from "@/components/ui/Filter/SingleSelectDropdown";
 import useDashboardPage from "@/hooks/useDashboardPage";
-import { getWfmCallKpis, getWfmCallSkills } from "@/lib/axios/wfm-kpis";
+import { getWfmCallKpis, getWfmCallSkills, getWfmEmailKpis } from "@/lib/axios/wfm-kpis";
 
 const PERIOD_OPTIONS = [
   {
@@ -63,6 +64,7 @@ const TASK_ORDER_OPTIONS_BY_SOURCE = {
     { value: "TO4", label: "TO4 - PAC" },
     { value: "TO10", label: "TO10 - SEASIA" },
     { value: "TO12", label: "TO12 - NICE" },
+    { value: "TO14", label: "TO14 - NESAMI" },
     { value: "TO16", label: "TO16 - SEURECA" },
     { value: "TO18", label: "TO18 - NEA" },
     { value: "TO22", label: "TO22 - SAMI" },
@@ -1058,6 +1060,35 @@ function buildRequestParams(filters) {
   return params;
 }
 
+function buildEmailRequestParams(filters) {
+  const params = {
+    period: filters.period,
+  };
+
+  if (Array.isArray(filters.taskOrder) && filters.taskOrder.length > 0) {
+    const taskOrders = filters.taskOrder.filter((value) => value && value !== "__NONE__");
+    if (taskOrders.length) params.taskOrder = taskOrders.join(",");
+  } else if (typeof filters.taskOrder === "string" && filters.taskOrder) {
+    params.taskOrder = filters.taskOrder;
+  }
+
+  if (Array.isArray(filters.country) && filters.country.length > 0) {
+    const countries = filters.country.filter((value) => value && value !== "__NONE__");
+    if (countries.length) params.country = countries.join(",");
+  } else if (typeof filters.country === "string" && filters.country) {
+    params.country = filters.country;
+  }
+
+  if (filters.period === "custom") {
+    if (filters.from) params.from = filters.from;
+    if (filters.to) params.to = filters.to;
+  } else if (filters.referenceDate) {
+    params.referenceDate = filters.referenceDate;
+  }
+
+  return params;
+}
+
 export default function ViewGraphsPage() {
   const dashboard = useDashboardPage();
 
@@ -1078,8 +1109,10 @@ export default function ViewGraphsPage() {
 
   const [filters, setFilters] = useState(DEFAULT_FILTERS);
   const [kpiResponse, setKpiResponse] = useState(null);
+  const [emailKpiResponse, setEmailKpiResponse] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
+  const [emailError, setEmailError] = useState("");
   const [skillsByCountryState, setSkillsByCountryState] = useState(SKILLS_BY_COUNTRY);
   const [showFilters, setShowFilters] = useState(true);
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
@@ -1150,14 +1183,33 @@ export default function ViewGraphsPage() {
 
     setIsLoading(true);
     setError("");
+    setEmailError("");
 
     try {
-      const params = buildRequestParams(filters);
-      const result = await getWfmCallKpis(params);
-      setKpiResponse(result);
-    } catch (loadError) {
-      setError(getErrorMessage(loadError));
-      setKpiResponse(null);
+      const callParams = buildRequestParams(filters);
+      const emailParams = buildEmailRequestParams(filters);
+      const [callResult, emailResult] = await Promise.allSettled([
+        getWfmCallKpis(callParams),
+        getWfmEmailKpis(emailParams),
+      ]);
+
+      if (callResult.status === "fulfilled") {
+        setKpiResponse(callResult.value);
+      } else {
+        setError(getErrorMessage(callResult.reason));
+        setKpiResponse(null);
+      }
+
+      if (emailResult.status === "fulfilled") {
+        setEmailKpiResponse(emailResult.value);
+      } else {
+        const emailMessage =
+          emailResult.reason?.response?.data?.message ||
+          emailResult.reason?.message ||
+          "Unable to load Email KPI data.";
+        setEmailError(emailMessage);
+        setEmailKpiResponse(null);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -1168,18 +1220,23 @@ export default function ViewGraphsPage() {
   }, [loadKpis]);
 
   useEffect(() => {
-    const returnedFilters = kpiResponse?.data?.data?.filters || {};
+    const callReturnedFilters = kpiResponse?.data?.data?.filters || {};
+    const emailReturnedFilters = emailKpiResponse?.data?.data?.filters || {};
+    const returnedReferenceDate =
+      callReturnedFilters.referenceDate ||
+      emailReturnedFilters.referenceDate ||
+      "";
     if (
-      returnedFilters.referenceDate &&
+      returnedReferenceDate &&
       !filters.referenceDate &&
       filters.period !== "custom"
     ) {
       setFilters((current) => ({
         ...current,
-        referenceDate: returnedFilters.referenceDate,
+        referenceDate: returnedReferenceDate,
       }));
     }
-  }, [kpiResponse, filters.referenceDate, filters.period]);
+  }, [kpiResponse, emailKpiResponse, filters.referenceDate, filters.period]);
 
   const handleSourceChange = (newSources) => {
     setFilters((current) => {
@@ -1340,6 +1397,9 @@ export default function ViewGraphsPage() {
   const dashboardData =
     kpiResponse?.data?.data || {};
 
+  const emailDashboardData =
+    emailKpiResponse?.data?.data || {};
+
   const availableGrains =
     Array.isArray(dashboardData.availableGrains)
       ? dashboardData.availableGrains
@@ -1358,10 +1418,20 @@ export default function ViewGraphsPage() {
     filters.sourceSystem,
   );
 
-  const countryOptions = getCountryOptions(
+  const baseCountryOptions = getCountryOptions(
     filters.sourceSystem,
     filters.taskOrder,
   );
+  const emailCountryOptions = Array.isArray(emailDashboardData.availableCountries)
+    ? emailDashboardData.availableCountries
+    : [];
+  const countryOptions = Array.from(
+    [...baseCountryOptions, ...emailCountryOptions].reduce((map, option) => {
+      const key = String(option?.value || "").trim().toLowerCase();
+      if (key && !map.has(key)) map.set(key, option);
+      return map;
+    }, new Map()).values(),
+  ).sort((left, right) => String(left.label || "").localeCompare(String(right.label || "")));
 
   const skillOptions = getSkillOptions(
     filters.sourceSystem,
@@ -1638,7 +1708,7 @@ export default function ViewGraphsPage() {
 
                   <div>
                     <p className="m-0 font-bold text-sibs-primary-1">
-                      Loading Calls KPI data
+                      Loading Calls & Email KPI data
                     </p>
 
                     <p className="mt-1 mb-0 text-sm text-sibs-tertiary-5">
@@ -1659,6 +1729,19 @@ export default function ViewGraphsPage() {
                     data={dashboardData || {}}
                     showSummaryCards={showFilters}
                   />
+
+                  <div className="mt-4">
+                    {emailError ? (
+                      <div className="sibs-card mb-3 flex items-start gap-2 border border-amber-200 bg-amber-50/70 p-3 text-xs font-semibold text-amber-800">
+                        <AlertCircle size={17} className="mt-0.5 shrink-0" />
+                        <span>{emailError}</span>
+                      </div>
+                    ) : null}
+                    <EmailKpiDashboard
+                      data={emailDashboardData || {}}
+                      showSummaryCards={false}
+                    />
+                  </div>
                 </div>
               )}
             </div>
