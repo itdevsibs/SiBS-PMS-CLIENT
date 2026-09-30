@@ -44,11 +44,11 @@ export async function fetchMasterDataLedger({
   return apiGet(`/masterdata/ledger?${params.toString()}`);
 }
 
-export async function updateEmployeeToolAliases(sibsId, payload) {
+export async function updateEmployeeLedgerRecord(sibsId, payload) {
   return apiPut(`/masterdata/ledger/${encodeURIComponent(sibsId)}`, payload);
 }
 
-export async function batchImportEmployeeToolAliases(items) {
+export async function batchImportEmployeeToolNames(items) {
   return apiPost("/masterdata/ledger/batch-import", { items });
 }
 
