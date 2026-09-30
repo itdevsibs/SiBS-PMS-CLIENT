@@ -16,6 +16,7 @@ import WorkforceManagementPage from "./pages/dashboard/WorkforceManagementPage";
 import SeniorOperationsManagerPage from "@/pages/dashboard/SeniorOperationsManagerPage";
 import OccupancyPage from "./pages/occupancy/OccupancyPage";
 import EmployeeMasterDataPage from "./pages/employeeMasterData/EmployeeMasterDataPage";
+import TaskOrderLedger from "./pages/TaskOrderLedger/TaskOrderLedger";
 
 const Router = () => {
   return (
@@ -29,6 +30,14 @@ const Router = () => {
       <Route
         path="/dashboard/masterdata"
         element={<EmployeeMasterDataPage />}
+      />
+      <Route
+        path="/dashboard/wfm/skills-ledger"
+        element={<TaskOrderLedger />}
+      />
+      <Route
+        path="/dashboard/wfm/task-order-ledger"
+        element={<TaskOrderLedger />}
       />
       <Route path="/dashboard" element={<AgentsPage />} />
       <Route path="/dashboard/agent" element={<AgentsPage />} />

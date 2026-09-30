@@ -134,7 +134,7 @@ export default function OccupancyPage() {
           onLogoutClick={() => dashboard.setShowLogoutModal(true)}
         />
 
-        <div className="sibs-scrollbar flex-1 overflow-y-auto p-3 sm:p-3.5">
+        <div className="flex-1 min-h-0 flex flex-col overflow-hidden px-2.5 sm:px-4 lg:px-5 pt-2 sm:pt-2.5 pb-2 gap-2 sm:gap-2.5">
           {!canAccess ? (
             <div className="sibs-card p-6 text-center">
               <AlertCircle className="mx-auto mb-3 text-amber-500" size={34} />
@@ -146,18 +146,18 @@ export default function OccupancyPage() {
               </p>
             </div>
           ) : (
-            <div className="space-y-4">
+            <>
               {/* Header Title Banner */}
-              <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-3 sm:p-4 shadow-xs">
+              <div className="shrink-0 flex items-center justify-between rounded-xl border border-slate-200 bg-white px-3 py-2 sm:px-4 sm:py-2.5 shadow-xs">
                 <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-                  <div className="flex h-9.5 w-9.5 sm:h-11 sm:w-11 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-700">
-                    <Users className="h-5 w-5 sm:h-5.5 sm:w-5.5" />
+                  <div className="flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-700">
+                    <Users className="h-4.5 w-4.5 sm:h-5 sm:w-5" />
                   </div>
                   <div className="min-w-0">
-                    <h1 className="m-0 text-sm sm:text-base md:text-lg font-bold text-slate-900 truncate">
+                    <h1 className="m-0 text-sm sm:text-base font-bold text-slate-900 truncate">
                       Occupancy & Efficiency Overview
                     </h1>
-                    <p className="m-0 text-[11px] sm:text-xs text-slate-500 truncate">
+                    <p className="m-0 text-[10.5px] sm:text-[11.5px] text-slate-500 truncate">
                       Phone and email metrics, intervals, and agent actual efficiency
                     </p>
                   </div>
@@ -165,7 +165,7 @@ export default function OccupancyPage() {
               </div>
 
               {/* High-level KPI summary cards - Compact corporate sizing */}
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+              <div className="shrink-0 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
                 {/* 1. Total Employees */}
                 <div className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 sm:px-3 sm:py-2 shadow-2xs transition-all hover:border-slate-300">
                   <div className="flex items-center justify-between gap-1.5">
@@ -268,7 +268,7 @@ export default function OccupancyPage() {
                 isLoading={isLoading}
                 onFilteredDataChange={setActiveRecords}
               />
-            </div>
+            </>
           )}
         </div>
       </main>

@@ -125,7 +125,7 @@ const AdminSidebar = ({
         </div>
       </div>
 
-      <div className="mt-auto border-t border-white/10 p-4" />
+      <div className="mt-auto border-t border-white/10 h-[68px]" />
     </>
   );
 

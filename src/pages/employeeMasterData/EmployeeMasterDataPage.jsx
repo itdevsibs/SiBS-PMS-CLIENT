@@ -22,6 +22,7 @@ import AppModal from "@/components/ui/app-modal";
 import ConfirmationModal from "@/components/ui/confirmation-modal";
 import LoadingModal from "@/components/ui/loading-modal";
 import EditEmployeeLedgerModal from "@/components/ui/masterdata/EditEmployeeLedgerModal";
+import TablePagination from "@/components/tables/TablePagination";
 import useDashboardPage from "@/hooks/useDashboardPage";
 import {
   fetchMasterDataAccounts,
@@ -699,7 +700,7 @@ export default function EmployeeMasterDataPage() {
           onLogoutClick={() => dashboard.setShowLogoutModal(true)}
         />
 
-        <main className="flex flex-1 min-h-0 flex-col gap-2.5 sm:gap-3 overflow-hidden px-2.5 sm:px-4 lg:px-5 pt-2.5 sm:pt-4 lg:pt-5 pb-2.5 sm:pb-4 lg:pb-5">
+        <main className="flex flex-1 min-h-0 flex-col gap-2.5 sm:gap-3 overflow-hidden px-2.5 sm:px-4 lg:px-5 pt-2.5 sm:pt-3 pb-2">
 
           {/* ── Toolbar ────────────────────────────────────────────── */}
           <div className="shrink-0 flex flex-col lg:flex-row lg:items-center gap-2.5 sm:gap-3 rounded-xl border border-slate-200 bg-white p-3 sm:px-4 sm:py-3 shadow-xs">
@@ -1307,47 +1308,15 @@ export default function EmployeeMasterDataPage() {
 
             {/* ── Pagination footer ────────────────────────────────── */}
             {totalCount > 0 && (
-              <div className="shrink-0 flex flex-col sm:flex-row items-center justify-between gap-2.5 sm:gap-3 border-t border-slate-200/90 bg-slate-50/80 px-3.5 sm:px-5 py-2.5 sm:py-3.5">
-                {/* Count */}
-                <p className="text-xs sm:text-[13px] text-slate-600 m-0 text-center sm:text-left">
-                  Showing{" "}
-                  <span className="font-bold text-slate-900">{(currentPage - 1) * pageSize + 1}</span>
-                  {" "}to{" "}
-                  <span className="font-bold text-slate-900">{Math.min(currentPage * pageSize, totalCount)}</span>
-                  {" "}of{" "}
-                  <span className="font-bold text-slate-900">{totalCount}</span>
-                  {" "}employees
-                </p>
-
-                {/* Page controls */}
-                {totalPages > 1 && (
-                  <div className="flex items-center gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
-                      disabled={currentPage === 1 || isLoading}
-                      className="flex h-8 w-8 sm:h-8.5 sm:w-8.5 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 shadow-2xs hover:bg-slate-100 hover:text-slate-900 disabled:opacity-35 disabled:cursor-not-allowed transition cursor-pointer"
-                      title="Previous page"
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                    </button>
-
-                    <span className="rounded-md border border-slate-200 bg-white px-3 py-1 text-xs sm:text-[12.5px] font-bold text-slate-800 shadow-2xs">
-                      {currentPage} / {totalPages}
-                    </span>
-
-                    <button
-                      type="button"
-                      onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
-                      disabled={currentPage >= totalPages || isLoading}
-                      className="flex h-8 w-8 sm:h-8.5 sm:w-8.5 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 shadow-2xs hover:bg-slate-100 hover:text-slate-900 disabled:opacity-35 disabled:cursor-not-allowed transition cursor-pointer"
-                      title="Next page"
-                    >
-                      <ChevronRight className="h-4 w-4" />
-                    </button>
-                  </div>
-                )}
-              </div>
+              <TablePagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                totalItems={totalCount}
+                pageSize={pageSize}
+                onPageChange={setCurrentPage}
+                itemLabel="employees"
+                className="shrink-0"
+              />
             )}
           </div>
         </main>
