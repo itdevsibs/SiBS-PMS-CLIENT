@@ -52,3 +52,8 @@ export async function batchImportEmployeeToolAliases(items) {
   return apiPost("/masterdata/ledger/batch-import", { items });
 }
 
+export async function importUsVisaEmployeeLedger(items) {
+  return apiPost("/masterdata/ledger/import-us-visa", { items });
+}
+
+

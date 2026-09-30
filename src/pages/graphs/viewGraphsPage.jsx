@@ -5,7 +5,9 @@ import {
   ChevronDown,
   Clock,
   Database,
+  Download,
   Filter,
+  Loader2,
   RefreshCw,
 } from "lucide-react";
 
@@ -14,6 +16,7 @@ import AppHeader from "@/components/layout/AppHeader";
 import ConfirmationModal from "@/components/ui/confirmation-modal";
 import LoadingModal from "@/components/ui/loading-modal";
 import CallKpiDashboard from "@/components/kpi/CallKpiDashboard";
+import { downloadKpiGraphsAsPdf } from "@/components/kpi/callKpiDashboardUtils";
 import DatePicker from "@/components/ui/Filter/DatePicker";
 import MultiSelectDropdown from "@/components/ui/Filter/MultiSelectDropdown";
 import SingleSelectDropdown from "@/components/ui/Filter/SingleSelectDropdown";
@@ -1079,6 +1082,19 @@ export default function ViewGraphsPage() {
   const [error, setError] = useState("");
   const [skillsByCountryState, setSkillsByCountryState] = useState(SKILLS_BY_COUNTRY);
   const [showFilters, setShowFilters] = useState(true);
+  const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
+
+  const handleDownloadPdf = async () => {
+    if (isDownloadingPdf) return;
+    try {
+      setIsDownloadingPdf(true);
+      await downloadKpiGraphsAsPdf("kpi-graphs-container");
+    } catch (err) {
+      console.error("Failed to download PDF report:", err);
+    } finally {
+      setIsDownloadingPdf(false);
+    }
+  };
 
   useEffect(() => {
     let isMounted = true;
@@ -1403,7 +1419,7 @@ export default function ViewGraphsPage() {
           }
         />
 
-        <div className="sibs-scrollbar flex-1 overflow-y-auto p-3 sm:p-3.5 pb-16 sm:pb-8">
+        <div className="sibs-scrollbar flex-1 overflow-y-auto overflow-x-hidden p-3 sm:p-3.5 pb-16 sm:pb-8">
           {!canViewGraphs ? (
             <div className="sibs-card p-6 text-center">
               <AlertCircle
@@ -1424,8 +1440,7 @@ export default function ViewGraphsPage() {
             <div className="space-y-2">
               <section className="sibs-card relative z-40 overflow-visible shadow-xs">
                 <div
-                  onClick={() => setShowFilters((prev) => !prev)}
-                  className={`flex cursor-pointer select-none items-center justify-between bg-sibs-primary-3/30 px-3.5 py-1.5 transition-colors hover:bg-sibs-primary-3/50 ${
+                  className={`flex select-none items-center justify-between bg-sibs-primary-3/30 px-3.5 py-1.5 ${
                     showFilters ? "border-b border-sibs-tertiary-10" : ""
                   }`}
                 >
@@ -1440,24 +1455,44 @@ export default function ViewGraphsPage() {
                     </h1>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setShowFilters((prev) => !prev);
-                    }}
-                    className="inline-flex cursor-pointer items-center gap-1.5 rounded-md px-2 py-0.5 text-xs font-semibold text-sibs-primary-1 hover:bg-sibs-primary-1/10 transition-colors"
-                    title={showFilters ? "Hide filters and KPI cards to conserve space" : "Show filters and KPI cards"}
-                  >
-                    <Filter size={12} className="shrink-0" />
-                    <span>{showFilters ? "Hide Filters & KPIs" : "Show Filters & KPIs"}</span>
-                    <ChevronDown
-                      size={14}
-                      className={`shrink-0 transition-transform duration-200 ${
-                        showFilters ? "rotate-180" : ""
-                      }`}
-                    />
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDownloadPdf();
+                      }}
+                      disabled={isDownloadingPdf || !dashboardData?.series?.length}
+                      className="inline-flex cursor-pointer select-none items-center gap-1.5 rounded-md border border-sibs-tertiary-9 bg-white px-2.5 py-1 text-xs font-semibold text-sibs-primary-1 shadow-xs transition-colors hover:border-sibs-primary-1 hover:bg-sibs-primary-1 hover:text-white disabled:pointer-events-none disabled:opacity-50"
+                      title="Download the 3 KPI graphs as a PDF file"
+                    >
+                      {isDownloadingPdf ? (
+                        <Loader2 size={12} className="animate-spin text-inherit" />
+                      ) : (
+                        <Download size={12} className="text-inherit" />
+                      )}
+                      <span>{isDownloadingPdf ? "Downloading..." : "Download as PDF"}</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowFilters((prev) => !prev);
+                      }}
+                      className="inline-flex cursor-pointer items-center gap-1.5 rounded-md px-2 py-0.5 text-xs font-semibold text-sibs-primary-1 hover:bg-sibs-primary-1/10 transition-colors"
+                      title={showFilters ? "Hide filters and KPI cards to conserve space" : "Show filters and KPI cards"}
+                    >
+                      <Filter size={12} className="shrink-0" />
+                      <span>{showFilters ? "Hide Filters & KPIs" : "Show Filters & KPIs"}</span>
+                      <ChevronDown
+                        size={14}
+                        className={`shrink-0 transition-transform duration-200 ${
+                          showFilters ? "rotate-180" : ""
+                        }`}
+                      />
+                    </button>
+                  </div>
                 </div>
 
                 {showFilters && (
@@ -1613,7 +1648,7 @@ export default function ViewGraphsPage() {
                   </div>
                 </div>
               ) : (
-                <div className="relative z-0">
+                <div className="relative z-0 min-w-0 w-full">
                   {emptyDataMessage && !error ? (
                     <div className="sibs-card mb-4 p-4 text-sm font-semibold text-sibs-tertiary-5">
                       {emptyDataMessage}
