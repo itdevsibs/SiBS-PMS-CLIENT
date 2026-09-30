@@ -1,6 +1,7 @@
 // Manages dashboard auth state, sidebar modules, and logout flow.
 import { useEffect, useMemo, useState } from "react";
 import {
+  Award,
   BarChart3,
   ClipboardList,
   Database,
@@ -57,6 +58,11 @@ function useDashboardPage() {
       icon: Database,
       path: "/dashboard/employee-master-data",
     };
+    const taskOrderLedgerModule = {
+      name: "Task-Order Ledger",
+      icon: Award,
+      path: "/dashboard/wfm/task-order-ledger",
+    };
     const importDataModule = {
       name: "Import Data",
       icon: ClipboardList,
@@ -100,6 +106,7 @@ function useDashboardPage() {
       return [
         viewGraphsModule,
         employeeLedgerModule,
+        taskOrderLedgerModule,
         importDataModule,
         importRepositoryModule,
         occupancyModule,

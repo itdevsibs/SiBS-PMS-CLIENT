@@ -1079,9 +1079,9 @@ export default function OccupancyTable({
   }, []);
 
   return (
-    <div className="space-y-3.5">
+    <div className="flex-1 min-h-0 flex flex-col gap-2.5 sm:gap-3 overflow-hidden">
       {/* Search and filter toolbar matching reference bar */}
-      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-3 sm:gap-3.5 rounded-xl border border-slate-200 bg-white p-3 sm:p-4 shadow-xs">
+      <div className="shrink-0 flex flex-col lg:flex-row lg:items-end justify-between gap-3 sm:gap-3.5 rounded-xl border border-slate-200 bg-white p-3 sm:p-4 shadow-xs">
         <div className="flex flex-wrap items-end gap-3 sm:gap-3.5 flex-1 min-w-0 w-full">
           {/* 1. Search */}
           <div className="w-full sm:w-auto sm:flex-1 sm:min-w-[190px] lg:max-w-xs">
@@ -1211,14 +1211,14 @@ export default function OccupancyTable({
       </div>
 
       {/* Structured, Well-Organized Data Grid */}
-      <div className="rounded-xl border border-slate-200 bg-white shadow-xs overflow-hidden">
+      <div className="flex-1 min-h-0 flex flex-col rounded-xl border border-slate-200 bg-white shadow-xs overflow-hidden">
         <div
           ref={tableContainerRef}
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
           onPointerCancel={handlePointerUp}
-          className="w-full overflow-x-auto sibs-scrollbar cursor-grab active:cursor-grabbing touch-pan-x touch-pan-y"
+          className="flex-1 min-h-0 w-full overflow-x-auto overflow-y-auto sibs-scrollbar cursor-grab active:cursor-grabbing touch-pan-x touch-pan-y"
           style={{
             WebkitOverflowScrolling: "touch",
           }}
@@ -1236,7 +1236,7 @@ export default function OccupancyTable({
             </colgroup>
 
             {/* Category Groups Header */}
-            <thead className="relative z-10 bg-slate-100">
+            <thead className="sticky top-0 z-20 bg-slate-100 shadow-xs">
               <tr className="border-b border-slate-200 bg-slate-100/95 text-[11px] font-bold uppercase tracking-wider text-slate-600">
                 <th
                   colSpan={2}
@@ -1427,6 +1427,7 @@ export default function OccupancyTable({
             pageSize={PAGE_SIZE}
             onPageChange={setCurrentPage}
             itemLabel="employees"
+            className="shrink-0"
           />
         )}
       </div>
