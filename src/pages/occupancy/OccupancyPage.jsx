@@ -134,7 +134,7 @@ export default function OccupancyPage() {
           onLogoutClick={() => dashboard.setShowLogoutModal(true)}
         />
 
-        <div className="flex-1 min-h-0 flex flex-col overflow-hidden px-2.5 sm:px-4 lg:px-5 pt-2 sm:pt-2.5 pb-2 gap-2 sm:gap-2.5">
+        <div className="sibs-scrollbar flex-1 min-h-0 flex flex-col overflow-y-auto px-2.5 sm:px-4 lg:px-5 pt-2 sm:pt-2.5 pb-2 gap-2 sm:gap-2.5">
           {!canAccess ? (
             <div className="sibs-card p-6 text-center">
               <AlertCircle className="mx-auto mb-3 text-amber-500" size={34} />

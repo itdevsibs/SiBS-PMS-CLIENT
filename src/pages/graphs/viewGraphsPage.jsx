@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   AlertCircle,
   BarChart3,
@@ -821,9 +821,9 @@ function getTaskOrderLabel(sourceSystem, value) {
   const list = Array.isArray(value)
     ? value.filter((v) => v && v !== "__NONE__")
     : String(value)
-        .split(",")
-        .map((s) => s.trim())
-        .filter(Boolean);
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
   if (!list.length) return "All Task Orders";
 
   const allOpts = getTaskOrderOptions(sourceSystem);
@@ -860,8 +860,8 @@ function getSkillOptions(sourceSystem, selectedCountries, selectedTaskOrders, sk
   const countryList = Array.isArray(selectedCountries)
     ? selectedCountries.filter((c) => c && c !== "__NONE__")
     : selectedCountries
-    ? [selectedCountries]
-    : [];
+      ? [selectedCountries]
+      : [];
 
   if (countryList.length > 0) {
     const countrySkills = getSkillsForCountries(countryList, skillsMap);
@@ -872,8 +872,8 @@ function getSkillOptions(sourceSystem, selectedCountries, selectedTaskOrders, sk
   const toList = Array.isArray(selectedTaskOrders)
     ? selectedTaskOrders.filter((to) => to && to !== "__NONE__")
     : selectedTaskOrders
-    ? [selectedTaskOrders]
-    : [];
+      ? [selectedTaskOrders]
+      : [];
 
   if (toList.length > 0) {
     const toCountries = getCountryOptions(sourceSystem, toList).map((c) => c.value);
@@ -901,9 +901,9 @@ function getSkillLabel(sourceSystem, value, selectedCountries, selectedTaskOrder
   const list = Array.isArray(value)
     ? value.filter((v) => v && v !== "__NONE__")
     : String(value)
-        .split(",")
-        .map((s) => s.trim())
-        .filter(Boolean);
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
   if (!list.length) return "All Skills";
 
   const allOpts = getSkillOptions(sourceSystem, selectedCountries, selectedTaskOrders, skillsMap);
@@ -926,12 +926,12 @@ function getCountryOptions(sourceSystem, taskOrder) {
 
   const primarySource =
     !sources.length ||
-    sources.includes("US_VISA") ||
-    (sources.includes("FUSECOM") && sources.includes("HERODASH"))
+      sources.includes("US_VISA") ||
+      (sources.includes("FUSECOM") && sources.includes("HERODASH"))
       ? "US_VISA"
       : sources.includes("FUSECOM")
-      ? "FUSECOM"
-      : "HERODASH";
+        ? "FUSECOM"
+        : "HERODASH";
 
   const sourceCountries =
     COUNTRY_OPTIONS_BY_SOURCE_AND_TO[primarySource] ||
@@ -941,11 +941,11 @@ function getCountryOptions(sourceSystem, taskOrder) {
   const toList = Array.isArray(taskOrder)
     ? taskOrder.filter((to) => to && to !== "__NONE__")
     : taskOrder
-    ? String(taskOrder)
+      ? String(taskOrder)
         .split(",")
         .map((s) => s.trim())
         .filter(Boolean)
-    : [];
+      : [];
 
   // If no specific task order is selected (All Task Orders)
   if (!toList.length) {
@@ -973,9 +973,9 @@ function getCountryLabel(sourceSystem, taskOrder, value) {
   const list = Array.isArray(value)
     ? value.filter((v) => v && v !== "__NONE__")
     : String(value)
-        .split(",")
-        .map((s) => s.trim())
-        .filter(Boolean);
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
   if (!list.length) return "All Countries";
 
   const allOpts = getCountryOptions(sourceSystem, taskOrder);
@@ -1111,6 +1111,7 @@ export default function ViewGraphsPage() {
   const [skillsByCountryState, setSkillsByCountryState] = useState(SKILLS_BY_COUNTRY);
   const [showFilters, setShowFilters] = useState(true);
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
+  const skipNextFetchRef = useRef(false);
 
   const handleDownloadPdf = async () => {
     if (isDownloadingPdf) return;
@@ -1159,6 +1160,11 @@ export default function ViewGraphsPage() {
 
   const loadKpis = useCallback(async () => {
     if (!canViewGraphs) {
+      return;
+    }
+
+    if (skipNextFetchRef.current) {
+      skipNextFetchRef.current = false;
       return;
     }
 
@@ -1242,6 +1248,7 @@ export default function ViewGraphsPage() {
       !filters.referenceDate &&
       filters.period !== "custom"
     ) {
+      skipNextFetchRef.current = true;
       setFilters((current) => ({
         ...current,
         referenceDate: returnedReferenceDate,
@@ -1289,9 +1296,6 @@ export default function ViewGraphsPage() {
         taskOrder: nextTaskOrder,
         country: nextCountry,
         skill: nextSkill,
-        referenceDate: "",
-        from: "",
-        to: "",
       };
     });
   };
@@ -1330,9 +1334,6 @@ export default function ViewGraphsPage() {
         taskOrder: newTaskOrders,
         country: nextCountry,
         skill: nextSkill,
-        referenceDate: "",
-        from: "",
-        to: "",
       };
     });
   };
@@ -1359,9 +1360,6 @@ export default function ViewGraphsPage() {
         ...current,
         country: newCountries,
         skill: nextSkill,
-        referenceDate: "",
-        from: "",
-        to: "",
       };
     });
   };
@@ -1370,9 +1368,6 @@ export default function ViewGraphsPage() {
     setFilters((current) => ({
       ...current,
       skill: newSkills,
-      referenceDate: "",
-      from: "",
-      to: "",
     }));
   };
 
@@ -1515,7 +1510,7 @@ export default function ViewGraphsPage() {
           }
         />
 
-        <div className="sibs-scrollbar flex-1 overflow-y-auto overflow-x-hidden p-3 sm:p-3.5 pb-16 sm:pb-8">
+        <div className="sibs-scrollbar flex-1 overflow-y-auto overflow-x-hidden p-2 sm:p-3.5 pb-16 sm:pb-8">
           {!canViewGraphs ? (
             <div className="sibs-card p-6 text-center">
               <AlertCircle
@@ -1536,14 +1531,13 @@ export default function ViewGraphsPage() {
             <div className="space-y-2">
               <section className="sibs-card relative z-40 overflow-visible shadow-xs">
                 <div
-                  className={`flex select-none items-center justify-between bg-sibs-primary-3/30 px-3.5 py-1.5 ${
-                    showFilters ? "border-b border-sibs-tertiary-10" : ""
-                  }`}
+                  className={`flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 bg-sibs-primary-3/30 px-3 sm:px-3.5 py-2.5 sm:py-1.5 select-none ${showFilters ? "border-b border-sibs-tertiary-10" : ""
+                    }`}
                 >
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
                     <BarChart3
                       size={16}
-                      className="text-sibs-primary-1"
+                      className="text-sibs-primary-1 shrink-0"
                     />
 
                     <h1 className="m-0 text-sm font-extrabold text-sibs-primary-1">
@@ -1551,7 +1545,7 @@ export default function ViewGraphsPage() {
                     </h1>
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 justify-between sm:justify-end w-full sm:w-auto">
                     <button
                       type="button"
                       onClick={(e) => {
@@ -1563,9 +1557,9 @@ export default function ViewGraphsPage() {
                       title="Download the 3 KPI graphs as a PDF file"
                     >
                       {isDownloadingPdf ? (
-                        <Loader2 size={12} className="animate-spin text-inherit" />
+                        <Loader2 size={12} className="animate-spin text-inherit shrink-0" />
                       ) : (
-                        <Download size={12} className="text-inherit" />
+                        <Download size={12} className="text-inherit shrink-0" />
                       )}
                       <span>{isDownloadingPdf ? "Downloading..." : "Download as PDF"}</span>
                     </button>
@@ -1576,121 +1570,126 @@ export default function ViewGraphsPage() {
                         e.stopPropagation();
                         setShowFilters((prev) => !prev);
                       }}
-                      className="inline-flex cursor-pointer items-center gap-1.5 rounded-md px-2 py-0.5 text-xs font-semibold text-sibs-primary-1 hover:bg-sibs-primary-1/10 transition-colors"
+                      className="inline-flex cursor-pointer items-center gap-1.5 rounded-md px-2 py-1 text-xs font-semibold text-sibs-primary-1 hover:bg-sibs-primary-1/10 transition-colors"
                       title={showFilters ? "Hide filters and KPI cards to conserve space" : "Show filters and KPI cards"}
                     >
                       <Filter size={12} className="shrink-0" />
                       <span>{showFilters ? "Hide Filters & KPIs" : "Show Filters & KPIs"}</span>
                       <ChevronDown
                         size={14}
-                        className={`shrink-0 transition-transform duration-200 ${
-                          showFilters ? "rotate-180" : ""
-                        }`}
+                        className={`shrink-0 transition-transform duration-200 ${showFilters ? "rotate-180" : ""
+                          }`}
                       />
                     </button>
                   </div>
                 </div>
 
                 {showFilters && (
-                  <div className="grid grid-cols-1 gap-2 p-2.5 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 xl:items-end">
-                  {/* 1. Account / Source */}
-                  <MultiSelectDropdown
-                    label="Account / Source"
-                    value={filters.sourceSystem}
-                    onChange={handleSourceChange}
-                    options={SOURCE_OPTIONS}
-                    placeholder="All Sources"
-                    allOptionLabel="US Visa (All Sources)"
-                  />
+                  <div className="grid grid-cols-1 gap-2 p-2.5 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 items-end">
+                    {/* 1. Account / Source */}
+                    <MultiSelectDropdown
+                      label="Account / Source"
+                      value={filters.sourceSystem}
+                      onChange={handleSourceChange}
+                      options={SOURCE_OPTIONS}
+                      placeholder="All Sources"
+                      allOptionLabel="US Visa (All Sources)"
+                    />
 
-                  {/* 2. Task Order */}
-                  <MultiSelectDropdown
-                    label="Task Order"
-                    value={filters.taskOrder}
-                    onChange={handleTaskOrderChange}
-                    options={taskOrderOptions}
-                    placeholder="All Task Orders"
-                    allOptionLabel="All Task Orders"
-                  />
+                    {/* 2. Task Order */}
+                    <MultiSelectDropdown
+                      label="Task Order"
+                      value={filters.taskOrder}
+                      onChange={handleTaskOrderChange}
+                      options={taskOrderOptions}
+                      placeholder="All Task Orders"
+                      allOptionLabel="All Task Orders"
+                    />
 
-                  {/* 3. Country */}
-                  <MultiSelectDropdown
-                    label="Country"
-                    value={filters.country}
-                    onChange={handleCountryChange}
-                    options={countryOptions}
-                    placeholder="All Countries"
-                    allOptionLabel="All Countries"
-                  />
+                    {/* 3. Country */}
+                    <MultiSelectDropdown
+                      label="Country"
+                      value={filters.country}
+                      onChange={handleCountryChange}
+                      options={countryOptions}
+                      placeholder="All Countries"
+                      allOptionLabel="All Countries"
+                    />
 
-                  {/* 4. Skill */}
-                  <MultiSelectDropdown
-                    label="Skill"
-                    value={filters.skill}
-                    onChange={handleSkillChange}
-                    options={skillOptions}
-                    placeholder="All Skills"
-                    allOptionLabel="All Skills"
-                  />
+                    {/* 4. Skill */}
+                    <MultiSelectDropdown
+                      label="Skill"
+                      value={filters.skill}
+                      onChange={handleSkillChange}
+                      options={skillOptions}
+                      placeholder="All Skills"
+                      allOptionLabel="All Skills"
+                    />
 
-                  {/* 5. Reporting Period */}
-                  <SingleSelectDropdown
-                    label="Reporting Period"
-                    value={filters.period}
-                    onChange={handlePeriodChange}
-                    options={PERIOD_OPTIONS}
-                    placeholder="Weekly"
-                  />
+                    {/* 5. Reporting Period */}
+                    <SingleSelectDropdown
+                      label="Reporting Period"
+                      value={filters.period}
+                      onChange={handlePeriodChange}
+                      options={PERIOD_OPTIONS}
+                      placeholder="Weekly"
+                    />
 
-                  {/* 6. Reference Date (or From + To) */}
-                  {isCustomPeriod ? (
-                    <>
-                      <DatePicker
-                        label="From"
-                        value={filters.from}
-                        onChange={(from) =>
-                          setFilters((current) => ({
-                            ...current,
-                            from: from || "",
-                          }))
-                        }
-                      />
+                    {/* 6. Reference Date (or From + To) */}
+                    {isCustomPeriod ? (
+                      <>
+                        <DatePicker
+                          label="From"
+                          value={filters.from}
+                          onChange={(from) =>
+                            setFilters((current) => ({
+                              ...current,
+                              from: from || "",
+                            }))
+                          }
+                        />
 
-                      <DatePicker
-                        label="To"
-                        value={filters.to}
-                        onChange={(to) =>
-                          setFilters((current) => ({
-                            ...current,
-                            to: to || "",
-                          }))
-                        }
-                      />
-                    </>
-                  ) : (
-                    <>
-                      <DatePicker
-                        label="Reference Date"
-                        value={filters.referenceDate}
-                        onChange={handleReferenceDateChange}
-                      />
+                        <DatePicker
+                          label="To"
+                          value={filters.to}
+                          onChange={(to) =>
+                            setFilters((current) => ({
+                              ...current,
+                              to: to || "",
+                            }))
+                          }
+                        />
+                      </>
+                    ) : (
+                      <>
+                        <DatePicker
+                          label="Reference Date"
+                          value={filters.referenceDate}
+                          onChange={handleReferenceDateChange}
+                        />
 
-                      {/* 7. Latest button */}
-                      <div>
-                        <button
-                          type="button"
-                          onClick={handleLatestRange}
-                          disabled={isLoading}
-                          title="Use the latest available KPI date."
-                          className="inline-flex h-8 w-full cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-xs font-bold text-sibs-primary-1 shadow-xs transition hover:border-sibs-primary-1 hover:bg-sibs-primary-1 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
-                        >
-                          <Clock size={12} className="shrink-0" />
-                          <span>Latest</span>
-                        </button>
-                      </div>
-                    </>
-                  )}
-                </div>
+                        {/* 7. Latest button */}
+                        <div className="flex flex-col justify-end">
+                          <span
+                            className="mb-0.5 block text-[9.5px] font-extrabold uppercase select-none text-transparent"
+                            aria-hidden="true"
+                          >
+                            &nbsp;
+                          </span>
+                          <button
+                            type="button"
+                            onClick={handleLatestRange}
+                            disabled={isLoading}
+                            title="Use the latest available KPI date."
+                            className="inline-flex h-8 w-full cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-xs font-bold text-sibs-primary-1 shadow-xs transition hover:border-sibs-primary-1 hover:bg-sibs-primary-1 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+                          >
+                            <Clock size={12} className="shrink-0" />
+                            <span>Latest</span>
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
                 )}
               </section>
 
