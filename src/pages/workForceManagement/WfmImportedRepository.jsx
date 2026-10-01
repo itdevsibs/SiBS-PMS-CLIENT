@@ -52,6 +52,7 @@ function normalizeLevelValue(val) {
   const upper = String(val).trim().toUpperCase();
   if (upper === "ALL" || upper === "ALL LEVEL") return "ALL";
   if (upper.includes("SERVICE") || upper.includes("QUEUE")) return "SERVICE / QUEUE LEVEL";
+  if (upper.includes("QUALITY") || upper === "QA") return "QUALITY AUDIT";
   if (upper.includes("OCCUPANCY")) return "AGENT OCCUPANCY";
   if (upper.includes("AGENT")) return "AGENT LEVEL";
   if (upper.includes("EMAIL")) return "EMAIL LEVEL";
@@ -64,6 +65,7 @@ function normalizeToolValue(val) {
   if (raw.includes("fusenet")) return "FuseNet";
   if (raw.includes("fusecom")) return "Fusecom";
   if (raw.includes("hero")) return "HeroDash";
+  if (raw.includes("quality")) return "Quality Audit";
   return "ALL";
 }
 
@@ -264,6 +266,7 @@ export default function WfmImportedRepository() {
       "AGENT LEVEL": 0,
       "AGENT OCCUPANCY": 0,
       "EMAIL LEVEL": 0,
+      "QUALITY AUDIT": 0,
     };
     allUploads.forEach((u) => {
       const lvl = getUploadLevel(u);
@@ -299,6 +302,10 @@ export default function WfmImportedRepository() {
         value: "EMAIL LEVEL",
         label: "EMAIL RAW DATA",
       },
+      {
+        value: "QUALITY AUDIT",
+        label: "QUALITY AUDIT",
+      },
     ],
     [],
   );
@@ -315,6 +322,7 @@ export default function WfmImportedRepository() {
     if (raw.includes("fusenet")) return "FuseNet";
     if (raw.includes("fusecom")) return "Fusecom";
     if (raw.includes("hero")) return "HeroDash";
+    if (raw.includes("quality")) return "Quality Audit";
     return "Other";
   }, []);
 
@@ -324,6 +332,7 @@ export default function WfmImportedRepository() {
       Fusecom: 0,
       FuseNet: 0,
       HeroDash: 0,
+      "Quality Audit": 0,
     };
     levelFilteredUploads.forEach((u) => {
       const tool = getUploadTool(u);
@@ -341,6 +350,7 @@ export default function WfmImportedRepository() {
       { value: "Fusecom", label: `Fusecom (${toolCounts.Fusecom || 0})` },
       { value: "FuseNet", label: `FuseNet (${toolCounts.FuseNet || 0})` },
       { value: "HeroDash", label: `HeroDash (${toolCounts.HeroDash || 0})` },
+      { value: "Quality Audit", label: `Quality Audit (${toolCounts["Quality Audit"] || 0})` },
     ],
     [levelFilteredUploads.length, toolCounts],
   );

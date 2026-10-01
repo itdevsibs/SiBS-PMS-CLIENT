@@ -17,12 +17,18 @@ import ConfirmationModal from "@/components/ui/confirmation-modal";
 import LoadingModal from "@/components/ui/loading-modal";
 import CallKpiDashboard from "@/components/kpi/CallKpiDashboard";
 import EmailKpiDashboard from "@/components/kpi/EmailKpiDashboard";
+import QualityAuditKpiDashboard from "@/components/kpi/QualityAuditKpiDashboard";
 import { downloadKpiGraphsAsPdf } from "@/components/kpi/callKpiDashboardUtils";
 import DatePicker from "@/components/ui/Filter/DatePicker";
 import MultiSelectDropdown from "@/components/ui/Filter/MultiSelectDropdown";
 import SingleSelectDropdown from "@/components/ui/Filter/SingleSelectDropdown";
 import useDashboardPage from "@/hooks/useDashboardPage";
-import { getWfmCallKpis, getWfmCallSkills, getWfmEmailKpis } from "@/lib/axios/wfm-kpis";
+import {
+  getWfmCallKpis,
+  getWfmCallSkills,
+  getWfmEmailKpis,
+  getWfmQualityAuditKpis,
+} from "@/lib/axios/wfm-kpis";
 
 const PERIOD_OPTIONS = [
   {
@@ -780,25 +786,6 @@ function formatGrain(value) {
   );
 }
 
-function getSourceLabel(value) {
-  if (!value || (Array.isArray(value) && !value.length)) return "US Visa (All Sources)";
-  const list = Array.isArray(value)
-    ? value.filter((v) => v && v !== "__NONE__")
-    : String(value)
-        .split(",")
-        .map((s) => s.trim())
-        .filter(Boolean);
-  if (
-    !list.length ||
-    list.includes("US_VISA") ||
-    (list.includes("FUSECOM") && list.includes("HERODASH"))
-  ) {
-    return "US Visa (All Sources)";
-  }
-  return list
-    .map((val) => SOURCE_OPTIONS.find((o) => o.value === val)?.label || val)
-    .join(", ");
-}
 
 function getTaskOrderOptions(sourceSystem) {
   const sources = Array.isArray(sourceSystem)
@@ -1089,6 +1076,12 @@ function buildEmailRequestParams(filters) {
   return params;
 }
 
+function buildQualityAuditRequestParams(filters) {
+  // Quality Audit uses the shared reporting range, Task Order, and Country.
+  // Account/Source and Skill are Calls-only filters and must not affect QA.
+  return buildEmailRequestParams(filters);
+}
+
 export default function ViewGraphsPage() {
   const dashboard = useDashboardPage();
 
@@ -1110,9 +1103,11 @@ export default function ViewGraphsPage() {
   const [filters, setFilters] = useState(DEFAULT_FILTERS);
   const [kpiResponse, setKpiResponse] = useState(null);
   const [emailKpiResponse, setEmailKpiResponse] = useState(null);
+  const [qualityAuditKpiResponse, setQualityAuditKpiResponse] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [emailError, setEmailError] = useState("");
+  const [qualityAuditError, setQualityAuditError] = useState("");
   const [skillsByCountryState, setSkillsByCountryState] = useState(SKILLS_BY_COUNTRY);
   const [showFilters, setShowFilters] = useState(true);
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
@@ -1184,13 +1179,16 @@ export default function ViewGraphsPage() {
     setIsLoading(true);
     setError("");
     setEmailError("");
+    setQualityAuditError("");
 
     try {
       const callParams = buildRequestParams(filters);
       const emailParams = buildEmailRequestParams(filters);
-      const [callResult, emailResult] = await Promise.allSettled([
+      const qualityAuditParams = buildQualityAuditRequestParams(filters);
+      const [callResult, emailResult, qualityAuditResult] = await Promise.allSettled([
         getWfmCallKpis(callParams),
         getWfmEmailKpis(emailParams),
+        getWfmQualityAuditKpis(qualityAuditParams),
       ]);
 
       if (callResult.status === "fulfilled") {
@@ -1210,6 +1208,17 @@ export default function ViewGraphsPage() {
         setEmailError(emailMessage);
         setEmailKpiResponse(null);
       }
+
+      if (qualityAuditResult.status === "fulfilled") {
+        setQualityAuditKpiResponse(qualityAuditResult.value);
+      } else {
+        const qualityMessage =
+          qualityAuditResult.reason?.response?.data?.message ||
+          qualityAuditResult.reason?.message ||
+          "Unable to load Quality Audit KPI data.";
+        setQualityAuditError(qualityMessage);
+        setQualityAuditKpiResponse(null);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -1222,9 +1231,11 @@ export default function ViewGraphsPage() {
   useEffect(() => {
     const callReturnedFilters = kpiResponse?.data?.data?.filters || {};
     const emailReturnedFilters = emailKpiResponse?.data?.data?.filters || {};
+    const qualityAuditReturnedFilters = qualityAuditKpiResponse?.data?.data?.filters || {};
     const returnedReferenceDate =
       callReturnedFilters.referenceDate ||
       emailReturnedFilters.referenceDate ||
+      qualityAuditReturnedFilters.referenceDate ||
       "";
     if (
       returnedReferenceDate &&
@@ -1236,7 +1247,13 @@ export default function ViewGraphsPage() {
         referenceDate: returnedReferenceDate,
       }));
     }
-  }, [kpiResponse, emailKpiResponse, filters.referenceDate, filters.period]);
+  }, [
+    kpiResponse,
+    emailKpiResponse,
+    qualityAuditKpiResponse,
+    filters.referenceDate,
+    filters.period,
+  ]);
 
   const handleSourceChange = (newSources) => {
     setFilters((current) => {
@@ -1400,6 +1417,9 @@ export default function ViewGraphsPage() {
   const emailDashboardData =
     emailKpiResponse?.data?.data || {};
 
+  const qualityAuditDashboardData =
+    qualityAuditKpiResponse?.data?.data || {};
+
   const availableGrains =
     Array.isArray(dashboardData.availableGrains)
       ? dashboardData.availableGrains
@@ -1409,10 +1429,6 @@ export default function ViewGraphsPage() {
     Array.isArray(dashboardData.series)
       ? dashboardData.series
       : [];
-
-  const activeSourceSystem =
-    dashboardData.filters?.sourceSystem ||
-    filters.sourceSystem;
 
   const taskOrderOptions = getTaskOrderOptions(
     filters.sourceSystem,
@@ -1425,8 +1441,11 @@ export default function ViewGraphsPage() {
   const emailCountryOptions = Array.isArray(emailDashboardData.availableCountries)
     ? emailDashboardData.availableCountries
     : [];
+  const qualityAuditCountryOptions = Array.isArray(qualityAuditDashboardData.availableCountries)
+    ? qualityAuditDashboardData.availableCountries
+    : [];
   const countryOptions = Array.from(
-    [...baseCountryOptions, ...emailCountryOptions].reduce((map, option) => {
+    [...baseCountryOptions, ...emailCountryOptions, ...qualityAuditCountryOptions].reduce((map, option) => {
       const key = String(option?.value || "").trim().toLowerCase();
       if (key && !map.has(key)) map.set(key, option);
       return map;
@@ -1444,12 +1463,19 @@ export default function ViewGraphsPage() {
     dashboardData.filters?.taskOrder ||
     filters.taskOrder;
 
+  const emailSeries = Array.isArray(emailDashboardData.series)
+    ? emailDashboardData.series
+    : [];
+  const qualityAuditSeries = Array.isArray(qualityAuditDashboardData.series)
+    ? qualityAuditDashboardData.series
+    : [];
+  const hasAnyKpiSeries =
+    series.length > 0 || emailSeries.length > 0 || qualityAuditSeries.length > 0;
+
   const emptyDataMessage =
-    !availableGrains.length
-      ? `No validated ${getSourceLabel(
-          activeSourceSystem,
-        )} KPI data is available.`
-      : !series.length
+    !hasAnyKpiSeries && !availableGrains.length
+      ? "No validated Calls, Email, or Quality Audit KPI data is available."
+      : !hasAnyKpiSeries
         ? "No KPI data is available for the selected reporting range."
         : "";
 
@@ -1502,7 +1528,7 @@ export default function ViewGraphsPage() {
               </h2>
 
               <p className="mt-2 mb-0 text-sm text-sibs-tertiary-5">
-                Calls KPI reporting is available for
+                KPI reporting is available for
                 WFM, BOD, Admin, and SOM dashboards.
               </p>
             </div>
@@ -1521,7 +1547,7 @@ export default function ViewGraphsPage() {
                     />
 
                     <h1 className="m-0 text-sm font-extrabold text-sibs-primary-1">
-                      Calls KPI Performance
+                      Calls, Emails & Quality Performance
                     </h1>
                   </div>
 
@@ -1708,7 +1734,7 @@ export default function ViewGraphsPage() {
 
                   <div>
                     <p className="m-0 font-bold text-sibs-primary-1">
-                      Loading Calls & Email KPI data
+                      Loading Calls, Email & Quality KPI data
                     </p>
 
                     <p className="mt-1 mb-0 text-sm text-sibs-tertiary-5">
@@ -1741,6 +1767,16 @@ export default function ViewGraphsPage() {
                       data={emailDashboardData || {}}
                       showSummaryCards={false}
                     />
+                  </div>
+
+                  <div className="mt-4">
+                    {qualityAuditError ? (
+                      <div className="sibs-card mb-3 flex items-start gap-2 border border-amber-200 bg-amber-50/70 p-3 text-xs font-semibold text-amber-800">
+                        <AlertCircle size={17} className="mt-0.5 shrink-0" />
+                        <span>{qualityAuditError}</span>
+                      </div>
+                    ) : null}
+                    <QualityAuditKpiDashboard data={qualityAuditDashboardData || {}} />
                   </div>
                 </div>
               )}

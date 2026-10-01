@@ -15,3 +15,8 @@ export async function getWfmEmailKpis(params = {}) {
   const response = await api.get("/wfm/kpis/emails", { params });
   return response;
 }
+
+export async function getWfmQualityAuditKpis(params = {}) {
+  const response = await api.get("/wfm/kpis/quality-audit", { params });
+  return response;
+}

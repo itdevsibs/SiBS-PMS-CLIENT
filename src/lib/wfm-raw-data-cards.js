@@ -112,6 +112,16 @@ const accountRawDataCards = {
       fileExtension: ".xlsx",
       requiresTaskOrderSelection: true,
     },
+    {
+      title: "Quality Audit",
+      sourceLabel: "Quality Audit",
+      groupLabel: "QUALITY AUDIT",
+      taskOrders: [],
+      importProfileCode: "US_VISA_QUALITY_AUDIT",
+      fileExtension: ".xlsx",
+      requiresTaskOrderSelection: false,
+      requiresReportingPeriod: false,
+    },
   ],
   "YOMDEL": [
     "Raw Data 1",
