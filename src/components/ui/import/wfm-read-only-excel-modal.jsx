@@ -123,16 +123,18 @@ export default function WfmReadOnlyExcelModal({
   const batchCode = batch?.batchCode;
   const rawDataTitle = batch?.rawDataTitle || batch?.importProfileName;
 
-  // Determine if this batch represents Agent Level, Agent Occupancy, or Email Raw Data
+  // Determine if this batch represents employee-mapped Agent, Occupancy, Email, or Quality Audit data
   const isAgentOrOccupancyFromBatch = useMemo(() => {
     const label = (batch?.groupLabel || "").toUpperCase();
     const text = `${batch?.rawDataTitle || ""} ${batch?.fileName || ""} ${batch?.importProfileName || ""}`.toUpperCase();
     return (
       label.includes("AGENT") ||
       label.includes("EMAIL") ||
+      label.includes("QUALITY") ||
       text.includes("AGENT LEVEL") ||
       text.includes("AGENT OCCUPANCY") ||
-      text.includes("EMAIL")
+      text.includes("EMAIL") ||
+      text.includes("QUALITY AUDIT")
     );
   }, [batch]);
 

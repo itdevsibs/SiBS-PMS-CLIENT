@@ -104,9 +104,11 @@ export function getApiErrorMessage(error, card) {
   ) {
     const profileLabel = card?.title || "valid";
     const extension = card?.fileExtension || ".xlsx";
-    const reportTypeLabel = /email/i.test(profileLabel)
-      ? "Email Raw Data"
-      : /occupancy/i.test(profileLabel)
+    const reportTypeLabel = /quality/i.test(profileLabel)
+      ? "Quality Audit"
+      : /email/i.test(profileLabel)
+        ? "Email Raw Data"
+        : /occupancy/i.test(profileLabel)
         ? "Agent Occupancy"
         : /agent/i.test(profileLabel)
           ? "Agent Level"
@@ -532,6 +534,7 @@ export const WARNING_CATEGORY_LABELS = [
   "AGENT LEVEL",
   "AGENT OCCUPANCY",
   "EMAIL LEVEL",
+  "QUALITY AUDIT",
 ];
 
 export function getBatchCategory(batch) {
@@ -554,6 +557,7 @@ export function getBatchCategory(batch) {
   }
 
   const text = `${batch.rawDataTitle || ""} ${batch.fileName || ""} ${batch.importProfileName || ""}`.toLowerCase();
+  if (text.includes("quality") || text.includes("qa ")) return "QUALITY AUDIT";
   if (text.includes("email")) return "EMAIL LEVEL";
   if (text.includes("occupancy")) return "AGENT OCCUPANCY";
   if (text.includes("agent level")) return "AGENT LEVEL";
@@ -722,6 +726,7 @@ export function groupRawDataCards(cards = []) {
     "AGENT LEVEL",
     "AGENT OCCUPANCY",
     "EMAIL LEVEL",
+    "QUALITY AUDIT",
   ];
 
   const grouped = groupOrder.map((label) => ({ label, cards: [] }));

@@ -23,6 +23,7 @@ const WARNING_LEVEL_ORDER = [
   "AGENT LEVEL",
   "AGENT OCCUPANCY",
   "EMAIL LEVEL",
+  "QUALITY AUDIT",
 ];
 
 function getWarningLevelDisplayLabel(level) {
@@ -81,6 +82,7 @@ export default function WfmWarningsModal({
       "AGENT LEVEL": 0,
       "AGENT OCCUPANCY": 0,
       "EMAIL LEVEL": 0,
+      "QUALITY AUDIT": 0,
     };
     for (const batch of warningBatches) {
       const cat = getBatchCategory(batch);
@@ -119,6 +121,7 @@ export default function WfmWarningsModal({
       "AGENT LEVEL": 0,
       "AGENT OCCUPANCY": 0,
       "EMAIL LEVEL": 0,
+      "QUALITY AUDIT": 0,
     };
     for (const batch of filteredWarningBatches) {
       const cat = getBatchCategory(batch);
@@ -146,6 +149,10 @@ export default function WfmWarningsModal({
       {
         value: "EMAIL LEVEL",
         label: `EMAIL RAW DATA (${levelCounts["EMAIL LEVEL"] || 0})`,
+      },
+      {
+        value: "QUALITY AUDIT",
+        label: `QUALITY AUDIT (${levelCounts["QUALITY AUDIT"] || 0})`,
       },
     ];
   }, [levelCounts]);
