@@ -281,13 +281,13 @@ export default function TaskOrderLedger() {
           onLogoutClick={() => dashboard.setShowLogoutModal(true)}
         />
 
-        <main className="flex flex-1 min-h-0 flex-col gap-2.5 sm:gap-3 overflow-hidden px-2.5 sm:px-4 lg:px-5 pt-2.5 sm:pt-3 pb-2">
+        <main className="flex flex-1 min-h-0 flex-col gap-2.5 sm:gap-3 overflow-hidden px-2 sm:px-4 lg:px-5 pt-2 sm:pt-3 pb-2">
           {/* ── Toolbar ────────────────────────────────────────────── */}
-          <div className="shrink-0 flex flex-col lg:flex-row lg:items-center gap-2.5 sm:gap-3 rounded-xl border border-slate-200 bg-white p-3 sm:px-4 sm:py-3 shadow-xs">
-            {/* Task Order select + Skill select + Reset (Left) */}
-            <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 shrink-0 w-full lg:w-auto">
+          <div className="shrink-0 flex flex-col xl:flex-row xl:items-center gap-2.5 sm:gap-3 rounded-xl border border-slate-200 bg-white p-2.5 sm:p-3 shadow-xs">
+            {/* Task Order select + Country select + Skill select + Reset (Left) */}
+            <div className="flex flex-wrap items-center gap-2 shrink-0 w-full xl:w-auto">
               {/* Task Order Dropdown */}
-              <div className="relative flex-1 sm:w-44 md:w-52 lg:w-56 sm:flex-none" ref={dropdownRef}>
+              <div className="relative flex-1 min-w-[140px] sm:min-w-0 sm:w-44 md:w-48 lg:w-52 sm:flex-none" ref={dropdownRef}>
                 <button
                   type="button"
                   onClick={() => {
@@ -296,7 +296,7 @@ export default function TaskOrderLedger() {
                     setIsSkillDropdownOpen(false);
                   }}
                   title="Click to select task order"
-                  className="flex h-9 w-full sm:w-44 md:w-52 lg:w-56 cursor-pointer items-center justify-between gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 text-xs font-semibold text-slate-800 transition hover:border-slate-300 hover:bg-slate-100 focus:border-[#0b3b68] focus:outline-none"
+                  className="flex h-9 w-full sm:w-44 md:w-48 lg:w-52 cursor-pointer items-center justify-between gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 text-xs font-semibold text-slate-800 transition hover:border-slate-300 hover:bg-slate-100 focus:border-[#0b3b68] focus:outline-none"
                 >
                   <span className="truncate">{selectedTaskOrder}</span>
                   <ChevronDown
@@ -308,7 +308,7 @@ export default function TaskOrderLedger() {
 
                 {/* Dropdown Menu */}
                 {isDropdownOpen && (
-                  <div className="absolute left-0 top-full z-50 mt-1 max-h-96 w-full sm:w-60 md:w-64 overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-lg shadow-slate-900/10">
+                  <div className="absolute left-0 top-full z-50 mt-1 max-h-96 w-full sm:w-60 md:w-64 max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-lg shadow-slate-900/10">
                     <div className="overflow-y-auto max-h-72 sibs-scrollbar">
                       {TASK_ORDER_OPTIONS.map((option) => {
                         const isSelected = selectedTaskOrder === option;
@@ -339,7 +339,7 @@ export default function TaskOrderLedger() {
               </div>
 
               {/* Country Dropdown (Between All Task Orders and All Skills) */}
-              <div className="relative flex-1 sm:w-40 md:w-48 lg:w-52 sm:flex-none" ref={countryDropdownRef}>
+              <div className="relative flex-1 min-w-[130px] sm:min-w-0 sm:w-40 md:w-44 lg:w-48 sm:flex-none" ref={countryDropdownRef}>
                 <button
                   type="button"
                   onClick={() => {
@@ -348,7 +348,7 @@ export default function TaskOrderLedger() {
                     setIsSkillDropdownOpen(false);
                   }}
                   title="Click to select country"
-                  className="flex h-9 w-full sm:w-40 md:w-48 lg:w-52 cursor-pointer items-center justify-between gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 text-xs font-semibold text-slate-800 transition hover:border-slate-300 hover:bg-slate-100 focus:border-[#0b3b68] focus:outline-none"
+                  className="flex h-9 w-full sm:w-40 md:w-44 lg:w-48 cursor-pointer items-center justify-between gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 text-xs font-semibold text-slate-800 transition hover:border-slate-300 hover:bg-slate-100 focus:border-[#0b3b68] focus:outline-none"
                 >
                   <span className="truncate">{selectedCountry}</span>
                   <ChevronDown
@@ -360,7 +360,7 @@ export default function TaskOrderLedger() {
 
                 {/* Country Dropdown Menu with Search */}
                 {isCountryDropdownOpen && (
-                  <div className="absolute left-0 top-full z-50 mt-1 max-h-96 w-full sm:w-60 md:w-64 overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-lg shadow-slate-900/10">
+                  <div className="absolute left-0 top-full z-50 mt-1 max-h-96 w-full sm:w-60 md:w-64 max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-lg shadow-slate-900/10">
                     <div className="border-b border-slate-100 p-1.5">
                       <div className="relative">
                         <Search className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 h-3 w-3 text-slate-400" />
@@ -420,7 +420,7 @@ export default function TaskOrderLedger() {
               </div>
 
               {/* Skill Dropdown */}
-              <div className="relative flex-1 sm:w-44 md:w-52 lg:w-56 sm:flex-none" ref={skillDropdownRef}>
+              <div className="relative flex-1 min-w-[140px] sm:min-w-0 sm:w-44 md:w-48 lg:w-52 sm:flex-none" ref={skillDropdownRef}>
                 <button
                   type="button"
                   onClick={() => {
@@ -429,7 +429,7 @@ export default function TaskOrderLedger() {
                     setIsCountryDropdownOpen(false);
                   }}
                   title="Click to select skill"
-                  className="flex h-9 w-full sm:w-44 md:w-52 lg:w-56 cursor-pointer items-center justify-between gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 text-xs font-semibold text-slate-800 transition hover:border-slate-300 hover:bg-slate-100 focus:border-[#0b3b68] focus:outline-none"
+                  className="flex h-9 w-full sm:w-44 md:w-48 lg:w-52 cursor-pointer items-center justify-between gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 text-xs font-semibold text-slate-800 transition hover:border-slate-300 hover:bg-slate-100 focus:border-[#0b3b68] focus:outline-none"
                 >
                   <span className="truncate">{selectedSkill}</span>
                   <ChevronDown
@@ -441,7 +441,7 @@ export default function TaskOrderLedger() {
 
                 {/* Skill Dropdown Menu with Search */}
                 {isSkillDropdownOpen && (
-                  <div className="absolute left-0 top-full z-50 mt-1 max-h-96 w-full sm:w-64 md:w-72 overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-lg shadow-slate-900/10">
+                  <div className="absolute left-0 sm:left-auto sm:right-0 xl:left-0 z-50 mt-1 max-h-96 w-full sm:w-64 md:w-72 max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-lg shadow-slate-900/10">
                     <div className="border-b border-slate-100 p-1.5">
                       <div className="relative">
                         <Search className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 h-3 w-3 text-slate-400" />
@@ -503,15 +503,15 @@ export default function TaskOrderLedger() {
               <button
                 type="button"
                 onClick={handleReset}
-                className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-3 text-xs font-medium text-slate-600 hover:bg-slate-100 transition cursor-pointer shrink-0"
+                className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-3 text-xs font-medium text-slate-600 hover:bg-slate-100 transition cursor-pointer shrink-0"
               >
                 <RotateCcw className="h-3.5 w-3.5 text-slate-400" />
                 Reset
               </button>
             </div>
 
-            {/* Search (Middle) */}
-            <div className="relative flex-1 w-full min-w-0">
+            {/* Search (Middle/Right) */}
+            <div className="relative flex-1 w-full min-w-0 sm:min-w-[200px]">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
               <input
                 type="text"
@@ -536,10 +536,10 @@ export default function TaskOrderLedger() {
           <div className="flex-1 min-h-0 flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs">
             {/* Table wrapper without slider/scrollbar */}
             <div
-              className="flex-1 min-h-0 overflow-x-auto overflow-y-hidden scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+              className="flex-1 min-h-0 overflow-x-auto overflow-y-auto scroll-smooth sibs-scrollbar"
               style={{ WebkitOverflowScrolling: "touch" }}
             >
-              <table className="w-full table-fixed text-left text-xs border-collapse">
+              <table className="w-full min-w-[560px] table-fixed text-left text-xs border-collapse">
                 <colgroup>
                   <col style={{ width: "28%" }} />
                   <col style={{ width: "42%" }} />
@@ -548,13 +548,13 @@ export default function TaskOrderLedger() {
                 {/* ── Table head ──────────────────────────────────── */}
                 <thead className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50 shadow-xs">
                   <tr>
-                    <th className="px-6 py-2.5 text-xs font-bold uppercase tracking-wider text-slate-600 whitespace-nowrap overflow-hidden">
+                    <th className="px-3.5 sm:px-6 py-2.5 text-xs font-bold uppercase tracking-wider text-slate-600 whitespace-nowrap overflow-hidden">
                       COUNTRY
                     </th>
-                    <th className="px-6 py-2.5 text-xs font-bold uppercase tracking-wider text-slate-600 whitespace-nowrap overflow-hidden">
+                    <th className="px-3.5 sm:px-6 py-2.5 text-xs font-bold uppercase tracking-wider text-slate-600 whitespace-nowrap overflow-hidden">
                       SKILLS
                     </th>
-                    <th className="px-6 py-2.5 text-xs font-bold uppercase tracking-wider text-slate-600 whitespace-nowrap overflow-hidden">
+                    <th className="px-3.5 sm:px-6 py-2.5 text-xs font-bold uppercase tracking-wider text-slate-600 whitespace-nowrap overflow-hidden">
                       TASK ORDER
                     </th>
                   </tr>
@@ -590,14 +590,14 @@ export default function TaskOrderLedger() {
                         key={item.id || idx}
                         className="hover:bg-slate-50/70 transition-colors"
                       >
-                        <td className="px-6 py-1.5 sm:py-2 text-slate-900 font-semibold truncate" title={item.country}>
+                        <td className="px-3.5 sm:px-6 py-1.5 sm:py-2 text-slate-900 font-semibold truncate" title={item.country}>
                           {item.country}
                         </td>
-                        <td className="px-6 py-1.5 sm:py-2 text-slate-700 font-medium truncate" title={item.skill}>
+                        <td className="px-3.5 sm:px-6 py-1.5 sm:py-2 text-slate-700 font-medium truncate" title={item.skill}>
                           {item.skill}
                         </td>
-                        <td className="px-6 py-1.5 sm:py-2">
-                          <span className="inline-flex items-center rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-0.5 text-[10.5px] font-bold text-blue-700">
+                        <td className="px-3.5 sm:px-6 py-1.5 sm:py-2">
+                          <span className="inline-flex items-center rounded-lg border border-blue-200 bg-blue-50 px-2 sm:px-2.5 py-0.5 text-[10px] sm:text-[10.5px] font-bold text-blue-700 whitespace-nowrap">
                             {item.task_order || "GSS 2.0 TO10 - SEASIA"}
                           </span>
                         </td>

@@ -5,10 +5,15 @@ export async function fetchMasterDataAccounts() {
   return apiGet("/masterdata/accounts");
 }
 
+export async function fetchMasterDataTaskOrders() {
+  return apiGet("/masterdata/task-orders");
+}
+
 export async function fetchMasterDataLedger({
   search = "",
   filter = "all",
   account = "",
+  taskOrder = "",
   viewAll = false,
   page = 1,
   limit = 25,
@@ -26,6 +31,9 @@ export async function fetchMasterDataLedger({
   }
   if (account) {
     params.set("account", account);
+  }
+  if (taskOrder && taskOrder !== "All Task Orders") {
+    params.set("taskOrder", taskOrder);
   }
   if (viewAll) {
     params.set("viewAll", "true");

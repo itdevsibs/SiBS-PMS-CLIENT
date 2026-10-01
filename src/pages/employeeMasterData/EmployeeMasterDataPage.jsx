@@ -27,9 +27,32 @@ import useDashboardPage from "@/hooks/useDashboardPage";
 import {
   fetchMasterDataAccounts,
   fetchMasterDataLedger,
+  fetchMasterDataTaskOrders,
   importUsVisaEmployeeLedger,
   updateEmployeeLedgerRecord,
 } from "@/lib/axios/masterdata";
+
+const DEFAULT_TASK_ORDERS = [
+  "All Task Orders",
+  "GSS 2.0 TO10 - SEASIA",
+  "GSS 2.0 TO4 - PAC",
+  "GSS 2.0 TO12 - NICE",
+  "GSS 2.0 TO16 - SEURECA",
+  "GSS 2.0 TO14 - NESAMI",
+];
+
+function isOmOrInvalidTaskOrder(str) {
+  if (!str) return false;
+  const s = String(str).trim().toLowerCase();
+  return (
+    s === "om" ||
+    s === "- om" ||
+    s === "- operations manager" ||
+    s === "operations manager" ||
+    s.includes("operations manager") ||
+    s.includes("#ref!")
+  );
+}
 
 /* ─── Status badge ──────────────────────────────────────────────── */
 // eslint-disable-next-line no-unused-vars
@@ -110,20 +133,51 @@ export default function EmployeeMasterDataPage() {
   const [sortOrder, setSortOrder]             = useState("desc"); // 'desc' (tool names first) | 'asc' (missing tool names first)
   const pageSize = 25;
 
-  /* Fetch accounts */
+  /* Task Order filter states */
+  const [selectedTaskOrder, setSelectedTaskOrder]             = useState("");
+  const [taskOrderList, setTaskOrderList]                     = useState(DEFAULT_TASK_ORDERS);
+  const [isTaskOrderDropdownOpen, setIsTaskOrderDropdownOpen] = useState(false);
+  const [taskOrderSearchTerm, setTaskOrderSearchTerm]         = useState("");
+  const taskOrderDropdownRef                                  = useRef(null);
+
+  /* Fetch accounts and task orders */
   useEffect(() => {
     let alive = true;
     fetchMasterDataAccounts()
       .then((res) => { if (alive && res?.success) setAccountsList(res.accounts || []); })
       .catch(console.error);
+
+    fetchMasterDataTaskOrders()
+      .then((res) => {
+        if (alive && res?.success && Array.isArray(res.taskOrders)) {
+          setTaskOrderList((prev) => {
+            const filteredPrev = prev.filter((to) => !isOmOrInvalidTaskOrder(to));
+            const set = new Set(filteredPrev);
+            res.taskOrders.forEach((to) => {
+              if (to && !isOmOrInvalidTaskOrder(to)) set.add(to);
+            });
+            return Array.from(set);
+          });
+        }
+      })
+      .catch(console.error);
+
     return () => { alive = false; };
   }, []);
+
+  // Ensure Operations Manager / OM is never active in selectedTaskOrder
+  useEffect(() => {
+    if (selectedTaskOrder && isOmOrInvalidTaskOrder(selectedTaskOrder)) {
+      setSelectedTaskOrder("");
+    }
+  }, [selectedTaskOrder]);
 
   /* Fetch ledger data */
   const loadLedgerData = useCallback(
     async (
       searchQuery = "",
       acc = "US Visa",
+      to = "",
       page = 1,
       size = 25,
       activeSortBy = null,
@@ -146,6 +200,7 @@ export default function EmployeeMasterDataPage() {
         const result = await fetchMasterDataLedger({
           search: query,
           account: targetAccount,
+          taskOrder: to || "",
           page,
           limit: size,
           viewAll: true,
@@ -184,10 +239,10 @@ export default function EmployeeMasterDataPage() {
 
   useEffect(() => {
     const t = setTimeout(() => {
-      void loadLedgerData(searchTerm, selectedAccount, currentPage, pageSize, sortBy, sortOrder);
+      void loadLedgerData(searchTerm, selectedAccount, selectedTaskOrder, currentPage, pageSize, sortBy, sortOrder);
     }, 250);
     return () => clearTimeout(t);
-  }, [searchTerm, selectedAccount, currentPage, pageSize, sortBy, sortOrder, loadLedgerData]);
+  }, [searchTerm, selectedAccount, selectedTaskOrder, currentPage, pageSize, sortBy, sortOrder, loadLedgerData]);
 
   const [isAccountDropdownOpen, setIsAccountDropdownOpen] = useState(false);
   const [isSearchingAccount, setIsSearchingAccount]       = useState(false);
@@ -196,13 +251,15 @@ export default function EmployeeMasterDataPage() {
   const accountSearchInputRef                             = useRef(null);
 
   useEffect(() => {
-    if (!isAccountDropdownOpen && !isSearchingAccount) return;
-
     const handleClickOutside = (e) => {
       if (accountDropdownRef.current && !accountDropdownRef.current.contains(e.target)) {
         setIsAccountDropdownOpen(false);
         setIsSearchingAccount(false);
         setAccountSearchTerm("");
+      }
+      if (taskOrderDropdownRef.current && !taskOrderDropdownRef.current.contains(e.target)) {
+        setIsTaskOrderDropdownOpen(false);
+        setTaskOrderSearchTerm("");
       }
     };
 
@@ -211,6 +268,8 @@ export default function EmployeeMasterDataPage() {
         setIsAccountDropdownOpen(false);
         setIsSearchingAccount(false);
         setAccountSearchTerm("");
+        setIsTaskOrderDropdownOpen(false);
+        setTaskOrderSearchTerm("");
       }
     };
 
@@ -220,7 +279,7 @@ export default function EmployeeMasterDataPage() {
       document.removeEventListener("mousedown", handleClickOutside);
       document.removeEventListener("keydown", handleKeyDown);
     };
-  }, [isAccountDropdownOpen, isSearchingAccount]);
+  }, []);
 
   useEffect(() => {
     if (isSearchingAccount) {
@@ -297,7 +356,7 @@ export default function EmployeeMasterDataPage() {
               : emp
           )
         );
-        void loadLedgerData(searchTerm, selectedAccount, currentPage, pageSize, sortBy, sortOrder);
+        void loadLedgerData(searchTerm, selectedAccount, selectedTaskOrder, currentPage, pageSize, sortBy, sortOrder);
       } else {
         setErrorMsg(res?.message || "Failed to update employee record.");
       }
@@ -323,6 +382,7 @@ export default function EmployeeMasterDataPage() {
         const res = await fetchMasterDataLedger({
           search: searchTerm.trim(),
           account: selectedAccount || "US Visa",
+          taskOrder: selectedTaskOrder || "",
           page: 1,
           limit: Math.max(totalCount, 1000),
           viewAll: true,
@@ -615,7 +675,7 @@ export default function EmployeeMasterDataPage() {
           site: getColVal(row, "site"),
           status: getColVal(row, "status"),
           phase: getColVal(row, "phase"),
-          taskOrder: getColVal(row, "taskOrder"),
+          taskOrder: isOmOrInvalidTaskOrder(getColVal(row, "taskOrder")) ? "" : getColVal(row, "taskOrder"),
           taskOrderDescription: getColVal(row, "taskOrderDescription"),
           usVisaDepartureDate: formatExcelDate(row[bestMapping.usVisaDepartureDate]),
           usVisaJoinDate: formatExcelDate(row[bestMapping.usVisaJoinDate]),
@@ -704,7 +764,34 @@ export default function EmployeeMasterDataPage() {
 
           {/* ── Toolbar ────────────────────────────────────────────── */}
           <div className="shrink-0 flex flex-col lg:flex-row lg:items-center gap-2.5 sm:gap-3 rounded-xl border border-slate-200 bg-white p-3 sm:px-4 sm:py-3 shadow-xs">
-            {/* Account select + Reset (Left) */}
+            {/* Search (Very Left) */}
+            <div className="relative flex-1 w-full min-w-0">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Search by SIBS ID, employee name, or tool name…"
+                value={searchTerm}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="h-9 w-full rounded-lg border border-slate-200 bg-slate-50 pl-9 pr-8 text-xs text-slate-800 placeholder:text-slate-400 focus:border-[#0b3b68] focus:bg-white focus:ring-2 focus:ring-[#0b3b68]/10 focus:outline-none transition"
+              />
+              {searchTerm && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchTerm("");
+                    setCurrentPage(1);
+                  }}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              )}
+            </div>
+
+            {/* Account select + Task Order select + Reset */}
             <div className="flex items-center gap-2 shrink-0 w-full lg:w-auto">
               <div className="relative flex-1 sm:w-64 md:w-72 sm:flex-none" ref={accountDropdownRef}>
                 {isSearchingAccount ? (
@@ -733,7 +820,7 @@ export default function EmployeeMasterDataPage() {
                         setIsSearchingAccount(false);
                         setIsAccountDropdownOpen(false);
                       }}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
                     >
                       <X className="h-3 w-3" />
                     </button>
@@ -766,7 +853,7 @@ export default function EmployeeMasterDataPage() {
                     {!isSearchingAccount && (
                       <div className="border-b border-slate-100 p-1.5">
                         <div className="relative">
-                          <Search className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-slate-400" />
+                          <Search className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
                           <input
                             type="text"
                             value={accountSearchTerm}
@@ -814,14 +901,112 @@ export default function EmployeeMasterDataPage() {
                 )}
               </div>
 
+              {/* Task Order select */}
+              <div className="relative flex-1 sm:w-56 md:w-64 sm:flex-none" ref={taskOrderDropdownRef}>
+                <button
+                  type="button"
+                  onClick={() => setIsTaskOrderDropdownOpen((prev) => !prev)}
+                  title="Filter by Task Order"
+                  className={`flex h-9 w-full sm:w-56 md:w-64 cursor-pointer items-center justify-between gap-2 rounded-lg border bg-slate-50 px-3 text-xs font-semibold transition hover:bg-slate-100 focus:outline-none ${
+                    selectedTaskOrder
+                      ? "border-[#0b3b68] text-[#0b3b68] bg-sky-50/50"
+                      : "border-slate-200 text-slate-800 hover:border-slate-300"
+                  }`}
+                >
+                  <span className="truncate">
+                    {selectedTaskOrder || "All Task Orders"}
+                  </span>
+                  <div className="flex items-center gap-1 shrink-0">
+                    {selectedTaskOrder && (
+                      <span
+                        role="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedTaskOrder("");
+                          setCurrentPage(1);
+                        }}
+                        className="p-0.5 text-slate-400 hover:text-slate-600 rounded"
+                        title="Clear task order filter"
+                      >
+                        <X className="h-3 w-3" />
+                      </span>
+                    )}
+                    <ChevronDown
+                      className={`h-3.5 w-3.5 text-slate-400 transition-transform ${
+                        isTaskOrderDropdownOpen ? "rotate-180" : ""
+                      }`}
+                    />
+                  </div>
+                </button>
+
+                {isTaskOrderDropdownOpen && (
+                  <div className="absolute left-0 top-full z-50 mt-1 max-h-80 w-full sm:w-64 overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-lg shadow-slate-900/10">
+                    <div className="border-b border-slate-100 p-1.5">
+                      <div className="relative">
+                        <Search className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+                        <input
+                          type="text"
+                          value={taskOrderSearchTerm}
+                          onChange={(e) => setTaskOrderSearchTerm(e.target.value)}
+                          placeholder="Search task order..."
+                          className="h-7 w-full rounded-md border border-slate-200 bg-slate-50 pl-6 pr-2 text-[11px] text-slate-800 focus:border-[#0b3b68] focus:bg-white focus:outline-none"
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="max-h-64 overflow-y-auto sibs-scrollbar">
+                      {taskOrderList
+                        .filter(
+                          (to) =>
+                            !isOmOrInvalidTaskOrder(to) &&
+                            (!taskOrderSearchTerm ||
+                              to.toLowerCase().includes(taskOrderSearchTerm.toLowerCase()))
+                        )
+                        .map((toOption) => {
+                          const isSelected =
+                            toOption === "All Task Orders"
+                              ? !selectedTaskOrder
+                              : selectedTaskOrder === toOption;
+                          return (
+                            <button
+                              key={toOption}
+                              type="button"
+                              onClick={() => {
+                                setSelectedTaskOrder(toOption === "All Task Orders" ? "" : toOption);
+                                setIsTaskOrderDropdownOpen(false);
+                                setTaskOrderSearchTerm("");
+                                setCurrentPage(1);
+                              }}
+                              className={`flex w-full cursor-pointer items-center justify-between px-3 py-1.5 text-left text-xs transition ${
+                                isSelected
+                                  ? "bg-sky-50 font-bold text-[#0b3b68]"
+                                  : "text-slate-700 hover:bg-slate-50 hover:text-slate-900"
+                              }`}
+                            >
+                              <span className="truncate">{toOption}</span>
+                              {isSelected && (
+                                <Check className="h-3.5 w-3.5 text-[#0b3b68] shrink-0" />
+                              )}
+                            </button>
+                          );
+                        })}
+                    </div>
+                  </div>
+                )}
+              </div>
+
               <button
                 type="button"
                 onClick={() => {
                   setSearchTerm("");
                   setSelectedAccount("US Visa");
+                  setSelectedTaskOrder("");
                   setIsSearchingAccount(false);
                   setIsAccountDropdownOpen(false);
+                  setIsTaskOrderDropdownOpen(false);
                   setAccountSearchTerm("");
+                  setTaskOrderSearchTerm("");
                   setSortBy(null);
                   setSortOrder("desc");
                   setCurrentPage(1);
@@ -831,33 +1016,6 @@ export default function EmployeeMasterDataPage() {
                 <RotateCcw className="h-3.5 w-3.5 text-slate-400" />
                 Reset
               </button>
-            </div>
-
-            {/* Search (Middle) */}
-            <div className="relative flex-1 w-full min-w-0">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
-              <input
-                type="text"
-                placeholder="Search by SIBS ID, employee name, or tool name…"
-                value={searchTerm}
-                onChange={(e) => {
-                  setSearchTerm(e.target.value);
-                  setCurrentPage(1);
-                }}
-                className="h-9 w-full rounded-lg border border-slate-200 bg-slate-50 pl-9 pr-8 text-xs text-slate-800 placeholder:text-slate-400 focus:border-[#0b3b68] focus:bg-white focus:ring-2 focus:ring-[#0b3b68]/10 focus:outline-none transition"
-              />
-              {searchTerm && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSearchTerm("");
-                    setCurrentPage(1);
-                  }}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                >
-                  <X className="h-3 w-3" />
-                </button>
-              )}
             </div>
 
             {/* Template Actions (Right) */}
@@ -938,7 +1096,7 @@ export default function EmployeeMasterDataPage() {
               className="flex-1 min-h-0 overflow-x-auto overflow-y-auto sibs-scrollbar scroll-smooth"
               style={{ WebkitOverflowScrolling: "touch" }}
             >
-                <table className="w-full min-w-[3590px] table-fixed text-left text-xs border-collapse">
+                <table className="w-full min-w-[3700px] table-fixed text-left text-xs border-collapse">
                   <colgroup>
                     <col style={{ width: "145px" }} />
                     <col style={{ width: "200px" }} />
@@ -951,7 +1109,7 @@ export default function EmployeeMasterDataPage() {
                     <col style={{ width: "130px" }} />
                     <col style={{ width: "130px" }} />
                     <col style={{ width: "130px" }} />
-                    <col style={{ width: "150px" }} />
+                    <col style={{ width: "260px" }} />
                     <col style={{ width: "240px" }} />
                     <col style={{ width: "180px" }} />
                     <col style={{ width: "190px" }} />
@@ -1248,7 +1406,7 @@ export default function EmployeeMasterDataPage() {
                           </td>
 
                           {/* 12. Task Order */}
-                          <td className="px-4 py-3 text-slate-700 truncate" title={emp.taskOrder}>
+                          <td className="px-4 py-3 text-slate-700 whitespace-nowrap" title={emp.taskOrder}>
                             {emp.taskOrder && !String(emp.taskOrder).includes("#REF!") ? (
                               emp.taskOrder
                             ) : (

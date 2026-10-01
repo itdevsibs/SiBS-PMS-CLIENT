@@ -16,6 +16,8 @@ function formatGraphNumber(value, digits = 0) {
 }
 
 function formatPercent(value) {
+  const number = Number(value || 0);
+  if (number >= 100 || number.toFixed(2) === "100.00") return "100%";
   return `${formatNumber(value, 2)}%`;
 }
 
@@ -54,7 +56,7 @@ function KpiCard({ icon: Icon, label, value, hint, status, title }) {
       {/* 2. Value + Badge & Hint */}
       <div className="flex flex-col gap-0.5 min-w-0">
         <div className="flex items-baseline justify-between gap-1 min-w-0">
-          <span className="text-xl xl:text-[22px] 2xl:text-2xl font-black text-sibs-primary-1 leading-none tracking-tight shrink-0">
+          <span className="text-lg sm:text-xl xl:text-[22px] 2xl:text-2xl font-black text-sibs-primary-1 leading-none tracking-tight shrink-0">
             {value}
           </span>
 
@@ -110,7 +112,7 @@ function EmptyChart({ message = "No KPI data is available for this reporting ran
   );
 }
 
-function VolumeChart({ series }) {
+function VolumeChart({ series, period }) {
   if (!series.length) return <EmptyChart message="No call volume recorded for this reporting range." />;
 
   const totalVolume = series.reduce(
@@ -133,28 +135,39 @@ function VolumeChart({ series }) {
 
   const axisTicks = getCallAxisTicks(maxValue, 4);
   const axisMax = Math.max(1, axisTicks[0] || maxValue);
+  const minPeriodWidth = 84;
+  const isCustom = period === "custom";
+  const isScrollable = isCustom ? series.length > 4 : series.length > 5;
+  const trackWidth = isScrollable ? `${series.length * minPeriodWidth}px` : "100%";
 
   return (
-    <div className="w-full min-w-0">
-      <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-bold text-sibs-tertiary-5">
-        <span className="inline-flex items-center gap-1.5">
-          <i className="inline-block h-2.5 w-2.5 rounded-full bg-[#0b3b68]" />
-          Volume
-        </span>
+    <div className="w-full min-w-0 select-none">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs font-bold text-sibs-tertiary-5">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <span className="inline-flex items-center gap-1.5">
+            <i className="inline-block h-2.5 w-2.5 rounded-full bg-[#0b3b68]" />
+            Volume
+          </span>
 
-        <span className="inline-flex items-center gap-1.5">
-          <i className="inline-block h-2.5 w-2.5 rounded-full bg-[#2f6f9f]" />
-          Handled
-        </span>
+          <span className="inline-flex items-center gap-1.5">
+            <i className="inline-block h-2.5 w-2.5 rounded-full bg-[#2f6f9f]" />
+            Handled
+          </span>
 
-        <span className="inline-flex items-center gap-1.5">
-          <i className="inline-block h-2.5 w-2.5 rounded-full bg-[#4c9aca]" />
-          Handled w/SLA
-        </span>
+          <span className="inline-flex items-center gap-1.5">
+            <i className="inline-block h-2.5 w-2.5 rounded-full bg-[#4c9aca]" />
+            Handled w/SLA
+          </span>
+        </div>
+        {(isScrollable || series.length > 3) && (
+          <span className="text-[10px] font-semibold text-slate-400 select-none block sm:inline">
+            Slide horizontally to view all {series.length} periods &rarr;
+          </span>
+        )}
       </div>
 
       <div className="flex w-full min-w-0">
-        <div className="relative h-[300px] w-9 shrink-0 border-r border-sibs-tertiary-8 pr-1">
+        <div className="relative h-[300px] w-9 shrink-0 border-r border-sibs-tertiary-8 pr-1 bg-white z-10">
           {axisTicks.map((tick, index) => (
             <span
               key={`${tick}-${index}`}
@@ -168,26 +181,29 @@ function VolumeChart({ series }) {
           ))}
         </div>
 
-        <div className="relative min-w-0 flex-1">
-          <div className="pointer-events-none absolute inset-x-0 top-0 h-[300px]">
-            {axisTicks.map((tick, index) => (
-              <div
-                key={`${tick}-${index}`}
-                className="absolute left-0 right-0 border-t border-sibs-tertiary-9"
-                style={{
-                  top: `${(index / (axisTicks.length - 1)) * 100}%`,
-                }}
-              />
-            ))}
-          </div>
+        <div className="relative min-w-0 flex-1 overflow-x-auto overflow-y-hidden pb-1 sibs-chart-scrollbar">
+          <div className="relative min-w-full w-max sm:w-full">
+            <div className="relative flex h-[300px] min-w-0 items-end gap-1 border-b border-sibs-tertiary-8 px-1">
+              {/* Horizontal Gridlines spanning 100% of the bars container */}
+              <div className="pointer-events-none absolute inset-0">
+                {axisTicks.map((tick, index) => (
+                  <div
+                    key={`${tick}-${index}`}
+                    className="absolute left-0 right-0 border-t border-sibs-tertiary-9"
+                    style={{
+                      top: `${(index / (axisTicks.length - 1)) * 100}%`,
+                    }}
+                  />
+                ))}
+              </div>
 
-          <div className="relative flex h-[300px] w-full min-w-0 items-end gap-1 border-b border-sibs-tertiary-8 px-1">
-            {series.map((item, periodIndex) => {
-              return (
-                <div
-                  key={item.key}
-                  className="group/period flex h-full min-w-0 flex-1 items-end justify-center px-0.5"
-                >
+              {series.map((item, periodIndex) => {
+                return (
+                  <div
+                    key={item.key || periodIndex}
+                    className="group/period relative z-10 flex h-full min-w-0 flex-1 items-end justify-center px-0.5"
+                    style={{ minWidth: `${minPeriodWidth}px` }}
+                  >
                   {/* Clustered 3-bar group with chunky width matching the 5-day daily view */}
                   <div className="flex h-full w-full max-w-[120px] items-end justify-center gap-0">
                     {buildVolumeBarItems(item).map(
@@ -298,11 +314,12 @@ function VolumeChart({ series }) {
           })}
           </div>
 
-          <div className="flex w-full min-w-0 gap-1 px-1">
+          <div className="flex w-full min-w-full gap-1 px-1">
             {series.map((item, periodIndex) => (
               <div
-                key={item.key}
+                key={item.key || periodIndex}
                 className="mt-2 min-w-0 flex-1 px-0.5 text-center"
+                style={{ minWidth: `${minPeriodWidth}px` }}
               >
                 <p
                   className="m-0 truncate text-[10.5px] font-extrabold text-sibs-primary-1 leading-tight"
@@ -323,10 +340,11 @@ function VolumeChart({ series }) {
         </div>
       </div>
     </div>
+  </div>
   );
 }
 
-function LineChart({ series, target = 90 }) {
+function LineChart({ series, target = 90, period }) {
   if (!series.length) return <EmptyChart message="No answer rate or service level data available for this reporting range." />;
 
   const activeSeries = series.filter(
@@ -357,29 +375,41 @@ function LineChart({ series, target = 90 }) {
     },
   ];
 
+  const minPeriodWidth = 84;
+  const isCustom = period === "custom";
+  const isScrollable = isCustom ? series.length > 4 : series.length > 5;
+  const trackWidth = isScrollable ? `${series.length * minPeriodWidth}px` : "100%";
+
   return (
     <div className="w-full min-w-0 select-none">
       {/* 1. Header Legend */}
-      <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-bold text-sibs-tertiary-5">
-        <span className="inline-flex items-center gap-1.5 text-[#0b3b68]">
-          <i className="h-2.5 w-2.5 rounded-full bg-[#0b3b68]" />
-          Answer
-        </span>
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs font-bold text-sibs-tertiary-5">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <span className="inline-flex items-center gap-1.5 text-[#0b3b68]">
+            <i className="h-2.5 w-2.5 rounded-full bg-[#0b3b68]" />
+            Answer
+          </span>
 
-        <span className="inline-flex items-center gap-1.5 text-[#0284c7]">
-          <i className="h-2.5 w-2.5 rounded-full bg-[#0284c7]" />
-          Service Level
-        </span>
+          <span className="inline-flex items-center gap-1.5 text-[#0284c7]">
+            <i className="h-2.5 w-2.5 rounded-full bg-[#0284c7]" />
+            Service Level
+          </span>
 
-        <span className="inline-flex items-center gap-1 text-red-500">
-          <i className="inline-block h-0.5 w-3.5 bg-red-500 border-t border-dashed border-red-500" />
-          Target: {numericTarget}%
-        </span>
+          <span className="inline-flex items-center gap-1 text-red-500">
+            <i className="inline-block h-0.5 w-3.5 bg-red-500 border-t border-dashed border-red-500" />
+            Target: {numericTarget}%
+          </span>
+        </div>
+        {(isScrollable || series.length > 3) && (
+          <span className="text-[10px] font-semibold text-slate-400 select-none block sm:inline">
+            Slide horizontally to view all {series.length} periods &rarr;
+          </span>
+        )}
       </div>
 
       <div className="flex w-full min-w-0">
         {/* 2. Y-Axis Ticks */}
-        <div className="relative h-[300px] w-9 shrink-0 border-r border-sibs-tertiary-8 pr-1">
+        <div className="relative h-[300px] w-9 shrink-0 border-r border-sibs-tertiary-8 pr-1 bg-white z-10">
           {axisTicks.map((tick, index) => (
             <span
               key={`${tick}-${index}`}
@@ -394,41 +424,43 @@ function LineChart({ series, target = 90 }) {
         </div>
 
         {/* 3. Main Chart Canvas */}
-        <div className="relative min-w-0 flex-1">
-          {/* Horizontal Grid Lines */}
-          <div className="pointer-events-none absolute inset-x-0 top-0 h-[300px]">
-            {axisTicks.map((tick, index) => (
+        <div className="relative min-w-0 flex-1 overflow-x-auto overflow-y-hidden pb-1 sibs-chart-scrollbar">
+          <div className="relative min-w-full w-max sm:w-full">
+            {/* Clustered Bars Container */}
+            <div className="relative flex h-[300px] min-w-0 items-end gap-2.5 sm:gap-3.5 border-b border-sibs-tertiary-8 px-1 sm:px-1.5">
+              {/* Horizontal Grid Lines */}
+              <div className="pointer-events-none absolute inset-0">
+                {axisTicks.map((tick, index) => (
+                  <div
+                    key={`${tick}-${index}`}
+                    className="absolute left-0 right-0 border-t border-sibs-tertiary-9"
+                    style={{
+                      top: `${(index / (axisTicks.length - 1)) * 100}%`,
+                    }}
+                  />
+                ))}
+              </div>
+
+              {/* Target Reference Line */}
               <div
-                key={`${tick}-${index}`}
-                className="absolute left-0 right-0 border-t border-sibs-tertiary-9"
+                className="pointer-events-none absolute right-0 left-0 z-10 flex items-center"
                 style={{
-                  top: `${(index / (axisTicks.length - 1)) * 100}%`,
+                  bottom: `${Math.min(100, Math.max(0, numericTarget))}%`,
                 }}
-              />
-            ))}
-          </div>
+              >
+                <div className="w-full border-t border-dashed border-red-500" />
+              </div>
 
-          {/* Target Reference Line */}
-          <div
-            className="pointer-events-none absolute right-0 left-0 z-10 flex items-center"
-            style={{
-              bottom: `${Math.min(100, Math.max(0, numericTarget))}%`,
-            }}
-          >
-            <div className="w-full border-t border-dashed border-red-500" />
-          </div>
+              {series.map((item, periodIndex) => {
+                const hasData = Number(item.callsOffered || 0) > 0;
+                const bars = rateBarItems(item);
 
-          {/* Clustered Bars Container */}
-          <div className="relative flex h-[300px] w-full min-w-0 items-end gap-2.5 sm:gap-3.5 border-b border-sibs-tertiary-8 px-1 sm:px-1.5">
-            {series.map((item, periodIndex) => {
-              const hasData = Number(item.callsOffered || 0) > 0;
-              const bars = rateBarItems(item);
-
-              return (
-                <div
-                  key={item.key || periodIndex}
-                  className="group/period flex h-full min-w-0 flex-1 items-end justify-center px-0.5"
-                >
+                return (
+                  <div
+                    key={item.key || periodIndex}
+                    className="group/period relative z-10 flex h-full min-w-0 flex-1 items-end justify-center px-0.5"
+                    style={{ minWidth: `${minPeriodWidth}px` }}
+                  >
                   <div className="flex h-full w-full max-w-[82px] items-end justify-center gap-0">
                     {bars.map(({ metric, value, className, color }, barIndex) => {
                       const numericValue = hasData ? Math.max(0, Math.min(100, Number(value || 0))) : 0;
@@ -456,7 +488,9 @@ function LineChart({ series, target = 90 }) {
                                 animationDelay: `${Math.min(periodIndex * 80 + barIndex * 40, 650)}ms`,
                               }}
                             >
-                              {numericValue.toFixed(1)}%
+                              {numericValue >= 100 || numericValue.toFixed(1) === "100.0"
+                                ? "100%"
+                                : `${numericValue.toFixed(1)}%`}
                             </span>
                           ) : null}
 
@@ -538,11 +572,12 @@ function LineChart({ series, target = 90 }) {
           </div>
 
           {/* 4. X-Axis Labels */}
-          <div className="flex w-full min-w-0 gap-2.5 sm:gap-3.5 px-1 sm:px-1.5">
+          <div className="flex w-full min-w-full gap-2.5 sm:gap-3.5 px-1 sm:px-1.5">
             {series.map((item, periodIndex) => (
               <div
                 key={item.key || periodIndex}
                 className="mt-2 min-w-0 flex-1 px-0.5 text-center"
+                style={{ minWidth: `${minPeriodWidth}px` }}
               >
                 <p
                   className="m-0 truncate text-[10.5px] font-extrabold text-sibs-primary-1 leading-tight"
@@ -563,10 +598,11 @@ function LineChart({ series, target = 90 }) {
         </div>
       </div>
     </div>
+  </div>
   );
 }
 
-function AhtChart({ series, target }) {
+function AhtChart({ series, target, period }) {
   if (!series.length) return <EmptyChart message="No average handling time data available for this reporting range." />;
 
   const normalizedTarget = convertDurationToSeconds(target);
@@ -594,22 +630,34 @@ function AhtChart({ series, target }) {
     (normalizedTarget / axisMax) * 100,
   );
 
-  return (
-    <div className="w-full min-w-0">
-      <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-bold text-sibs-tertiary-5">
-        <span className="inline-flex items-center gap-1.5">
-          <i className="inline-block h-2.5 w-2.5 rounded-full bg-[#0b3b68]" />
-          Call AHT
-        </span>
+  const minPeriodWidth = 76;
+  const isCustom = period === "custom";
+  const isScrollable = isCustom ? series.length > 4 : series.length > 5;
+  const trackWidth = isScrollable ? `${series.length * minPeriodWidth}px` : "100%";
 
-        <span className="inline-flex items-center gap-1.5 text-red-500">
-          <i className="inline-block h-0.5 w-3.5 bg-red-500" />
-          Target: {formatNumber(normalizedTarget)}s
-        </span>
+  return (
+    <div className="w-full min-w-0 select-none">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs font-bold text-sibs-tertiary-5">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <span className="inline-flex items-center gap-1.5">
+            <i className="inline-block h-2.5 w-2.5 rounded-full bg-[#0b3b68]" />
+            Call AHT
+          </span>
+
+          <span className="inline-flex items-center gap-1 text-red-500">
+            <i className="inline-block h-0.5 w-3.5 bg-red-500" />
+            Target: {formatNumber(normalizedTarget)}s
+          </span>
+        </div>
+        {(isScrollable || series.length > 3) && (
+          <span className="text-[10px] font-semibold text-slate-400 select-none block sm:inline">
+            Slide horizontally to view all {series.length} periods &rarr;
+          </span>
+        )}
       </div>
 
       <div className="flex w-full min-w-0">
-        <div className="relative h-[300px] w-9 shrink-0 border-r border-sibs-tertiary-8 pr-1">
+        <div className="relative h-[300px] w-9 shrink-0 border-r border-sibs-tertiary-8 pr-1 bg-white z-10">
           {axisTicks.map((tick, index) => (
             <span
               key={`${tick}-${index}`}
@@ -623,39 +671,42 @@ function AhtChart({ series, target }) {
           ))}
         </div>
 
-        <div className="relative min-w-0 flex-1">
-          <div className="pointer-events-none absolute inset-x-0 top-0 h-[300px]">
-            {axisTicks.map((tick, index) => (
+        <div className="relative min-w-0 flex-1 overflow-x-auto overflow-y-hidden pb-1 sibs-chart-scrollbar">
+          <div className="relative min-w-full w-max sm:w-full">
+            <div className="relative flex h-[300px] min-w-0 items-end gap-1 border-b border-sibs-tertiary-8 px-1">
+              {/* Horizontal Gridlines spanning 100% of bars container */}
+              <div className="pointer-events-none absolute inset-0">
+                {axisTicks.map((tick, index) => (
+                  <div
+                    key={`${tick}-${index}`}
+                    className="absolute left-0 right-0 border-t border-sibs-tertiary-9"
+                    style={{
+                      top: `${(index / (axisTicks.length - 1)) * 100}%`,
+                    }}
+                  />
+                ))}
+              </div>
+
               <div
-                key={`${tick}-${index}`}
-                className="absolute left-0 right-0 border-t border-sibs-tertiary-9"
+                className="pointer-events-none absolute right-0 left-0 z-10 flex items-center"
                 style={{
-                  top: `${(index / (axisTicks.length - 1)) * 100}%`,
+                  bottom: `${targetPosition}%`,
                 }}
-              />
-            ))}
-          </div>
+              >
+                <div className="w-full border-t border-red-500" />
+              </div>
 
-          <div className="relative flex h-[300px] w-full min-w-0 items-end gap-1 border-b border-sibs-tertiary-8 px-1">
-            <div
-              className="pointer-events-none absolute right-0 left-0 z-10 flex items-center"
-              style={{
-                bottom: `${targetPosition}%`,
-              }}
-            >
-              <div className="w-full border-t border-red-500" />
-            </div>
+              {series.map((item, itemIndex) => {
+                const ahtSec = convertDurationToSeconds(item.ahtSeconds);
+                const hasAht = ahtSec > 0;
+                const heightPct = Math.max(2, (ahtSec / axisMax) * 100);
 
-            {series.map((item, itemIndex) => {
-              const ahtSec = convertDurationToSeconds(item.ahtSeconds);
-              const hasAht = ahtSec > 0;
-              const heightPct = Math.max(2, (ahtSec / axisMax) * 100);
-
-              return (
-                <div
-                  key={item.key}
-                  className="group/aht relative z-10 hover:z-30 flex h-full min-w-0 flex-1 flex-col items-center justify-end"
-                >
+                return (
+                  <div
+                    key={item.key || itemIndex}
+                    className="group/aht relative z-10 hover:z-30 flex h-full min-w-0 flex-1 flex-col items-center justify-end"
+                    style={{ minWidth: `${minPeriodWidth}px` }}
+                  >
                   {hasAht ? (
                     <p
                       className={`pointer-events-none absolute left-1/2 z-10 -translate-x-1/2 whitespace-nowrap text-[9px] sm:text-[10px] 2xl:text-[11px] font-medium tracking-tight transition-all duration-200 group-hover/aht:-translate-y-0.5 sibs-graph-number-in ${
@@ -739,11 +790,12 @@ function AhtChart({ series, target }) {
             })}
           </div>
 
-          <div className="flex w-full min-w-0 gap-1 px-1">
+          <div className="flex w-full min-w-full gap-1 px-1">
             {series.map((item, periodIndex) => (
               <div
-                key={item.key}
+                key={item.key || periodIndex}
                 className="mt-2 min-w-0 flex-1 px-0.5 text-center"
+                style={{ minWidth: `${minPeriodWidth}px` }}
               >
                 <p
                   className="m-0 truncate text-[10.5px] font-extrabold text-sibs-primary-1 leading-tight"
@@ -764,6 +816,7 @@ function AhtChart({ series, target }) {
         </div>
       </div>
     </div>
+  </div>
   );
 }
 
@@ -807,11 +860,13 @@ export default function CallKpiDashboard({ data, showSummaryCards = true }) {
       ? summaryAsaSeconds <= targetAsaSeconds && summaryAsaSeconds > 0
       : null;
 
+  const period = data?.filters?.period || data?.data?.filters?.period;
+
   return (
     <div className="space-y-3">
       {/* 7 Compact KPI Stat Cards */}
       {showSummaryCards ? (
-        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-7 gap-2">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 2xl:grid-cols-7 gap-2">
         <KpiCard
           icon={PhoneCall}
           label="Call Volume"
@@ -872,27 +927,29 @@ export default function CallKpiDashboard({ data, showSummaryCards = true }) {
           }}
         />
 
-        <KpiCard
-          icon={Clock3}
-          label="ASA"
-          title="Average Speed of Answer (ASA)"
-          value={summaryAsaSeconds > 0 ? `${formatNumber(summaryAsaSeconds)}s` : "--"}
-          hint={
-            targetAsaSeconds !== null
-              ? `Target ${formatNumber(targetAsaSeconds)}s`
-              : "Speed to answer"
-          }
-          status={
-            targetAsaSeconds !== null
-              ? {
-                  label: asaMet ? "Target met" : "Above target",
-                  className: asaMet
-                    ? "bg-green-100 text-green-700"
-                    : "bg-amber-100 text-amber-700",
-                }
-              : null
-          }
-        />
+        <div className="col-span-2 sm:col-span-1">
+          <KpiCard
+            icon={Clock3}
+            label="ASA"
+            title="Average Speed of Answer (ASA)"
+            value={summaryAsaSeconds > 0 ? `${formatNumber(summaryAsaSeconds)}s` : "--"}
+            hint={
+              targetAsaSeconds !== null
+                ? `Target ${formatNumber(targetAsaSeconds)}s`
+                : "Speed to answer"
+            }
+            status={
+              targetAsaSeconds !== null
+                ? {
+                    label: asaMet ? "Target met" : "Above target",
+                    className: asaMet
+                      ? "bg-green-100 text-green-700"
+                      : "bg-amber-100 text-amber-700",
+                  }
+                : null
+            }
+          />
+        </div>
       </div>
       ) : null}
 
@@ -913,6 +970,7 @@ export default function CallKpiDashboard({ data, showSummaryCards = true }) {
                 ? series
                 : data?.data?.series || []
             }
+            period={period}
           />
         </ChartShell>
 
@@ -930,6 +988,7 @@ export default function CallKpiDashboard({ data, showSummaryCards = true }) {
               targets.serviceLevelPct ||
               data?.data?.targets?.serviceLevelPct
             }
+            period={period}
           />
         </ChartShell>
 
@@ -947,6 +1006,7 @@ export default function CallKpiDashboard({ data, showSummaryCards = true }) {
               targets.ahtSeconds ||
               data?.data?.targets?.ahtSeconds
             }
+            period={period}
           />
         </ChartShell>
       </div>

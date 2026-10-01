@@ -312,7 +312,7 @@ export default function MultiSelectDropdown({
 
       {isOpen && (
         <div
-          className={`absolute top-full left-0 z-50 mt-1 flex flex-col max-h-[min(88vh,620px)] w-max min-w-[340px] max-w-[min(95vw,520px)] rounded-xl border border-slate-200 bg-white py-1 shadow-xl shadow-slate-900/15 ${menuClassName}`}
+          className={`absolute top-full left-0 z-50 mt-1 flex flex-col max-h-[min(88vh,620px)] w-max min-w-[min(300px,calc(100vw-1.5rem))] max-w-[min(95vw,520px)] rounded-xl border border-slate-200 bg-white py-1 shadow-xl shadow-slate-900/15 ${menuClassName}`}
         >
           {/* Search input for large lists */}
           {validOptions.length > enableSearchThreshold && (

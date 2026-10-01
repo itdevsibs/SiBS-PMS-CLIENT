@@ -354,50 +354,50 @@ export default function WfmReadOnlyExcelModal({
   return (
     <AppModal
       isOpen={isOpen}
-      className="!max-w-none !w-[min(98vw,1920px)] !h-[94vh] !max-h-[94vh] flex flex-col !p-0 overflow-hidden"
+      className="!max-w-none !w-[calc(100vw-1rem)] !h-[calc(100dvh-1.5rem)] sm:!w-[min(98vw,1920px)] sm:!h-[94vh] sm:!max-h-[94vh] flex flex-col !p-0 overflow-hidden"
       zIndex="z-[150]"
     >
-      <div className="flex flex-col h-full w-full bg-[#f8fafc] text-slate-800 overflow-hidden rounded-2xl border border-slate-200 shadow-2xl">
+      <div className="flex flex-col h-full w-full bg-[#f8fafc] text-slate-800 overflow-hidden rounded-xl sm:rounded-2xl border border-slate-200 shadow-2xl">
         {/* ── Top Ribbon (Excel Header) ────────────────────────────── */}
-        <div className="shrink-0 bg-white border-b border-slate-200 px-4 sm:px-5 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 shadow-2xs">
+        <div className="shrink-0 bg-white border-b border-slate-200 px-3 sm:px-5 py-2 sm:py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 sm:gap-3 shadow-2xs">
           {/* Left: Icon, Filename, Read-Only Badge, Metadata */}
-          <div className="flex items-center gap-3 min-w-0 flex-1">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-700 text-white shadow-xs">
-              <FileSpreadsheet className="h-5 w-5" aria-hidden="true" />
+          <div className="flex items-start sm:items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
+            <div className="flex h-8 w-8 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-lg sm:rounded-xl bg-emerald-700 text-white shadow-xs mt-0.5 sm:mt-0">
+              <FileSpreadsheet className="h-4 w-4 sm:h-5 sm:w-5" aria-hidden="true" />
             </div>
 
             <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
                 <h3
-                  className="m-0 font-bold text-sm sm:text-base text-slate-900 truncate leading-snug max-w-xl"
+                  className="m-0 font-bold text-xs sm:text-base text-slate-900 truncate leading-snug max-w-full sm:max-w-xl"
                   title={fileName}
                 >
                   {fileName}
                 </h3>
 
                 {/* Read-Only Badge */}
-                <span className="inline-flex items-center gap-1 rounded-md border border-emerald-300 bg-emerald-50 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-emerald-800 shadow-2xs">
+                <span className="inline-flex items-center gap-1 rounded-md border border-emerald-300 bg-emerald-50 px-1.5 py-0.5 text-[9.5px] sm:text-[10px] font-extrabold uppercase tracking-wider text-emerald-800 shadow-2xs shrink-0">
                   <Lock className="h-2.5 w-2.5" />
                   READ-ONLY
                 </span>
 
                 {batchCode && (
-                  <span className="rounded bg-slate-100 px-2 py-0.5 font-mono text-[10.5px] font-bold text-slate-600 border border-slate-200">
+                  <span className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[9.5px] sm:text-[10.5px] font-bold text-slate-600 border border-slate-200 shrink-0">
                     {batchCode}
                   </span>
                 )}
               </div>
 
-              <div className="mt-0.5 flex flex-wrap items-center gap-x-2 text-[11px] text-slate-500">
+              <div className="mt-0.5 flex flex-wrap items-center gap-x-2 text-[10px] sm:text-[11px] text-slate-500">
                 {rawDataTitle && <span className="font-semibold text-slate-700">{rawDataTitle}</span>}
                 {pagination.totalRows > 0 && (
                   <span>
-                    • <strong className="text-slate-800">{pagination.totalRows.toLocaleString()}</strong> total rows
+                    • <strong className="text-slate-800">{pagination.totalRows.toLocaleString()}</strong> rows
                   </span>
                 )}
                 {visibleHeaders.length > 0 && (
                   <span>
-                    • <strong className="text-slate-800">{visibleHeaders.length}</strong> columns
+                    • <strong className="text-slate-800">{visibleHeaders.length}</strong> cols
                   </span>
                 )}
               </div>
@@ -405,19 +405,19 @@ export default function WfmReadOnlyExcelModal({
           </div>
 
           {/* Right: Actions */}
-          <div className="flex items-center gap-2 shrink-0 justify-end">
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 justify-end self-end sm:self-auto">
             <Button
               type="button"
               variant="outline"
               onClick={handleExportXlsx}
               disabled={isDownloading || rows.length === 0}
-              className="h-8 shrink-0 rounded-lg px-3.5 sm:px-4 text-xs font-semibold cursor-pointer gap-1.5"
+              className="h-7.5 sm:h-8 shrink-0 rounded-lg px-2.5 sm:px-4 text-xs font-semibold cursor-pointer gap-1.5"
               title="Download raw spreadsheet data"
             >
               {isDownloading ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin text-sibs-primary-1 group-hover/button:text-white" />
+                <Loader2 className="h-3 w-3 sm:h-3.5 sm:w-3.5 animate-spin text-sibs-primary-1" />
               ) : (
-                <Download className="h-3.5 w-3.5 text-emerald-600 transition-colors group-hover/button:text-white" />
+                <Download className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-emerald-600" />
               )}
               <span>{isDownloading ? "Exporting..." : "Export"}</span>
             </Button>
@@ -426,7 +426,7 @@ export default function WfmReadOnlyExcelModal({
               type="button"
               variant="outline"
               onClick={onClose}
-              className="h-8 shrink-0 rounded-lg px-3.5 sm:px-4 text-xs font-semibold cursor-pointer"
+              className="h-7.5 sm:h-8 shrink-0 rounded-lg px-2.5 sm:px-4 text-xs font-semibold cursor-pointer"
             >
               Close
             </Button>
@@ -434,9 +434,9 @@ export default function WfmReadOnlyExcelModal({
         </div>
 
         {/* ── Sub-toolbar: Search + Sheet Tabs ────────────────────── */}
-        <div className="shrink-0 bg-slate-50/90 border-b border-slate-200 px-4 sm:px-5 py-2 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5">
+        <div className="shrink-0 bg-slate-50/90 border-b border-slate-200 px-3 sm:px-5 py-2 flex flex-col md:flex-row md:items-center md:justify-between gap-2 sm:gap-2.5">
           {/* Sheet tabs (Excel Style) */}
-          <div className="flex items-center gap-1 overflow-x-auto sibs-scrollbar py-0.5 min-w-0">
+          <div className="flex items-center gap-1 overflow-x-auto sibs-scrollbar py-0.5 min-w-0 max-w-full">
             {sheets.length > 0 ? (
               sheets.map((sheet) => {
                 const isActive = sheet === activeSheet;
@@ -445,14 +445,14 @@ export default function WfmReadOnlyExcelModal({
                     key={sheet}
                     type="button"
                     onClick={() => handleSelectSheet(sheet)}
-                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold transition-all cursor-pointer whitespace-nowrap shadow-2xs ${
+                    className={`inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-md text-xs font-bold transition-all cursor-pointer whitespace-nowrap shadow-2xs shrink-0 ${
                       isActive
                         ? "bg-white text-emerald-800 border border-slate-200 border-b-2 border-b-emerald-600 shadow-xs"
                         : "bg-transparent text-slate-600 hover:bg-white/60 hover:text-slate-900 border border-transparent"
                     }`}
                   >
                     <FileSpreadsheet className={`h-3.5 w-3.5 ${isActive ? "text-emerald-600" : "text-slate-400"}`} />
-                    <span>{sheet}</span>
+                    <span className="truncate max-w-[150px] sm:max-w-none">{sheet}</span>
                   </button>
                 );
               })
@@ -462,14 +462,14 @@ export default function WfmReadOnlyExcelModal({
           </div>
 
           {/* Search + Per Page + SIBS Filter */}
-          <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto shrink-0">
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 w-full md:w-auto shrink-0">
             {/* SIBS vs Non-SIBS Filter dropdown (Only for Agent Level & Agent Occupancy) */}
             {isSibsFilterActive && (
-              <div className="relative">
+              <div className="relative flex-1 sm:flex-initial min-w-[110px]">
                 <select
                   value={sibsFilter}
                   onChange={(e) => handleSibsFilterChange(e.target.value)}
-                  className={`h-8 rounded-lg border px-2.5 text-xs font-semibold shadow-2xs focus:border-emerald-600 focus:outline-none cursor-pointer transition-colors ${
+                  className={`h-8 w-full sm:w-auto rounded-lg border px-2 text-xs font-semibold shadow-2xs focus:border-emerald-600 focus:outline-none cursor-pointer transition-colors ${
                     sibsFilter === "SIBS"
                       ? "border-emerald-400 bg-emerald-50 text-emerald-800 font-bold"
                       : sibsFilter === "NON_SIBS"
@@ -491,7 +491,7 @@ export default function WfmReadOnlyExcelModal({
               </div>
             )}
 
-            <div className="relative w-full sm:w-64">
+            <div className="relative flex-1 min-w-[140px] sm:min-w-0 sm:w-56 md:w-64">
               <Search className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
               <input
                 type="text"
@@ -514,7 +514,7 @@ export default function WfmReadOnlyExcelModal({
             <select
               value={pagination.limit}
               onChange={(e) => handleLimitChange(Number(e.target.value))}
-              className="h-8 rounded-lg border border-slate-200 bg-white px-2 text-xs font-medium text-slate-700 shadow-2xs focus:border-emerald-600 focus:outline-none cursor-pointer"
+              className="h-8 shrink-0 rounded-lg border border-slate-200 bg-white px-2 text-xs font-medium text-slate-700 shadow-2xs focus:border-emerald-600 focus:outline-none cursor-pointer"
               title="Rows per page"
             >
               <option value={25}>25 rows</option>
@@ -527,7 +527,7 @@ export default function WfmReadOnlyExcelModal({
               type="button"
               onClick={() => loadRawData(pagination.page, searchQuery, activeSheet, sibsFilter)}
               disabled={isLoading}
-              className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 shadow-2xs transition cursor-pointer disabled:opacity-50"
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 shadow-2xs transition cursor-pointer disabled:opacity-50"
               title="Refresh spreadsheet"
             >
               <RefreshCw className={`h-3.5 w-3.5 ${isLoading ? "animate-spin text-emerald-600" : ""}`} />
@@ -543,7 +543,10 @@ export default function WfmReadOnlyExcelModal({
         )}
 
         {/* ── Spreadsheet Grid Area ───────────────────────────────── */}
-        <div className="flex-1 min-h-0 bg-white overflow-auto sibs-scrollbar relative">
+        <div
+          className="flex-1 min-h-0 bg-white overflow-auto sibs-scrollbar relative scroll-smooth touch-pan-x touch-pan-y"
+          style={{ WebkitOverflowScrolling: "touch" }}
+        >
           {isLoading && rows.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full py-24 text-center">
               <Loader2 className="h-8 w-8 animate-spin text-emerald-600 mb-2" />
@@ -563,7 +566,7 @@ export default function WfmReadOnlyExcelModal({
               <thead className="sticky top-0 z-20 bg-slate-100/95 shadow-xs backdrop-blur-xs">
                 <tr>
                   {/* Top-left corner cell */}
-                  <th className={`sticky left-0 z-30 ${isSibsFilterActive ? "w-20 min-w-[80px] max-w-[80px]" : "w-14 min-w-[56px] max-w-[56px]"} bg-slate-200 border-r border-b border-slate-300 px-1 py-1.5 text-center text-[10px] font-bold text-slate-500 uppercase select-none`}>
+                  <th className={`${isSibsFilterActive ? "w-20 min-w-[80px] max-w-[80px]" : "w-14 min-w-[56px] max-w-[56px]"} bg-slate-200 border-r border-b border-slate-300 px-1 py-1.5 text-center text-[10px] font-bold text-slate-500 uppercase select-none`}>
                     {isSibsFilterActive ? "Row / Type" : "#"}
                   </th>
 
@@ -597,8 +600,8 @@ export default function WfmReadOnlyExcelModal({
                       key={row.id || `${excelRowNum}-${rIdx}`}
                       className="hover:bg-emerald-50/40 transition-colors"
                     >
-                      {/* Sticky Row Number (Excel Style) */}
-                      <td className={`sticky left-0 z-10 ${isSibsFilterActive ? "w-20 min-w-[80px] max-w-[80px]" : "w-14 min-w-[56px] max-w-[56px]"} bg-slate-100/90 border-r border-b border-slate-200 px-1 py-1 text-center font-mono text-[11px] font-semibold text-slate-500 select-none`}>
+                      {/* Row Number / Type Cell */}
+                      <td className={`${isSibsFilterActive ? "w-20 min-w-[80px] max-w-[80px]" : "w-14 min-w-[56px] max-w-[56px]"} bg-slate-100/90 border-r border-b border-slate-200 px-1 py-1 text-center font-mono text-[11px] font-semibold text-slate-500 select-none`}>
                         <div className="flex flex-col items-center justify-center gap-0.5">
                           <span>{excelRowNum}</span>
                           {isSibsFilterActive && (
@@ -644,11 +647,11 @@ export default function WfmReadOnlyExcelModal({
         </div>
 
         {/* ── Bottom Status Bar & Pagination (Excel Style) ────────── */}
-        <div className="shrink-0 bg-white border-t border-slate-200 px-4 sm:px-5 py-2.5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-xs">
+        <div className="shrink-0 bg-white border-t border-slate-200 px-3 sm:px-5 py-2 sm:py-2.5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-xs">
           {/* Left status note */}
-          <div className="flex items-center gap-2 text-slate-500 font-medium">
-            <span className="inline-block h-2 w-2 rounded-full bg-emerald-500" />
-            <span>
+          <div className="flex items-center gap-1.5 sm:gap-2 text-slate-500 font-medium text-[11px] sm:text-xs">
+            <span className="inline-block h-2 w-2 rounded-full bg-emerald-500 shrink-0" />
+            <span className="truncate">
               Showing{" "}
               <strong className="text-slate-800">
                 {pagination.totalRows === 0
@@ -661,35 +664,35 @@ export default function WfmReadOnlyExcelModal({
               </strong>{" "}
               of <strong className="text-slate-800">{pagination.totalRows.toLocaleString()}</strong> rows
               {sibsFilter === "SIBS" && (
-                <span className="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300/60">
-                  SIBS (Matched)
+                <span className="ml-1 inline-flex items-center px-1.5 py-0.2 rounded text-[9px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300/60">
+                  SIBS
                 </span>
               )}
               {sibsFilter === "NON_SIBS" && (
-                <span className="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300/60">
-                  Non-SIBS (Unmatched)
+                <span className="ml-1 inline-flex items-center px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-100 text-amber-800 border border-amber-300/60">
+                  Non-SIBS
                 </span>
               )}
             </span>
-            <span className="hidden sm:inline text-slate-300">|</span>
-            <span className="hidden sm:inline font-mono text-[11px] text-slate-400">
+            <span className="hidden md:inline text-slate-300">|</span>
+            <span className="hidden md:inline font-mono text-[11px] text-slate-400 truncate">
               Sheet: {activeSheet || "Sheet1"}
             </span>
           </div>
 
           {/* Right Pagination Buttons */}
-          <div className="flex items-center gap-1.5 self-end sm:self-auto">
+          <div className="flex items-center justify-between sm:justify-end gap-1.5 w-full sm:w-auto">
             <button
               type="button"
               onClick={() => handlePageChange(pagination.page - 1)}
               disabled={pagination.page <= 1 || isLoading}
-              className="flex h-8 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-bold text-slate-700 shadow-2xs hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition cursor-pointer"
+              className="flex h-7.5 sm:h-8 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2 sm:px-2.5 text-xs font-bold text-slate-700 shadow-2xs hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition cursor-pointer"
             >
               <ChevronLeft className="h-3.5 w-3.5" />
               <span>Prev</span>
             </button>
 
-            <span className="px-2.5 py-1 rounded-md bg-slate-100 font-bold text-xs text-slate-800 border border-slate-200">
+            <span className="px-2 sm:px-2.5 py-1 rounded-md bg-slate-100 font-bold text-[11px] sm:text-xs text-slate-800 border border-slate-200">
               {pagination.page} / {pagination.totalPages}
             </span>
 
@@ -697,7 +700,7 @@ export default function WfmReadOnlyExcelModal({
               type="button"
               onClick={() => handlePageChange(pagination.page + 1)}
               disabled={pagination.page >= pagination.totalPages || isLoading}
-              className="flex h-8 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-bold text-slate-700 shadow-2xs hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition cursor-pointer"
+              className="flex h-7.5 sm:h-8 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2 sm:px-2.5 text-xs font-bold text-slate-700 shadow-2xs hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition cursor-pointer"
             >
               <span>Next</span>
               <ChevronRight className="h-3.5 w-3.5" />

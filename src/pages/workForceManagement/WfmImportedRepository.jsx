@@ -667,44 +667,55 @@ export default function WfmImportedRepository() {
                     return (
                       <div
                         key={upload.id || `${upload.fileName}-${upload.uploadedAt}`}
-                        className="flex flex-col gap-3 p-3.5 sm:p-4 lg:px-5 lg:py-4 transition-colors hover:bg-slate-50/70 lg:flex-row lg:items-center lg:justify-between"
+                        className="transition-colors hover:bg-slate-50/70"
                       >
-                        {/* Left: File details, batch badge, time & row counts */}
-                        <div className="min-w-0 flex-1">
-                          <p
-                            className="m-0 min-w-0 max-w-full break-words [word-break:break-word] text-xs sm:text-sm font-bold text-sibs-primary-1 leading-snug"
-                            title={upload.fileName}
-                          >
-                            {upload.fileName}
-                          </p>
+                        {/* ── Mobile Only Layout (sm:hidden) ── */}
+                        <div className="sm:hidden flex flex-col gap-2.5 p-3.5">
+                          {/* File header with Excel icon */}
+                          <div className="flex items-start gap-2.5 min-w-0">
+                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-emerald-100 bg-emerald-50 text-emerald-600 shadow-2xs">
+                              <FileSpreadsheet className="h-4 w-4" aria-hidden="true" />
+                            </div>
 
-                          <div className="mt-1.5 flex flex-wrap items-center gap-1.5 sm:gap-2 text-[11px] sm:text-xs text-sibs-tertiary-5">
-                            <span className="whitespace-nowrap">
+                            <div className="min-w-0 flex-1">
+                              <p
+                                className="m-0 break-words text-xs font-bold text-sibs-primary-1 leading-snug [overflow-wrap:anywhere]"
+                                title={upload.fileName}
+                              >
+                                {upload.fileName}
+                              </p>
+
+                              {/* Category badge & row count */}
+                              <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] text-slate-500">
+                                {upload.rawDataTitle ? (
+                                  <span className="inline-flex items-center rounded-md border border-slate-200 bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-700 shadow-2xs">
+                                    {upload.rawDataTitle}
+                                  </span>
+                                ) : null}
+                                {upload.totalRows ? (
+                                  <span className="font-semibold text-slate-600">
+                                    • {upload.totalRows.toLocaleString()} rows
+                                  </span>
+                                ) : null}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Time & Batch Code */}
+                          <div className="flex flex-col gap-1 rounded-lg border border-slate-100 bg-slate-50/80 px-2.5 py-1.5 text-[10.5px] text-slate-500">
+                            <span className="truncate">
                               ({formatRelativeTime(upload)}) {upload.uploadedAt}
                             </span>
-
                             {upload.batchCode ? (
-                              <span className="rounded bg-sibs-primary-2/10 px-1.5 py-0.5 font-mono text-[10px] font-bold text-sibs-primary-2 whitespace-nowrap">
-                                Batch: {upload.batchCode}
-                              </span>
-                            ) : null}
-
-                            {upload.rawDataTitle ? (
-                              <span className="inline-flex items-center rounded-md border border-slate-200 bg-slate-100 px-2 py-0.5 sm:px-2.5 sm:py-1 text-[11px] sm:text-xs font-bold text-slate-700 shadow-2xs whitespace-nowrap">
-                                {upload.rawDataTitle}
-                              </span>
-                            ) : null}
-
-                            {upload.totalRows ? (
-                              <span className="text-[11px] font-medium text-slate-500 whitespace-nowrap">
-                                • {upload.totalRows.toLocaleString()} rows
-                              </span>
+                              <div>
+                                <span className="inline-block rounded bg-sibs-primary-2/10 px-1.5 py-0.5 font-mono text-[9.5px] font-bold text-sibs-primary-2">
+                                  Batch: {upload.batchCode}
+                                </span>
+                              </div>
                             ) : null}
                           </div>
-                        </div>
 
-                        {/* Right: Actions */}
-                        <div className="flex flex-wrap items-center justify-start lg:justify-end gap-1.5 sm:gap-2 pt-2.5 lg:pt-0 border-t border-slate-100 lg:border-0 shrink-0 w-full lg:w-auto">
+                          {/* Completed with error banner (if errors exist) */}
                           {isCompletedWithErrors && (
                             <button
                               type="button"
@@ -712,44 +723,144 @@ export default function WfmImportedRepository() {
                               onClick={() =>
                                 handleOpenUsVisaErrors(upload.batchId || upload.id)
                               }
-                              className="inline-flex h-8 shrink-0 whitespace-nowrap items-center gap-1.5 rounded-lg border border-amber-400 bg-amber-50 px-2 sm:px-2.5 text-xs font-semibold text-amber-800 transition-all hover:border-amber-500 hover:bg-amber-100 shadow-xs cursor-pointer"
+                              className="flex w-full cursor-pointer items-center justify-between rounded-lg border border-amber-300 bg-amber-50/90 px-2.5 py-1.5 text-xs font-semibold text-amber-800 shadow-2xs transition-colors hover:bg-amber-100 active:scale-[0.99]"
                               title="Completed with error - click to view error details"
                             >
-                              <AlertTriangle
-                                className="h-3.5 w-3.5 shrink-0 text-amber-600"
-                                aria-hidden="true"
-                              />
-                              <span>Completed with error</span>
+                              <span className="inline-flex items-center gap-1.5">
+                                <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-amber-600" />
+                                <span>Completed with error</span>
+                              </span>
+                              <span className="text-[10.5px] font-bold text-amber-700 underline">
+                                View errors &rarr;
+                              </span>
                             </button>
                           )}
 
-                          <button
-                            type="button"
-                            onClick={() => setSelectedRawBatch(upload)}
-                            className="inline-flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50/70 px-2.5 sm:px-3 text-xs font-semibold text-emerald-700 shadow-xs transition-all hover:border-emerald-600 hover:bg-emerald-600 hover:text-white cursor-pointer"
-                            title="View raw Excel spreadsheet data"
-                          >
-                            <FileSpreadsheet className="h-3.5 w-3.5" aria-hidden="true" />
-                            <span>View raw data</span>
-                          </button>
+                          {/* 3 Equal-width Action Buttons */}
+                          <div className="grid grid-cols-3 gap-1.5 pt-0.5">
+                            <button
+                              type="button"
+                              onClick={() => setSelectedRawBatch(upload)}
+                              className="inline-flex h-8.5 cursor-pointer items-center justify-center gap-1 rounded-lg border border-emerald-200 bg-emerald-50/80 px-1.5 text-[11px] font-bold text-emerald-700 shadow-2xs transition-all hover:bg-emerald-600 hover:text-white active:scale-95"
+                              title="View raw Excel spreadsheet data"
+                            >
+                              <FileSpreadsheet className="h-3.5 w-3.5 shrink-0" />
+                              <span>Raw data</span>
+                            </button>
 
-                          <button
-                            type="button"
-                            onClick={() => handleOpenBatchDetails(upload)}
-                            className="inline-flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 sm:px-3 text-xs font-semibold text-slate-700 shadow-xs transition-all hover:border-sibs-primary-1 hover:bg-sibs-primary-1 hover:text-white cursor-pointer"
-                          >
-                            <Eye className="h-3.5 w-3.5" aria-hidden="true" />
-                            <span>View</span>
-                          </button>
+                            <button
+                              type="button"
+                              onClick={() => handleOpenBatchDetails(upload)}
+                              className="inline-flex h-8.5 cursor-pointer items-center justify-center gap-1 rounded-lg border border-slate-200 bg-white px-1.5 text-[11px] font-bold text-slate-700 shadow-2xs transition-all hover:border-sibs-primary-1 hover:bg-sibs-primary-1 hover:text-white active:scale-95"
+                            >
+                              <Eye className="h-3.5 w-3.5 shrink-0" />
+                              <span>View</span>
+                            </button>
 
-                          <button
-                            type="button"
-                            onClick={() => setUploadToRemove(upload)}
-                            className="inline-flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-rose-200 bg-rose-50/70 px-2.5 sm:px-3 text-xs font-semibold text-rose-600 shadow-xs transition-all hover:border-rose-600 hover:bg-rose-600 hover:text-white cursor-pointer"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
-                            <span>Remove</span>
-                          </button>
+                            <button
+                              type="button"
+                              onClick={() => setUploadToRemove(upload)}
+                              className="inline-flex h-8.5 cursor-pointer items-center justify-center gap-1 rounded-lg border border-rose-200 bg-rose-50/80 px-1.5 text-[11px] font-bold text-rose-600 shadow-2xs transition-all hover:border-rose-600 hover:bg-rose-600 hover:text-white active:scale-95"
+                            >
+                              <Trash2 className="h-3.5 w-3.5 shrink-0" />
+                              <span>Remove</span>
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* ── Tablet & Desktop Layout (hidden sm:flex) ── */}
+                        <div className="hidden sm:flex sm:flex-col lg:flex-row lg:items-center lg:justify-between gap-3 p-4 lg:px-5 lg:py-4">
+                          {/* Left: File details, batch badge, time & row counts */}
+                          <div className="min-w-0 flex-1">
+                            <p
+                              className="m-0 min-w-0 max-w-full break-words [word-break:break-word] text-xs sm:text-sm font-bold text-sibs-primary-1 leading-snug"
+                              title={upload.fileName}
+                            >
+                              {upload.fileName}
+                            </p>
+
+                            {/* Upload time */}
+                            <div className="mt-1 text-[11px] sm:text-xs text-sibs-tertiary-5">
+                              <span className="whitespace-nowrap">
+                                ({formatRelativeTime(upload)}) {upload.uploadedAt}
+                              </span>
+                            </div>
+
+                            {/* Batch code under upload time */}
+                            {upload.batchCode ? (
+                              <div className="mt-1">
+                                <span className="rounded bg-sibs-primary-2/10 px-1.5 py-0.5 font-mono text-[10px] font-bold text-sibs-primary-2 whitespace-nowrap">
+                                  Batch: {upload.batchCode}
+                                </span>
+                              </div>
+                            ) : null}
+
+                            {/* Raw data title & row count placed under upload time & batch */}
+                            {(upload.rawDataTitle || upload.totalRows) && (
+                              <div className="mt-1.5 flex flex-wrap items-center gap-1.5 sm:gap-2 text-[11px] sm:text-xs text-sibs-tertiary-5">
+                                {upload.rawDataTitle ? (
+                                  <span className="inline-flex items-center rounded-md border border-slate-200 bg-slate-100 px-2 py-0.5 sm:px-2.5 sm:py-0.5 text-[11px] sm:text-xs font-bold text-slate-700 shadow-2xs whitespace-nowrap">
+                                    {upload.rawDataTitle}
+                                  </span>
+                                ) : null}
+
+                                {upload.totalRows ? (
+                                  <span className="text-[11px] font-medium text-slate-500 whitespace-nowrap">
+                                    • {upload.totalRows.toLocaleString()} rows
+                                  </span>
+                                ) : null}
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Right: Actions */}
+                          <div className="flex flex-wrap items-center justify-start lg:justify-end gap-1.5 sm:gap-2 pt-2.5 lg:pt-0 border-t border-slate-100 lg:border-0 shrink-0 w-full lg:w-auto">
+                            {isCompletedWithErrors && (
+                              <button
+                                type="button"
+                                disabled={isLoadingUsVisaErrors}
+                                onClick={() =>
+                                  handleOpenUsVisaErrors(upload.batchId || upload.id)
+                                }
+                                className="inline-flex h-8 shrink-0 whitespace-nowrap items-center gap-1.5 rounded-lg border border-amber-400 bg-amber-50 px-2 sm:px-2.5 text-xs font-semibold text-amber-800 transition-all hover:border-amber-500 hover:bg-amber-100 shadow-xs cursor-pointer"
+                                title="Completed with error - click to view error details"
+                              >
+                                <AlertTriangle
+                                  className="h-3.5 w-3.5 shrink-0 text-amber-600"
+                                  aria-hidden="true"
+                                />
+                                <span>Completed with error</span>
+                              </button>
+                            )}
+
+                            <button
+                              type="button"
+                              onClick={() => setSelectedRawBatch(upload)}
+                              className="inline-flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50/70 px-2.5 sm:px-3 text-xs font-semibold text-emerald-700 shadow-xs transition-all hover:border-emerald-600 hover:bg-emerald-600 hover:text-white cursor-pointer"
+                              title="View raw Excel spreadsheet data"
+                            >
+                              <FileSpreadsheet className="h-3.5 w-3.5" aria-hidden="true" />
+                              <span>View raw data</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => handleOpenBatchDetails(upload)}
+                              className="inline-flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 sm:px-3 text-xs font-semibold text-slate-700 shadow-xs transition-all hover:border-sibs-primary-1 hover:bg-sibs-primary-1 hover:text-white cursor-pointer"
+                            >
+                              <Eye className="h-3.5 w-3.5" aria-hidden="true" />
+                              <span>View</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => setUploadToRemove(upload)}
+                              className="inline-flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-rose-200 bg-rose-50/70 px-2.5 sm:px-3 text-xs font-semibold text-rose-600 shadow-xs transition-all hover:border-rose-600 hover:bg-rose-600 hover:text-white cursor-pointer"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+                              <span>Remove</span>
+                            </button>
+                          </div>
                         </div>
                       </div>
                     );

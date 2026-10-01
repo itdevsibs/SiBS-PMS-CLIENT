@@ -1027,6 +1027,7 @@ export default function OccupancyTable({
   const dragScrollLeftRef = useRef(0);
 
   const handlePointerDown = (e) => {
+    if (e.pointerType === "touch") return; // Touch devices use native touch scrolling
     if (e.button !== 0 || e.target.closest("button, input, a, select")) return;
     const el = tableContainerRef.current;
     if (!el || el.scrollWidth <= el.clientWidth + 2) return;
@@ -1079,7 +1080,7 @@ export default function OccupancyTable({
   }, []);
 
   return (
-    <div className="flex-1 min-h-0 flex flex-col gap-2.5 sm:gap-3 overflow-hidden">
+    <div className="flex-1 min-h-0 flex flex-col gap-2.5 sm:gap-3">
       {/* Search and filter toolbar matching reference bar */}
       <div className="shrink-0 flex flex-col lg:flex-row lg:items-end justify-between gap-3 sm:gap-3.5 rounded-xl border border-slate-200 bg-white p-3 sm:p-4 shadow-xs">
         <div className="flex flex-wrap items-end gap-3 sm:gap-3.5 flex-1 min-w-0 w-full">
@@ -1211,7 +1212,7 @@ export default function OccupancyTable({
       </div>
 
       {/* Structured, Well-Organized Data Grid */}
-      <div className="flex-1 min-h-0 flex flex-col rounded-xl border border-slate-200 bg-white shadow-xs overflow-hidden">
+      <div className="flex-1 min-h-[480px] lg:min-h-0 flex flex-col rounded-xl border border-slate-200 bg-white shadow-xs overflow-hidden">
         <div
           ref={tableContainerRef}
           onPointerDown={handlePointerDown}
