@@ -20,6 +20,8 @@ export default function TablePagination({
   onPageChange,
   itemLabel = "employees",
   className = "",
+  extraLeft = null,
+  disabled = false,
 }) {
   const safeTotalPages = Math.max(1, totalPages || 1);
   const safeCurrentPage = Math.min(Math.max(1, currentPage), safeTotalPages);
@@ -71,7 +73,7 @@ export default function TablePagination({
       className={`flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-t border-slate-200 bg-white px-3 py-2.5 sm:px-5 sm:py-3 ${className}`}
     >
       {/* Left side: Results Count Indicator */}
-      <div className="text-xs sm:text-[13px] text-slate-600 font-medium text-center sm:text-left">
+      <div className="flex flex-wrap items-center gap-2 text-xs sm:text-[13px] text-slate-600 font-medium text-center sm:text-left">
         {totalItems === 0 ? (
           <span>
             Showing <strong className="font-bold text-slate-900">0</strong> of{" "}
@@ -80,12 +82,13 @@ export default function TablePagination({
         ) : (
           <span>
             Showing{" "}
-            <strong className="font-bold text-slate-900">{startItem}</strong> to{" "}
-            <strong className="font-bold text-slate-900">{endItem}</strong> of{" "}
-            <strong className="font-bold text-slate-900">{totalItems}</strong>{" "}
+            <strong className="font-bold text-slate-900">{Number(startItem).toLocaleString()}</strong> to{" "}
+            <strong className="font-bold text-slate-900">{Number(endItem).toLocaleString()}</strong> of{" "}
+            <strong className="font-bold text-slate-900">{Number(totalItems).toLocaleString()}</strong>{" "}
             {itemLabel}
           </span>
         )}
+        {extraLeft}
       </div>
 
       {/* Right side: Page Navigation Controls */}
@@ -94,9 +97,9 @@ export default function TablePagination({
         <button
           type="button"
           onClick={() => onPageChange?.(safeCurrentPage - 1)}
-          disabled={safeCurrentPage <= 1}
+          disabled={disabled || safeCurrentPage <= 1}
           aria-label="Previous page"
-          className="inline-flex h-8.5 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 text-xs sm:text-[13px] font-semibold text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-slate-200 disabled:hover:bg-white"
+          className="inline-flex h-8.5 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 text-xs sm:text-[13px] font-semibold text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-slate-200 disabled:hover:bg-white cursor-pointer"
         >
           <ChevronLeft className="h-4 w-4" />
           <span className="hidden sm:inline">Previous</span>
@@ -123,11 +126,12 @@ export default function TablePagination({
                 key={`page-${p}`}
                 type="button"
                 onClick={() => onPageChange?.(p)}
+                disabled={disabled || isActive}
                 aria-current={isActive ? "page" : undefined}
                 className={`flex h-8.5 min-w-[34px] items-center justify-center rounded-lg px-2 text-xs sm:text-[13px] font-semibold transition-all ${
                   isActive
                     ? "border border-[#18466b] bg-[#18466b] text-white shadow-2xs font-bold"
-                    : "border border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50"
+                    : "border border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50 cursor-pointer"
                 }`}
               >
                 {p}
@@ -140,9 +144,9 @@ export default function TablePagination({
         <button
           type="button"
           onClick={() => onPageChange?.(safeCurrentPage + 1)}
-          disabled={safeCurrentPage >= safeTotalPages}
+          disabled={disabled || safeCurrentPage >= safeTotalPages}
           aria-label="Next page"
-          className="inline-flex h-8.5 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 text-xs sm:text-[13px] font-semibold text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-slate-200 disabled:hover:bg-white"
+          className="inline-flex h-8.5 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 text-xs sm:text-[13px] font-semibold text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-slate-200 disabled:hover:bg-white cursor-pointer"
         >
           <span className="hidden sm:inline">Next</span>
           <ChevronRight className="h-4 w-4" />

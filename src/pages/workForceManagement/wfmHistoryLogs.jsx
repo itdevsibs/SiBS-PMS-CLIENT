@@ -1,5 +1,5 @@
 // Database-backed WFM History Logs page.
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { CheckCircle2, Loader2, Trash2 } from "lucide-react";
 
 import AdminSidebar from "@/components/layout/AdminSidebar";
@@ -8,6 +8,7 @@ import AppModal from "@/components/ui/app-modal";
 import { Button } from "@/components/ui/button";
 import ConfirmationModal from "@/components/ui/confirmation-modal";
 import LoadingModal from "@/components/ui/loading-modal";
+import TablePagination from "@/components/tables/TablePagination";
 import useDashboardPage from "@/hooks/useDashboardPage";
 import {
   clearWfmHistoryLogs,
@@ -158,14 +159,6 @@ function WfmHistoryLogs() {
     }
   };
 
-  const showingText = useMemo(() => {
-    if (!pagination.total) return "No logs to show";
-
-    const start = (pagination.page - 1) * pagination.limit + 1;
-    const end = Math.min(pagination.page * pagination.limit, pagination.total);
-
-    return `Showing ${start}-${end} of ${pagination.total} logs`;
-  }, [pagination]);
 
   return (
     <section className="font-jakarta flex h-screen max-h-[100dvh] min-h-screen bg-[#eef3f7] text-sibs-primary-1 overflow-hidden">
@@ -261,32 +254,18 @@ function WfmHistoryLogs() {
                 : null}
             </div>
 
-            <div className="flex flex-col gap-3 border-t border-sibs-tertiary-10 bg-white px-5 py-3 text-sm text-sibs-tertiary-6 sm:flex-row sm:items-center sm:justify-between">
-              <span>{showingText}</span>
-              <div className="flex items-center gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={pagination.page <= 1 || isLoading}
-                  onClick={() => loadLogs(Math.max(1, pagination.page - 1))}
-                  className="h-9 rounded-lg px-4"
-                >
-                  Previous
-                </Button>
-                <span className="text-xs font-bold text-sibs-tertiary-6">
-                  Page {pagination.page} of {pagination.totalPages}
-                </span>
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={pagination.page >= pagination.totalPages || isLoading}
-                  onClick={() => loadLogs(Math.min(pagination.totalPages, pagination.page + 1))}
-                  className="h-9 rounded-lg px-4"
-                >
-                  Next
-                </Button>
-              </div>
-            </div>
+            {!error && pagination.total > 0 ? (
+              <TablePagination
+                currentPage={pagination.page}
+                totalPages={pagination.totalPages}
+                totalItems={pagination.total}
+                pageSize={pagination.limit}
+                onPageChange={(page) => loadLogs(page)}
+                itemLabel="logs"
+                disabled={isLoading}
+                className="border-t border-sibs-tertiary-10 px-5"
+              />
+            ) : null}
           </section>
         </div>
       </main>

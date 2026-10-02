@@ -23,6 +23,8 @@ import WfmFilterBar from "@/components/ui/import/wfm-filter-bar";
 import WfmImportSummaryBar from "@/components/ui/import/wfm-import-summary-bar";
 import { RemovedUploadSuccessModal } from "@/components/ui/import/wfm-status-feedback-modals";
 import WfmWarningsModal from "@/components/ui/import/wfm-warnings-modal";
+import WfmRejectedModal from "@/components/ui/import/wfm-rejected-modal";
+import WfmDuplicatesModal from "@/components/ui/import/wfm-duplicates-modal";
 import useDashboardPage from "@/hooks/useDashboardPage";
 import { getAuthDisplayName } from "@/lib/auth";
 import { recordWfmHistoryLogQuietly } from "@/lib/axios/wfm-history-logs";
@@ -87,6 +89,8 @@ export default function WfmImportedRepository() {
   const [importSummary, setImportSummary] = useState(EMPTY_IMPORT_SUMMARY);
   const [summaryRefreshVersion, setSummaryRefreshVersion] = useState(0);
   const [isWarningsModalOpen, setIsWarningsModalOpen] = useState(false);
+  const [isRejectedModalOpen, setIsRejectedModalOpen] = useState(false);
+  const [isDuplicatesModalOpen, setIsDuplicatesModalOpen] = useState(false);
 
   // Raw data uploads stored across all cards/levels
   const [uploadsByCard, setUploadsByCard] = useState(() =>
@@ -279,35 +283,35 @@ export default function WfmImportedRepository() {
     return counts;
   }, [allUploads, getUploadLevel]);
 
-  // Dropdown options for Level selector
+  // Dropdown options for Level selector with live upload counts
   const levelOptions = useMemo(
     () => [
       {
         value: "ALL",
-        label: "ALL LEVEL",
+        label: `ALL LEVEL (${allUploads.length})`,
       },
       {
         value: "SERVICE / QUEUE LEVEL",
-        label: "SERVICE / QUEUE LEVEL",
+        label: `SERVICE / QUEUE LEVEL (${levelCounts["SERVICE / QUEUE LEVEL"] || 0})`,
       },
       {
         value: "AGENT LEVEL",
-        label: "AGENT LEVEL",
+        label: `AGENT LEVEL (${levelCounts["AGENT LEVEL"] || 0})`,
       },
       {
         value: "AGENT OCCUPANCY",
-        label: "AGENT OCCUPANCY",
+        label: `AGENT OCCUPANCY (${levelCounts["AGENT OCCUPANCY"] || 0})`,
       },
       {
         value: "EMAIL LEVEL",
-        label: "EMAIL RAW DATA",
+        label: `EMAIL RAW DATA (${levelCounts["EMAIL LEVEL"] || 0})`,
       },
       {
         value: "QUALITY AUDIT",
-        label: "QUALITY AUDIT",
+        label: `QUALITY AUDIT (${levelCounts["QUALITY AUDIT"] || 0})`,
       },
     ],
-    [],
+    [allUploads.length, levelCounts],
   );
 
   // Uploads filtered by selected level
@@ -567,6 +571,8 @@ export default function WfmImportedRepository() {
           <WfmImportSummaryBar
             importSummary={importSummary}
             onOpenWarnings={() => setIsWarningsModalOpen(true)}
+            onOpenRejected={() => setIsRejectedModalOpen(true)}
+            onOpenDuplicates={() => setIsDuplicatesModalOpen(true)}
           />
 
           {/* Main Repository Box Container */}
@@ -616,7 +622,7 @@ export default function WfmImportedRepository() {
                 </div>
 
                 {/* Level selector dropdown - fixed width so it never moves when changing options */}
-                <div className="w-full sm:w-52 md:w-56 shrink-0">
+                <div className="w-full sm:w-60 md:w-64 shrink-0">
                   <SingleSelectDropdown
                     value={selectedLevel}
                     onChange={(e) => setSelectedLevel(e.target.value)}
@@ -981,6 +987,30 @@ export default function WfmImportedRepository() {
       <WfmWarningsModal
         isOpen={isWarningsModalOpen}
         onClose={() => setIsWarningsModalOpen(false)}
+        uploadsByCard={uploadsByCard}
+        selectedAccount={selectedAccount}
+        isLoadingUsVisaErrors={isLoadingUsVisaErrors}
+        handleOpenUsVisaErrors={handleOpenUsVisaErrors}
+        handleOpenBatchDetails={handleOpenBatchDetails}
+        setUploadToRemove={setUploadToRemove}
+      />
+
+      {/* Records Rejected Modal (opened when clicking Records Rejected card) */}
+      <WfmRejectedModal
+        isOpen={isRejectedModalOpen}
+        onClose={() => setIsRejectedModalOpen(false)}
+        uploadsByCard={uploadsByCard}
+        selectedAccount={selectedAccount}
+        isLoadingUsVisaErrors={isLoadingUsVisaErrors}
+        handleOpenUsVisaErrors={handleOpenUsVisaErrors}
+        handleOpenBatchDetails={handleOpenBatchDetails}
+        setUploadToRemove={setUploadToRemove}
+      />
+
+      {/* Duplicates Found Modal (opened when clicking Duplicates Found card) */}
+      <WfmDuplicatesModal
+        isOpen={isDuplicatesModalOpen}
+        onClose={() => setIsDuplicatesModalOpen(false)}
         uploadsByCard={uploadsByCard}
         selectedAccount={selectedAccount}
         isLoadingUsVisaErrors={isLoadingUsVisaErrors}

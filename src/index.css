@@ -1021,6 +1021,7 @@
 
 .sibs-chart-scrollbar::-webkit-scrollbar {
   height: 7px;
+  width: 7px;
 }
 
 .sibs-chart-scrollbar::-webkit-scrollbar-track {

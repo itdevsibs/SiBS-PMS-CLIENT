@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useLocation } from "react-router-dom";
 import {
   AlertCircle,
   BarChart3,
@@ -8,7 +9,9 @@ import {
   Download,
   Filter,
   Loader2,
+  Menu,
   RefreshCw,
+  Users,
 } from "lucide-react";
 
 import AdminSidebar from "@/components/layout/AdminSidebar";
@@ -16,9 +19,17 @@ import AppHeader from "@/components/layout/AppHeader";
 import ConfirmationModal from "@/components/ui/confirmation-modal";
 import LoadingModal from "@/components/ui/loading-modal";
 import CallKpiDashboard from "@/components/kpi/CallKpiDashboard";
-import EmailKpiDashboard from "@/components/kpi/EmailKpiDashboard";
-import QualityAuditKpiDashboard from "@/components/kpi/QualityAuditKpiDashboard";
-import { downloadKpiGraphsAsPdf } from "@/components/kpi/callKpiDashboardUtils";
+import EmailKpiDashboard, {
+  EmailSummaryCards,
+} from "@/components/kpi/EmailKpiDashboard";
+import QualityAuditKpiDashboard, {
+  QualityAuditSummaryCards,
+} from "@/components/kpi/QualityAuditKpiDashboard";
+import DownloadPdfModal from "@/components/kpi/DownloadPdfModal";
+import {
+  downloadKpiGraphsAsPdf,
+  downloadSelectedKpiReportsAsPdf,
+} from "@/components/kpi/callKpiDashboardUtils";
 import DatePicker from "@/components/ui/Filter/DatePicker";
 import MultiSelectDropdown from "@/components/ui/Filter/MultiSelectDropdown";
 import SingleSelectDropdown from "@/components/ui/Filter/SingleSelectDropdown";
@@ -29,693 +40,19 @@ import {
   getWfmEmailKpis,
   getWfmQualityAuditKpis,
 } from "@/lib/axios/wfm-kpis";
-
-const PERIOD_OPTIONS = [
-  {
-    value: "weekly",
-    label: "Weekly",
-  },
-  {
-    value: "monthly",
-    label: "Monthly",
-  },
-  {
-    value: "quarterly",
-    label: "Quarterly",
-  },
-  {
-    value: "annually",
-    label: "Annually",
-  },
-  {
-    value: "custom",
-    label: "Custom",
-  },
-];
-
-const SOURCE_OPTIONS = [
-  {
-    value: "FUSECOM",
-    label: "Fusecom",
-  },
-  {
-    value: "HERODASH",
-    label: "HeroDash",
-  },
-];
-
-const TASK_ORDER_OPTIONS_BY_SOURCE = {
-  US_VISA: [
-    { value: "", label: "All Task Orders" },
-    { value: "TO4", label: "TO4 - PAC" },
-    { value: "TO10", label: "TO10 - SEASIA" },
-    { value: "TO12", label: "TO12 - NICE" },
-    { value: "TO14", label: "TO14 - NESAMI" },
-    { value: "TO16", label: "TO16 - SEURECA" },
-    { value: "TO18", label: "TO18 - NEA" },
-    { value: "TO22", label: "TO22 - SAMI" },
-    { value: "OTHER", label: "Other" },
-  ],
-  FUSECOM: [
-    { value: "", label: "All Task Orders" },
-    { value: "TO12", label: "TO12 - NICE" },
-    { value: "TO16", label: "TO16 - SEURECA" },
-    { value: "OTHER", label: "Other" },
-  ],
-  HERODASH: [
-    { value: "", label: "All Task Orders" },
-    { value: "TO4", label: "TO4 - PAC" },
-    { value: "TO10", label: "TO10 - SEASIA" },
-    { value: "OTHER", label: "Other" },
-  ],
-};
-
-const GENERIC_SKILL_OPTIONS = [
-  { value: "All English", label: "All English", isCategory: true },
-  { value: "English NIV", label: "English NIV", isCategory: true },
-  { value: "English IV", label: "English IV", isCategory: true },
-  { value: "English ACS", label: "English ACS", isCategory: true },
-  { value: "Non English", label: "Non English", isCategory: true },
-  { value: "Non English IV", label: "Non English IV", isCategory: true },
-];
-
-const SKILL_OPTIONS = [
-  { value: "", label: "All Skills" },
-  ...GENERIC_SKILL_OPTIONS,
-];
-
-const SKILLS_BY_COUNTRY = {
-  Albania: [
-    "GSS 2.0 :: Albania - Albanian NIV",
-    "GSS 2.0 :: Albania - English NIV",
-  ],
-  Algeria: [
-    "ALGERIA English IV",
-    "ALGERIA English NIV",
-  ],
-  Armenia: [
-    "GSS 2.0 :: Armenia - Armenian NIV",
-    "GSS 2.0 :: Armenia - English IV",
-    "GSS 2.0 :: Armenia - English NIV",
-    "GSS 2.0 :: Armenia - Farsi NIV",
-  ],
-  Australia: [
-    "GSS 2.0 :: Australia - English NIV",
-    "GSS 2.0 :: Australia - English ACS",
-    "GSS 2.0 :: Australia - English IV",
-    "GSS 2.0 :: Australia - VCH English NIV",
-  ],
-  Austria: [
-    "GSS 2.0 :: Austria - English NIV",
-    "GSS 2.0 :: Austria - English IV",
-    "GSS 2.0 :: Austria - German IV",
-    "GSS 2.0 :: Austria - German NIV",
-  ],
-  Azerbaijan: [
-    "GSS 2.0 :: Azerbaijan - Azerbaijani NIV",
-    "GSS 2.0 :: Azerbaijan - English NIV",
-    "GSS 2.0 :: Azerbaijan - Russian NIV",
-  ],
-  Bahrain: [
-    "BAHRAIN English IV",
-    "BAHRAIN English NIV",
-  ],
-  Bangladesh: [
-    "BANGLADESH English IV",
-    "BANGLADESH English NIV",
-  ],
-  "Bosnia and Herzegovina": [
-    "GSS 2.0 :: Bosnia&Herzegovina - Bosnian ACS",
-    "GSS 2.0 :: Bosnia&Herzegovina - Bosnian IV",
-    "GSS 2.0 :: Bosnia&Herzegovina - Bosnian NIV",
-    "GSS 2.0 :: Bosnia&Herzegovina - English ACS",
-    "GSS 2.0 :: Bosnia&Herzegovina - English NIV",
-  ],
-  Bulgaria: [
-    "GSS 2.0 :: Bulgaria - Bulgarian IV",
-    "GSS 2.0 :: Bulgaria - Bulgarian NIV",
-    "GSS 2.0 :: Bulgaria - English NIV",
-  ],
-  Cambodia: [
-    "GSS 2.0 :: Cambodia - English NIV",
-    "GSS 2.0 :: Cambodia - English IV",
-    "GSS 2.0 :: Cambodia - Khmer IV",
-    "GSS 2.0 :: Cambodia - Khmer NIV",
-  ],
-  Croatia: [
-    "GSS 2.0 :: Croatia - English ACS",
-    "GSS 2.0 :: Croatia - English NIV",
-  ],
-  Cyprus: [
-    "GSS 2.0 :: Cyprus - English ACS",
-    "GSS 2.0 :: Cyprus - English NIV",
-    "GSS 2.0 :: Cyprus - Greek ACS",
-    "GSS 2.0 :: Cyprus - Greek NIV",
-  ],
-  "Czech Republic": [
-    "GSS 2.0 :: Czech Republic - English NIV",
-    "GSS 2.0 :: Czech Republic - English IV",
-    "GSS 2.0 :: Czech Republic - Czech IV",
-    "GSS 2.0 :: Czech Republic - Czech NIV",
-  ],
-  Denmark: [
-    "GSS 2.0 :: Denmark - English NIV",
-    "GSS 2.0 :: Denmark - English ACS",
-    "GSS 2.0 :: Denmark - English IV",
-    "GSS 2.0 :: Denmark - Danish ACS",
-    "GSS 2.0 :: Denmark - Danish IV",
-    "GSS 2.0 :: Denmark - Danish NIV",
-  ],
-  Egypt: [
-    "EGYPT English IV",
-    "EGYPT English NIV",
-  ],
-  Estonia: [
-    "GSS 2.0 :: Estonia - English NIV",
-    "GSS 2.0 :: Estonia - Estonian NIV",
-    "GSS 2.0 :: Estonia - English IV",
-    "GSS 2.0 :: Estonia - Russian NIV",
-  ],
-  Fiji: [
-    "GSS 2.0 :: Fiji - English ACS",
-    "GSS 2.0 :: Fiji - English IV",
-    "GSS 2.0 :: Fiji - English NIV",
-  ],
-  Finland: [
-    "GSS 2.0 :: Finland - English NIV",
-    "GSS 2.0 :: Finland - English IV",
-    "GSS 2.0 :: Finland - English ACS",
-    "GSS 2.0 :: Finland - Finish NIV",
-  ],
-  Georgia: [
-    "GSS 2.0 :: Georgia - English IV",
-    "GSS 2.0 :: Georgia - English NIV",
-    "GSS 2.0 :: Georgia - Georgian ACS",
-    "GSS 2.0 :: Georgia - Georgian IV",
-    "GSS 2.0 :: Georgia - Georgian NIV",
-    "GSS 2.0 :: Georgia - Russian IV",
-    "GSS 2.0 :: Georgia - Russian NIV",
-  ],
-  Germany: [
-    "GSS 2.0 :: Germany - English NIV",
-    "GSS 2.0 :: Germany - English ACS",
-    "GSS 2.0 :: Germany - English IV",
-    "GSS 2.0 :: Germany - German ACS",
-    "GSS 2.0 :: Germany - German IV",
-    "GSS 2.0 :: Germany - German NIV",
-  ],
-  Greece: [
-    "GSS 2.0 :: Greece - English NIV",
-    "GSS 2.0 :: Greece - Greek ACS",
-    "GSS 2.0 :: Greece - Greek IV",
-    "GSS 2.0 :: Greece - Greek NIV",
-  ],
-  Hungary: [
-    "GSS 2.0 :: Hungary - English NIV",
-    "GSS 2.0 :: Hungary - English IV",
-    "GSS 2.0 :: Hungary - Hungarian IV",
-    "GSS 2.0 :: Hungary - Hungarian NIV",
-  ],
-  Indonesia: [
-    "GSS 2.0 :: Indonesia - English IV",
-    "GSS 2.0 :: Indonesia - English NIV",
-    "GSS 2.0 :: Indonesia - English ACS",
-    "GSS 2.0 :: Indonesia - Indonesian ACS",
-    "GSS 2.0 :: Indonesia - Indonesian IV",
-    "GSS 2.0 :: Indonesia - Indonesian NIV",
-  ],
-  Israel: [
-    "GSS 2.0 :: Israel - Arabic ACS",
-    "GSS 2.0 :: Israel - Arabic IV",
-    "GSS 2.0 :: Israel - Arabic NIV",
-    "GSS 2.0 :: Israel - English ACS",
-    "GSS 2.0 :: Israel - English IV",
-    "GSS 2.0 :: Israel - English NIV",
-    "GSS 2.0 :: Israel - Hebrew ACS",
-    "GSS 2.0 :: Israel - Hebrew IV",
-    "GSS 2.0 :: Israel - Hebrew NIV",
-  ],
-  Japan: [
-    "GSS 2.0 :: Japan - English IV",
-    "GSS 2.0 :: Japan - English ACS",
-    "GSS 2.0 :: Japan - English NIV",
-    "GSS 2.0 :: Japan - Japanese NIV",
-    "GSS 2.0 :: Japan - Japanese ACS",
-    "GSS 2.0 :: Japan - Japanese IV",
-  ],
-  Jordan: [
-    "JORDAN English IV",
-    "JORDAN English NIV",
-  ],
-  Korea: [
-    "GSS 2.0 :: Korea - English NIV",
-    "GSS 2.0 :: Korea - English ACS",
-    "GSS 2.0 :: Korea - English IV",
-    "GSS 2.0 :: Korea - Korean ACS",
-    "GSS 2.0 :: Korea - Korean IV",
-    "GSS 2.0 :: Korea - Korean NIV",
-  ],
-  Kosovo: [
-    "GSS 2.0 :: Kosovo - Albanian IV",
-    "GSS 2.0 :: Kosovo - Albanian NIV",
-  ],
-  Kuwait: [
-    "KUWAIT English IV",
-    "KUWAIT English NIV",
-  ],
-  Laos: [
-    "GSS 2.0 :: Laos - English ACS",
-    "GSS 2.0 :: Laos - English IV",
-    "GSS 2.0 :: Laos - English NIV",
-    "GSS 2.0 :: Laos - Lao NIV",
-  ],
-  Latvia: [
-    "GSS 2.0 :: Latvia - English NIV",
-    "GSS 2.0 :: Latvia - English IV",
-    "GSS 2.0 :: Latvia - English ACS",
-    "GSS 2.0 :: Latvia - Latvian NIV",
-  ],
-  Lebanon: [
-    "LEBANON English IV",
-    "LEBANON English NIV",
-  ],
-  Lithuania: [
-    "GSS 2.0 :: Lithuania - English NIV",
-    "GSS 2.0 :: Lithuania - Lithuanian NIV",
-  ],
-  Malaysia: [
-    "GSS 2.0 :: Malaysia - English ACS",
-    "GSS 2.0 :: Malaysia - English IV",
-    "GSS 2.0 :: Malaysia - English NIV",
-    "GSS 2.0 :: Malaysia - Malay NIV",
-    "GSS 2.0 :: Malaysia - Mandarin NIV",
-  ],
-  Moldova: [
-    "GSS 2.0 :: Rep. of Moldova - English ACS",
-    "GSS 2.0 :: Rep. of Moldova - English NIV",
-    "GSS 2.0 :: Rep. of Moldova - Romanian NIV",
-    "GSS 2.0 :: Rep. of Moldova - Russian IV",
-    "GSS 2.0 :: Rep. of Moldova - Russian NIV",
-  ],
-  Montenegro: [
-    "GSS 2.0 :: Montenegro - English NIV",
-    "GSS 2.0 :: Montenegro - Montenegrin NIV",
-  ],
-  Morocco: [
-    "MOROCCO English IV",
-    "MOROCCO English NIV",
-  ],
-  Nepal: [
-    "NEPAL English IV",
-    "NEPAL English NIV",
-  ],
-  "New Zealand": [
-    "GSS 2.0 :: New Zealand - English IV",
-    "GSS 2.0 :: New Zealand - English ACS",
-    "GSS 2.0 :: New Zealand - English NIV",
-  ],
-  "Northern Macedonia": [
-    "GSS 2.0 :: Northern Macedonia - Macedonian NIV",
-  ],
-  Norway: [
-    "GSS 2.0 :: Norway - English NIV",
-    "GSS 2.0 :: Norway - English ACS",
-    "GSS 2.0 :: Norway - Norwegian ACS",
-    "GSS 2.0 :: Norway - Norwegian NIV",
-  ],
-  Oman: [
-    "OMAN English IV",
-    "OMAN English NIV",
-  ],
-  Pakistan: [
-    "PAKISTAN English IV",
-    "PAKISTAN English NIV",
-  ],
-  Philippines: [
-    "GSS 2.0 :: Philippines - English ACS",
-    "GSS 2.0 :: Philippines - English IV",
-    "GSS 2.0 :: Philippines - English NIV",
-    "GSS 2.0 :: Philippines - Tagalog ACS",
-    "GSS 2.0 :: Philippines - Tagalog IV",
-    "GSS 2.0 :: Philippines - Tagalog NIV",
-  ],
-  Poland: [
-    "GSS 2.0 :: Poland - English ACS",
-    "GSS 2.0 :: Poland - English IV",
-    "GSS 2.0 :: Poland - English NIV",
-    "GSS 2.0 :: Poland - Polish ACS",
-    "GSS 2.0 :: Poland - Polish IV",
-    "GSS 2.0 :: Poland - Polish NIV",
-    "GSS 2.0 :: Poland - Russian ACS",
-    "GSS 2.0 :: Poland - Russian IV",
-    "GSS 2.0 :: Poland - Russian NIV",
-  ],
-  Qatar: [
-    "QATAR English IV",
-    "QATAR English NIV",
-  ],
-  Romania: [
-    "GSS 2.0 :: Romania - English IV",
-    "GSS 2.0 :: Romania - English NIV",
-    "GSS 2.0 :: Romania - Romanian IV",
-    "GSS 2.0 :: Romania - Romanian NIV",
-  ],
-  "Saudi Arabia": [
-    "SAUDI_ARABIA English IV",
-    "SAUDI_ARABIA English NIV",
-  ],
-  Serbia: [
-    "GSS 2.0 :: Serbia - English IV",
-    "GSS 2.0 :: Serbia - English NIV",
-    "GSS 2.0 :: Serbia - Russian NIV",
-    "GSS 2.0 :: Serbia - Serbian IV",
-    "GSS 2.0 :: Serbia - Serbian NIV",
-  ],
-  Singapore: [
-    "GSS 2.0 :: Singapore - English ACS",
-    "GSS 2.0 :: Singapore - English IV",
-    "GSS 2.0 :: Singapore - English NIV",
-    "GSS 2.0 :: Singapore - Mandarin IV",
-    "GSS 2.0 :: Singapore - Mandarin NIV",
-  ],
-  Slovakia: [
-    "GSS 2.0 :: Slovakia - English NIV",
-    "GSS 2.0 :: Slovakia  - English ACS",
-    "GSS 2.0 :: Slovakia - English IV",
-    "GSS 2.0 :: Slovakia - Slovak NIV",
-  ],
-  "Sri Lanka": [
-    "SRI_LANKA English IV",
-    "SRI_LANKA English NIV",
-  ],
-  Sweden: [
-    "GSS 2.0 :: Sweden - English NIV",
-    "GSS 2.0 :: Sweden - English ACS",
-    "GSS 2.0 :: Sweden - English IV",
-    "GSS 2.0 :: Sweden - Swedish NIV",
-    "GSS 2.0 :: Sweden - Swedish ACS",
-    "GSS 2.0 :: Sweden - Swedish IV",
-  ],
-  Switzerland: [
-    "GSS 2.0 :: Switzerland - English NIV",
-    "GSS 2.0 :: Switzerland - English IV",
-    "GSS 2.0 :: Switzerland - English ACS",
-    "GSS 2.0 :: Switzerland - French NIV",
-    "GSS 2.0 :: Switzerland - German ACS",
-    "GSS 2.0 :: Switzerland - German IV",
-    "GSS 2.0 :: Switzerland - German NIV",
-  ],
-  Taiwan: [
-    "GSS 2.0 :: Taiwan - English ACS",
-    "GSS 2.0 :: Taiwan - English NIV",
-    "GSS 2.0 :: Taiwan - English IV",
-    "GSS 2.0 :: Taiwan - Mandarin ACS",
-    "GSS 2.0 :: Taiwan - Mandarin IV",
-    "GSS 2.0 :: Taiwan - Mandarin NIV",
-  ],
-  Thailand: [
-    "GSS 2.0 :: Thailand - English ACS",
-    "GSS 2.0 :: Thailand - English IV",
-    "GSS 2.0 :: Thailand - English NIV",
-    "GSS 2.0 :: Thailand - Thai IV",
-    "GSS 2.0 :: Thailand - Thai NIV",
-  ],
-  Tunisia: [
-    "TUNISIA English IV",
-    "TUNISIA English NIV",
-  ],
-  Turkiye: [
-    "GSS 2.0 :: Turkiye - English ACS",
-    "GSS 2.0 :: Turkiye - English IV",
-    "GSS 2.0 :: Turkiye - English NIV",
-    "GSS 2.0 :: Turkiye - Turkish ACS",
-    "GSS 2.0 :: Turkiye - Turkish IV",
-    "GSS 2.0 :: Turkiye - Turkish NIV",
-    "GSS 2.0 :: Turkiye - Farsi IV",
-  ],
-  Ukraine: [
-    "GSS 2.0 :: Ukraine - English IV",
-    "GSS 2.0 :: Ukraine - English NIV",
-    "GSS 2.0 :: Ukraine - Ukrainian ACS",
-    "GSS 2.0 :: Ukraine - Ukrainian IV",
-    "GSS 2.0 :: Ukraine - Ukrainian NIV",
-  ],
-  "United Arab Emirates": [
-    "GSS 2.0 :: United Arab Emirates - Arabic ACS",
-    "GSS 2.0 :: United Arab Emirates - Arabic NIV",
-    "GSS 2.0 :: United Arab Emirates - English ACS",
-    "GSS 2.0 :: United Arab Emirates - English IV",
-    "GSS 2.0 :: United Arab Emirates - English NIV",
-  ],
-  Vietnam: [
-    "GSS 2.0 :: Vietnam - English IV",
-    "GSS 2.0 :: Vietnam - English NIV",
-    "GSS 2.0 :: Vietnam - English ACS",
-    "GSS 2.0 :: Vietnam - Vietnamese ACS",
-    "GSS 2.0 :: Vietnam - Vietnamese IV",
-    "GSS 2.0 :: Vietnam - Vietnamese NIV",
-  ],
-};
-
-const OTHER_COUNTRY_OPTIONS = [
-  { value: "albania", label: "Albania" },
-  { value: "armenia", label: "Armenia" },
-  { value: "azerbaijan", label: "Azerbaijan" },
-  { value: "bosnia & herzegovina", label: "Bosnia & Herzegovina" },
-  { value: "bulgaria", label: "Bulgaria" },
-  { value: "croatia", label: "Croatia" },
-  { value: "cyprus", label: "Cyprus" },
-  { value: "georgia", label: "Georgia" },
-  { value: "greece", label: "Greece" },
-  { value: "israel", label: "Israel" },
-  { value: "kosovo", label: "Kosovo" },
-  { value: "lithuania", label: "Lithuania" },
-  { value: "northern macedonia", label: "Northern Macedonia" },
-  { value: "poland", label: "Poland" },
-  { value: "rep. of moldova", label: "Rep. of Moldova" },
-  { value: "romania", label: "Romania" },
-  { value: "serbia", label: "Serbia" },
-  { value: "turkiye", label: "Turkiye" },
-  { value: "ukraine", label: "Ukraine" },
-  { value: "united arab emirates", label: "United Arab Emirates" },
-];
-
-const COUNTRY_OPTIONS_BY_SOURCE_AND_TO = {
-  US_VISA: {
-    "": [
-      { value: "", label: "All Countries" },
-      { value: "algeria", label: "Algeria" },
-      { value: "australia", label: "Australia" },
-      { value: "austria", label: "Austria" },
-      { value: "bahrain", label: "Bahrain" },
-      { value: "bangladesh", label: "Bangladesh" },
-      { value: "cambodia", label: "Cambodia" },
-      { value: "china", label: "China" },
-      { value: "czech republic", label: "Czech Republic" },
-      { value: "denmark", label: "Denmark" },
-      { value: "egypt", label: "Egypt" },
-      { value: "estonia", label: "Estonia" },
-      { value: "fiji", label: "Fiji" },
-      { value: "finland", label: "Finland" },
-      { value: "germany", label: "Germany" },
-      { value: "hong kong", label: "Hong Kong" },
-      { value: "hungary", label: "Hungary" },
-      { value: "indonesia", label: "Indonesia" },
-      { value: "japan", label: "Japan" },
-      { value: "jordan", label: "Jordan" },
-      { value: "korea", label: "Korea" },
-      { value: "kuwait", label: "Kuwait" },
-      { value: "laos", label: "Laos" },
-      { value: "latvia", label: "Latvia" },
-      { value: "lebanon", label: "Lebanon" },
-      { value: "malaysia", label: "Malaysia" },
-      { value: "montenegro", label: "Montenegro" },
-      { value: "morocco", label: "Morocco" },
-      { value: "nepal", label: "Nepal" },
-      { value: "new zealand", label: "New Zealand" },
-      { value: "norway", label: "Norway" },
-      { value: "oman", label: "Oman" },
-      { value: "pakistan", label: "Pakistan" },
-      { value: "philippines", label: "Philippines" },
-      { value: "qatar", label: "Qatar" },
-      { value: "saudi arabia", label: "Saudi Arabia" },
-      { value: "singapore", label: "Singapore" },
-      { value: "slovakia", label: "Slovakia" },
-      { value: "sri lanka", label: "Sri Lanka" },
-      { value: "sweden", label: "Sweden" },
-      { value: "switzerland", label: "Switzerland" },
-      { value: "taiwan", label: "Taiwan" },
-      { value: "thailand", label: "Thailand" },
-      { value: "tunisia", label: "Tunisia" },
-      { value: "vietnam", label: "Vietnam" },
-    ],
-    TO4: [
-      { value: "", label: "All Countries (TO4)" },
-      { value: "australia", label: "Australia" },
-      { value: "fiji", label: "Fiji" },
-      { value: "japan", label: "Japan" },
-      { value: "korea", label: "Korea" },
-      { value: "new zealand", label: "New Zealand" },
-    ],
-    TO10: [
-      { value: "", label: "All Countries (TO10)" },
-      { value: "cambodia", label: "Cambodia" },
-      { value: "indonesia", label: "Indonesia" },
-      { value: "laos", label: "Laos" },
-      { value: "malaysia", label: "Malaysia" },
-      { value: "philippines", label: "Philippines" },
-      { value: "singapore", label: "Singapore" },
-      { value: "taiwan", label: "Taiwan" },
-      { value: "thailand", label: "Thailand" },
-      { value: "vietnam", label: "Vietnam" },
-    ],
-    TO12: [
-      { value: "", label: "All Countries (TO12)" },
-      { value: "austria", label: "Austria" },
-      { value: "czech republic", label: "Czech Republic" },
-      { value: "denmark", label: "Denmark" },
-      { value: "estonia", label: "Estonia" },
-      { value: "finland", label: "Finland" },
-      { value: "germany", label: "Germany" },
-      { value: "hungary", label: "Hungary" },
-      { value: "latvia", label: "Latvia" },
-      { value: "montenegro", label: "Montenegro" },
-      { value: "norway", label: "Norway" },
-      { value: "slovakia", label: "Slovakia" },
-      { value: "sweden", label: "Sweden" },
-      { value: "switzerland", label: "Switzerland" },
-    ],
-    TO16: [
-      { value: "", label: "All Countries (TO16)" },
-      { value: "china", label: "China" },
-      { value: "hong kong", label: "Hong Kong" },
-    ],
-    TO18: [
-      { value: "", label: "All Countries (TO18)" },
-      { value: "algeria", label: "Algeria" },
-      { value: "bahrain", label: "Bahrain" },
-      { value: "egypt", label: "Egypt" },
-      { value: "jordan", label: "Jordan" },
-      { value: "kuwait", label: "Kuwait" },
-      { value: "lebanon", label: "Lebanon" },
-      { value: "morocco", label: "Morocco" },
-      { value: "oman", label: "Oman" },
-      { value: "qatar", label: "Qatar" },
-      { value: "saudi arabia", label: "Saudi Arabia" },
-      { value: "tunisia", label: "Tunisia" },
-    ],
-    TO22: [
-      { value: "", label: "All Countries (TO22)" },
-      { value: "bangladesh", label: "Bangladesh" },
-      { value: "nepal", label: "Nepal" },
-      { value: "pakistan", label: "Pakistan" },
-      { value: "sri lanka", label: "Sri Lanka" },
-    ],
-    OTHER: [
-      { value: "", label: "All Other Countries" },
-      ...OTHER_COUNTRY_OPTIONS,
-    ],
-  },
-  FUSECOM: {
-    "": [
-      { value: "", label: "All Countries" },
-      { value: "austria", label: "Austria" },
-      { value: "china", label: "China" },
-      { value: "czech republic", label: "Czech Republic" },
-      { value: "denmark", label: "Denmark" },
-      { value: "estonia", label: "Estonia" },
-      { value: "finland", label: "Finland" },
-      { value: "germany", label: "Germany" },
-      { value: "hong kong", label: "Hong Kong" },
-      { value: "hungary", label: "Hungary" },
-      { value: "latvia", label: "Latvia" },
-      { value: "montenegro", label: "Montenegro" },
-      { value: "norway", label: "Norway" },
-      { value: "slovakia", label: "Slovakia" },
-      { value: "sweden", label: "Sweden" },
-      { value: "switzerland", label: "Switzerland" },
-      ...OTHER_COUNTRY_OPTIONS,
-    ],
-    TO12: [
-      { value: "", label: "All Countries (TO12)" },
-      { value: "austria", label: "Austria" },
-      { value: "czech republic", label: "Czech Republic" },
-      { value: "denmark", label: "Denmark" },
-      { value: "estonia", label: "Estonia" },
-      { value: "finland", label: "Finland" },
-      { value: "germany", label: "Germany" },
-      { value: "hungary", label: "Hungary" },
-      { value: "latvia", label: "Latvia" },
-      { value: "montenegro", label: "Montenegro" },
-      { value: "norway", label: "Norway" },
-      { value: "slovakia", label: "Slovakia" },
-      { value: "sweden", label: "Sweden" },
-      { value: "switzerland", label: "Switzerland" },
-    ],
-    TO16: [
-      { value: "", label: "All Countries (TO16)" },
-      { value: "china", label: "China" },
-      { value: "hong kong", label: "Hong Kong" },
-    ],
-    OTHER: [
-      { value: "", label: "All Other Countries" },
-      ...OTHER_COUNTRY_OPTIONS,
-    ],
-  },
-  HERODASH: {
-    "": [
-      { value: "", label: "All Countries" },
-      { value: "australia", label: "Australia" },
-      { value: "cambodia", label: "Cambodia" },
-      { value: "fiji", label: "Fiji" },
-      { value: "indonesia", label: "Indonesia" },
-      { value: "japan", label: "Japan" },
-      { value: "korea", label: "Korea" },
-      { value: "laos", label: "Laos" },
-      { value: "malaysia", label: "Malaysia" },
-      { value: "new zealand", label: "New Zealand" },
-      { value: "philippines", label: "Philippines" },
-      { value: "singapore", label: "Singapore" },
-      { value: "taiwan", label: "Taiwan" },
-      { value: "thailand", label: "Thailand" },
-      { value: "vietnam", label: "Vietnam" },
-    ],
-    TO4: [
-      { value: "", label: "All Countries (TO4)" },
-      { value: "australia", label: "Australia" },
-      { value: "fiji", label: "Fiji" },
-      { value: "japan", label: "Japan" },
-      { value: "korea", label: "Korea" },
-      { value: "new zealand", label: "New Zealand" },
-    ],
-    TO10: [
-      { value: "", label: "All Countries (TO10)" },
-      { value: "cambodia", label: "Cambodia" },
-      { value: "indonesia", label: "Indonesia" },
-      { value: "laos", label: "Laos" },
-      { value: "malaysia", label: "Malaysia" },
-      { value: "philippines", label: "Philippines" },
-      { value: "singapore", label: "Singapore" },
-      { value: "taiwan", label: "Taiwan" },
-      { value: "thailand", label: "Thailand" },
-      { value: "vietnam", label: "Vietnam" },
-    ],
-    OTHER: [
-      { value: "", label: "All Other Countries" },
-    ],
-  },
-};
-
-const DEFAULT_FILTERS = {
-  sourceSystem: [],
-  taskOrder: [],
-  skill: [],
-  country: [],
-  period: "weekly",
-  referenceDate: "",
-  from: "",
-  to: "",
-};
+import {
+  PERIOD_OPTIONS,
+  SOURCE_OPTIONS,
+  LOB_OPTIONS,
+  DEFAULT_FILTERS,
+  SKILLS_BY_COUNTRY,
+  getTaskOrderOptions,
+  getTaskOrderLabel,
+  getSkillOptions,
+  getSkillLabel,
+  getCountryOptions,
+  getCountryLabel,
+} from "@/config/kpiFiltersConfig";
 
 function getErrorMessage(error) {
   const raw =
@@ -784,204 +121,6 @@ function formatGrain(value) {
     value ||
     "No available data grain returned by backend"
   );
-}
-
-
-function getTaskOrderOptions(sourceSystem) {
-  const sources = Array.isArray(sourceSystem)
-    ? sourceSystem.filter((s) => s && s !== "__NONE__")
-    : [sourceSystem];
-
-  if (
-    !sources.length ||
-    sources.includes("US_VISA") ||
-    (sources.includes("FUSECOM") && sources.includes("HERODASH"))
-  ) {
-    return (TASK_ORDER_OPTIONS_BY_SOURCE.US_VISA || []).filter(
-      (opt) => opt.value !== "",
-    );
-  }
-  if (sources.includes("FUSECOM") && !sources.includes("HERODASH")) {
-    return (TASK_ORDER_OPTIONS_BY_SOURCE.FUSECOM || []).filter(
-      (opt) => opt.value !== "",
-    );
-  }
-  if (sources.includes("HERODASH") && !sources.includes("FUSECOM")) {
-    return (TASK_ORDER_OPTIONS_BY_SOURCE.HERODASH || []).filter(
-      (opt) => opt.value !== "",
-    );
-  }
-  return (TASK_ORDER_OPTIONS_BY_SOURCE.US_VISA || []).filter(
-    (opt) => opt.value !== "",
-  );
-}
-
-function getTaskOrderLabel(sourceSystem, value) {
-  if (!value || (Array.isArray(value) && !value.length)) return "All Task Orders";
-  const list = Array.isArray(value)
-    ? value.filter((v) => v && v !== "__NONE__")
-    : String(value)
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean);
-  if (!list.length) return "All Task Orders";
-
-  const allOpts = getTaskOrderOptions(sourceSystem);
-  return list
-    .map((val) => allOpts.find((o) => o.value === val)?.label || val)
-    .join(", ");
-}
-
-function getSkillsForCountries(countryList = [], skillsMap = SKILLS_BY_COUNTRY) {
-  const normalizedSelected = countryList
-    .map((c) => String(c || "").trim().toLowerCase())
-    .filter(Boolean);
-
-  if (!normalizedSelected.length) return [];
-
-  const matchedSkills = [];
-  const mapToUse = skillsMap || SKILLS_BY_COUNTRY;
-  for (const [countryName, skills] of Object.entries(mapToUse)) {
-    if (normalizedSelected.includes(countryName.toLowerCase())) {
-      for (const s of skills) {
-        if (!matchedSkills.includes(s)) {
-          matchedSkills.push(s);
-        }
-      }
-    }
-  }
-
-  return matchedSkills;
-}
-
-function getSkillOptions(sourceSystem, selectedCountries, selectedTaskOrders, skillsMap = SKILLS_BY_COUNTRY) {
-  const genericOptions = GENERIC_SKILL_OPTIONS;
-
-  const countryList = Array.isArray(selectedCountries)
-    ? selectedCountries.filter((c) => c && c !== "__NONE__")
-    : selectedCountries
-      ? [selectedCountries]
-      : [];
-
-  if (countryList.length > 0) {
-    const countrySkills = getSkillsForCountries(countryList, skillsMap);
-    const specificOptions = countrySkills.map((s) => ({ value: s, label: s }));
-    return [...genericOptions, ...specificOptions];
-  }
-
-  const toList = Array.isArray(selectedTaskOrders)
-    ? selectedTaskOrders.filter((to) => to && to !== "__NONE__")
-    : selectedTaskOrders
-      ? [selectedTaskOrders]
-      : [];
-
-  if (toList.length > 0) {
-    const toCountries = getCountryOptions(sourceSystem, toList).map((c) => c.value);
-    const toSkills = getSkillsForCountries(toCountries, skillsMap);
-    const specificOptions = toSkills.map((s) => ({ value: s, label: s }));
-    return [...genericOptions, ...specificOptions];
-  }
-
-  const allCountrySkills = [];
-  const seen = new Set();
-  for (const skills of Object.values(skillsMap || SKILLS_BY_COUNTRY)) {
-    for (const s of skills) {
-      if (!seen.has(s)) {
-        seen.add(s);
-        allCountrySkills.push({ value: s, label: s });
-      }
-    }
-  }
-
-  return [...genericOptions, ...allCountrySkills];
-}
-
-function getSkillLabel(sourceSystem, value, selectedCountries, selectedTaskOrders, skillsMap = SKILLS_BY_COUNTRY) {
-  if (!value || (Array.isArray(value) && !value.length)) return "All Skills";
-  const list = Array.isArray(value)
-    ? value.filter((v) => v && v !== "__NONE__")
-    : String(value)
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean);
-  if (!list.length) return "All Skills";
-
-  const allOpts = getSkillOptions(sourceSystem, selectedCountries, selectedTaskOrders, skillsMap);
-  return list
-    .map(
-      (val) =>
-        allOpts.find((o) => o.value.toLowerCase() === val.toLowerCase())
-          ?.label ||
-        SKILL_OPTIONS.find((o) => o.value.toLowerCase() === val.toLowerCase())
-          ?.label ||
-        val,
-    )
-    .join(", ");
-}
-
-function getCountryOptions(sourceSystem, taskOrder) {
-  const sources = Array.isArray(sourceSystem)
-    ? sourceSystem.filter((s) => s && s !== "__NONE__")
-    : [sourceSystem];
-
-  const primarySource =
-    !sources.length ||
-      sources.includes("US_VISA") ||
-      (sources.includes("FUSECOM") && sources.includes("HERODASH"))
-      ? "US_VISA"
-      : sources.includes("FUSECOM")
-        ? "FUSECOM"
-        : "HERODASH";
-
-  const sourceCountries =
-    COUNTRY_OPTIONS_BY_SOURCE_AND_TO[primarySource] ||
-    COUNTRY_OPTIONS_BY_SOURCE_AND_TO.US_VISA ||
-    {};
-
-  const toList = Array.isArray(taskOrder)
-    ? taskOrder.filter((to) => to && to !== "__NONE__")
-    : taskOrder
-      ? String(taskOrder)
-        .split(",")
-        .map((s) => s.trim())
-        .filter(Boolean)
-      : [];
-
-  // If no specific task order is selected (All Task Orders)
-  if (!toList.length) {
-    return (sourceCountries[""] || []).filter((opt) => opt.value !== "");
-  }
-
-  // Combine countries for all selected task orders
-  const countryMap = new Map();
-  for (const to of toList) {
-    const countriesForTo = sourceCountries[to] || [];
-    for (const opt of countriesForTo) {
-      if (opt.value && !countryMap.has(opt.value)) {
-        countryMap.set(opt.value, opt);
-      }
-    }
-  }
-
-  return Array.from(countryMap.values()).sort((a, b) =>
-    a.label.localeCompare(b.label),
-  );
-}
-
-function getCountryLabel(sourceSystem, taskOrder, value) {
-  if (!value || (Array.isArray(value) && !value.length)) return "All Countries";
-  const list = Array.isArray(value)
-    ? value.filter((v) => v && v !== "__NONE__")
-    : String(value)
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean);
-  if (!list.length) return "All Countries";
-
-  const allOpts = getCountryOptions(sourceSystem, taskOrder);
-  return list
-    .map((val) => allOpts.find((o) => o.value === val)?.label || val)
-    .join(", ");
 }
 
 function buildRequestParams(filters) {
@@ -1077,13 +216,42 @@ function buildEmailRequestParams(filters) {
 }
 
 function buildQualityAuditRequestParams(filters) {
-  // Quality Audit uses the shared reporting range, Task Order, and Country.
+  // Quality Audit uses the shared reporting range, Task Order, Country, and LOB.
   // Account/Source and Skill are Calls-only filters and must not affect QA.
-  return buildEmailRequestParams(filters);
+  const params = buildEmailRequestParams(filters);
+
+  if (filters.lob && typeof filters.lob === "string") {
+    params.lob = filters.lob;
+  } else if (Array.isArray(filters.lob) && filters.lob.length > 0) {
+    const lobs = filters.lob.filter((value) => value && value !== "__NONE__");
+    if (lobs.length) params.lob = lobs.join(",");
+  }
+
+  return params;
 }
 
 export default function ViewGraphsPage() {
   const dashboard = useDashboardPage();
+  const location = useLocation();
+
+  const searchParams = new URLSearchParams(location.search);
+  const currentSection = (searchParams.get("section") || "").toLowerCase();
+  const isCallsOnly = currentSection === "calls";
+  const isEmailsOnly = currentSection === "emails";
+  const isQaOnly = currentSection === "qa";
+  const isOccupancyOnly = currentSection === "occupancy";
+
+  const showCalls = !currentSection || isCallsOnly;
+  const showEmails = !currentSection || isEmailsOnly;
+  const showQa = !currentSection || isQaOnly;
+  const showOccupancy = isOccupancyOnly;
+
+  useEffect(() => {
+    const mainContainer = document.querySelector(".sibs-scrollbar");
+    if (mainContainer) {
+      mainContainer.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  }, [location.search]);
 
   const userName =
     dashboard.authUser?.name ||
@@ -1111,17 +279,90 @@ export default function ViewGraphsPage() {
   const [skillsByCountryState, setSkillsByCountryState] = useState(SKILLS_BY_COUNTRY);
   const [showFilters, setShowFilters] = useState(true);
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
+  const [showDownloadPdfModal, setShowDownloadPdfModal] = useState(false);
+  const [exportingSections, setExportingSections] = useState([]);
   const skipNextFetchRef = useRef(false);
 
-  const handleDownloadPdf = async () => {
-    if (isDownloadingPdf) return;
+  const handleExecutePdfDownload = async (selectedReportIds = []) => {
+    if (isDownloadingPdf || !selectedReportIds.length) return;
     try {
       setIsDownloadingPdf(true);
-      await downloadKpiGraphsAsPdf("kpi-graphs-container");
+      setExportingSections(selectedReportIds);
+
+      // Ensure data is loaded for any selected report that isn't currently loaded
+      const fetches = [];
+      if (selectedReportIds.includes("calls") && !kpiResponse) {
+        fetches.push(
+          getWfmCallKpis(buildRequestParams(filters)).then((res) => setKpiResponse(res)),
+        );
+      }
+      if (selectedReportIds.includes("emails") && !emailKpiResponse) {
+        fetches.push(
+          getWfmEmailKpis(buildEmailRequestParams(filters)).then((res) => setEmailKpiResponse(res)),
+        );
+      }
+      if (selectedReportIds.includes("qa") && !qualityAuditKpiResponse) {
+        fetches.push(
+          getWfmQualityAuditKpis(buildQualityAuditRequestParams(filters)).then((res) => setQualityAuditKpiResponse(res)),
+        );
+      }
+
+      if (fetches.length > 0) {
+        await Promise.allSettled(fetches);
+      }
+
+      // Allow DOM to settle and render charts
+      await new Promise((resolve) => setTimeout(resolve, 350));
+
+      const sectionsToExport = [];
+
+      if (selectedReportIds.includes("calls")) {
+        const elId = showCalls ? "calls-section" : "export-calls-section";
+        sectionsToExport.push({
+          id: "calls",
+          name: "Calls",
+          title: "CALLS KPI PERFORMANCE GRAPHS",
+          elementId: elId,
+        });
+      }
+
+      if (selectedReportIds.includes("emails")) {
+        const elId = showEmails ? "emails-section" : "export-emails-section";
+        sectionsToExport.push({
+          id: "emails",
+          name: "Email",
+          title: "EMAIL KPI PERFORMANCE GRAPHS",
+          elementId: elId,
+        });
+      }
+
+      if (selectedReportIds.includes("qa")) {
+        const elId = showQa ? "qa-section" : "export-qa-section";
+        sectionsToExport.push({
+          id: "qa",
+          name: "Quality-Audit",
+          title: "QUALITY AUDIT PERFORMANCE GRAPHS",
+          elementId: elId,
+        });
+      }
+
+      if (selectedReportIds.includes("occupancy")) {
+        const elId = showOccupancy ? "occupancy-section" : "export-occupancy-section";
+        sectionsToExport.push({
+          id: "occupancy",
+          name: "Occupancy",
+          title: "OCCUPANCY & HEADCOUNT PERFORMANCE",
+          elementId: elId,
+        });
+      }
+
+      await downloadSelectedKpiReportsAsPdf({ sections: sectionsToExport });
+      setShowDownloadPdfModal(false);
     } catch (err) {
       console.error("Failed to download PDF report:", err);
     } finally {
       setIsDownloadingPdf(false);
+      setExportingSections([]);
     }
   };
 
@@ -1188,47 +429,69 @@ export default function ViewGraphsPage() {
     setQualityAuditError("");
 
     try {
-      const callParams = buildRequestParams(filters);
-      const emailParams = buildEmailRequestParams(filters);
-      const qualityAuditParams = buildQualityAuditRequestParams(filters);
-      const [callResult, emailResult, qualityAuditResult] = await Promise.allSettled([
-        getWfmCallKpis(callParams),
-        getWfmEmailKpis(emailParams),
-        getWfmQualityAuditKpis(qualityAuditParams),
-      ]);
+      const promises = [];
 
-      if (callResult.status === "fulfilled") {
-        setKpiResponse(callResult.value);
+      if (showCalls) {
+        const callParams = buildRequestParams(filters);
+        promises.push(
+          getWfmCallKpis(callParams)
+            .then((res) => {
+              setKpiResponse(res);
+            })
+            .catch((err) => {
+              setError(getErrorMessage(err));
+              setKpiResponse(null);
+            }),
+        );
       } else {
-        setError(getErrorMessage(callResult.reason));
         setKpiResponse(null);
       }
 
-      if (emailResult.status === "fulfilled") {
-        setEmailKpiResponse(emailResult.value);
+      if (showEmails) {
+        const emailParams = buildEmailRequestParams(filters);
+        promises.push(
+          getWfmEmailKpis(emailParams)
+            .then((res) => {
+              setEmailKpiResponse(res);
+            })
+            .catch((err) => {
+              const emailMessage =
+                err?.response?.data?.message ||
+                err?.message ||
+                "Unable to load Email KPI data.";
+              setEmailError(emailMessage);
+              setEmailKpiResponse(null);
+            }),
+        );
       } else {
-        const emailMessage =
-          emailResult.reason?.response?.data?.message ||
-          emailResult.reason?.message ||
-          "Unable to load Email KPI data.";
-        setEmailError(emailMessage);
         setEmailKpiResponse(null);
       }
 
-      if (qualityAuditResult.status === "fulfilled") {
-        setQualityAuditKpiResponse(qualityAuditResult.value);
+      if (showQa) {
+        const qualityAuditParams = buildQualityAuditRequestParams(filters);
+        promises.push(
+          getWfmQualityAuditKpis(qualityAuditParams)
+            .then((res) => {
+              setQualityAuditKpiResponse(res);
+            })
+            .catch((err) => {
+              const qualityMessage =
+                err?.response?.data?.message ||
+                err?.message ||
+                "Unable to load Quality Audit KPI data.";
+              setQualityAuditError(qualityMessage);
+              setQualityAuditKpiResponse(null);
+            }),
+        );
       } else {
-        const qualityMessage =
-          qualityAuditResult.reason?.response?.data?.message ||
-          qualityAuditResult.reason?.message ||
-          "Unable to load Quality Audit KPI data.";
-        setQualityAuditError(qualityMessage);
         setQualityAuditKpiResponse(null);
       }
+
+      await Promise.allSettled(promises);
     } finally {
       setIsLoading(false);
     }
-  }, [canViewGraphs, filters]);
+  }, [canViewGraphs, filters, showCalls, showEmails, showQa]);
 
   useEffect(() => {
     loadKpis();
@@ -1248,7 +511,11 @@ export default function ViewGraphsPage() {
       !filters.referenceDate &&
       filters.period !== "custom"
     ) {
-      skipNextFetchRef.current = true;
+      const allAligned =
+        callReturnedFilters.referenceDate === returnedReferenceDate &&
+        emailReturnedFilters.referenceDate === returnedReferenceDate &&
+        qualityAuditReturnedFilters.referenceDate === returnedReferenceDate;
+      skipNextFetchRef.current = allAligned;
       setFilters((current) => ({
         ...current,
         referenceDate: returnedReferenceDate,
@@ -1371,6 +638,18 @@ export default function ViewGraphsPage() {
     }));
   };
 
+  const handleLobChange = (eventOrValue) => {
+    const nextLob =
+      typeof eventOrValue === "object" && eventOrValue?.target
+        ? eventOrValue.target.value
+        : eventOrValue;
+
+    setFilters((current) => ({
+      ...current,
+      lob: nextLob || "",
+    }));
+  };
+
   const handlePeriodChange = (eventOrValue) => {
     const nextPeriod =
       typeof eventOrValue === "object" && eventOrValue?.target
@@ -1380,7 +659,7 @@ export default function ViewGraphsPage() {
     setFilters((current) => ({
       ...current,
       period: nextPeriod,
-      referenceDate: "",
+      referenceDate: current.referenceDate || "2026-07-31",
       from: "",
       to: "",
     }));
@@ -1400,7 +679,7 @@ export default function ViewGraphsPage() {
 
     setFilters((current) => ({
       ...current,
-      referenceDate: "",
+      referenceDate: "2026-07-31",
       from: "",
       to: "",
     }));
@@ -1465,14 +744,25 @@ export default function ViewGraphsPage() {
     ? qualityAuditDashboardData.series
     : [];
   const hasAnyKpiSeries =
-    series.length > 0 || emailSeries.length > 0 || qualityAuditSeries.length > 0;
+    (showCalls && series.length > 0) ||
+    (showEmails && emailSeries.length > 0) ||
+    (showQa && qualityAuditSeries.length > 0) ||
+    showOccupancy;
 
   const emptyDataMessage =
     !hasAnyKpiSeries && !availableGrains.length
-      ? "No validated Calls, Email, or Quality Audit KPI data is available."
+      ? isCallsOnly
+        ? "No validated Calls KPI data is available."
+        : isEmailsOnly
+        ? "No validated Email KPI data is available."
+        : isQaOnly
+        ? "No validated Quality Audit KPI data is available."
+        : "No validated Calls, Email, or Quality Audit KPI data is available."
       : !hasAnyKpiSeries
         ? "No KPI data is available for the selected reporting range."
         : "";
+
+  const isPdfDisabled = isDownloadingPdf;
 
   const isCustomPeriod =
     filters.period === "custom";
@@ -1499,18 +789,23 @@ export default function ViewGraphsPage() {
       <main className="min-w-0 flex-1 flex flex-col h-full overflow-hidden">
         <AppHeader
           title={
-            dashboard.authUser?.roleLabel || "User"
+            isCallsOnly
+              ? "Calls Performance"
+              : isEmailsOnly
+              ? "Emails Performance"
+              : isQaOnly
+              ? "Quality Audit Performance"
+              : isOccupancyOnly
+              ? "Occupancy & Headcount"
+              : "Calls, Emails & Quality Performance"
           }
           subtitle="Performance Management System"
-          onMenuClick={() =>
-            dashboard.setIsMobileSidebarOpen(true)
-          }
-          onLogoutClick={() =>
-            dashboard.setShowLogoutModal(true)
-          }
+          userName={dashboard.userName}
+          onMenuClick={() => dashboard.setIsMobileSidebarOpen(true)}
+          onLogoutClick={() => dashboard.setShowLogoutModal(true)}
         />
 
-        <div className="sibs-scrollbar flex-1 overflow-y-auto overflow-x-hidden p-2 sm:p-3.5 pb-16 sm:pb-8">
+        <div className="sibs-scrollbar flex-1 overflow-y-auto overflow-x-hidden p-1.5 sm:p-2 pb-1 sm:pb-1.5">
           {!canViewGraphs ? (
             <div className="sibs-card p-6 text-center">
               <AlertCircle
@@ -1528,13 +823,14 @@ export default function ViewGraphsPage() {
               </p>
             </div>
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <section className="sibs-card relative z-40 overflow-visible shadow-xs">
                 <div
-                  className={`flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 bg-sibs-primary-3/30 px-3 sm:px-3.5 py-2.5 sm:py-1.5 select-none ${showFilters ? "border-b border-sibs-tertiary-10" : ""
+                  className={`flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 bg-sibs-primary-3/30 px-3 sm:px-3.5 py-2 sm:py-1.5 select-none ${showFilters ? "border-b border-sibs-tertiary-10" : ""
                     }`}
                 >
                   <div className="flex items-center gap-2 min-w-0">
+
                     <BarChart3
                       size={16}
                       className="text-sibs-primary-1 shrink-0"
@@ -1550,11 +846,11 @@ export default function ViewGraphsPage() {
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
-                        handleDownloadPdf();
+                        setShowDownloadPdfModal(true);
                       }}
-                      disabled={isDownloadingPdf || !dashboardData?.series?.length}
+                      disabled={isPdfDisabled}
                       className="inline-flex cursor-pointer select-none items-center gap-1.5 rounded-md border border-sibs-tertiary-9 bg-white px-2.5 py-1 text-xs font-semibold text-sibs-primary-1 shadow-xs transition-colors hover:border-sibs-primary-1 hover:bg-sibs-primary-1 hover:text-white disabled:pointer-events-none disabled:opacity-50"
-                      title="Download the 3 KPI graphs as a PDF file"
+                      title="Download performance graphs as a PDF file"
                     >
                       {isDownloadingPdf ? (
                         <Loader2 size={12} className="animate-spin text-inherit shrink-0" />
@@ -1585,16 +881,18 @@ export default function ViewGraphsPage() {
                 </div>
 
                 {showFilters && (
-                  <div className="grid grid-cols-1 gap-2 p-2.5 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 items-end">
-                    {/* 1. Account / Source */}
-                    <MultiSelectDropdown
-                      label="Account / Source"
-                      value={filters.sourceSystem}
-                      onChange={handleSourceChange}
-                      options={SOURCE_OPTIONS}
-                      placeholder="All Sources"
-                      allOptionLabel="US Visa (All Sources)"
-                    />
+                  <div className={`grid grid-cols-1 gap-2 p-2.5 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 ${isCustomPeriod ? "xl:grid-cols-8" : "xl:grid-cols-7"} items-end`}>
+                    {/* 1. Account / Source (Hidden in QA) */}
+                    {!isQaOnly && (
+                      <MultiSelectDropdown
+                        label="Account / Source"
+                        value={filters.sourceSystem}
+                        onChange={handleSourceChange}
+                        options={SOURCE_OPTIONS}
+                        placeholder="All Sources"
+                        allOptionLabel="US Visa (All Sources)"
+                      />
+                    )}
 
                     {/* 2. Task Order */}
                     <MultiSelectDropdown
@@ -1626,7 +924,18 @@ export default function ViewGraphsPage() {
                       allOptionLabel="All Skills"
                     />
 
-                    {/* 5. Reporting Period */}
+                    {/* 5. LOB (Only in QA Module) */}
+                    {isQaOnly && (
+                      <SingleSelectDropdown
+                        label="LOB"
+                        value={filters.lob}
+                        onChange={handleLobChange}
+                        options={LOB_OPTIONS}
+                        placeholder="All LOBs"
+                      />
+                    )}
+
+                    {/* 6. Reporting Period */}
                     <SingleSelectDropdown
                       label="Reporting Period"
                       value={filters.period}
@@ -1693,7 +1002,7 @@ export default function ViewGraphsPage() {
                 )}
               </section>
 
-              {error ? (
+              {showCalls && error ? (
                 <div className="sibs-card relative z-0 flex flex-col sm:flex-row sm:items-center justify-between gap-2 border border-red-200 bg-red-50/60 p-3 text-xs text-red-800 shadow-xs">
                   <div className="flex items-start gap-3">
                     <AlertCircle
@@ -1733,7 +1042,13 @@ export default function ViewGraphsPage() {
 
                   <div>
                     <p className="m-0 font-bold text-sibs-primary-1">
-                      Loading Calls, Email & Quality KPI data
+                      {isCallsOnly
+                        ? "Loading Calls KPI data"
+                        : isEmailsOnly
+                        ? "Loading Email KPI data"
+                        : isQaOnly
+                        ? "Loading Quality KPI data"
+                        : "Loading Calls, Email & Quality KPI data"}
                     </p>
 
                     <p className="mt-1 mb-0 text-sm text-sibs-tertiary-5">
@@ -1750,33 +1065,75 @@ export default function ViewGraphsPage() {
                     </div>
                   ) : null}
 
-                  <CallKpiDashboard
-                    data={dashboardData || {}}
-                    showSummaryCards={showFilters}
-                  />
+                  {showCalls && (
+                    <div id="calls-section">
+                      <CallKpiDashboard
+                        data={dashboardData || {}}
+                        showSummaryCards={showFilters}
+                        isSubmodule={isCallsOnly}
+                        showFilters={showFilters}
+                        afterCards={
+                          !currentSection ? (
+                            <div className="space-y-1.5 sm:space-y-2">
+                              <EmailSummaryCards
+                                summary={emailDashboardData?.summary || {}}
+                              />
+                              <QualityAuditSummaryCards
+                                summary={qualityAuditDashboardData?.summary || {}}
+                              />
+                            </div>
+                          ) : null
+                        }
+                      />
+                    </div>
+                  )}
 
-                  <div className="mt-4">
-                    {emailError ? (
-                      <div className="sibs-card mb-3 flex items-start gap-2 border border-amber-200 bg-amber-50/70 p-3 text-xs font-semibold text-amber-800">
-                        <AlertCircle size={17} className="mt-0.5 shrink-0" />
-                        <span>{emailError}</span>
-                      </div>
-                    ) : null}
-                    <EmailKpiDashboard
-                      data={emailDashboardData || {}}
-                      showSummaryCards={false}
-                    />
-                  </div>
+                  {showEmails && (
+                    <div id="emails-section" className={!currentSection ? "mt-1 sm:mt-1.5" : ""}>
+                      {emailError ? (
+                        <div className="sibs-card mb-2 flex items-start gap-2 border border-amber-200 bg-amber-50/70 p-2.5 text-xs font-semibold text-amber-800">
+                          <AlertCircle size={16} className="mt-0.5 shrink-0" />
+                          <span>{emailError}</span>
+                        </div>
+                      ) : null}
+                      <EmailKpiDashboard
+                        data={emailDashboardData || {}}
+                        showSummaryCards={isEmailsOnly ? showFilters : false}
+                        isSubmodule={isEmailsOnly}
+                        showFilters={showFilters}
+                      />
+                    </div>
+                  )}
 
-                  <div className="mt-4">
-                    {qualityAuditError ? (
-                      <div className="sibs-card mb-3 flex items-start gap-2 border border-amber-200 bg-amber-50/70 p-3 text-xs font-semibold text-amber-800">
-                        <AlertCircle size={17} className="mt-0.5 shrink-0" />
-                        <span>{qualityAuditError}</span>
-                      </div>
-                    ) : null}
-                    <QualityAuditKpiDashboard data={qualityAuditDashboardData || {}} />
-                  </div>
+                  {showQa && (
+                    <div id="qa-section" className={!currentSection ? "mt-1 sm:mt-1.5" : ""}>
+                      {qualityAuditError ? (
+                        <div className="sibs-card mb-2 flex items-start gap-2 border border-amber-200 bg-amber-50/70 p-2.5 text-xs font-semibold text-amber-800">
+                          <AlertCircle size={16} className="mt-0.5 shrink-0" />
+                          <span>{qualityAuditError}</span>
+                        </div>
+                      ) : null}
+                      <QualityAuditKpiDashboard
+                        data={qualityAuditDashboardData || {}}
+                        showSummaryCards={isQaOnly ? showFilters : false}
+                        period={filters.period}
+                        isSubmodule={isQaOnly}
+                        showFilters={showFilters}
+                      />
+                    </div>
+                  )}
+
+                  {showOccupancy && (
+                    <div id="occupancy-section" className="sibs-card p-8 text-center">
+                      <Users className="mx-auto mb-3 text-sibs-primary-1/60" size={36} />
+                      <h2 className="m-0 text-base font-bold text-sibs-primary-1">
+                        Occupancy & Headcount Performance
+                      </h2>
+                      <p className="mt-1 text-xs text-sibs-tertiary-5">
+                        Occupancy & HC reporting metrics will be displayed here.
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -1802,6 +1159,74 @@ export default function ViewGraphsPage() {
         title="Logging out"
         message="Please wait while we end your session."
       />
+
+      <DownloadPdfModal
+        isOpen={showDownloadPdfModal}
+        onClose={() => !isDownloadingPdf && setShowDownloadPdfModal(false)}
+        onDownload={handleExecutePdfDownload}
+        isDownloading={isDownloadingPdf}
+        activeSection={currentSection}
+      />
+
+      {/* Off-screen render container for PDF export when sections are not currently visible */}
+      {exportingSections.length > 0 && (
+        <div
+          id="pdf-offscreen-export-container"
+          style={{
+            position: "fixed",
+            left: "-9999px",
+            top: 0,
+            width: "1350px",
+            opacity: 0,
+            pointerEvents: "none",
+            zIndex: -1,
+          }}
+          aria-hidden="true"
+        >
+          {exportingSections.includes("calls") && !showCalls && (
+            <div id="export-calls-section" style={{ width: "1350px", background: "#f8fbfd", padding: "16px" }}>
+              <CallKpiDashboard
+                data={dashboardData || {}}
+                showSummaryCards={true}
+                isSubmodule={false}
+                showFilters={false}
+              />
+            </div>
+          )}
+          {exportingSections.includes("emails") && !showEmails && (
+            <div id="export-emails-section" style={{ width: "1350px", background: "#f8fbfd", padding: "16px" }}>
+              <EmailKpiDashboard
+                data={emailDashboardData || {}}
+                showSummaryCards={true}
+                isSubmodule={true}
+                showFilters={false}
+              />
+            </div>
+          )}
+          {exportingSections.includes("qa") && !showQa && (
+            <div id="export-qa-section" style={{ width: "1350px", background: "#f8fbfd", padding: "16px" }}>
+              <QualityAuditKpiDashboard
+                data={qualityAuditDashboardData || {}}
+                showSummaryCards={true}
+                period={filters.period}
+                isSubmodule={true}
+                showFilters={false}
+              />
+            </div>
+          )}
+          {exportingSections.includes("occupancy") && !showOccupancy && (
+            <div id="export-occupancy-section" className="sibs-card p-8 text-center" style={{ width: "1350px", background: "#f8fbfd", padding: "16px" }}>
+              <Users className="mx-auto mb-3 text-sibs-primary-1/60" size={36} />
+              <h2 className="m-0 text-base font-bold text-sibs-primary-1">
+                Occupancy & Headcount Performance
+              </h2>
+              <p className="mt-1 text-xs text-sibs-tertiary-5">
+                Occupancy & HC reporting metrics will be displayed here.
+              </p>
+            </div>
+          )}
+        </div>
+      )}
     </section>
   );
 }

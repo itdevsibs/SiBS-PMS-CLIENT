@@ -169,3 +169,136 @@ export async function downloadKpiGraphsAsPdf(targetElementOrId = "kpi-graphs-con
   return true;
 }
 
+export async function downloadSelectedKpiReportsAsPdf({
+  sections = [],
+  filename = null,
+}) {
+  if (!sections.length) return false;
+
+  const html2canvasModule = await import("html2canvas-pro");
+  const html2canvas = html2canvasModule.default || html2canvasModule.html2canvas;
+  const { jsPDF } = await import("jspdf");
+
+  // Short delay to allow transitions and renders to settle
+  await new Promise((resolve) => setTimeout(resolve, 200));
+
+  const pdf = new jsPDF({
+    orientation: "landscape",
+    unit: "mm",
+    format: "a4",
+  });
+
+  const pdfWidth = pdf.internal.pageSize.getWidth();
+  const pdfHeight = pdf.internal.pageSize.getHeight();
+  const now = new Date();
+  const timestamp =
+    now.toLocaleDateString("en-US", {
+      weekday: "short",
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    }) +
+    ` at ${now.toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+    })}`;
+
+  let pagesExported = 0;
+
+  for (let i = 0; i < sections.length; i++) {
+    const item = sections[i];
+    const element =
+      item.element ||
+      (typeof item.elementId === "string"
+        ? document.getElementById(item.elementId)
+        : null);
+
+    if (!element) {
+      console.warn(`PDF Export: Element not found for section "${item.id}" (id: ${item.elementId})`);
+      continue;
+    }
+
+    if (pagesExported > 0) {
+      pdf.addPage("a4", "landscape");
+    }
+
+    const canvas = await html2canvas(element, {
+      scale: 2,
+      useCORS: true,
+      logging: false,
+      backgroundColor: "#f8fbfd",
+      onclone: (clonedDoc) => {
+        const clonedCharts = clonedDoc.querySelector("[data-pdf-charts]");
+        if (clonedCharts) {
+          clonedCharts.style.width = "1350px";
+          clonedCharts.style.display = "grid";
+          clonedCharts.style.gridTemplateColumns = "1.3fr 1.1fr 0.95fr";
+          clonedCharts.style.gap = "14px";
+        }
+      },
+    });
+
+    const imgData = canvas.toDataURL("image/png");
+
+    // Report Header - exact same format as downloadKpiGraphsAsPdf
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(13);
+    pdf.setTextColor(4, 44, 81);
+    pdf.text(item.title || "KPI PERFORMANCE GRAPHS", 12, 14);
+
+    pdf.setFont("helvetica", "normal");
+    pdf.setFontSize(8.5);
+    pdf.setTextColor(100, 116, 139);
+    pdf.text(
+      `Exported on ${timestamp} • Performance Management System`,
+      12,
+      19,
+    );
+
+    // Fit chart image centered on landscape page
+    const marginX = 12;
+    const startY = 23;
+    const availableWidth = pdfWidth - marginX * 2;
+    const availableHeight = pdfHeight - startY - 10;
+
+    const imgRatio = canvas.width / canvas.height;
+    let finalWidth = availableWidth;
+    let finalHeight = finalWidth / imgRatio;
+
+    if (finalHeight > availableHeight) {
+      finalHeight = availableHeight;
+      finalWidth = finalHeight * imgRatio;
+    }
+
+    const finalX = marginX + (availableWidth - finalWidth) / 2;
+    const finalY = startY + (availableHeight - finalHeight) / 2;
+
+    pdf.addImage(
+      imgData,
+      "PNG",
+      finalX,
+      finalY,
+      finalWidth,
+      finalHeight,
+      undefined,
+      "FAST",
+    );
+
+    pagesExported += 1;
+  }
+
+  if (pagesExported === 0) {
+    return false;
+  }
+
+  const fileDate = now.toISOString().slice(0, 10);
+  const saveName =
+    filename ||
+    (sections.length === 1
+      ? `${(sections[0].name || sections[0].id || "Report")}-KPI-Graphs-${fileDate}.pdf`
+      : `Performance-Report-${fileDate}.pdf`);
+
+  pdf.save(saveName);
+  return true;
+}
+

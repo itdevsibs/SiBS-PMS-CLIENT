@@ -1,7 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import {
-  ChevronLeft,
-  ChevronRight,
   Download,
   FileSpreadsheet,
   Loader2,
@@ -12,6 +10,7 @@ import {
 } from "lucide-react";
 import AppModal from "@/components/ui/app-modal";
 import { Button } from "@/components/ui/button";
+import TablePagination from "@/components/tables/TablePagination";
 import { getUsVisaImportRawData } from "@/lib/axios/us-visa-imports";
 
 /* Helper to convert 1-based index to Excel column letter (1 -> A, 27 -> AA) */
@@ -646,67 +645,37 @@ export default function WfmReadOnlyExcelModal({
           )}
         </div>
 
-        {/* ── Bottom Status Bar & Pagination (Excel Style) ────────── */}
-        <div className="shrink-0 bg-white border-t border-slate-200 px-3 sm:px-5 py-2 sm:py-2.5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-xs">
-          {/* Left status note */}
-          <div className="flex items-center gap-1.5 sm:gap-2 text-slate-500 font-medium text-[11px] sm:text-xs">
-            <span className="inline-block h-2 w-2 rounded-full bg-emerald-500 shrink-0" />
-            <span className="truncate">
-              Showing{" "}
-              <strong className="text-slate-800">
-                {pagination.totalRows === 0
-                  ? 0
-                  : (pagination.page - 1) * pagination.limit + 1}
-              </strong>{" "}
-              –{" "}
-              <strong className="text-slate-800">
-                {Math.min(pagination.page * pagination.limit, pagination.totalRows)}
-              </strong>{" "}
-              of <strong className="text-slate-800">{pagination.totalRows.toLocaleString()}</strong> rows
+        {/* ── Bottom Status Bar & Pagination (Using Reusable TablePagination) ────────── */}
+        <TablePagination
+          currentPage={pagination.page}
+          totalPages={pagination.totalPages}
+          totalItems={pagination.totalRows}
+          pageSize={pagination.limit}
+          onPageChange={handlePageChange}
+          itemLabel="rows"
+          disabled={isLoading}
+          className="shrink-0 rounded-b-2xl"
+          extraLeft={
+            <div className="inline-flex items-center gap-1.5 sm:gap-2">
               {sibsFilter === "SIBS" && (
-                <span className="ml-1 inline-flex items-center px-1.5 py-0.2 rounded text-[9px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300/60">
+                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300/60">
                   SIBS
                 </span>
               )}
               {sibsFilter === "NON_SIBS" && (
-                <span className="ml-1 inline-flex items-center px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-100 text-amber-800 border border-amber-300/60">
+                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300/60">
                   Non-SIBS
                 </span>
               )}
-            </span>
-            <span className="hidden md:inline text-slate-300">|</span>
-            <span className="hidden md:inline font-mono text-[11px] text-slate-400 truncate">
-              Sheet: {activeSheet || "Sheet1"}
-            </span>
-          </div>
-
-          {/* Right Pagination Buttons */}
-          <div className="flex items-center justify-between sm:justify-end gap-1.5 w-full sm:w-auto">
-            <button
-              type="button"
-              onClick={() => handlePageChange(pagination.page - 1)}
-              disabled={pagination.page <= 1 || isLoading}
-              className="flex h-7.5 sm:h-8 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2 sm:px-2.5 text-xs font-bold text-slate-700 shadow-2xs hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition cursor-pointer"
-            >
-              <ChevronLeft className="h-3.5 w-3.5" />
-              <span>Prev</span>
-            </button>
-
-            <span className="px-2 sm:px-2.5 py-1 rounded-md bg-slate-100 font-bold text-[11px] sm:text-xs text-slate-800 border border-slate-200">
-              {pagination.page} / {pagination.totalPages}
-            </span>
-
-            <button
-              type="button"
-              onClick={() => handlePageChange(pagination.page + 1)}
-              disabled={pagination.page >= pagination.totalPages || isLoading}
-              className="flex h-7.5 sm:h-8 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2 sm:px-2.5 text-xs font-bold text-slate-700 shadow-2xs hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition cursor-pointer"
-            >
-              <span>Next</span>
-              <ChevronRight className="h-3.5 w-3.5" />
-            </button>
-          </div>
-        </div>
+              {activeSheet && (
+                <span className="hidden md:inline-flex items-center gap-1.5 text-xs text-slate-400">
+                  <span className="text-slate-300">|</span>
+                  <span className="font-mono text-[11px] text-slate-500">Sheet: {activeSheet}</span>
+                </span>
+              )}
+            </div>
+          }
+        />
       </div>
     </AppModal>
   );

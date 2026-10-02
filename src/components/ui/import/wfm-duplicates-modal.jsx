@@ -1,10 +1,11 @@
 import { useMemo, useState } from "react";
 import {
-  AlertTriangle,
+  AlertCircle,
   ChevronLeft,
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
+  Copy,
   Eye,
   Search,
   Trash2,
@@ -18,7 +19,7 @@ import {
   getPageNumbers,
 } from "@/lib/wfm-import-utils";
 
-const WARNING_LEVEL_ORDER = [
+const DUPLICATE_LEVEL_ORDER = [
   "SERVICE / QUEUE LEVEL",
   "AGENT LEVEL",
   "AGENT OCCUPANCY",
@@ -26,12 +27,12 @@ const WARNING_LEVEL_ORDER = [
   "QUALITY AUDIT",
 ];
 
-function getWarningLevelDisplayLabel(level) {
+function getDuplicateLevelDisplayLabel(level) {
   if (level === "ALL LEVEL" || level === "ALL") return "ALL LEVEL";
   return level === "EMAIL LEVEL" ? "EMAIL RAW DATA" : level;
 }
 
-export default function WfmWarningsModal({
+export default function WfmDuplicatesModal({
   isOpen,
   onClose,
   uploadsByCard = {},
@@ -41,12 +42,12 @@ export default function WfmWarningsModal({
   handleOpenBatchDetails,
   setUploadToRemove,
 }) {
-  const [warningDataSearch, setWarningDataSearch] = useState("");
+  const [duplicateDataSearch, setDuplicateDataSearch] = useState("");
   const [selectedLevel, setSelectedLevel] = useState("ALL LEVEL");
-  const [warningPage, setWarningPage] = useState(1);
-  const WARNING_PAGE_SIZE = 5;
+  const [duplicatePage, setDuplicatePage] = useState(1);
+  const DUPLICATE_PAGE_SIZE = 5;
 
-  const warningBatches = useMemo(() => {
+  const duplicateBatches = useMemo(() => {
     const allUploads = Object.values(uploadsByCard).flat();
     const seen = new Set();
 
@@ -56,14 +57,8 @@ export default function WfmWarningsModal({
           return false;
         }
 
-        const isUsVisaWarning =
-          upload.account === "US VISA" &&
-          (upload.batchStatus === "COMPLETED_WITH_ERRORS" ||
-            Number(upload.warningRows || 0) > 0 ||
-            Number(upload.invalidRows || 0) > 0 ||
-            Number(upload.duplicateRows || 0) > 0);
-
-        if (!isUsVisaWarning) return false;
+        const hasDuplicates = Number(upload.duplicateRows || 0) > 0;
+        if (!hasDuplicates) return false;
 
         const key =
           upload.batchId ||
@@ -77,21 +72,20 @@ export default function WfmWarningsModal({
       .sort((a, b) => (b.uploadedAtMs || 0) - (a.uploadedAtMs || 0));
   }, [uploadsByCard, selectedAccount]);
 
-  const defaultWarningLevel = "ALL LEVEL";
+  const defaultDuplicateLevel = "ALL LEVEL";
+  const activeDuplicateLevel = selectedLevel || defaultDuplicateLevel;
 
-  const activeWarningLevel = selectedLevel || defaultWarningLevel;
-
-  const filteredWarningBatches = useMemo(() => {
-    const query = warningDataSearch.trim().toLowerCase();
-    if (!query) return warningBatches;
-    return warningBatches.filter(
+  const filteredDuplicateBatches = useMemo(() => {
+    const query = duplicateDataSearch.trim().toLowerCase();
+    if (!query) return duplicateBatches;
+    return duplicateBatches.filter(
       (b) =>
         b.fileName?.toLowerCase().includes(query) ||
         b.rawDataTitle?.toLowerCase().includes(query) ||
         b.batchCode?.toLowerCase().includes(query) ||
         b.account?.toLowerCase().includes(query),
     );
-  }, [warningBatches, warningDataSearch]);
+  }, [duplicateBatches, duplicateDataSearch]);
 
   const levelCounts = useMemo(() => {
     const counts = {
@@ -101,20 +95,20 @@ export default function WfmWarningsModal({
       "EMAIL LEVEL": 0,
       "QUALITY AUDIT": 0,
     };
-    for (const batch of filteredWarningBatches) {
+    for (const batch of filteredDuplicateBatches) {
       const cat = getBatchCategory(batch);
       if (counts[cat] !== undefined) {
         counts[cat] += 1;
       }
     }
     return counts;
-  }, [filteredWarningBatches]);
+  }, [filteredDuplicateBatches]);
 
-  const warningLevelDropdownOptions = useMemo(() => {
+  const duplicateLevelDropdownOptions = useMemo(() => {
     return [
       {
         value: "ALL LEVEL",
-        label: `ALL LEVEL (${filteredWarningBatches.length})`,
+        label: `ALL LEVEL (${filteredDuplicateBatches.length})`,
       },
       {
         value: "SERVICE / QUEUE LEVEL",
@@ -137,48 +131,49 @@ export default function WfmWarningsModal({
         label: `QUALITY AUDIT (${levelCounts["QUALITY AUDIT"] || 0})`,
       },
     ];
-  }, [filteredWarningBatches.length, levelCounts]);
+  }, [filteredDuplicateBatches.length, levelCounts]);
 
-  const targetWarningBatches = useMemo(() => {
-    if (activeWarningLevel === "ALL LEVEL" || activeWarningLevel === "ALL") {
-      return filteredWarningBatches;
+  const targetDuplicateBatches = useMemo(() => {
+    if (activeDuplicateLevel === "ALL LEVEL" || activeDuplicateLevel === "ALL") {
+      return filteredDuplicateBatches;
     }
-    return filteredWarningBatches.filter(
-      (b) => getBatchCategory(b) === activeWarningLevel,
+    return filteredDuplicateBatches.filter(
+      (b) => getBatchCategory(b) === activeDuplicateLevel,
     );
-  }, [filteredWarningBatches, activeWarningLevel]);
+  }, [filteredDuplicateBatches, activeDuplicateLevel]);
 
-  const warningTotalPages = useMemo(() => {
+  const duplicateTotalPages = useMemo(() => {
     return Math.max(
       1,
-      Math.ceil(targetWarningBatches.length / WARNING_PAGE_SIZE),
+      Math.ceil(targetDuplicateBatches.length / DUPLICATE_PAGE_SIZE),
     );
-  }, [targetWarningBatches.length]);
+  }, [targetDuplicateBatches.length]);
 
-  const pagedWarningBatches = useMemo(() => {
-    const startIndex = (warningPage - 1) * WARNING_PAGE_SIZE;
-    return targetWarningBatches.slice(
+  const pagedDuplicateBatches = useMemo(() => {
+    const startIndex = (duplicatePage - 1) * DUPLICATE_PAGE_SIZE;
+    return targetDuplicateBatches.slice(
       startIndex,
-      startIndex + WARNING_PAGE_SIZE,
+      startIndex + DUPLICATE_PAGE_SIZE,
     );
-  }, [targetWarningBatches, warningPage]);
+  }, [targetDuplicateBatches, duplicatePage]);
 
-  const displayedWarningGroups = useMemo(() => {
+  const displayedDuplicateGroups = useMemo(() => {
     return [
       {
-        label: getWarningLevelDisplayLabel(activeWarningLevel),
-        batches: pagedWarningBatches,
-        totalCount: targetWarningBatches.length,
+        label: getDuplicateLevelDisplayLabel(activeDuplicateLevel),
+        batches: pagedDuplicateBatches,
+        totalCount: targetDuplicateBatches.length,
       },
     ];
-  }, [activeWarningLevel, pagedWarningBatches, targetWarningBatches.length]);
+  }, [activeDuplicateLevel, pagedDuplicateBatches, targetDuplicateBatches.length]);
 
   const handleClose = () => {
-    setWarningDataSearch("");
+    setDuplicateDataSearch("");
     setSelectedLevel("ALL LEVEL");
-    setWarningPage(1);
+    setDuplicatePage(1);
     onClose?.();
   };
+
   return (
     <AppModal
       isOpen={isOpen}
@@ -186,12 +181,17 @@ export default function WfmWarningsModal({
     >
       <div className="relative z-20 shrink-0 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
-          <p
-            className="m-0 truncate whitespace-nowrap text-base sm:text-lg md:text-xl font-bold text-sibs-primary-1"
-            title="Warnings Found Uploaded Data"
-          >
-            Warnings Found Uploaded Data
-          </p>
+          <div className="flex items-center gap-2">
+            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-orange-100 text-orange-700">
+              <Copy className="h-4 w-4" />
+            </span>
+            <p
+              className="m-0 truncate whitespace-nowrap text-base sm:text-lg md:text-xl font-bold text-slate-900"
+              title="Duplicates Found Uploaded Data"
+            >
+              Duplicates Found Uploaded Data
+            </p>
+          </div>
           <p className="mt-1 mb-0 text-xs font-semibold text-sibs-tertiary-5">
             Account: {selectedAccount}
           </p>
@@ -202,12 +202,12 @@ export default function WfmWarningsModal({
           <SingleSelectDropdown
             className="w-full sm:w-60"
             buttonClassName="h-9 rounded-full border border-sibs-tertiary-9 bg-white px-3.5 text-xs font-bold text-sibs-primary-1 shadow-2xs"
-            value={activeWarningLevel}
+            value={activeDuplicateLevel}
             onChange={(event) => {
               setSelectedLevel(event.target.value);
-              setWarningPage(1);
+              setDuplicatePage(1);
             }}
-            options={warningLevelDropdownOptions}
+            options={duplicateLevelDropdownOptions}
           />
 
           {/* Search uploaded data */}
@@ -217,21 +217,21 @@ export default function WfmWarningsModal({
               aria-hidden="true"
             />
             <input
-              value={warningDataSearch}
+              value={duplicateDataSearch}
               onChange={(event) => {
-                setWarningDataSearch(event.target.value);
-                setWarningPage(1);
+                setDuplicateDataSearch(event.target.value);
+                setDuplicatePage(1);
               }}
-              className="h-9 w-full rounded-full border border-sibs-tertiary-9 bg-white pl-9 pr-8 text-xs sm:text-sm outline-none focus:border-sibs-primary-2"
-              placeholder="Search uploaded data..."
+              className="h-9 w-full rounded-full border border-sibs-tertiary-9 bg-white pl-9 pr-8 text-xs sm:text-sm outline-none focus:border-orange-400"
+              placeholder="Search duplicate data..."
               type="text"
             />
-            {warningDataSearch ? (
+            {duplicateDataSearch ? (
               <button
                 type="button"
                 onClick={() => {
-                  setWarningDataSearch("");
-                  setWarningPage(1);
+                  setDuplicateDataSearch("");
+                  setDuplicatePage(1);
                 }}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 hover:text-slate-600"
               >
@@ -243,15 +243,15 @@ export default function WfmWarningsModal({
       </div>
 
       <div className="mt-4 flex-1 min-h-0 space-y-6 overflow-x-hidden overflow-y-auto rounded-xl border border-slate-200/80 bg-slate-50/50 p-3 sm:p-5 sibs-scrollbar">
-        {targetWarningBatches.length ? (
-          displayedWarningGroups.map((group) => {
+        {targetDuplicateBatches.length ? (
+          displayedDuplicateGroups.map((group) => {
             return (
               <div key={group.label} className="space-y-3">
                 <div className="flex items-center gap-2 border-b border-slate-200/80 pb-2">
-                  <h3 className="m-0 text-xs font-black uppercase tracking-wider text-sibs-tertiary-5">
+                  <h3 className="m-0 text-xs font-black uppercase tracking-wider text-slate-700">
                     {group.label}
                   </h3>
-                  <span className="rounded-full bg-slate-200/80 px-2 py-0.5 text-[10px] font-bold text-slate-600">
+                  <span className="rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-bold text-sky-800">
                     {group.totalCount}{" "}
                     {group.totalCount === 1 ? "batch" : "batches"}
                   </span>
@@ -260,11 +260,10 @@ export default function WfmWarningsModal({
                 {group.batches.length > 0 ? (
                   <div className="space-y-2.5">
                     {group.batches.map((batch) => {
-                      const isCompletedWithErrors =
+                      const duplicateCount = Number(batch.duplicateRows || 0);
+                      const hasErrors =
                         batch.batchStatus === "COMPLETED_WITH_ERRORS" ||
-                        (batch.invalidRows > 0 ||
-                          batch.warningRows > 0 ||
-                          batch.duplicateRows > 0);
+                        Number(batch.invalidRows || 0) > 0;
 
                       return (
                         <div
@@ -273,17 +272,18 @@ export default function WfmWarningsModal({
                             batch.id ||
                             `${batch.fileName}-${batch.uploadedAt}`
                           }
-                          className="flex flex-col gap-2.5 sm:gap-3 rounded-xl border border-slate-200 bg-white p-3 sm:p-3.5 shadow-xs transition-all hover:border-slate-300 hover:shadow-sm sm:flex-row sm:items-center sm:justify-between"
+                          className="flex flex-col gap-2.5 sm:gap-3 rounded-xl border border-orange-200/80 bg-white p-3 sm:p-3.5 shadow-xs transition-all hover:border-orange-300 hover:shadow-sm sm:flex-row sm:items-center sm:justify-between"
                         >
                           <div className="min-w-0 flex-1">
                             <div className="flex flex-wrap items-center justify-between gap-1.5 sm:block">
                               <p
-                                className="m-0 min-w-0 max-w-full break-words [word-break:break-word] text-sm font-bold text-sibs-primary-1 leading-snug"
+                                className="m-0 min-w-0 max-w-full break-words [word-break:break-word] text-sm font-bold text-slate-900 leading-snug"
                                 title={batch.fileName}
                               >
                                 {batch.fileName}
                               </p>
-                              {isCompletedWithErrors ? (
+
+                              {duplicateCount > 0 || hasErrors ? (
                                 <button
                                   type="button"
                                   disabled={isLoadingUsVisaErrors}
@@ -292,14 +292,14 @@ export default function WfmWarningsModal({
                                       batch.batchId || batch.id,
                                     );
                                   }}
-                                  className="sm:hidden inline-flex shrink-0 whitespace-nowrap items-center gap-1 rounded-md border border-amber-400 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-800 transition-all hover:border-amber-500 hover:bg-amber-100"
-                                  title="Completed with error - click to view error details"
+                                  className="sm:hidden inline-flex shrink-0 whitespace-nowrap items-center gap-1 rounded-md border border-orange-300 bg-orange-50 px-2 py-0.5 text-[10px] font-semibold text-orange-800 transition-all hover:border-orange-400 hover:bg-orange-100"
+                                  title="View duplicate records"
                                 >
-                                  <AlertTriangle
-                                    className="h-2.5 w-2.5 shrink-0 text-amber-600"
+                                  <Copy
+                                    className="h-2.5 w-2.5 shrink-0 text-orange-600"
                                     aria-hidden="true"
                                   />
-                                  <span>Completed with error</span>
+                                  <span>Duplicates</span>
                                 </button>
                               ) : null}
                             </div>
@@ -309,26 +309,36 @@ export default function WfmWarningsModal({
                                 {batch.uploadedAt}{" "}
                                 ({formatRelativeTime(batch)})
                               </span>
-                              {activeWarningLevel === "ALL LEVEL" ? (
+
+                              {activeDuplicateLevel === "ALL LEVEL" ? (
                                 <span className="rounded bg-slate-100 border border-slate-200 px-1.5 py-0.5 text-[10px] font-bold text-slate-700">
-                                  {getWarningLevelDisplayLabel(getBatchCategory(batch))}
+                                  {getDuplicateLevelDisplayLabel(getBatchCategory(batch))}
                                 </span>
                               ) : null}
+
                               {batch.batchCode ? (
                                 <span className="rounded bg-sibs-primary-2/10 px-1.5 py-0.5 font-mono text-[10px] font-bold text-sibs-primary-2">
                                   Batch: {batch.batchCode}
                                 </span>
                               ) : null}
+
                               {batch.totalRows ? (
                                 <span className="text-[11px] font-medium text-slate-500">
                                   • {batch.totalRows.toLocaleString()} rows
+                                </span>
+                              ) : null}
+
+                              {duplicateCount > 0 ? (
+                                <span className="inline-flex items-center gap-1 rounded-full border border-orange-300 bg-orange-50 px-2 py-0.5 text-[10px] font-extrabold text-orange-800">
+                                  <span className="h-1.5 w-1.5 rounded-full bg-orange-500" />
+                                  {duplicateCount.toLocaleString()} duplicate{duplicateCount === 1 ? "" : "s"}
                                 </span>
                               ) : null}
                             </div>
                           </div>
 
                           <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100 sm:border-0 sm:pt-0 sm:flex sm:flex-wrap sm:items-center sm:gap-2 sm:shrink-0">
-                            {isCompletedWithErrors ? (
+                            {duplicateCount > 0 || hasErrors ? (
                               <button
                                 type="button"
                                 disabled={isLoadingUsVisaErrors}
@@ -337,14 +347,14 @@ export default function WfmWarningsModal({
                                     batch.batchId || batch.id,
                                   );
                                 }}
-                                className="hidden sm:inline-flex h-8 shrink-0 whitespace-nowrap items-center gap-1.5 rounded-lg border border-amber-400 bg-amber-50 px-2.5 text-xs font-semibold text-amber-800 transition-all hover:border-amber-500 hover:bg-amber-100 shadow-xs"
-                                title="Completed with error - click to view error details"
+                                className="hidden sm:inline-flex h-8 shrink-0 whitespace-nowrap items-center gap-1.5 rounded-lg border border-orange-300 bg-orange-50 px-2.5 text-xs font-semibold text-orange-800 transition-all hover:border-orange-400 hover:bg-orange-100 shadow-xs"
+                                title="Click to view duplicate details"
                               >
-                                <AlertTriangle
-                                  className="h-3.5 w-3.5 shrink-0 text-amber-600"
+                                <Copy
+                                  className="h-3.5 w-3.5 shrink-0 text-orange-600"
                                   aria-hidden="true"
                                 />
-                                <span>Completed with error</span>
+                                <span>Duplicates</span>
                               </button>
                             ) : null}
 
@@ -392,11 +402,11 @@ export default function WfmWarningsModal({
           })
         ) : (
           <div className="rounded-xl border border-dashed border-slate-200 bg-white px-4 py-12 text-center text-sm text-sibs-tertiary-5">
-            {warningDataSearch
-              ? `No uploaded data found matching "${warningDataSearch}".`
-              : warningBatches.length
-                ? `No uploaded data with warnings in ${getWarningLevelDisplayLabel(activeWarningLevel).toLowerCase()}.`
-                : "No uploaded data yet."}
+            {duplicateDataSearch
+              ? `No uploaded data found matching "${duplicateDataSearch}".`
+              : duplicateBatches.length
+                ? `No uploaded data with duplicates in ${getDuplicateLevelDisplayLabel(activeDuplicateLevel).toLowerCase()}.`
+                : "No uploaded data with duplicate records."}
           </div>
         )}
       </div>
@@ -404,27 +414,27 @@ export default function WfmWarningsModal({
       <div className="mt-5 shrink-0 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center">
           <span className="text-xs text-slate-500 font-medium">
-            {targetWarningBatches.length === 0 ? (
+            {targetDuplicateBatches.length === 0 ? (
               "Showing 0 uploads"
             ) : (
               <>
                 Showing{" "}
                 <strong className="font-bold text-slate-800">
-                  {(warningPage - 1) * WARNING_PAGE_SIZE + 1}
+                  {(duplicatePage - 1) * DUPLICATE_PAGE_SIZE + 1}
                 </strong>{" "}
                 to{" "}
                 <strong className="font-bold text-slate-800">
                   {Math.min(
-                    warningPage * WARNING_PAGE_SIZE,
-                    targetWarningBatches.length,
+                    duplicatePage * DUPLICATE_PAGE_SIZE,
+                    targetDuplicateBatches.length,
                   )}
                 </strong>{" "}
                 of{" "}
                 <strong className="font-bold text-slate-800">
-                  {targetWarningBatches.length}
+                  {targetDuplicateBatches.length}
                 </strong>{" "}
-                upload{targetWarningBatches.length === 1 ? "" : "s"}
-                {` in ${getWarningLevelDisplayLabel(activeWarningLevel)}`}
+                upload{targetDuplicateBatches.length === 1 ? "" : "s"}
+                {` in ${getDuplicateLevelDisplayLabel(activeDuplicateLevel)}`}
               </>
             )}
           </span>
@@ -434,8 +444,8 @@ export default function WfmWarningsModal({
           <div className="flex items-center gap-1">
             <button
               type="button"
-              disabled={warningPage <= 1}
-              onClick={() => setWarningPage(1)}
+              disabled={duplicatePage <= 1}
+              onClick={() => setDuplicatePage(1)}
               title="First Page"
               className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition-all hover:border-sibs-primary-1 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
             >
@@ -443,8 +453,8 @@ export default function WfmWarningsModal({
             </button>
             <button
               type="button"
-              disabled={warningPage <= 1}
-              onClick={() => setWarningPage((prev) => Math.max(1, prev - 1))}
+              disabled={duplicatePage <= 1}
+              onClick={() => setDuplicatePage((prev) => Math.max(1, prev - 1))}
               title="Previous Page"
               className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition-all hover:border-sibs-primary-1 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
             >
@@ -453,27 +463,27 @@ export default function WfmWarningsModal({
 
             {/* Numbered page buttons: shown on sm+ screens */}
             <div className="hidden sm:flex items-center gap-1 px-1">
-              {getPageNumbers(warningPage, warningTotalPages).map((p, idx) => {
+              {getPageNumbers(duplicatePage, duplicateTotalPages).map((p, idx) => {
                 if (p === "...") {
                   return (
                     <span
-                      key={`warning-ellipsis-${idx}`}
+                      key={`duplicate-ellipsis-${idx}`}
                       className="select-none px-1 text-slate-400 text-xs"
                     >
                       ...
                     </span>
                   );
                 }
-                const isActivePage = p === warningPage;
+                const isActivePage = p === duplicatePage;
                 return (
                   <button
-                    key={`warning-page-${p}`}
+                    key={`duplicate-page-${p}`}
                     type="button"
-                    onClick={() => setWarningPage(p)}
+                    onClick={() => setDuplicatePage(p)}
                     className={`inline-flex h-8 min-w-[32px] items-center justify-center rounded-lg px-2 text-xs font-semibold transition-all ${
                       isActivePage
-                        ? "bg-sibs-primary-1 text-white shadow-xs font-bold"
-                        : "border border-slate-200 bg-white text-slate-700 hover:border-sibs-primary-1 hover:bg-slate-50"
+                        ? "bg-orange-600 text-white shadow-xs font-bold"
+                        : "border border-slate-200 bg-white text-slate-700 hover:border-orange-400 hover:bg-orange-50/50"
                     }`}
                   >
                     {p}
@@ -485,15 +495,15 @@ export default function WfmWarningsModal({
             {/* Compact page indicator badge on mobile */}
             <div className="flex sm:hidden items-center px-1.5 text-xs font-medium text-slate-700">
               <span>
-                {warningPage} / {warningTotalPages}
+                {duplicatePage} / {duplicateTotalPages}
               </span>
             </div>
 
             <button
               type="button"
-              disabled={warningPage >= warningTotalPages}
+              disabled={duplicatePage >= duplicateTotalPages}
               onClick={() =>
-                setWarningPage((prev) => Math.min(warningTotalPages, prev + 1))
+                setDuplicatePage((prev) => Math.min(duplicateTotalPages, prev + 1))
               }
               title="Next Page"
               className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition-all hover:border-sibs-primary-1 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
@@ -502,8 +512,8 @@ export default function WfmWarningsModal({
             </button>
             <button
               type="button"
-              disabled={warningPage >= warningTotalPages}
-              onClick={() => setWarningPage(warningTotalPages)}
+              disabled={duplicatePage >= duplicateTotalPages}
+              onClick={() => setDuplicatePage(duplicateTotalPages)}
               title="Last Page"
               className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition-all hover:border-sibs-primary-1 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
             >

@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   Award,
   BarChart3,
+  ClipboardCheck,
   ClipboardList,
   Database,
   Filter,
@@ -10,6 +11,8 @@ import {
   Gauge,
   LayoutDashboard,
   LineChart,
+  Mail,
+  PhoneCall,
   ShieldCheck,
   Users,
 } from "lucide-react";
@@ -47,6 +50,32 @@ function useDashboardPage() {
       name: "Wow Report",
       icon: BarChart3,
       path: "/dashboard/wfm/view-graphs",
+      submodules: [
+        {
+          name: "Calls",
+          key: "calls",
+          icon: PhoneCall,
+          path: "/dashboard/wfm/view-graphs?section=calls",
+        },
+        {
+          name: "Emails",
+          key: "emails",
+          icon: Mail,
+          path: "/dashboard/wfm/view-graphs?section=emails",
+        },
+        {
+          name: "QA",
+          key: "qa",
+          icon: ClipboardCheck,
+          path: "/dashboard/wfm/view-graphs?section=qa",
+        },
+        {
+          name: "Occupancy & HC",
+          key: "occupancy",
+          icon: Users,
+          path: "/dashboard/wfm/view-graphs?section=occupancy",
+        },
+      ],
     };
     const occupancyModule = {
       name: "Occupancy",

@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import {
-  AlertTriangle,
+  AlertCircle,
   ChevronLeft,
   ChevronRight,
   ChevronsLeft,
@@ -8,6 +8,7 @@ import {
   Eye,
   Search,
   Trash2,
+  XCircle,
 } from "lucide-react";
 import AppModal from "@/components/ui/app-modal";
 import { Button } from "@/components/ui/button";
@@ -18,7 +19,7 @@ import {
   getPageNumbers,
 } from "@/lib/wfm-import-utils";
 
-const WARNING_LEVEL_ORDER = [
+const REJECTED_LEVEL_ORDER = [
   "SERVICE / QUEUE LEVEL",
   "AGENT LEVEL",
   "AGENT OCCUPANCY",
@@ -26,12 +27,12 @@ const WARNING_LEVEL_ORDER = [
   "QUALITY AUDIT",
 ];
 
-function getWarningLevelDisplayLabel(level) {
+function getRejectedLevelDisplayLabel(level) {
   if (level === "ALL LEVEL" || level === "ALL") return "ALL LEVEL";
   return level === "EMAIL LEVEL" ? "EMAIL RAW DATA" : level;
 }
 
-export default function WfmWarningsModal({
+export default function WfmRejectedModal({
   isOpen,
   onClose,
   uploadsByCard = {},
@@ -41,12 +42,12 @@ export default function WfmWarningsModal({
   handleOpenBatchDetails,
   setUploadToRemove,
 }) {
-  const [warningDataSearch, setWarningDataSearch] = useState("");
+  const [rejectedDataSearch, setRejectedDataSearch] = useState("");
   const [selectedLevel, setSelectedLevel] = useState("ALL LEVEL");
-  const [warningPage, setWarningPage] = useState(1);
-  const WARNING_PAGE_SIZE = 5;
+  const [rejectedPage, setRejectedPage] = useState(1);
+  const REJECTED_PAGE_SIZE = 5;
 
-  const warningBatches = useMemo(() => {
+  const rejectedBatches = useMemo(() => {
     const allUploads = Object.values(uploadsByCard).flat();
     const seen = new Set();
 
@@ -56,14 +57,12 @@ export default function WfmWarningsModal({
           return false;
         }
 
-        const isUsVisaWarning =
-          upload.account === "US VISA" &&
-          (upload.batchStatus === "COMPLETED_WITH_ERRORS" ||
-            Number(upload.warningRows || 0) > 0 ||
-            Number(upload.invalidRows || 0) > 0 ||
-            Number(upload.duplicateRows || 0) > 0);
+        const isRejected =
+          Number(upload.invalidRows || 0) > 0 ||
+          upload.batchStatus === "FAILED" ||
+          upload.status === "FAILED";
 
-        if (!isUsVisaWarning) return false;
+        if (!isRejected) return false;
 
         const key =
           upload.batchId ||
@@ -77,21 +76,20 @@ export default function WfmWarningsModal({
       .sort((a, b) => (b.uploadedAtMs || 0) - (a.uploadedAtMs || 0));
   }, [uploadsByCard, selectedAccount]);
 
-  const defaultWarningLevel = "ALL LEVEL";
+  const defaultRejectedLevel = "ALL LEVEL";
+  const activeRejectedLevel = selectedLevel || defaultRejectedLevel;
 
-  const activeWarningLevel = selectedLevel || defaultWarningLevel;
-
-  const filteredWarningBatches = useMemo(() => {
-    const query = warningDataSearch.trim().toLowerCase();
-    if (!query) return warningBatches;
-    return warningBatches.filter(
+  const filteredRejectedBatches = useMemo(() => {
+    const query = rejectedDataSearch.trim().toLowerCase();
+    if (!query) return rejectedBatches;
+    return rejectedBatches.filter(
       (b) =>
         b.fileName?.toLowerCase().includes(query) ||
         b.rawDataTitle?.toLowerCase().includes(query) ||
         b.batchCode?.toLowerCase().includes(query) ||
         b.account?.toLowerCase().includes(query),
     );
-  }, [warningBatches, warningDataSearch]);
+  }, [rejectedBatches, rejectedDataSearch]);
 
   const levelCounts = useMemo(() => {
     const counts = {
@@ -101,20 +99,20 @@ export default function WfmWarningsModal({
       "EMAIL LEVEL": 0,
       "QUALITY AUDIT": 0,
     };
-    for (const batch of filteredWarningBatches) {
+    for (const batch of filteredRejectedBatches) {
       const cat = getBatchCategory(batch);
       if (counts[cat] !== undefined) {
         counts[cat] += 1;
       }
     }
     return counts;
-  }, [filteredWarningBatches]);
+  }, [filteredRejectedBatches]);
 
-  const warningLevelDropdownOptions = useMemo(() => {
+  const rejectedLevelDropdownOptions = useMemo(() => {
     return [
       {
         value: "ALL LEVEL",
-        label: `ALL LEVEL (${filteredWarningBatches.length})`,
+        label: `ALL LEVEL (${filteredRejectedBatches.length})`,
       },
       {
         value: "SERVICE / QUEUE LEVEL",
@@ -137,48 +135,49 @@ export default function WfmWarningsModal({
         label: `QUALITY AUDIT (${levelCounts["QUALITY AUDIT"] || 0})`,
       },
     ];
-  }, [filteredWarningBatches.length, levelCounts]);
+  }, [filteredRejectedBatches.length, levelCounts]);
 
-  const targetWarningBatches = useMemo(() => {
-    if (activeWarningLevel === "ALL LEVEL" || activeWarningLevel === "ALL") {
-      return filteredWarningBatches;
+  const targetRejectedBatches = useMemo(() => {
+    if (activeRejectedLevel === "ALL LEVEL" || activeRejectedLevel === "ALL") {
+      return filteredRejectedBatches;
     }
-    return filteredWarningBatches.filter(
-      (b) => getBatchCategory(b) === activeWarningLevel,
+    return filteredRejectedBatches.filter(
+      (b) => getBatchCategory(b) === activeRejectedLevel,
     );
-  }, [filteredWarningBatches, activeWarningLevel]);
+  }, [filteredRejectedBatches, activeRejectedLevel]);
 
-  const warningTotalPages = useMemo(() => {
+  const rejectedTotalPages = useMemo(() => {
     return Math.max(
       1,
-      Math.ceil(targetWarningBatches.length / WARNING_PAGE_SIZE),
+      Math.ceil(targetRejectedBatches.length / REJECTED_PAGE_SIZE),
     );
-  }, [targetWarningBatches.length]);
+  }, [targetRejectedBatches.length]);
 
-  const pagedWarningBatches = useMemo(() => {
-    const startIndex = (warningPage - 1) * WARNING_PAGE_SIZE;
-    return targetWarningBatches.slice(
+  const pagedRejectedBatches = useMemo(() => {
+    const startIndex = (rejectedPage - 1) * REJECTED_PAGE_SIZE;
+    return targetRejectedBatches.slice(
       startIndex,
-      startIndex + WARNING_PAGE_SIZE,
+      startIndex + REJECTED_PAGE_SIZE,
     );
-  }, [targetWarningBatches, warningPage]);
+  }, [targetRejectedBatches, rejectedPage]);
 
-  const displayedWarningGroups = useMemo(() => {
+  const displayedRejectedGroups = useMemo(() => {
     return [
       {
-        label: getWarningLevelDisplayLabel(activeWarningLevel),
-        batches: pagedWarningBatches,
-        totalCount: targetWarningBatches.length,
+        label: getRejectedLevelDisplayLabel(activeRejectedLevel),
+        batches: pagedRejectedBatches,
+        totalCount: targetRejectedBatches.length,
       },
     ];
-  }, [activeWarningLevel, pagedWarningBatches, targetWarningBatches.length]);
+  }, [activeRejectedLevel, pagedRejectedBatches, targetRejectedBatches.length]);
 
   const handleClose = () => {
-    setWarningDataSearch("");
+    setRejectedDataSearch("");
     setSelectedLevel("ALL LEVEL");
-    setWarningPage(1);
+    setRejectedPage(1);
     onClose?.();
   };
+
   return (
     <AppModal
       isOpen={isOpen}
@@ -186,12 +185,17 @@ export default function WfmWarningsModal({
     >
       <div className="relative z-20 shrink-0 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
-          <p
-            className="m-0 truncate whitespace-nowrap text-base sm:text-lg md:text-xl font-bold text-sibs-primary-1"
-            title="Warnings Found Uploaded Data"
-          >
-            Warnings Found Uploaded Data
-          </p>
+          <div className="flex items-center gap-2">
+            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-red-100 text-red-600">
+              <XCircle className="h-4 w-4" />
+            </span>
+            <p
+              className="m-0 truncate whitespace-nowrap text-base sm:text-lg md:text-xl font-bold text-slate-900"
+              title="Records Rejected Uploaded Data"
+            >
+              Records Rejected Uploaded Data
+            </p>
+          </div>
           <p className="mt-1 mb-0 text-xs font-semibold text-sibs-tertiary-5">
             Account: {selectedAccount}
           </p>
@@ -202,12 +206,12 @@ export default function WfmWarningsModal({
           <SingleSelectDropdown
             className="w-full sm:w-60"
             buttonClassName="h-9 rounded-full border border-sibs-tertiary-9 bg-white px-3.5 text-xs font-bold text-sibs-primary-1 shadow-2xs"
-            value={activeWarningLevel}
+            value={activeRejectedLevel}
             onChange={(event) => {
               setSelectedLevel(event.target.value);
-              setWarningPage(1);
+              setRejectedPage(1);
             }}
-            options={warningLevelDropdownOptions}
+            options={rejectedLevelDropdownOptions}
           />
 
           {/* Search uploaded data */}
@@ -217,21 +221,21 @@ export default function WfmWarningsModal({
               aria-hidden="true"
             />
             <input
-              value={warningDataSearch}
+              value={rejectedDataSearch}
               onChange={(event) => {
-                setWarningDataSearch(event.target.value);
-                setWarningPage(1);
+                setRejectedDataSearch(event.target.value);
+                setRejectedPage(1);
               }}
-              className="h-9 w-full rounded-full border border-sibs-tertiary-9 bg-white pl-9 pr-8 text-xs sm:text-sm outline-none focus:border-sibs-primary-2"
-              placeholder="Search uploaded data..."
+              className="h-9 w-full rounded-full border border-sibs-tertiary-9 bg-white pl-9 pr-8 text-xs sm:text-sm outline-none focus:border-red-400"
+              placeholder="Search rejected data..."
               type="text"
             />
-            {warningDataSearch ? (
+            {rejectedDataSearch ? (
               <button
                 type="button"
                 onClick={() => {
-                  setWarningDataSearch("");
-                  setWarningPage(1);
+                  setRejectedDataSearch("");
+                  setRejectedPage(1);
                 }}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 hover:text-slate-600"
               >
@@ -243,15 +247,15 @@ export default function WfmWarningsModal({
       </div>
 
       <div className="mt-4 flex-1 min-h-0 space-y-6 overflow-x-hidden overflow-y-auto rounded-xl border border-slate-200/80 bg-slate-50/50 p-3 sm:p-5 sibs-scrollbar">
-        {targetWarningBatches.length ? (
-          displayedWarningGroups.map((group) => {
+        {targetRejectedBatches.length ? (
+          displayedRejectedGroups.map((group) => {
             return (
               <div key={group.label} className="space-y-3">
                 <div className="flex items-center gap-2 border-b border-slate-200/80 pb-2">
-                  <h3 className="m-0 text-xs font-black uppercase tracking-wider text-sibs-tertiary-5">
+                  <h3 className="m-0 text-xs font-black uppercase tracking-wider text-slate-700">
                     {group.label}
                   </h3>
-                  <span className="rounded-full bg-slate-200/80 px-2 py-0.5 text-[10px] font-bold text-slate-600">
+                  <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-bold text-red-700">
                     {group.totalCount}{" "}
                     {group.totalCount === 1 ? "batch" : "batches"}
                   </span>
@@ -260,11 +264,7 @@ export default function WfmWarningsModal({
                 {group.batches.length > 0 ? (
                   <div className="space-y-2.5">
                     {group.batches.map((batch) => {
-                      const isCompletedWithErrors =
-                        batch.batchStatus === "COMPLETED_WITH_ERRORS" ||
-                        (batch.invalidRows > 0 ||
-                          batch.warningRows > 0 ||
-                          batch.duplicateRows > 0);
+                      const invalidCount = Number(batch.invalidRows || 0);
 
                       return (
                         <div
@@ -273,62 +273,17 @@ export default function WfmWarningsModal({
                             batch.id ||
                             `${batch.fileName}-${batch.uploadedAt}`
                           }
-                          className="flex flex-col gap-2.5 sm:gap-3 rounded-xl border border-slate-200 bg-white p-3 sm:p-3.5 shadow-xs transition-all hover:border-slate-300 hover:shadow-sm sm:flex-row sm:items-center sm:justify-between"
+                          className="flex flex-col gap-2.5 sm:gap-3 rounded-xl border border-red-200/80 bg-white p-3 sm:p-3.5 shadow-xs transition-all hover:border-red-300 hover:shadow-sm sm:flex-row sm:items-center sm:justify-between"
                         >
                           <div className="min-w-0 flex-1">
                             <div className="flex flex-wrap items-center justify-between gap-1.5 sm:block">
                               <p
-                                className="m-0 min-w-0 max-w-full break-words [word-break:break-word] text-sm font-bold text-sibs-primary-1 leading-snug"
+                                className="m-0 min-w-0 max-w-full break-words [word-break:break-word] text-sm font-bold text-slate-900 leading-snug"
                                 title={batch.fileName}
                               >
                                 {batch.fileName}
                               </p>
-                              {isCompletedWithErrors ? (
-                                <button
-                                  type="button"
-                                  disabled={isLoadingUsVisaErrors}
-                                  onClick={() => {
-                                    handleOpenUsVisaErrors(
-                                      batch.batchId || batch.id,
-                                    );
-                                  }}
-                                  className="sm:hidden inline-flex shrink-0 whitespace-nowrap items-center gap-1 rounded-md border border-amber-400 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-800 transition-all hover:border-amber-500 hover:bg-amber-100"
-                                  title="Completed with error - click to view error details"
-                                >
-                                  <AlertTriangle
-                                    className="h-2.5 w-2.5 shrink-0 text-amber-600"
-                                    aria-hidden="true"
-                                  />
-                                  <span>Completed with error</span>
-                                </button>
-                              ) : null}
-                            </div>
 
-                            <div className="mt-1 flex flex-wrap items-center gap-1.5 sm:gap-2 text-xs text-sibs-tertiary-5">
-                              <span>
-                                {batch.uploadedAt}{" "}
-                                ({formatRelativeTime(batch)})
-                              </span>
-                              {activeWarningLevel === "ALL LEVEL" ? (
-                                <span className="rounded bg-slate-100 border border-slate-200 px-1.5 py-0.5 text-[10px] font-bold text-slate-700">
-                                  {getWarningLevelDisplayLabel(getBatchCategory(batch))}
-                                </span>
-                              ) : null}
-                              {batch.batchCode ? (
-                                <span className="rounded bg-sibs-primary-2/10 px-1.5 py-0.5 font-mono text-[10px] font-bold text-sibs-primary-2">
-                                  Batch: {batch.batchCode}
-                                </span>
-                              ) : null}
-                              {batch.totalRows ? (
-                                <span className="text-[11px] font-medium text-slate-500">
-                                  • {batch.totalRows.toLocaleString()} rows
-                                </span>
-                              ) : null}
-                            </div>
-                          </div>
-
-                          <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100 sm:border-0 sm:pt-0 sm:flex sm:flex-wrap sm:items-center sm:gap-2 sm:shrink-0">
-                            {isCompletedWithErrors ? (
                               <button
                                 type="button"
                                 disabled={isLoadingUsVisaErrors}
@@ -337,16 +292,76 @@ export default function WfmWarningsModal({
                                     batch.batchId || batch.id,
                                   );
                                 }}
-                                className="hidden sm:inline-flex h-8 shrink-0 whitespace-nowrap items-center gap-1.5 rounded-lg border border-amber-400 bg-amber-50 px-2.5 text-xs font-semibold text-amber-800 transition-all hover:border-amber-500 hover:bg-amber-100 shadow-xs"
-                                title="Completed with error - click to view error details"
+                                className="sm:hidden inline-flex shrink-0 whitespace-nowrap items-center gap-1 rounded-md border border-red-300 bg-red-50 px-2 py-0.5 text-[10px] font-semibold text-red-800 transition-all hover:border-red-400 hover:bg-red-100"
+                                title="Click to view error details"
                               >
-                                <AlertTriangle
-                                  className="h-3.5 w-3.5 shrink-0 text-amber-600"
+                                <AlertCircle
+                                  className="h-2.5 w-2.5 shrink-0 text-red-600"
                                   aria-hidden="true"
                                 />
-                                <span>Completed with error</span>
+                                <span>
+                                  {invalidCount > 0
+                                    ? `${invalidCount.toLocaleString()} Rejected`
+                                    : "View Errors"}
+                                </span>
                               </button>
-                            ) : null}
+                            </div>
+
+                            <div className="mt-1 flex flex-wrap items-center gap-1.5 sm:gap-2 text-xs text-sibs-tertiary-5">
+                              <span>
+                                {batch.uploadedAt}{" "}
+                                ({formatRelativeTime(batch)})
+                              </span>
+
+                              {activeRejectedLevel === "ALL LEVEL" ? (
+                                <span className="rounded bg-slate-100 border border-slate-200 px-1.5 py-0.5 text-[10px] font-bold text-slate-700">
+                                  {getRejectedLevelDisplayLabel(getBatchCategory(batch))}
+                                </span>
+                              ) : null}
+
+                              {batch.batchCode ? (
+                                <span className="rounded bg-sibs-primary-2/10 px-1.5 py-0.5 font-mono text-[10px] font-bold text-sibs-primary-2">
+                                  Batch: {batch.batchCode}
+                                </span>
+                              ) : null}
+
+                              {batch.totalRows ? (
+                                <span className="text-[11px] font-medium text-slate-500">
+                                  • {batch.totalRows.toLocaleString()} rows
+                                </span>
+                              ) : null}
+
+                              {invalidCount > 0 ? (
+                                <span className="inline-flex items-center gap-1 rounded-full border border-red-300 bg-red-50 px-2 py-0.5 text-[10px] font-extrabold text-red-700">
+                                  <span className="h-1.5 w-1.5 rounded-full bg-red-600" />
+                                  {invalidCount.toLocaleString()} rejected
+                                </span>
+                              ) : null}
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100 sm:border-0 sm:pt-0 sm:flex sm:flex-wrap sm:items-center sm:gap-2 sm:shrink-0">
+                            <button
+                              type="button"
+                              disabled={isLoadingUsVisaErrors}
+                              onClick={() => {
+                                handleOpenUsVisaErrors(
+                                  batch.batchId || batch.id,
+                                );
+                              }}
+                              className="hidden sm:inline-flex h-8 shrink-0 whitespace-nowrap items-center gap-1.5 rounded-lg border border-red-300 bg-red-50 px-2.5 text-xs font-semibold text-red-800 transition-all hover:border-red-400 hover:bg-red-100 shadow-xs"
+                              title="Click to view error details"
+                            >
+                              <AlertCircle
+                                className="h-3.5 w-3.5 shrink-0 text-red-600"
+                                aria-hidden="true"
+                              />
+                              <span>
+                                {invalidCount > 0
+                                  ? `${invalidCount.toLocaleString()} Rejected`
+                                  : "View Errors"}
+                              </span>
+                            </button>
 
                             <button
                               type="button"
@@ -392,11 +407,11 @@ export default function WfmWarningsModal({
           })
         ) : (
           <div className="rounded-xl border border-dashed border-slate-200 bg-white px-4 py-12 text-center text-sm text-sibs-tertiary-5">
-            {warningDataSearch
-              ? `No uploaded data found matching "${warningDataSearch}".`
-              : warningBatches.length
-                ? `No uploaded data with warnings in ${getWarningLevelDisplayLabel(activeWarningLevel).toLowerCase()}.`
-                : "No uploaded data yet."}
+            {rejectedDataSearch
+              ? `No uploaded data found matching "${rejectedDataSearch}".`
+              : rejectedBatches.length
+                ? `No uploaded data with rejected records in ${getRejectedLevelDisplayLabel(activeRejectedLevel).toLowerCase()}.`
+                : "No uploaded data with rejected records."}
           </div>
         )}
       </div>
@@ -404,27 +419,27 @@ export default function WfmWarningsModal({
       <div className="mt-5 shrink-0 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center">
           <span className="text-xs text-slate-500 font-medium">
-            {targetWarningBatches.length === 0 ? (
+            {targetRejectedBatches.length === 0 ? (
               "Showing 0 uploads"
             ) : (
               <>
                 Showing{" "}
                 <strong className="font-bold text-slate-800">
-                  {(warningPage - 1) * WARNING_PAGE_SIZE + 1}
+                  {(rejectedPage - 1) * REJECTED_PAGE_SIZE + 1}
                 </strong>{" "}
                 to{" "}
                 <strong className="font-bold text-slate-800">
                   {Math.min(
-                    warningPage * WARNING_PAGE_SIZE,
-                    targetWarningBatches.length,
+                    rejectedPage * REJECTED_PAGE_SIZE,
+                    targetRejectedBatches.length,
                   )}
                 </strong>{" "}
                 of{" "}
                 <strong className="font-bold text-slate-800">
-                  {targetWarningBatches.length}
+                  {targetRejectedBatches.length}
                 </strong>{" "}
-                upload{targetWarningBatches.length === 1 ? "" : "s"}
-                {` in ${getWarningLevelDisplayLabel(activeWarningLevel)}`}
+                upload{targetRejectedBatches.length === 1 ? "" : "s"}
+                {` in ${getRejectedLevelDisplayLabel(activeRejectedLevel)}`}
               </>
             )}
           </span>
@@ -434,8 +449,8 @@ export default function WfmWarningsModal({
           <div className="flex items-center gap-1">
             <button
               type="button"
-              disabled={warningPage <= 1}
-              onClick={() => setWarningPage(1)}
+              disabled={rejectedPage <= 1}
+              onClick={() => setRejectedPage(1)}
               title="First Page"
               className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition-all hover:border-sibs-primary-1 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
             >
@@ -443,8 +458,8 @@ export default function WfmWarningsModal({
             </button>
             <button
               type="button"
-              disabled={warningPage <= 1}
-              onClick={() => setWarningPage((prev) => Math.max(1, prev - 1))}
+              disabled={rejectedPage <= 1}
+              onClick={() => setRejectedPage((prev) => Math.max(1, prev - 1))}
               title="Previous Page"
               className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition-all hover:border-sibs-primary-1 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
             >
@@ -453,27 +468,27 @@ export default function WfmWarningsModal({
 
             {/* Numbered page buttons: shown on sm+ screens */}
             <div className="hidden sm:flex items-center gap-1 px-1">
-              {getPageNumbers(warningPage, warningTotalPages).map((p, idx) => {
+              {getPageNumbers(rejectedPage, rejectedTotalPages).map((p, idx) => {
                 if (p === "...") {
                   return (
                     <span
-                      key={`warning-ellipsis-${idx}`}
+                      key={`rejected-ellipsis-${idx}`}
                       className="select-none px-1 text-slate-400 text-xs"
                     >
                       ...
                     </span>
                   );
                 }
-                const isActivePage = p === warningPage;
+                const isActivePage = p === rejectedPage;
                 return (
                   <button
-                    key={`warning-page-${p}`}
+                    key={`rejected-page-${p}`}
                     type="button"
-                    onClick={() => setWarningPage(p)}
+                    onClick={() => setRejectedPage(p)}
                     className={`inline-flex h-8 min-w-[32px] items-center justify-center rounded-lg px-2 text-xs font-semibold transition-all ${
                       isActivePage
-                        ? "bg-sibs-primary-1 text-white shadow-xs font-bold"
-                        : "border border-slate-200 bg-white text-slate-700 hover:border-sibs-primary-1 hover:bg-slate-50"
+                        ? "bg-red-600 text-white shadow-xs font-bold"
+                        : "border border-slate-200 bg-white text-slate-700 hover:border-red-400 hover:bg-red-50/50"
                     }`}
                   >
                     {p}
@@ -485,15 +500,15 @@ export default function WfmWarningsModal({
             {/* Compact page indicator badge on mobile */}
             <div className="flex sm:hidden items-center px-1.5 text-xs font-medium text-slate-700">
               <span>
-                {warningPage} / {warningTotalPages}
+                {rejectedPage} / {rejectedTotalPages}
               </span>
             </div>
 
             <button
               type="button"
-              disabled={warningPage >= warningTotalPages}
+              disabled={rejectedPage >= rejectedTotalPages}
               onClick={() =>
-                setWarningPage((prev) => Math.min(warningTotalPages, prev + 1))
+                setRejectedPage((prev) => Math.min(rejectedTotalPages, prev + 1))
               }
               title="Next Page"
               className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition-all hover:border-sibs-primary-1 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
@@ -502,8 +517,8 @@ export default function WfmWarningsModal({
             </button>
             <button
               type="button"
-              disabled={warningPage >= warningTotalPages}
-              onClick={() => setWarningPage(warningTotalPages)}
+              disabled={rejectedPage >= rejectedTotalPages}
+              onClick={() => setRejectedPage(rejectedTotalPages)}
               title="Last Page"
               className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition-all hover:border-sibs-primary-1 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
             >
