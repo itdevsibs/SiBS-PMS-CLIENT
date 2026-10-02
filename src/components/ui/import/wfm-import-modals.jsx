@@ -13,6 +13,8 @@ import {
 } from "@/components/ui/import/wfm-status-feedback-modals";
 import WfmTaskOrderModal from "@/components/ui/import/wfm-task-order-modal";
 import WfmWarningsModal from "@/components/ui/import/wfm-warnings-modal";
+import WfmRejectedModal from "@/components/ui/import/wfm-rejected-modal";
+import WfmDuplicatesModal from "@/components/ui/import/wfm-duplicates-modal";
 
 export default function WfmImportModals({
   // Task Order
@@ -49,9 +51,13 @@ export default function WfmImportModals({
   selectedUploadDetails,
   onCloseBatchDetails,
 
-  // Warnings
+  // Warnings, Rejected & Duplicates
   isWarningsModalOpen,
   onCloseWarnings,
+  isRejectedModalOpen,
+  onCloseRejected,
+  isDuplicatesModalOpen,
+  onCloseDuplicates,
   uploadsByCard,
   selectedAccount,
 
@@ -145,6 +151,30 @@ export default function WfmImportModals({
       <WfmWarningsModal
         isOpen={isWarningsModalOpen}
         onClose={onCloseWarnings}
+        uploadsByCard={uploadsByCard}
+        selectedAccount={selectedAccount}
+        isLoadingUsVisaErrors={isLoadingUsVisaErrors}
+        handleOpenUsVisaErrors={handleOpenUsVisaErrors}
+        handleOpenBatchDetails={handleOpenBatchDetails}
+        setUploadToRemove={setUploadToRemove}
+      />
+
+      {/* Rejected Records Modal */}
+      <WfmRejectedModal
+        isOpen={isRejectedModalOpen}
+        onClose={onCloseRejected}
+        uploadsByCard={uploadsByCard}
+        selectedAccount={selectedAccount}
+        isLoadingUsVisaErrors={isLoadingUsVisaErrors}
+        handleOpenUsVisaErrors={handleOpenUsVisaErrors}
+        handleOpenBatchDetails={handleOpenBatchDetails}
+        setUploadToRemove={setUploadToRemove}
+      />
+
+      {/* Duplicates Modal */}
+      <WfmDuplicatesModal
+        isOpen={isDuplicatesModalOpen}
+        onClose={onCloseDuplicates}
         uploadsByCard={uploadsByCard}
         selectedAccount={selectedAccount}
         isLoadingUsVisaErrors={isLoadingUsVisaErrors}

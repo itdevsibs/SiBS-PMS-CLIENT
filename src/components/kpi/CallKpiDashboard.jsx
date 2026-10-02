@@ -39,30 +39,30 @@ function getTooltipPositionClass(periodIndex, seriesLength) {
 
 function KpiCard({ icon: Icon, label, value, hint, status, title }) {
   return (
-    <article className="sibs-card min-w-0 px-3 py-2 sm:px-3 sm:py-2.5 shadow-xs flex flex-col justify-between gap-1.5 transition-all duration-150 hover:border-sibs-primary-1/30">
+    <article className="sibs-card rounded-xl min-w-0 px-2.5 py-1.5 sm:px-3 sm:py-2 shadow-2xs flex flex-col justify-between gap-1 transition-all duration-150 hover:border-sibs-primary-1/30">
       {/* 1. Header: Label + Icon */}
       <div className="flex items-center justify-between gap-1 min-w-0">
         <span
-          className="m-0 text-[10px] xl:text-[10.5px] font-extrabold uppercase tracking-wider text-sibs-tertiary-5 leading-none truncate"
+          className="m-0 text-[9px] xl:text-[9.5px] font-extrabold uppercase tracking-wider text-sibs-tertiary-5 leading-none truncate"
           title={title || label}
         >
           {label}
         </span>
-        <div className="rounded-md bg-sibs-primary-3/50 p-1 text-sibs-primary-1 shrink-0">
-          <Icon size={13} />
+        <div className="rounded p-0.5 text-sibs-tertiary-5/80 shrink-0">
+          <Icon size={12} />
         </div>
       </div>
 
       {/* 2. Value + Badge & Hint */}
       <div className="flex flex-col gap-0.5 min-w-0">
         <div className="flex items-baseline justify-between gap-1 min-w-0">
-          <span className="text-lg sm:text-xl xl:text-[22px] 2xl:text-2xl font-black text-sibs-primary-1 leading-none tracking-tight shrink-0">
+          <span className="text-base sm:text-lg xl:text-[19px] font-black text-sibs-primary-1 leading-none tracking-tight shrink-0">
             {value}
           </span>
 
           {status ? (
             <span
-              className={`inline-flex shrink-0 items-center rounded-full px-1.5 py-0.5 text-[9px] font-bold leading-none ${status.className}`}
+              className={`inline-flex shrink-0 items-center rounded-full px-1.5 py-0.5 text-[8.5px] font-bold leading-none ${status.className}`}
             >
               {status.label}
             </span>
@@ -71,8 +71,8 @@ function KpiCard({ icon: Icon, label, value, hint, status, title }) {
 
         {hint ? (
           <p
-            className="m-0 text-[10px] xl:text-[10.5px] font-medium text-sibs-tertiary-5 leading-tight truncate"
-            title={hint}
+            className="m-0 text-[9px] xl:text-[9.5px] font-bold text-sibs-tertiary-5 leading-tight truncate"
+            title={typeof hint === "string" ? hint : undefined}
           >
             {hint}
           </p>
@@ -82,38 +82,57 @@ function KpiCard({ icon: Icon, label, value, hint, status, title }) {
   );
 }
 
-function ChartShell({ title, subtitle, children }) {
+function ChartShell({ title, subtitle, legend, children }) {
   return (
-    <article className="sibs-card relative z-10 flex flex-col h-full shadow-xs overflow-hidden">
-      <div className="border-b border-sibs-tertiary-10 bg-sibs-primary-3/30 px-4 py-2.5 rounded-t-xl">
-        <h3 className="m-0 text-xs font-extrabold uppercase tracking-[0.14em] text-sibs-primary-1 truncate">
-          {title}
-        </h3>
+    <article className="sibs-card relative z-10 flex flex-col h-full shadow-xs">
+      <div className="border-b border-sibs-tertiary-10 bg-sibs-primary-3/30 px-3 py-1 sm:px-3 sm:py-1 rounded-t-xl">
+        <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
+          <h3 className="m-0 text-[11px] sm:text-xs font-extrabold uppercase tracking-[0.1em] text-sibs-primary-1 truncate">
+            {title}
+          </h3>
+
+          {legend ? (
+            <div className="inline-flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[9.5px]">
+              {legend}
+            </div>
+          ) : null}
+        </div>
 
         {subtitle ? (
-          <p className="mt-0.5 mb-0 text-[10.5px] text-sibs-tertiary-5 truncate">
-            {subtitle}
-          </p>
+          <div className="mt-0.5 text-[10px] sm:text-[10.5px] text-sibs-tertiary-5 leading-tight">
+            <span>{subtitle}</span>
+          </div>
         ) : null}
       </div>
 
-      <div className="p-3 pb-2.5 flex-1 flex flex-col min-w-0 overflow-hidden">
+      <div className="p-1.5 sm:p-2 pb-1.5 flex-1 flex flex-col min-w-0 overflow-visible relative z-20">
         {children}
       </div>
     </article>
   );
 }
 
-function EmptyChart({ message = "No KPI data is available for this reporting range." }) {
+function EmptyChart({ message = "No KPI data is available for this reporting range.", isSubmodule = false, showFilters = true }) {
+  const emptyHeightStyle = isSubmodule
+    ? {
+        minHeight: showFilters
+          ? "clamp(140px, calc(50vh - 225px), 220px)"
+          : "clamp(220px, calc(50vh - 150px), 320px)",
+      }
+    : { minHeight: "208px" };
+
   return (
-    <div className="flex min-h-64 items-center justify-center rounded-xl border border-dashed border-sibs-tertiary-8 bg-sibs-tertiary-10/30 px-3 text-center text-xs font-semibold text-sibs-tertiary-5">
+    <div
+      className="flex items-center justify-center rounded-xl border border-dashed border-sibs-tertiary-8 bg-sibs-tertiary-10/30 px-3 text-center text-xs font-semibold text-sibs-tertiary-5 transition-all duration-300 ease-in-out"
+      style={emptyHeightStyle}
+    >
       {message}
     </div>
   );
 }
 
-function VolumeChart({ series, period }) {
-  if (!series.length) return <EmptyChart message="No call volume recorded for this reporting range." />;
+function VolumeChart({ series, period, hideLegend = false, isSubmodule = false, showFilters = true }) {
+  if (!series.length) return <EmptyChart message="No call volume recorded for this reporting range." isSubmodule={isSubmodule} showFilters={showFilters} />;
 
   const totalVolume = series.reduce(
     (acc, item) => acc + Number(item.callsOffered || 0),
@@ -121,7 +140,7 @@ function VolumeChart({ series, period }) {
   );
 
   if (totalVolume === 0) {
-    return <EmptyChart message="No call volume recorded for this reporting range." />;
+    return <EmptyChart message="No call volume recorded for this reporting range." isSubmodule={isSubmodule} showFilters={showFilters} />;
   }
 
   const maxValue = Math.max(
@@ -136,42 +155,48 @@ function VolumeChart({ series, period }) {
   const axisTicks = getCallAxisTicks(maxValue, 4);
   const axisMax = Math.max(1, axisTicks[0] || maxValue);
   const minPeriodWidth = 84;
-  const isCustom = period === "custom";
-  const isScrollable = isCustom ? series.length > 4 : series.length > 5;
-  const trackWidth = isScrollable ? `${series.length * minPeriodWidth}px` : "100%";
+  const isScrollable = series.length > 6;
+
+  const chartHeightStyle = isSubmodule
+    ? {
+        height: showFilters
+          ? "clamp(140px, calc(50vh - 225px), 220px)"
+          : "clamp(220px, calc(50vh - 150px), 320px)",
+      }
+    : undefined;
 
   return (
     <div className="w-full min-w-0 select-none">
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs font-bold text-sibs-tertiary-5">
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-          <span className="inline-flex items-center gap-1.5">
-            <i className="inline-block h-2.5 w-2.5 rounded-full bg-[#0b3b68]" />
-            Volume
-          </span>
+      {!hideLegend ? (
+        <div className="mb-1.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs font-bold text-sibs-tertiary-5">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <span className="inline-flex items-center gap-1.5">
+              <i className="inline-block h-2.5 w-2.5 rounded-full bg-[#0b3b68]" />
+              Volume
+            </span>
 
-          <span className="inline-flex items-center gap-1.5">
-            <i className="inline-block h-2.5 w-2.5 rounded-full bg-[#2f6f9f]" />
-            Handled
-          </span>
+            <span className="inline-flex items-center gap-1.5">
+              <i className="inline-block h-2.5 w-2.5 rounded-full bg-[#2f6f9f]" />
+              Handled
+            </span>
 
-          <span className="inline-flex items-center gap-1.5">
-            <i className="inline-block h-2.5 w-2.5 rounded-full bg-[#4c9aca]" />
-            Handled w/SLA
-          </span>
+            <span className="inline-flex items-center gap-1.5">
+              <i className="inline-block h-2.5 w-2.5 rounded-full bg-[#4c9aca]" />
+              Handled w/SLA
+            </span>
+          </div>
         </div>
-        {(isScrollable || series.length > 3) && (
-          <span className="text-[10px] font-semibold text-slate-400 select-none block sm:inline">
-            Slide horizontally to view all {series.length} periods &rarr;
-          </span>
-        )}
-      </div>
+      ) : null}
 
       <div className="flex w-full min-w-0">
-        <div className="relative h-[300px] w-9 shrink-0 border-r border-sibs-tertiary-8 pr-1 bg-white z-10">
+        <div
+          className={`relative ${!isSubmodule ? "h-[190px] sm:h-[208px]" : ""} w-10 sm:w-11 shrink-0 border-r border-sibs-tertiary-8 pr-1 bg-white z-10 transition-all duration-300 ease-in-out`}
+          style={chartHeightStyle}
+        >
           {axisTicks.map((tick, index) => (
             <span
               key={`${tick}-${index}`}
-              className="absolute right-1 -translate-y-1/2 text-[10px] font-semibold text-sibs-tertiary-5"
+              className={`absolute right-1 -translate-y-1/2 ${isSubmodule ? "text-[10px] sm:text-[11px] font-bold" : "text-[10px] font-semibold"} text-sibs-tertiary-5`}
               style={{
                 top: `${(index / (axisTicks.length - 1)) * 100}%`,
               }}
@@ -181,9 +206,12 @@ function VolumeChart({ series, period }) {
           ))}
         </div>
 
-        <div className="relative min-w-0 flex-1 overflow-x-auto overflow-y-hidden pb-1 sibs-chart-scrollbar">
-          <div className="relative min-w-full w-max sm:w-full">
-            <div className="relative flex h-[300px] min-w-0 items-end gap-1 border-b border-sibs-tertiary-8 px-1">
+        <div className={`relative min-w-0 flex-1 ${isScrollable ? "overflow-x-auto pb-1 sibs-chart-scrollbar" : "overflow-hidden"} overflow-y-hidden`}>
+          <div className={`relative min-w-full ${isScrollable ? "w-max" : "w-full"}`}>
+            <div
+              className={`relative flex ${!isSubmodule ? "h-[190px] sm:h-[208px]" : ""} min-w-0 items-end gap-1 border-b border-sibs-tertiary-8 px-1 transition-all duration-300 ease-in-out`}
+              style={chartHeightStyle}
+            >
               {/* Horizontal Gridlines spanning 100% of the bars container */}
               <div className="pointer-events-none absolute inset-0">
                 {axisTicks.map((tick, index) => (
@@ -201,11 +229,11 @@ function VolumeChart({ series, period }) {
                 return (
                   <div
                     key={item.key || periodIndex}
-                    className="group/period relative z-10 flex h-full min-w-0 flex-1 items-end justify-center px-0.5"
-                    style={{ minWidth: `${minPeriodWidth}px` }}
+                    className="group/period relative z-10 hover:z-50 flex h-full min-w-0 flex-1 items-end justify-center px-0.5"
+                    style={isScrollable ? { minWidth: `${minPeriodWidth}px` } : undefined}
                   >
                   {/* Clustered 3-bar group with chunky width matching the 5-day daily view */}
-                  <div className="flex h-full w-full max-w-[120px] items-end justify-center gap-0">
+                  <div className={`flex h-full w-full ${isSubmodule ? "max-w-[170px]" : "max-w-[120px]"} items-end justify-center gap-0`}>
                     {buildVolumeBarItems(item).map(
                       ({ metric, value, className }, barIndex) => {
                         const numericValue = Number(value || 0);
@@ -217,22 +245,22 @@ function VolumeChart({ series, period }) {
 
                         // Middle bar (Handled) is elevated cleanly above the Volume bar so it never touches adjacent labels
                         // Side bars (Volume & Handled w/SLA) rest neatly above their bar caps
-                        const isInsideBar = heightPercent > 10;
+                        const isInsideBar = heightPercent > (isSubmodule ? 7 : 10);
                         const labelBottom = isInsideBar
-                          ? `calc(${heightPercent}% - 17px)`
-                          : `calc(${heightPercent}% + 4px)`;
+                          ? `calc(${heightPercent}% - ${isSubmodule ? 16 : 14}px)`
+                          : `calc(${heightPercent}% + 3px)`;
 
                         return (
                           <div
                             key={metric}
-                            className="group/bar relative flex h-full min-w-0 flex-1 items-end justify-center"
+                            className="group/bar relative hover:z-50 flex h-full min-w-0 flex-1 items-end justify-center"
                             aria-label={`${item.label} ${metric}: ${formatGraphNumber(
                               numericValue,
                             )}`}
                           >
                             {numericValue > 0 ? (
                               <span
-                                className={`pointer-events-none absolute left-1/2 z-10 -translate-x-1/2 whitespace-nowrap text-[8px] sm:text-[8.5px] 2xl:text-[9px] font-medium tracking-tight transition-all duration-200 group-hover/bar:-translate-y-0.5 sibs-graph-number-in ${
+                                className={`pointer-events-none absolute left-1/2 z-10 -translate-x-1/2 whitespace-nowrap ${isSubmodule ? "text-[8.5px] sm:text-[9px] font-semibold" : "text-[8px] sm:text-[8.5px] 2xl:text-[9px] font-medium"} tracking-tight transition-all duration-200 group-hover/bar:-translate-y-0.5 sibs-graph-number-in ${
                                   isInsideBar
                                     ? "text-white drop-shadow-xs"
                                     : "text-sibs-primary-1"
@@ -248,7 +276,7 @@ function VolumeChart({ series, period }) {
 
                           {/* Tooltip Modal */}
                           <div
-                            className={`pointer-events-none absolute top-3 z-40 hidden w-44 max-w-[calc(100vw-2rem)] rounded-xl border border-sibs-tertiary-10/80 bg-white/95 p-2.5 shadow-xl backdrop-blur-md group-hover/bar:block ${getTooltipPositionClass(
+                            className={`pointer-events-none absolute top-3 z-50 hidden w-44 max-w-[calc(100vw-2rem)] rounded-xl border border-sibs-tertiary-10/80 bg-white/95 p-2.5 shadow-xl backdrop-blur-md group-hover/bar:block ${getTooltipPositionClass(
                               periodIndex,
                               series.length,
                             )}`}
@@ -298,7 +326,7 @@ function VolumeChart({ series, period }) {
                           </div>
 
                           <div
-                            className={`w-full max-w-[42px] rounded-t-[4px] ${className} transition-all duration-200 ease-out group-hover/bar:-translate-y-0.5 group-hover/bar:brightness-110 shadow-xs sibs-graph-bar-rise`}
+                            className={`w-full ${isSubmodule ? "max-w-[46px]" : "max-w-[42px]"} rounded-t-[4px] ${className} transition-all duration-200 ease-out group-hover/bar:-translate-y-0.5 group-hover/bar:brightness-110 shadow-xs sibs-graph-bar-rise`}
                             style={{
                               height: `${heightPercent}%`,
                               animationDelay: `${Math.min(periodIndex * 80 + barIndex * 40, 650)}ms`,
@@ -318,21 +346,14 @@ function VolumeChart({ series, period }) {
             {series.map((item, periodIndex) => (
               <div
                 key={item.key || periodIndex}
-                className="mt-2 min-w-0 flex-1 px-0.5 text-center"
-                style={{ minWidth: `${minPeriodWidth}px` }}
+                className="mt-1.5 min-w-0 flex-1 px-0.5 text-center"
+                style={isScrollable ? { minWidth: `${minPeriodWidth}px` } : undefined}
               >
                 <p
-                  className="m-0 truncate text-[10.5px] font-extrabold text-sibs-primary-1 leading-tight"
+                  className={`m-0 truncate ${isSubmodule ? "text-xs sm:text-[13px] font-extrabold" : "text-[10.5px] font-extrabold"} text-sibs-primary-1 leading-tight`}
                   title={item.label}
                 >
                   {item.label}
-                </p>
-
-                <p
-                  className="m-0 truncate text-[9px] font-semibold uppercase text-sibs-tertiary-5"
-                  title={`Period ${periodIndex + 1}`}
-                >
-                  Period {periodIndex + 1}
                 </p>
               </div>
             ))}
@@ -344,8 +365,8 @@ function VolumeChart({ series, period }) {
   );
 }
 
-function LineChart({ series, target = 90, period }) {
-  if (!series.length) return <EmptyChart message="No answer rate or service level data available for this reporting range." />;
+function LineChart({ series, target = 90, period, hideLegend = false, isSubmodule = false, showFilters = true }) {
+  if (!series.length) return <EmptyChart message="No answer rate or service level data available for this reporting range." isSubmodule={isSubmodule} showFilters={showFilters} />;
 
   const activeSeries = series.filter(
     (item) => Number(item.callsOffered || 0) > 0,
@@ -353,7 +374,7 @@ function LineChart({ series, target = 90, period }) {
 
   if (activeSeries.length === 0) {
     return (
-      <EmptyChart message="No answer rate or service level data available for this reporting range." />
+      <EmptyChart message="No answer rate or service level data available for this reporting range." isSubmodule={isSubmodule} showFilters={showFilters} />
     );
   }
 
@@ -376,44 +397,50 @@ function LineChart({ series, target = 90, period }) {
   ];
 
   const minPeriodWidth = 84;
-  const isCustom = period === "custom";
-  const isScrollable = isCustom ? series.length > 4 : series.length > 5;
-  const trackWidth = isScrollable ? `${series.length * minPeriodWidth}px` : "100%";
+  const isScrollable = series.length > 6;
+
+  const chartHeightStyle = isSubmodule
+    ? {
+        height: showFilters
+          ? "clamp(140px, calc(50vh - 225px), 220px)"
+          : "clamp(220px, calc(50vh - 150px), 320px)",
+      }
+    : undefined;
 
   return (
     <div className="w-full min-w-0 select-none">
       {/* 1. Header Legend */}
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs font-bold text-sibs-tertiary-5">
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-          <span className="inline-flex items-center gap-1.5 text-[#0b3b68]">
-            <i className="h-2.5 w-2.5 rounded-full bg-[#0b3b68]" />
-            Answer
-          </span>
+      {!hideLegend ? (
+        <div className="mb-1.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs font-bold text-sibs-tertiary-5">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <span className="inline-flex items-center gap-1.5 text-[#0b3b68]">
+              <i className="h-2.5 w-2.5 rounded-full bg-[#0b3b68]" />
+              Answer
+            </span>
 
-          <span className="inline-flex items-center gap-1.5 text-[#0284c7]">
-            <i className="h-2.5 w-2.5 rounded-full bg-[#0284c7]" />
-            Service Level
-          </span>
+            <span className="inline-flex items-center gap-1.5 text-[#0284c7]">
+              <i className="h-2.5 w-2.5 rounded-full bg-[#0284c7]" />
+              Service Level
+            </span>
 
-          <span className="inline-flex items-center gap-1 text-red-500">
-            <i className="inline-block h-0.5 w-3.5 bg-red-500 border-t border-dashed border-red-500" />
-            Target: {numericTarget}%
-          </span>
+            <span className="inline-flex items-center gap-1 text-red-500">
+              <i className="inline-block h-0.5 w-3.5 bg-red-500 border-t border-dashed border-red-500" />
+              Target: {numericTarget}%
+            </span>
+          </div>
         </div>
-        {(isScrollable || series.length > 3) && (
-          <span className="text-[10px] font-semibold text-slate-400 select-none block sm:inline">
-            Slide horizontally to view all {series.length} periods &rarr;
-          </span>
-        )}
-      </div>
+      ) : null}
 
       <div className="flex w-full min-w-0">
         {/* 2. Y-Axis Ticks */}
-        <div className="relative h-[300px] w-9 shrink-0 border-r border-sibs-tertiary-8 pr-1 bg-white z-10">
+        <div
+          className={`relative ${!isSubmodule ? "h-[190px] sm:h-[208px]" : ""} w-10 sm:w-11 shrink-0 border-r border-sibs-tertiary-8 pr-1 bg-white z-10 transition-all duration-300 ease-in-out`}
+          style={chartHeightStyle}
+        >
           {axisTicks.map((tick, index) => (
             <span
               key={`${tick}-${index}`}
-              className="absolute right-1 -translate-y-1/2 text-[10px] font-semibold text-sibs-tertiary-5"
+              className={`absolute right-1 -translate-y-1/2 ${isSubmodule ? "text-[10px] sm:text-[11px] font-bold" : "text-[10px] font-semibold"} text-sibs-tertiary-5`}
               style={{
                 top: `${(index / (axisTicks.length - 1)) * 100}%`,
               }}
@@ -424,10 +451,13 @@ function LineChart({ series, target = 90, period }) {
         </div>
 
         {/* 3. Main Chart Canvas */}
-        <div className="relative min-w-0 flex-1 overflow-x-auto overflow-y-hidden pb-1 sibs-chart-scrollbar">
-          <div className="relative min-w-full w-max sm:w-full">
+        <div className={`relative min-w-0 flex-1 ${isScrollable ? "overflow-x-auto pb-1 sibs-chart-scrollbar" : "overflow-hidden"} overflow-y-hidden`}>
+          <div className={`relative min-w-full ${isScrollable ? "w-max" : "w-full"}`}>
             {/* Clustered Bars Container */}
-            <div className="relative flex h-[300px] min-w-0 items-end gap-2.5 sm:gap-3.5 border-b border-sibs-tertiary-8 px-1 sm:px-1.5">
+            <div
+              className={`relative flex ${!isSubmodule ? "h-[190px] sm:h-[208px]" : ""} min-w-0 items-end ${isScrollable ? "gap-2.5 sm:gap-3.5" : "gap-1 sm:gap-1.5"} border-b border-sibs-tertiary-8 px-1 sm:px-1.5 transition-all duration-300 ease-in-out`}
+              style={chartHeightStyle}
+            >
               {/* Horizontal Grid Lines */}
               <div className="pointer-events-none absolute inset-0">
                 {axisTicks.map((tick, index) => (
@@ -458,8 +488,8 @@ function LineChart({ series, target = 90, period }) {
                 return (
                   <div
                     key={item.key || periodIndex}
-                    className="group/period relative z-10 flex h-full min-w-0 flex-1 items-end justify-center px-0.5"
-                    style={{ minWidth: `${minPeriodWidth}px` }}
+                    className="group/period relative z-10 hover:z-50 flex h-full min-w-0 flex-1 items-end justify-center px-0.5"
+                    style={isScrollable ? { minWidth: `${minPeriodWidth}px` } : undefined}
                   >
                   <div className="flex h-full w-full max-w-[82px] items-end justify-center gap-0">
                     {bars.map(({ metric, value, className, color }, barIndex) => {
@@ -469,13 +499,13 @@ function LineChart({ series, target = 90, period }) {
                       return (
                         <div
                           key={metric}
-                          className="group/bar relative flex h-full min-w-0 flex-1 items-end justify-center"
+                          className="group/bar relative hover:z-50 flex h-full min-w-0 flex-1 items-end justify-center"
                           aria-label={`${item.label} ${metric}: ${formatPercent(numericValue)}`}
                         >
                           {/* Value inside bar */}
                           {hasData && numericValue > 0 ? (
                             <span
-                              className={`pointer-events-none absolute left-1/2 z-10 -translate-x-1/2 whitespace-nowrap text-[8px] sm:text-[8.5px] 2xl:text-[9px] font-medium tracking-tight transition-all duration-200 group-hover/bar:-translate-y-0.5 sibs-graph-number-in ${
+                              className={`pointer-events-none absolute left-1/2 z-10 -translate-x-1/2 whitespace-nowrap ${isSubmodule ? "text-[8.5px] sm:text-[9px] font-semibold" : "text-[8px] sm:text-[8.5px] 2xl:text-[9px] font-medium"} tracking-tight transition-all duration-200 group-hover/bar:-translate-y-0.5 sibs-graph-number-in ${
                                 heightPercent > 10
                                   ? "text-white drop-shadow-xs"
                                   : "text-sibs-primary-1"
@@ -483,8 +513,8 @@ function LineChart({ series, target = 90, period }) {
                               style={{
                                 bottom:
                                   heightPercent > 10
-                                    ? `calc(${heightPercent}% - 16px)`
-                                    : `calc(${heightPercent}% + 4px)`,
+                                    ? `calc(${heightPercent}% - ${isSubmodule ? 15 : 14}px)`
+                                    : `calc(${heightPercent}% + 3px)`,
                                 animationDelay: `${Math.min(periodIndex * 80 + barIndex * 40, 650)}ms`,
                               }}
                             >
@@ -497,7 +527,7 @@ function LineChart({ series, target = 90, period }) {
                           {/* Hover Tooltip Modal */}
                           {hasData ? (
                             <div
-                              className={`pointer-events-none absolute top-3 z-40 hidden w-44 max-w-[calc(100vw-2rem)] rounded-xl border border-sibs-tertiary-10/80 bg-white/95 p-2.5 shadow-xl backdrop-blur-md group-hover/bar:block ${getTooltipPositionClass(
+                              className={`pointer-events-none absolute top-3 z-50 hidden w-44 max-w-[calc(100vw-2rem)] rounded-xl border border-sibs-tertiary-10/80 bg-white/95 p-2.5 shadow-xl backdrop-blur-md group-hover/bar:block ${getTooltipPositionClass(
                                 periodIndex,
                                 series.length,
                               )}`}
@@ -553,7 +583,7 @@ function LineChart({ series, target = 90, period }) {
                           {/* Bar Element */}
                           {hasData && heightPercent > 0 ? (
                             <div
-                              className={`w-full max-w-[42px] rounded-t-[4px] ${className} transition-all duration-200 ease-out group-hover/bar:-translate-y-0.5 group-hover/bar:brightness-110 shadow-xs sibs-graph-bar-rise`}
+                              className={`w-full ${isSubmodule ? "max-w-[46px]" : "max-w-[42px]"} rounded-t-[4px] ${className} transition-all duration-200 ease-out group-hover/bar:-translate-y-0.5 group-hover/bar:brightness-110 shadow-xs sibs-graph-bar-rise`}
                               style={{
                                 height: `${heightPercent}%`,
                                 animationDelay: `${Math.min(periodIndex * 80 + barIndex * 40, 650)}ms`,
@@ -572,25 +602,18 @@ function LineChart({ series, target = 90, period }) {
           </div>
 
           {/* 4. X-Axis Labels */}
-          <div className="flex w-full min-w-full gap-2.5 sm:gap-3.5 px-1 sm:px-1.5">
+          <div className={`flex w-full min-w-full ${isScrollable ? "gap-2.5 sm:gap-3.5" : "gap-1 sm:gap-1.5"} px-1 sm:px-1.5`}>
             {series.map((item, periodIndex) => (
               <div
                 key={item.key || periodIndex}
-                className="mt-2 min-w-0 flex-1 px-0.5 text-center"
-                style={{ minWidth: `${minPeriodWidth}px` }}
+                className="mt-1.5 min-w-0 flex-1 px-0.5 text-center"
+                style={isScrollable ? { minWidth: `${minPeriodWidth}px` } : undefined}
               >
                 <p
-                  className="m-0 truncate text-[10.5px] font-extrabold text-sibs-primary-1 leading-tight"
+                  className={`m-0 truncate ${isSubmodule ? "text-xs sm:text-[13px] font-extrabold" : "text-[10.5px] font-extrabold"} text-sibs-primary-1 leading-tight`}
                   title={item.label}
                 >
                   {item.label}
-                </p>
-
-                <p
-                  className="m-0 truncate text-[9px] font-semibold uppercase text-sibs-tertiary-5"
-                  title={`Period ${periodIndex + 1}`}
-                >
-                  Period {periodIndex + 1}
                 </p>
               </div>
             ))}
@@ -602,8 +625,8 @@ function LineChart({ series, target = 90, period }) {
   );
 }
 
-function AhtChart({ series, target, period }) {
-  if (!series.length) return <EmptyChart message="No average handling time data available for this reporting range." />;
+function AhtChart({ series, target, period, hideLegend = false, isSubmodule = false, showFilters = true }) {
+  if (!series.length) return <EmptyChart message="No average handling time data available for this reporting range." isSubmodule={isSubmodule} showFilters={showFilters} />;
 
   const normalizedTarget = convertDurationToSeconds(target);
   const activeAhtSeries = series.filter(
@@ -611,7 +634,7 @@ function AhtChart({ series, target, period }) {
   );
 
   if (activeAhtSeries.length === 0) {
-    return <EmptyChart message="No average handling time data available for this reporting range." />;
+    return <EmptyChart message="No average handling time data available for this reporting range." isSubmodule={isSubmodule} showFilters={showFilters} />;
   }
 
   const maxValue = Math.max(
@@ -631,37 +654,43 @@ function AhtChart({ series, target, period }) {
   );
 
   const minPeriodWidth = 76;
-  const isCustom = period === "custom";
-  const isScrollable = isCustom ? series.length > 4 : series.length > 5;
-  const trackWidth = isScrollable ? `${series.length * minPeriodWidth}px` : "100%";
+  const isScrollable = series.length > 6;
+
+  const chartHeightStyle = isSubmodule
+    ? {
+        height: showFilters
+          ? "clamp(140px, calc(50vh - 225px), 220px)"
+          : "clamp(220px, calc(50vh - 150px), 320px)",
+      }
+    : undefined;
 
   return (
     <div className="w-full min-w-0 select-none">
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs font-bold text-sibs-tertiary-5">
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-          <span className="inline-flex items-center gap-1.5">
-            <i className="inline-block h-2.5 w-2.5 rounded-full bg-[#0b3b68]" />
-            Call AHT
-          </span>
+      {!hideLegend ? (
+        <div className="mb-1.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs font-bold text-sibs-tertiary-5">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <span className="inline-flex items-center gap-1.5">
+              <i className="inline-block h-2.5 w-2.5 rounded-full bg-[#0b3b68]" />
+              Call AHT
+            </span>
 
-          <span className="inline-flex items-center gap-1 text-red-500">
-            <i className="inline-block h-0.5 w-3.5 bg-red-500" />
-            Target: {formatNumber(normalizedTarget)}s
-          </span>
+            <span className="inline-flex items-center gap-1 text-red-500">
+              <i className="inline-block h-0.5 w-3.5 bg-red-500" />
+              Target: {formatNumber(normalizedTarget)}s
+            </span>
+          </div>
         </div>
-        {(isScrollable || series.length > 3) && (
-          <span className="text-[10px] font-semibold text-slate-400 select-none block sm:inline">
-            Slide horizontally to view all {series.length} periods &rarr;
-          </span>
-        )}
-      </div>
+      ) : null}
 
       <div className="flex w-full min-w-0">
-        <div className="relative h-[300px] w-9 shrink-0 border-r border-sibs-tertiary-8 pr-1 bg-white z-10">
+        <div
+          className={`relative ${!isSubmodule ? "h-[190px] sm:h-[208px]" : ""} w-10 sm:w-11 shrink-0 border-r border-sibs-tertiary-8 pr-1 bg-white z-10 transition-all duration-300 ease-in-out`}
+          style={chartHeightStyle}
+        >
           {axisTicks.map((tick, index) => (
             <span
               key={`${tick}-${index}`}
-              className="absolute right-1 -translate-y-1/2 text-[10px] font-semibold text-sibs-tertiary-5"
+              className={`absolute right-1 -translate-y-1/2 ${isSubmodule ? "text-[10px] sm:text-[11px] font-bold" : "text-[10px] font-semibold"} text-sibs-tertiary-5`}
               style={{
                 top: `${(index / (axisTicks.length - 1)) * 100}%`,
               }}
@@ -671,9 +700,12 @@ function AhtChart({ series, target, period }) {
           ))}
         </div>
 
-        <div className="relative min-w-0 flex-1 overflow-x-auto overflow-y-hidden pb-1 sibs-chart-scrollbar">
-          <div className="relative min-w-full w-max sm:w-full">
-            <div className="relative flex h-[300px] min-w-0 items-end gap-1 border-b border-sibs-tertiary-8 px-1">
+        <div className={`relative min-w-0 flex-1 ${isScrollable ? "overflow-x-auto pb-1 sibs-chart-scrollbar" : "overflow-hidden"} overflow-y-hidden`}>
+          <div className={`relative min-w-full ${isScrollable ? "w-max" : "w-full"}`}>
+            <div
+              className={`relative flex ${!isSubmodule ? "h-[190px] sm:h-[208px]" : ""} min-w-0 items-end gap-1 border-b border-sibs-tertiary-8 px-1 transition-all duration-300 ease-in-out`}
+              style={chartHeightStyle}
+            >
               {/* Horizontal Gridlines spanning 100% of bars container */}
               <div className="pointer-events-none absolute inset-0">
                 {axisTicks.map((tick, index) => (
@@ -704,12 +736,12 @@ function AhtChart({ series, target, period }) {
                 return (
                   <div
                     key={item.key || itemIndex}
-                    className="group/aht relative z-10 hover:z-30 flex h-full min-w-0 flex-1 flex-col items-center justify-end"
-                    style={{ minWidth: `${minPeriodWidth}px` }}
+                    className="group/aht relative z-10 hover:z-50 flex h-full min-w-0 flex-1 flex-col items-center justify-end"
+                    style={isScrollable ? { minWidth: `${minPeriodWidth}px` } : undefined}
                   >
                   {hasAht ? (
                     <p
-                      className={`pointer-events-none absolute left-1/2 z-10 -translate-x-1/2 whitespace-nowrap text-[9px] sm:text-[10px] 2xl:text-[11px] font-medium tracking-tight transition-all duration-200 group-hover/aht:-translate-y-0.5 sibs-graph-number-in ${
+                      className={`pointer-events-none absolute left-1/2 z-10 -translate-x-1/2 whitespace-nowrap ${isSubmodule ? "text-[8.5px] sm:text-[9px] font-semibold" : "text-[8px] sm:text-[8.5px] 2xl:text-[9px] font-medium"} tracking-tight transition-all duration-200 group-hover/aht:-translate-y-0.5 sibs-graph-number-in ${
                         heightPct > 10
                           ? "text-white drop-shadow-xs"
                           : "text-sibs-primary-1"
@@ -717,8 +749,8 @@ function AhtChart({ series, target, period }) {
                       style={{
                         bottom:
                           heightPct > 10
-                            ? `calc(${heightPct}% - 18px)`
-                            : `calc(${heightPct}% + 4px)`,
+                            ? `calc(${heightPct}% - ${isSubmodule ? 15 : 14}px)`
+                            : `calc(${heightPct}% + 3px)`,
                         animationDelay: `${Math.min(itemIndex * 60, 500)}ms`,
                       }}
                     >
@@ -731,7 +763,7 @@ function AhtChart({ series, target, period }) {
                   {/* Tooltip Modal */}
                   {hasAht ? (
                     <div
-                      className={`pointer-events-none absolute top-3 z-40 hidden w-44 max-w-[calc(100vw-2rem)] rounded-xl border border-sibs-tertiary-10 bg-white/95 p-2.5 shadow-xl backdrop-blur-md group-hover/aht:block ${getTooltipPositionClass(
+                      className={`pointer-events-none absolute top-3 z-50 hidden w-44 max-w-[calc(100vw-2rem)] rounded-xl border border-sibs-tertiary-10 bg-white/95 p-2.5 shadow-xl backdrop-blur-md group-hover/aht:block ${getTooltipPositionClass(
                         itemIndex,
                         series.length,
                       )}`}
@@ -776,7 +808,7 @@ function AhtChart({ series, target, period }) {
 
                   {hasAht ? (
                     <div
-                      className="w-full max-w-[54px] rounded-t-[4px] bg-[#0b3b68] transition-all duration-200 group-hover/aht:brightness-110 group-hover/aht:-translate-y-0.5 shadow-xs sibs-graph-bar-rise"
+                      className={`w-full ${isSubmodule ? "max-w-[64px]" : "max-w-[54px]"} rounded-t-[4px] bg-[#0b3b68] transition-all duration-200 group-hover/aht:brightness-110 group-hover/aht:-translate-y-0.5 shadow-xs sibs-graph-bar-rise`}
                       style={{
                         height: `${heightPct}%`,
                         animationDelay: `${Math.min(itemIndex * 60, 500)}ms`,
@@ -794,21 +826,14 @@ function AhtChart({ series, target, period }) {
             {series.map((item, periodIndex) => (
               <div
                 key={item.key || periodIndex}
-                className="mt-2 min-w-0 flex-1 px-0.5 text-center"
-                style={{ minWidth: `${minPeriodWidth}px` }}
+                className="mt-1.5 min-w-0 flex-1 px-0.5 text-center"
+                style={isScrollable ? { minWidth: `${minPeriodWidth}px` } : undefined}
               >
                 <p
-                  className="m-0 truncate text-[10.5px] font-extrabold text-sibs-primary-1 leading-tight"
+                  className={`m-0 truncate ${isSubmodule ? "text-xs sm:text-[13px] font-extrabold" : "text-[10.5px] font-extrabold"} text-sibs-primary-1 leading-tight`}
                   title={item.label}
                 >
                   {item.label}
-                </p>
-
-                <p
-                  className="m-0 truncate text-[9px] font-semibold uppercase text-sibs-tertiary-5"
-                  title={`Period ${periodIndex + 1}`}
-                >
-                  Period {periodIndex + 1}
                 </p>
               </div>
             ))}
@@ -820,7 +845,14 @@ function AhtChart({ series, target, period }) {
   );
 }
 
-export default function CallKpiDashboard({ data, showSummaryCards = true }) {
+export default function CallKpiDashboard({
+  data,
+  showSummaryCards = true,
+  afterCards = null,
+  isSubmodule = false,
+  showFilters = true,
+}) {
+  const isFiltersVisible = showFilters !== undefined ? showFilters : showSummaryCards;
   const summary = data?.summary || {};
   const series = Array.isArray(data?.series)
     ? data.series
@@ -863,152 +895,229 @@ export default function CallKpiDashboard({ data, showSummaryCards = true }) {
   const period = data?.filters?.period || data?.data?.filters?.period;
 
   return (
-    <div className="space-y-3">
+    <div className={isSubmodule && isFiltersVisible ? "space-y-1.5 sm:space-y-2" : "space-y-2.5"}>
       {/* 7 Compact KPI Stat Cards */}
       {showSummaryCards ? (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 2xl:grid-cols-7 gap-2">
-        <KpiCard
-          icon={PhoneCall}
-          label="Call Volume"
-          value={formatNumber(summary.callsOffered)}
-          hint="Total calls offered"
-        />
+        <div className={isSubmodule ? "space-y-1" : "space-y-1.5 sm:space-y-2"}>
+          <div>
+            <div className="flex items-center gap-1.5 mb-1 px-0.5">
+              <span className="flex items-center gap-1 text-[10px] sm:text-[10.5px] font-black uppercase tracking-wider text-sibs-primary-1">
+                <PhoneCall size={11} className="text-sibs-primary-1" />
+                Calls
+              </span>
+              <div className="h-px flex-1 bg-slate-200/70" />
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 2xl:grid-cols-7 gap-1 sm:gap-1.5">
+              <KpiCard
+                icon={PhoneCall}
+                label="Call Volume"
+                value={formatNumber(summary.callsOffered)}
+                hint="Total calls offered"
+              />
 
-        <KpiCard
-          icon={PhoneCall}
-          label="Handled"
-          value={formatNumber(summary.callsHandled)}
-          hint="Total handled calls"
-        />
+            <KpiCard
+              icon={PhoneCall}
+              label="Handled"
+              value={formatNumber(summary.callsHandled)}
+              hint="Total handled calls"
+            />
 
-        <KpiCard
-          icon={CheckCircle2}
-          label="Handled w/SLA"
-          value={formatNumber(summary.handledWithinSla)}
-          hint="Handled within SLT"
-        />
+            <KpiCard
+              icon={CheckCircle2}
+              label="Handled w/SLA"
+              value={formatNumber(summary.handledWithinSla)}
+              hint="Handled within SLT"
+            />
 
-        <KpiCard
-          icon={Gauge}
-          label="Answer %"
-          value={formatPercent(summary.answerRatePct)}
-          hint="Handled ÷ offered"
-        />
+            <KpiCard
+              icon={Gauge}
+              label="Answer %"
+              value={formatPercent(summary.answerRatePct)}
+              hint="Handled ÷ offered"
+            />
 
-        <KpiCard
-          icon={Gauge}
-          label="Service Level"
-          value={formatPercent(summary.serviceLevelPct)}
-          hint={`Target ${formatPercent(
-            targets.serviceLevelPct,
-          )}`}
-          status={{
-            label: serviceLevelMet
-              ? "Target met"
-              : "Below target",
-            className: serviceLevelMet
-              ? "bg-green-100 text-green-700"
-              : "bg-amber-100 text-amber-700",
-          }}
-        />
+            <KpiCard
+              icon={Gauge}
+              label="Service Level"
+              value={formatPercent(summary.serviceLevelPct)}
+              hint={`Target ${formatPercent(
+                targets.serviceLevelPct,
+              )}`}
+              status={{
+                label: serviceLevelMet
+                  ? "Target met"
+                  : "Below target",
+                className: serviceLevelMet
+                  ? "bg-green-100 text-green-700"
+                  : "bg-amber-100 text-amber-700",
+              }}
+            />
 
-        <KpiCard
-          icon={Clock3}
-          label="Call AHT"
-          value={summaryAhtSeconds > 0 ? `${formatNumber(summaryAhtSeconds)}s` : "--"}
-          hint={`Target ${formatNumber(targetAhtSeconds)}s`}
-          status={{
-            label: ahtMet
-              ? "Target met"
-              : "Above target",
-            className: ahtMet
-              ? "bg-green-100 text-green-700"
-              : "bg-amber-100 text-amber-700",
-          }}
-        />
+            <KpiCard
+              icon={Clock3}
+              label="Call AHT"
+              value={summaryAhtSeconds > 0 ? `${formatNumber(summaryAhtSeconds)}s` : "--"}
+              hint={`Target ${formatNumber(targetAhtSeconds)}s`}
+              status={{
+                label: ahtMet
+                  ? "Target met"
+                  : "Above target",
+                className: ahtMet
+                  ? "bg-green-100 text-green-700"
+                  : "bg-amber-100 text-amber-700",
+              }}
+            />
 
-        <div className="col-span-2 sm:col-span-1">
-          <KpiCard
-            icon={Clock3}
-            label="ASA"
-            title="Average Speed of Answer (ASA)"
-            value={summaryAsaSeconds > 0 ? `${formatNumber(summaryAsaSeconds)}s` : "--"}
-            hint={
-              targetAsaSeconds !== null
-                ? `Target ${formatNumber(targetAsaSeconds)}s`
-                : "Speed to answer"
-            }
-            status={
-              targetAsaSeconds !== null
-                ? {
-                    label: asaMet ? "Target met" : "Above target",
-                    className: asaMet
-                      ? "bg-green-100 text-green-700"
-                      : "bg-amber-100 text-amber-700",
-                  }
-                : null
-            }
-          />
+            <div className="col-span-2 sm:col-span-1">
+              <KpiCard
+                icon={Clock3}
+                label="ASA"
+                title="Average Speed of Answer (ASA)"
+                value={summaryAsaSeconds > 0 ? `${formatNumber(summaryAsaSeconds)}s` : "--"}
+                hint={
+                  targetAsaSeconds !== null
+                    ? `Target ${formatNumber(targetAsaSeconds)}s`
+                    : "Speed to answer"
+                }
+                status={
+                  targetAsaSeconds !== null
+                    ? {
+                        label: asaMet ? "Target met" : "Above target",
+                        className: asaMet
+                          ? "bg-green-100 text-green-700"
+                          : "bg-amber-100 text-amber-700",
+                      }
+                    : null
+                }
+              />
+            </div>
+          </div>
         </div>
+
+        {afterCards}
       </div>
       ) : null}
 
-      {/* 3 Prominent Graphs: Stacked on Mobile/Tablet/iPad, Side-by-Side on Ultra-wide Desktop */}
+      {/* 3 Prominent Graphs:
+          In submodule view:
+          - Top row alone (full width): Calls
+          - Bottom row (side-by-side): Answer Rate & Service Level (col 1) + Average Handling Time (col 2)
+      */}
       <div
         id="kpi-graphs-container"
         data-pdf-charts="true"
         key={`kpi-charts-${series.map((s) => s.key || s.label).join("-")}`}
-        className="grid grid-cols-1 2xl:grid-cols-[minmax(0,1.3fr)_minmax(0,1.1fr)_minmax(0,0.95fr)] gap-3.5 w-full min-w-0"
+        className={`grid grid-cols-1 ${
+          isSubmodule
+            ? "lg:grid-cols-2"
+            : "2xl:grid-cols-[minmax(0,1.3fr)_minmax(0,1.1fr)_minmax(0,0.95fr)]"
+        } ${isSubmodule && isFiltersVisible ? "gap-2 sm:gap-2.5" : "gap-3 sm:gap-3.5"} w-full min-w-0 transition-all duration-300 ease-in-out`}
       >
-        <ChartShell
-          title="Calls"
-          subtitle="Volume, handled calls, and handled within SLA"
-        >
-          <VolumeChart
-            series={
-              series.length
-                ? series
-                : data?.data?.series || []
+        <div className={isSubmodule ? "col-span-1 lg:col-span-2" : "col-span-1"}>
+          <ChartShell
+            title="Calls"
+            legend={
+              <>
+                <span className="inline-flex items-center gap-1 font-bold text-[#0b3b68]">
+                  <i className="h-2 w-2 rounded-full bg-[#0b3b68]" />
+                  Volume
+                </span>
+                <span className="inline-flex items-center gap-1 font-bold text-[#2f6f9f]">
+                  <i className="h-2 w-2 rounded-full bg-[#2f6f9f]" />
+                  Handled
+                </span>
+                <span className="inline-flex items-center gap-1 font-bold text-[#4c9aca]">
+                  <i className="h-2 w-2 rounded-full bg-[#4c9aca]" />
+                  Handled w/ SLA
+                </span>
+              </>
             }
-            period={period}
-          />
-        </ChartShell>
+          >
+            <VolumeChart
+              series={
+                series.length
+                  ? series
+                  : data?.data?.series || []
+              }
+              period={period}
+              hideLegend={true}
+              isSubmodule={isSubmodule}
+              showFilters={isFiltersVisible}
+            />
+          </ChartShell>
+        </div>
 
-        <ChartShell
-          title="Answer Rate & Service Level"
-          subtitle="Answer % and service level performance against target"
-        >
-          <LineChart
-            series={
-              series.length
-                ? series
-                : data?.data?.series || []
+        <div className="col-span-1">
+          <ChartShell
+            title="Answer Rate & Service Level"
+            legend={
+              <>
+                <span className="inline-flex items-center gap-1 font-bold text-[#0b3b68]">
+                  <i className="h-2 w-2 rounded-full bg-[#0b3b68]" />
+                  Answer
+                </span>
+                <span className="inline-flex items-center gap-1 font-bold text-[#0284c7]">
+                  <i className="h-2 w-2 rounded-full bg-[#0284c7]" />
+                  Service Level
+                </span>
+                <span className="inline-flex items-center gap-1 font-bold text-red-500">
+                  <i className="inline-block h-0.5 w-3 bg-red-500 border-t border-dashed border-red-500" />
+                  Target: {Number(targets.serviceLevelPct || data?.data?.targets?.serviceLevelPct || 90)}%
+                </span>
+              </>
             }
-            target={
-              targets.serviceLevelPct ||
-              data?.data?.targets?.serviceLevelPct
-            }
-            period={period}
-          />
-        </ChartShell>
+          >
+            <LineChart
+              series={
+                series.length
+                  ? series
+                  : data?.data?.series || []
+              }
+              target={
+                targets.serviceLevelPct ||
+                data?.data?.targets?.serviceLevelPct
+              }
+              period={period}
+              hideLegend={true}
+              isSubmodule={isSubmodule}
+              showFilters={isFiltersVisible}
+            />
+          </ChartShell>
+        </div>
 
-        <ChartShell
-          title="Average Handling Time"
-          subtitle="Call AHT measured in seconds against target"
-        >
-          <AhtChart
-            series={
-              series.length
-                ? series
-                : data?.data?.series || []
+        <div className="col-span-1">
+          <ChartShell
+            title="Average Handling Time"
+            legend={
+              <>
+                <span className="inline-flex items-center gap-1 font-bold text-[#0b3b68]">
+                  <i className="h-2 w-2 rounded-full bg-[#0b3b68]" />
+                  Call AHT
+                </span>
+                <span className="inline-flex items-center gap-1 font-bold text-red-500">
+                  <i className="inline-block h-0.5 w-3 bg-red-500" />
+                  Target: {formatNumber(convertDurationToSeconds(targets.ahtSeconds || data?.data?.targets?.ahtSeconds || 420))}s
+                </span>
+              </>
             }
-            target={
-              targets.ahtSeconds ||
-              data?.data?.targets?.ahtSeconds
-            }
-            period={period}
-          />
-        </ChartShell>
+          >
+            <AhtChart
+              series={
+                series.length
+                  ? series
+                  : data?.data?.series || []
+              }
+              target={
+                targets.ahtSeconds ||
+                data?.data?.targets?.ahtSeconds
+              }
+              period={period}
+              hideLegend={true}
+              isSubmodule={isSubmodule}
+              showFilters={isFiltersVisible}
+            />
+          </ChartShell>
+        </div>
       </div>
     </div>
   );

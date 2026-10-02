@@ -4,7 +4,12 @@ import {
   importSummaryNumberFormatter,
 } from "@/lib/wfm-import-utils";
 
-export default function WfmImportSummaryBar({ importSummary, onOpenWarnings }) {
+export default function WfmImportSummaryBar({
+  importSummary,
+  onOpenWarnings,
+  onOpenRejected,
+  onOpenDuplicates,
+}) {
   return (
     <div
       className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6"
@@ -15,22 +20,33 @@ export default function WfmImportSummaryBar({ importSummary, onOpenWarnings }) {
         const uploadsWithIssues = Number(importSummary?.uploadsWithIssues || 0);
         const isTotalUploadsCard = card.key === "totalUploads";
         const isWarningCard = card.key === "warningRows";
+        const isRejectedCard = card.key === "invalidRows";
+        const isDuplicateCard = card.key === "duplicateRows";
         const isError = card.key === "invalidRows" && value > 0;
         const isWarning = card.key === "warningRows" && value > 0;
+        const isDuplicate = card.key === "duplicateRows" && value > 0;
+        const isClickable = isWarningCard || isRejectedCard || isDuplicateCard;
+        const onClickHandler = isWarningCard
+          ? onOpenWarnings
+          : isRejectedCard
+          ? onOpenRejected
+          : isDuplicateCard
+          ? onOpenDuplicates
+          : undefined;
         const Icon = card.icon;
 
         return (
           <div
             key={card.key}
-            role={isWarningCard ? "button" : undefined}
-            tabIndex={isWarningCard ? 0 : undefined}
-            onClick={isWarningCard ? onOpenWarnings : undefined}
+            role={isClickable ? "button" : undefined}
+            tabIndex={isClickable ? 0 : undefined}
+            onClick={onClickHandler}
             onKeyDown={
-              isWarningCard
+              isClickable
                 ? (e) => {
                     if (e.key === "Enter" || e.key === " ") {
                       e.preventDefault();
-                      onOpenWarnings?.();
+                      onClickHandler?.();
                     }
                   }
                 : undefined
@@ -38,10 +54,16 @@ export default function WfmImportSummaryBar({ importSummary, onOpenWarnings }) {
             className={`group relative min-w-0 rounded-xl border bg-white p-2.5 shadow-2xs transition-all duration-150 ${
               isWarningCard
                 ? "cursor-pointer hover:border-amber-400 hover:shadow-md active:scale-[0.99]"
+                : isRejectedCard
+                ? "cursor-pointer hover:border-red-400 hover:shadow-md active:scale-[0.99]"
+                : isDuplicateCard
+                ? "cursor-pointer hover:border-orange-400 hover:shadow-md active:scale-[0.99]"
                 : "hover:border-sibs-primary-1/40 hover:shadow-xs"
             } ${
               isError
                 ? "border-red-300 bg-red-50/20 ring-1 ring-red-200"
+                : isDuplicate
+                ? "border-orange-300 bg-orange-50/25 ring-1 ring-orange-200"
                 : isWarning
                 ? "border-amber-300 bg-amber-50/20 ring-1 ring-amber-200"
                 : "border-slate-200"
@@ -49,6 +71,10 @@ export default function WfmImportSummaryBar({ importSummary, onOpenWarnings }) {
             title={
               isWarningCard
                 ? `Click to view warnings: ${value.toLocaleString()} found`
+                : isRejectedCard
+                ? `Click to view rejected records: ${value.toLocaleString()} found`
+                : isDuplicateCard
+                ? `Click to view duplicate records: ${value.toLocaleString()} found`
                 : isTotalUploadsCard && uploadsWithIssues > 0
                 ? `${card.label}: ${value.toLocaleString()} • ${uploadsWithIssues.toLocaleString()} with issues`
                 : `${card.label}: ${value.toLocaleString()}`
@@ -63,6 +89,8 @@ export default function WfmImportSummaryBar({ importSummary, onOpenWarnings }) {
                 className={`inline-flex h-5.5 w-5.5 shrink-0 items-center justify-center rounded-md ${
                   isError
                     ? "bg-red-50 text-red-600 border border-red-200"
+                    : isDuplicate
+                    ? "bg-orange-50 text-orange-600 border border-orange-200"
                     : isWarning
                     ? "bg-amber-50 text-amber-600 border border-amber-200"
                     : "bg-sibs-primary-3/60 text-sibs-primary-1 border border-sibs-tertiary-10"
@@ -81,6 +109,8 @@ export default function WfmImportSummaryBar({ importSummary, onOpenWarnings }) {
                 className={`m-0 text-lg font-black leading-none tracking-tight ${
                   isError
                     ? "text-red-600"
+                    : isDuplicate
+                    ? "text-orange-600"
                     : isWarning
                     ? "text-amber-600"
                     : "text-sibs-primary-1"

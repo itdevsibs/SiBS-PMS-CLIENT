@@ -78,6 +78,8 @@ function WfmImportDataPage() {
   const [duplicateUploadAlert, setDuplicateUploadAlert] = useState(null);
   const [errorModalInfo, setErrorModalInfo] = useState(null);
   const [isWarningsModalOpen, setIsWarningsModalOpen] = useState(false);
+  const [isRejectedModalOpen, setIsRejectedModalOpen] = useState(false);
+  const [isDuplicatesModalOpen, setIsDuplicatesModalOpen] = useState(false);
   const [rawDataSearch, setRawDataSearch] = useState("");
   const [uploadedDataSearch, setUploadedDataSearch] = useState("");
   const [selectedAccount, setSelectedAccount] = useState("All Accounts");
@@ -574,6 +576,8 @@ function WfmImportDataPage() {
           <WfmImportSummaryBar
             importSummary={importSummary}
             onOpenWarnings={() => setIsWarningsModalOpen(true)}
+            onOpenRejected={() => setIsRejectedModalOpen(true)}
+            onOpenDuplicates={() => setIsDuplicatesModalOpen(true)}
           />
 
           {selectedAccount === "All Accounts" ? (
@@ -638,6 +642,10 @@ function WfmImportDataPage() {
         onCloseBatchDetails={() => setSelectedUploadDetails(null)}
         isWarningsModalOpen={isWarningsModalOpen}
         onCloseWarnings={() => setIsWarningsModalOpen(false)}
+        isRejectedModalOpen={isRejectedModalOpen}
+        onCloseRejected={() => setIsRejectedModalOpen(false)}
+        isDuplicatesModalOpen={isDuplicatesModalOpen}
+        onCloseDuplicates={() => setIsDuplicatesModalOpen(false)}
         uploadsByCard={uploadsByCard}
         selectedAccount={selectedAccount}
         duplicateUploadAlert={duplicateUploadAlert}
