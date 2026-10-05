@@ -156,7 +156,7 @@ export default function WfmFeedSyncStatus({
                     {statusBadge}
                     <button
                       type="button"
-                      onClick={() => navigate("/dashboard/wfm/import-data")}
+                      onClick={() => navigate("/import-data")}
                       className="inline-flex h-6 w-6 items-center justify-center rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-all cursor-pointer"
                       title="Upload or manage this card"
                     >
@@ -173,7 +173,7 @@ export default function WfmFeedSyncStatus({
         <div className="pt-2.5 mt-auto border-t border-slate-100 flex items-center justify-end text-xs shrink-0">
           <button
             type="button"
-            onClick={() => navigate("/dashboard/wfm/import-data")}
+            onClick={() => navigate("/import-data")}
             className="inline-flex items-center gap-1 text-[11px] font-bold text-sibs-primary-1 hover:text-sibs-primary-2 cursor-pointer transition-colors"
           >
             <span>Import Center</span>

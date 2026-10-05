@@ -532,7 +532,7 @@ function WfmImportDataPage() {
     }
     const queryString = params.toString() ? `?${params.toString()}` : "";
 
-    navigate(`/dashboard/wfm/import-repository${queryString}`, {
+    navigate(`/import-repository${queryString}`, {
       state: {
         selectedLevel: targetLevel,
         selectedTool: targetTool,

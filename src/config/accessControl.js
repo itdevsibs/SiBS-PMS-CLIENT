@@ -63,15 +63,15 @@ const ROLE_LABELS = Object.freeze({
 });
 
 const HOME_ROUTES = Object.freeze({
-  admin: "/dashboard/superadmin",
-  bod: "/dashboard/bod",
-  client: "/dashboard/client",
-  employee: "/dashboard/agent",
-  masterdata: "/dashboard/employee-master-data",
-  om: "/dashboard/om",
-  som: "/dashboard/som",
-  tl: "/dashboard/tl",
-  wfm: "/dashboard/wfm/view-graphs",
+  admin: "/superadmin",
+  bod: "/bod",
+  client: "/client",
+  employee: "/agent",
+  masterdata: "/employee-master-data",
+  om: "/om",
+  som: "/som",
+  tl: "/tl",
+  wfm: "/view-graphs",
 });
 
 const PERMISSION_RULES = Object.freeze({
@@ -134,54 +134,54 @@ export const DASHBOARD_MODULES = Object.freeze([
     key: "own-performance",
     name: "My Performance",
     iconKey: "gauge",
-    path: "/dashboard/agent",
+    path: "/agent",
     permission: PERMISSIONS.VIEW_OWN_PERFORMANCE,
   },
   {
     key: "team-performance",
     name: "Team Performance",
     iconKey: "clipboard-list",
-    path: "/dashboard/tl",
+    path: "/tl",
     permission: PERMISSIONS.VIEW_TEAM_PERFORMANCE,
   },
   {
     key: "operations-performance",
     name: "Operations Performance",
     iconKey: "filter",
-    path: "/dashboard/om",
+    path: "/om",
     permission: PERMISSIONS.VIEW_OPERATIONS_PERFORMANCE,
   },
   {
     key: "wow-report",
     name: "Wow Report",
     iconKey: "bar-chart",
-    path: "/dashboard/wfm/view-graphs",
-    activePaths: ["/dashboard/bod", "/dashboard/som"],
+    path: "/view-graphs",
+    activePaths: ["/bod", "/som"],
     permission: PERMISSIONS.VIEW_WOW_REPORT,
     submodules: [
       {
         name: "Calls",
         key: "calls",
         iconKey: "phone-call",
-        path: "/dashboard/wfm/view-graphs?section=calls",
+        path: "/view-graphs?section=calls",
       },
       {
         name: "Emails",
         key: "emails",
         iconKey: "mail",
-        path: "/dashboard/wfm/view-graphs?section=emails",
+        path: "/view-graphs?section=emails",
       },
       {
         name: "QA",
         key: "qa",
         iconKey: "clipboard-check",
-        path: "/dashboard/wfm/view-graphs?section=qa",
+        path: "/view-graphs?section=qa",
       },
       {
         name: "Occupancy & HC",
         key: "occupancy",
         iconKey: "users",
-        path: "/dashboard/wfm/view-graphs?section=occupancy",
+        path: "/view-graphs?section=occupancy",
       },
     ],
   },
@@ -189,74 +189,74 @@ export const DASHBOARD_MODULES = Object.freeze([
     key: "employee-ledger",
     name: "Employee Ledger",
     iconKey: "database",
-    path: "/dashboard/employee-master-data",
+    path: "/employee-master-data",
     permission: PERMISSIONS.VIEW_EMPLOYEE_LEDGER,
   },
   {
     key: "task-order-ledger",
     name: "Task-Order Ledger",
     iconKey: "award",
-    path: "/dashboard/wfm/task-order-ledger",
+    path: "/task-order-ledger",
     permission: PERMISSIONS.WFM_TASK_ORDER_LEDGER,
   },
   {
     key: "import-data",
     name: "Import Data",
     iconKey: "clipboard-list",
-    path: "/dashboard/wfm/import-data",
+    path: "/import-data",
     permission: PERMISSIONS.WFM_IMPORT_DATA,
   },
   {
     key: "import-repository",
     name: "Import Repository",
     iconKey: "folder-down",
-    path: "/dashboard/wfm/import-repository",
+    path: "/import-repository",
     permission: PERMISSIONS.WFM_IMPORT_REPOSITORY,
   },
   {
     key: "occupancy",
     name: "Occupancy",
     iconKey: "users",
-    path: "/dashboard/occupancy",
+    path: "/occupancy",
     permission: PERMISSIONS.VIEW_OCCUPANCY,
   },
   {
     key: "wfm-history",
     name: "History Logs",
     iconKey: "clipboard-list",
-    path: "/dashboard/wfm/history-logs",
+    path: "/history",
     permission: PERMISSIONS.WFM_HISTORY_LOGS,
   },
   {
     key: "super-admin",
     name: "Super Admin",
     iconKey: "shield-check",
-    path: "/dashboard/superadmin",
+    path: "/superadmin",
     permission: PERMISSIONS.SUPER_ADMIN_ACCESS,
   },
   {
     key: "super-admin-history",
-    name: "Access History",
+    name: "Interface Access History",
     iconKey: "clipboard-list",
-    path: "/dashboard/superadmin/history-logs",
+    path: "/interface-access-history",
     permission: PERMISSIONS.SUPER_ADMIN_HISTORY,
   },
 ]);
 
 const ROUTE_PERMISSION_RULES = Object.freeze([
-  { paths: ["/dashboard/agent", "/dashboard/agents"], permission: PERMISSIONS.VIEW_OWN_PERFORMANCE },
-  { paths: ["/dashboard/tl"], permission: PERMISSIONS.VIEW_TEAM_PERFORMANCE },
-  { paths: ["/dashboard/om"], permission: PERMISSIONS.VIEW_OPERATIONS_PERFORMANCE },
-  { paths: ["/dashboard/bod", "/dashboard/som", "/dashboard/wfm", "/dashboard/wfm/view-graphs"], permission: PERMISSIONS.VIEW_WOW_REPORT },
-  { paths: ["/dashboard/wfm/import-data"], permission: PERMISSIONS.WFM_IMPORT_DATA },
-  { paths: ["/dashboard/wfm/import-repository"], permission: PERMISSIONS.WFM_IMPORT_REPOSITORY },
-  { paths: ["/dashboard/wfm/history-logs"], permission: PERMISSIONS.WFM_HISTORY_LOGS },
-  { paths: ["/dashboard/wfm/task-order-ledger", "/dashboard/wfm/skills-ledger"], permission: PERMISSIONS.WFM_TASK_ORDER_LEDGER },
-  { paths: ["/dashboard/employee-master-data", "/dashboard/masterdata"], permission: PERMISSIONS.VIEW_EMPLOYEE_LEDGER },
-  { paths: ["/dashboard/occupancy", "/dashboard/wfm/occupancy"], permission: PERMISSIONS.VIEW_OCCUPANCY },
-  { paths: ["/dashboard/superadmin"], permission: PERMISSIONS.SUPER_ADMIN_ACCESS },
-  { paths: ["/dashboard/superadmin/history-logs"], permission: PERMISSIONS.SUPER_ADMIN_HISTORY },
-  { paths: ["/dashboard/client"], permission: PERMISSIONS.CLIENT_DASHBOARD },
+  { paths: ["/agent"], permission: PERMISSIONS.VIEW_OWN_PERFORMANCE },
+  { paths: ["/tl"], permission: PERMISSIONS.VIEW_TEAM_PERFORMANCE },
+  { paths: ["/om"], permission: PERMISSIONS.VIEW_OPERATIONS_PERFORMANCE },
+  { paths: ["/bod", "/som", "/view-graphs"], permission: PERMISSIONS.VIEW_WOW_REPORT },
+  { paths: ["/import-data"], permission: PERMISSIONS.WFM_IMPORT_DATA },
+  { paths: ["/import-repository"], permission: PERMISSIONS.WFM_IMPORT_REPOSITORY },
+  { paths: ["/history"], permission: PERMISSIONS.WFM_HISTORY_LOGS },
+  { paths: ["/task-order-ledger"], permission: PERMISSIONS.WFM_TASK_ORDER_LEDGER },
+  { paths: ["/employee-master-data"], permission: PERMISSIONS.VIEW_EMPLOYEE_LEDGER },
+  { paths: ["/occupancy"], permission: PERMISSIONS.VIEW_OCCUPANCY },
+  { paths: ["/superadmin"], permission: PERMISSIONS.SUPER_ADMIN_ACCESS },
+  { paths: ["/interface-access-history"], permission: PERMISSIONS.SUPER_ADMIN_HISTORY },
+  { paths: ["/client"], permission: PERMISSIONS.CLIENT_DASHBOARD },
 ]);
 
 function normalizeRoleName(value) {
@@ -338,18 +338,43 @@ export function getHomeRouteForUser(user) {
 
 export function normalizeDashboardPath(path) {
   const normalizedPath = String(path || "").trim();
+  if (!normalizedPath) return normalizedPath;
+
+  const match = normalizedPath.match(/^([^?#]*)(.*)$/);
+  const pathname = (match?.[1] || normalizedPath).replace(/\/$/, "") || "/";
+  const suffix = match?.[2] || "";
 
   const mappings = {
-    "/admin/dashboard": "/dashboard/superadmin",
-    "/dashboard/admin": "/dashboard/superadmin",
-    "/employee/dashboard": "/dashboard/agent",
-    "/dashboard/employee": "/dashboard/agent",
-    "/wfm/dashboard": "/dashboard/wfm/view-graphs",
-    "/dashboard/wfm": "/dashboard/wfm/view-graphs",
-    "/som/dashboard": "/dashboard/som",
+    "/admin/dashboard": "/superadmin",
+    "/dashboard/admin": "/superadmin",
+    "/dashboard/superadmin": "/superadmin",
+    "/dashboard/superadmin/history-logs": "/interface-access-history",
+    "/employee/dashboard": "/agent",
+    "/dashboard/employee": "/agent",
+    "/dashboard/agent": "/agent",
+    "/dashboard/agents": "/agent",
+    "/dashboard/tl": "/tl",
+    "/dashboard/om": "/om",
+    "/dashboard/bod": "/bod",
+    "/dashboard/som": "/som",
+    "/dashboard/client": "/client",
+    "/wfm/dashboard": "/view-graphs",
+    "/dashboard/wfm": "/view-graphs",
+    "/dashboard/wfm/view-graphs": "/view-graphs",
+    "/dashboard/wfm/import-data": "/import-data",
+    "/dashboard/wfm/import-repository": "/import-repository",
+    "/dashboard/wfm/task-order-ledger": "/task-order-ledger",
+    "/dashboard/wfm/skills-ledger": "/task-order-ledger",
+    "/dashboard/wfm/history": "/history",
+    "/dashboard/wfm/history-logs": "/history",
+    "/dashboard/employee-master-data": "/employee-master-data",
+    "/dashboard/masterdata": "/employee-master-data",
+    "/dashboard/occupancy": "/occupancy",
+    "/dashboard/wfm/occupancy": "/occupancy",
+    "/som/dashboard": "/som",
   };
 
-  return mappings[normalizedPath] || normalizedPath;
+  return `${mappings[pathname] || pathname}${suffix}`;
 }
 
 export function hasPermissionForUser(user, permission) {

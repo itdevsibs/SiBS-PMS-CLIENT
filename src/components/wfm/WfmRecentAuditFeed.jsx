@@ -113,7 +113,7 @@ export default function WfmRecentAuditFeed({
 
         <button
           type="button"
-          onClick={() => navigate("/dashboard/wfm/history-logs")}
+          onClick={() => navigate("/history")}
           className="inline-flex items-center gap-1 text-[11px] font-bold text-sibs-primary-1 hover:text-sibs-primary-2 cursor-pointer transition-colors"
         >
           <span>All Logs</span>
@@ -182,7 +182,7 @@ export default function WfmRecentAuditFeed({
         <div className="pt-2.5 mt-2 border-t border-slate-100 flex items-center justify-end text-xs">
           <button
             type="button"
-            onClick={() => navigate("/dashboard/wfm/history-logs")}
+            onClick={() => navigate("/history")}
             className="inline-flex items-center gap-1 text-[11px] font-bold text-sibs-primary-1 hover:text-sibs-primary-2 cursor-pointer transition-colors"
           >
             <span>Full History Logs</span>

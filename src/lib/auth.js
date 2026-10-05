@@ -11,6 +11,39 @@ const LEGACY_LOCAL_EXPIRY_KEY = "token_expires_at";
 const LEGACY_SESSION_USER_KEY = "sibsAuthenticatedUser";
 const LEGACY_SESSION_EXPIRY_KEY = "accessTokenExpiresAt";
 
+// Role-sensitive cached data must never survive logout or account switching.
+const ROLE_SENSITIVE_LOCAL_STORAGE_KEYS = Object.freeze([
+  "sibs-wfm-raw-data-uploads",
+  "sibs-wfm-graph-reports",
+  "sibs-occupancy-records",
+  "sibs-occupancy-data",
+]);
+
+function getUserIdentity(user) {
+  if (!user) return "";
+
+  return String(
+    user.sibsId ||
+      user.sibs_id ||
+      user.employeeCode ||
+      user.employee_code ||
+      user.username ||
+      user.email ||
+      user.id ||
+      "",
+  )
+    .trim()
+    .toLowerCase();
+}
+
+export function clearRoleSensitiveClientData() {
+  if (typeof window === "undefined") return;
+
+  ROLE_SENSITIVE_LOCAL_STORAGE_KEYS.forEach((key) => {
+    localStorage.removeItem(key);
+  });
+}
+
 
 function notifyAuthChanged() {
   if (typeof window === "undefined") return;
@@ -36,6 +69,14 @@ function resolveExpiresAt(expiresAt, expiresInMs) {
 
 export function saveAuthSession({ user, expiresAt, expiresInMs } = {}) {
   if (user) {
+    const previousUser = getAuthUser();
+    const previousIdentity = getUserIdentity(previousUser);
+    const nextIdentity = getUserIdentity(user);
+
+    if (previousIdentity && nextIdentity && previousIdentity !== nextIdentity) {
+      clearRoleSensitiveClientData();
+    }
+
     const serializedUser = JSON.stringify(user);
 
     localStorage.setItem(AUTH_USER_KEY, serializedUser);
@@ -129,6 +170,8 @@ export function isAuthenticated() {
 }
 
 export function clearAuthSession() {
+  clearRoleSensitiveClientData();
+
   localStorage.removeItem(AUTH_USER_KEY);
   localStorage.removeItem(AUTH_EXPIRES_AT_KEY);
   localStorage.removeItem(LEGACY_LOCAL_TOKEN_KEY);

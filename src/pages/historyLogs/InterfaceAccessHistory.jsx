@@ -1,4 +1,4 @@
-// Shows super admin interface access history logs.
+// Shows Super Admin interface access change history.
 import { useEffect, useMemo, useState } from "react";
 
 import AdminSidebar from "@/components/layout/AdminSidebar";
@@ -21,7 +21,7 @@ function formatLogTime(timestamp, log) {
   }).format(new Date(timestamp));
 }
 
-function SuperAdminHistoryLogs() {
+function InterfaceAccessHistory() {
   const dashboard = useDashboardPage();
   const [logs, setLogs] = useState([]);
   const [dateFilter, setDateFilter] = useState("");
@@ -69,7 +69,7 @@ function SuperAdminHistoryLogs() {
         const response = await api.get("/super-admin/interface-access");
         setLogs(response.data?.logs || []);
       } catch {
-        setError("Unable to load history logs.");
+        setError("Unable to load interface access history.");
       } finally {
         setIsLoading(false);
       }
@@ -102,7 +102,7 @@ function SuperAdminHistoryLogs() {
       <div className="flex flex-col gap-3 border-b border-sibs-tertiary-10 bg-sibs-primary-3/30 px-4 py-3 sm:px-5 sm:py-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-wrap items-center gap-2">
           <h3 className="m-0 text-base font-bold text-sibs-primary-1">
-            History Logs
+            Interface Access History
           </h3>
           <span className="rounded-full bg-white px-2.5 py-0.5 text-xs font-bold text-sibs-tertiary-5 shadow-xs">
             {filteredLogs.length} logs
@@ -136,7 +136,7 @@ function SuperAdminHistoryLogs() {
       <div className="divide-y divide-sibs-tertiary-10">
         {isLoading ? (
           <div className="bg-[#f8fbfd] px-5 py-8 text-center text-sm text-sibs-tertiary-5">
-            Loading history logs...
+            Loading interface access history...
           </div>
         ) : paginatedLogs.length > 0 ? (
           paginatedLogs.map((log) => (
@@ -153,7 +153,7 @@ function SuperAdminHistoryLogs() {
           ))
         ) : (
           <div className="bg-[#f8fbfd] px-5 py-8 text-center text-sm text-sibs-tertiary-5">
-            No logs found.
+            No interface access history found.
           </div>
         )}
       </div>
@@ -212,4 +212,4 @@ function SuperAdminHistoryLogs() {
   );
 }
 
-export default SuperAdminHistoryLogs;
+export default InterfaceAccessHistory;
