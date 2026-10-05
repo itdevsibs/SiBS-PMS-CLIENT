@@ -33,6 +33,7 @@ import {
 import DatePicker from "@/components/ui/Filter/DatePicker";
 import MultiSelectDropdown from "@/components/ui/Filter/MultiSelectDropdown";
 import SingleSelectDropdown from "@/components/ui/Filter/SingleSelectDropdown";
+import { PERMISSIONS } from "@/config/accessControl";
 import useDashboardPage from "@/hooks/useDashboardPage";
 import {
   getWfmCallKpis,
@@ -258,15 +259,9 @@ export default function ViewGraphsPage() {
     dashboard.authUser?.username ||
     "User";
 
-  const canViewGraphs = [
-    "admin",
-    "bod",
-    "som",
-    "wfm",
-  ].includes(dashboard.authUser?.role) ||
-    [7, 6, 10, 9].includes(
-      Number(dashboard.authUser?.adminAccess || 0),
-    );
+  const canViewGraphs = dashboard.hasPermission(
+    PERMISSIONS.VIEW_WOW_REPORT,
+  );
 
   const [filters, setFilters] = useState(DEFAULT_FILTERS);
   const [kpiResponse, setKpiResponse] = useState(null);
@@ -818,8 +813,8 @@ export default function ViewGraphsPage() {
               </h2>
 
               <p className="mt-2 mb-0 text-sm text-sibs-tertiary-5">
-                KPI reporting is available for
-                WFM, BOD, Admin, and SOM dashboards.
+                KPI reporting is available for OM, TL, BOD,
+                WFM, Admin, and SOM dashboards.
               </p>
             </div>
           ) : (

@@ -1,5 +1,5 @@
-// Manages dashboard auth state, sidebar modules, and logout flow.
-import { useEffect, useMemo, useState } from "react";
+// Manages dashboard shell state and consumes centralized access-controlled modules.
+import { useMemo, useState } from "react";
 import {
   Award,
   BarChart3,
@@ -9,158 +9,66 @@ import {
   Filter,
   FolderDown,
   Gauge,
-  LayoutDashboard,
-  LineChart,
   Mail,
   PhoneCall,
   ShieldCheck,
   Users,
 } from "lucide-react";
-import { useLocation, useNavigate } from "react-router-dom";
 
-import { getAuthDisplayName, getAuthUser, isAuthenticated } from "@/lib/auth";
+import { useAuthAccess } from "@/context/AuthAccessContext";
+import { getAuthDisplayName } from "@/lib/auth";
 import { handleLogout as handleAuthLogout } from "@/lib/axios/api-template";
 
-const roleIcons = {
-  admin: LayoutDashboard,
-  wfm: LayoutDashboard,
-  som: LayoutDashboard,
-  agent: Gauge,
-  om: Filter,
-  tl: ClipboardList,
-  client: LineChart,
-  bod: BarChart3,
-  masterdata: Database,
+const moduleIcons = {
+  award: Award,
+  "bar-chart": BarChart3,
+  "clipboard-check": ClipboardCheck,
+  "clipboard-list": ClipboardList,
+  database: Database,
+  filter: Filter,
+  "folder-down": FolderDown,
+  gauge: Gauge,
+  mail: Mail,
+  "phone-call": PhoneCall,
+  "shield-check": ShieldCheck,
+  users: Users,
 };
 
-// Central dashboard state shared by all role-based dashboard pages.
+function hydrateModuleIcons(module) {
+  return {
+    ...module,
+    icon: moduleIcons[module.iconKey] || Gauge,
+    submodules: Array.isArray(module.submodules)
+      ? module.submodules.map((submodule) => ({
+          ...submodule,
+          icon: moduleIcons[submodule.iconKey] || Gauge,
+        }))
+      : module.submodules,
+  };
+}
+
 function useDashboardPage() {
-  const navigate = useNavigate();
-  const location = useLocation();
+  const {
+    authUser,
+    hasPermission,
+    modules: accessModules,
+    role,
+    roleLabel,
+  } = useAuthAccess();
+
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
-  const [authUser] = useState(() => getAuthUser());
 
-  const role = authUser?.role || "agent";
-  const Icon = roleIcons[role] || Gauge;
-  const modules = useMemo(() => {
-    // Builds the sidebar modules allowed for the signed-in user's role.
-    const viewGraphsModule = {
-      name: "Wow Report",
-      icon: BarChart3,
-      path: "/dashboard/wfm/view-graphs",
-      submodules: [
-        {
-          name: "Calls",
-          key: "calls",
-          icon: PhoneCall,
-          path: "/dashboard/wfm/view-graphs?section=calls",
-        },
-        {
-          name: "Emails",
-          key: "emails",
-          icon: Mail,
-          path: "/dashboard/wfm/view-graphs?section=emails",
-        },
-        {
-          name: "QA",
-          key: "qa",
-          icon: ClipboardCheck,
-          path: "/dashboard/wfm/view-graphs?section=qa",
-        },
-        {
-          name: "Occupancy & HC",
-          key: "occupancy",
-          icon: Users,
-          path: "/dashboard/wfm/view-graphs?section=occupancy",
-        },
-      ],
-    };
-    const occupancyModule = {
-      name: "Occupancy",
-      icon: Users,
-      path: "/dashboard/occupancy",
-    };
-    const employeeLedgerModule = {
-      name: "Employee Ledger",
-      icon: Database,
-      path: "/dashboard/employee-master-data",
-    };
-    const taskOrderLedgerModule = {
-      name: "Task-Order Ledger",
-      icon: Award,
-      path: "/dashboard/wfm/task-order-ledger",
-    };
-    const importDataModule = {
-      name: "Import Data",
-      icon: ClipboardList,
-      path: "/dashboard/wfm/import-data",
-    };
-    const importRepositoryModule = {
-      name: "Import Repository",
-      icon: FolderDown,
-      path: "/dashboard/wfm/import-repository",
-    };
-
-    if (role === "masterdata") {
-      return [employeeLedgerModule];
-    }
-
-    const adminAccessNum = Number(
-      authUser?.adminAccess ?? authUser?.admin_access ?? 0,
-    );
-
-    if (["admin", "bod", "som"].includes(role) || adminAccessNum === 7) {
-      const adminModules = [
-        employeeLedgerModule,
-        viewGraphsModule,
-        occupancyModule,
-      ];
-
-      if (role === "admin" || adminAccessNum === 7) {
-        adminModules.push({
-          name: "History Logs",
-          icon: ClipboardList,
-          path: "/dashboard/superadmin/history-logs",
-        });
-      }
-
-      return adminModules;
-    }
-
-    const isWfmView = role === "wfm" || location.pathname.startsWith("/dashboard/wfm");
-
-    if (isWfmView) {
-      return [
-        viewGraphsModule,
-        employeeLedgerModule,
-        taskOrderLedgerModule,
-        importDataModule,
-        importRepositoryModule,
-        occupancyModule,
-        {
-          name: "History Logs",
-          icon: ClipboardList,
-          path: "/dashboard/wfm/history-logs",
-        },
-      ];
-    }
-
-    return [viewGraphsModule];
-  }, [authUser, role, location.pathname]);
-
-  useEffect(() => {
-    if (!isAuthenticated()) {
-      navigate("/login", { replace: true });
-    }
-  }, [navigate]);
+  const modules = useMemo(
+    () => accessModules.map(hydrateModuleIcons),
+    [accessModules],
+  );
 
   const handleLogout = () => {
     setShowLogoutModal(false);
     setIsLoggingOut(true);
 
-    // Keeps the loading modal visible before clearing the local session.
     window.setTimeout(() => {
       void handleAuthLogout(true);
     }, 2500);
@@ -168,14 +76,17 @@ function useDashboardPage() {
 
   return {
     authUser,
-    userName: getAuthDisplayName(authUser),
     handleLogout,
+    hasPermission,
     isLoggingOut,
     isMobileSidebarOpen,
     modules,
+    role,
+    roleLabel,
     setIsMobileSidebarOpen,
     setShowLogoutModal,
     showLogoutModal,
+    userName: getAuthDisplayName(authUser),
   };
 }
 
