@@ -111,7 +111,11 @@ const AdminSidebar = ({
               const Icon = item.icon;
               const hasSubmodules = Array.isArray(item.submodules) && item.submodules.length > 0;
               const isExpanded = expandedModules.includes(item.name);
-              const isParentActive = location.pathname === item.path;
+              const activePaths = [
+                item.path,
+                ...(Array.isArray(item.activePaths) ? item.activePaths : []),
+              ];
+              const isParentActive = activePaths.includes(location.pathname);
 
               if (hasSubmodules) {
                 return (

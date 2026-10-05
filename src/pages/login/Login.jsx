@@ -14,6 +14,11 @@ import { useLocation, useNavigate } from "react-router-dom";
 import AppModal from "@/components/ui/app-modal";
 import { Button } from "@/components/ui/button";
 import LoadingModal from "@/components/ui/loading-modal";
+import {
+  getRoleLabel,
+  resolveDashboardPath,
+  resolveUserRole,
+} from "@/config/accessControl";
 import { clearAuthSession, saveAuthSession } from "@/lib/auth";
 import { getLogin } from "@/lib/axios/getLogin";
 
@@ -74,326 +79,6 @@ function getResponseExpiresInMs(result) {
     result?.data?.expiresInMs ||
     null
   );
-}
-
-/* ================================
-   ROLE RESOLUTION
-
-   HRIS ADMIN ACCESS MAPPING
-
-   7  = Admin
-   6  = BOD
-   5  = OM
-   8  = TL
-   9  = WFM
-   10 = SOM
-
-   Anything else = Employee
-
-   *Client will be added soon*
-================================ */
-function getUserRole(user) {
-  if (user?.resolvedRole) {
-    return String(user.resolvedRole)
-      .trim()
-      .toLowerCase();
-  }
-
-  if (user?.resolved_role) {
-    return String(user.resolved_role)
-      .trim()
-      .toLowerCase();
-  }
-
-  const assignedAccounts = Array.isArray(
-    user?.assignedAccounts,
-  )
-    ? user.assignedAccounts
-    : [];
-
-  const firstAssignedAccount =
-    assignedAccounts[0] || null;
-
-  const rawRole =
-    user?.access ??
-    user?.accessValue ??
-    user?.access_value ??
-    user?.adminAccess ??
-    user?.admin_access ??
-    user?.role ??
-    user?.userRole ??
-    user?.user_role ??
-    firstAssignedAccount?.access ??
-    firstAssignedAccount?.accessValue ??
-    firstAssignedAccount?.access_value ??
-    firstAssignedAccount?.adminAccess ??
-    firstAssignedAccount?.admin_access ??
-    "";
-
-  const numericAccess = Number(rawRole);
-
-  if (
-    !Number.isNaN(numericAccess) &&
-    numericAccess > 0
-  ) {
-    switch (numericAccess) {
-      case 7:
-        return "admin";
-
-      case 6:
-        return "bod";
-
-      case 5:
-        return "om";
-
-      case 8:
-        return "tl";
-
-      case 9:
-        return "wfm";
-
-      case 10:
-        return "som";
-
-      case 11:
-        return "masterdata";
-
-      default:
-        return "employee";
-    }
-  }
-
-  const normalizedRole = String(rawRole)
-    .trim()
-    .toLowerCase();
-
-  const allowedRoles = [
-    "admin",
-    "bod",
-    "om",
-    "tl",
-    "wfm",
-    "som",
-    "masterdata",
-  ];
-
-  if (
-    allowedRoles.includes(
-      normalizedRole,
-    )
-  ) {
-    return normalizedRole;
-  }
-
-  if (normalizedRole === "masterdata") {
-    return "masterdata";
-  }
-
-  return "employee";
-}
-
-/* ================================
-   ROLE LABEL
-================================ */
-function getRoleLabel(role) {
-  switch (role) {
-    case "admin":
-      return "Administrator";
-
-    case "bod":
-      return "Board of Directors";
-
-    case "om":
-      return "Operations Manager";
-
-    case "tl":
-      return "Team Leader";
-
-    case "wfm":
-      return "Workforce Management";
-
-    case "som":
-      return "Senior Operations Manager";
-
-    case "masterdata":
-      return "Master Data / Ledger Admin";
-
-    case "employee":
-      return "Employee";
-
-    default:
-      return "Employee";
-  }
-}
-
-/* ================================
-   DASHBOARD NORMALIZATION
-================================ */
-function normalizeDashboardPath(path) {
-  const normalizedPath = String(
-    path || "",
-  ).trim();
-
-  const dashboardMappings = {
-    /*
-      Old Admin paths
-    */
-    "/admin/dashboard":
-      "/dashboard/superadmin",
-
-    "/dashboard/admin":
-      "/dashboard/superadmin",
-
-    /*
-      Old Employee paths
-    */
-    "/employee/dashboard":
-      "/dashboard/agent",
-
-    "/dashboard/employee":
-      "/dashboard/agent",
-
-    /*
-      WFM legacy path compatibility
-    */
-    "/wfm/dashboard":
-      "/dashboard/wfm/view-graphs",
-
-    "/dashboard/wfm":
-      "/dashboard/wfm/view-graphs",
-
-    /*
-      SOM legacy path compatibility
-    */
-    "/som/dashboard":
-      "/dashboard/som",
-  };
-
-  return (
-    dashboardMappings[normalizedPath] ||
-    normalizedPath
-  );
-}
-
-/* ================================
-   DASHBOARD RESOLUTION
-================================ */
-function getDashboardPath(
-  user,
-  result = {},
-) {
-  const role = getUserRole(user);
-
-  /*
-    Workforce Management users land directly on the View Graphs module on login.
-  */
-  if (role === "wfm") {
-    return "/dashboard/wfm/view-graphs";
-  }
-
-  /*
-    Prefer the route returned
-    by the backend users.js.
-  */
-  const serverPath =
-    result?.redirectTo ||
-    result?.user?.redirectTo ||
-    result?.data?.redirectTo ||
-    result?.data?.user?.redirectTo ||
-    result?.user?.dashboard ||
-    result?.data?.dashboard ||
-    result?.data?.user?.dashboard ||
-    user?.redirectTo ||
-    user?.dashboard ||
-    "";
-
-  if (serverPath) {
-    return normalizeDashboardPath(
-      serverPath,
-    );
-  }
-
-  /*
-    Fallback if the backend does not
-    return redirectTo/dashboard.
-  */
-  switch (role) {
-    case "admin":
-      return "/dashboard/superadmin";
-
-    case "bod":
-      return "/dashboard/bod";
-
-    case "om":
-      return "/dashboard/om";
-
-    case "tl":
-      return "/dashboard/tl";
-
-    case "wfm":
-      return "/dashboard/wfm/view-graphs";
-
-    case "som":
-      return "/dashboard/som";
-
-    case "masterdata":
-      return "/dashboard/employee-master-data";
-
-    default:
-      return "/dashboard/agent";
-  }
-}
-
-/* ================================
-   SAVE USER SESSION
-================================ */
-function saveAuthenticatedUser(
-  user,
-  expiresAt,
-  expiresInMs,
-) {
-  sessionStorage.setItem(
-    "sibsAuthenticatedUser",
-    JSON.stringify(user),
-  );
-
-  let finalExpiresAt = expiresAt;
-
-  if (!finalExpiresAt && expiresInMs) {
-    const numericExpiresIn =
-      Number(expiresInMs);
-
-    if (
-      Number.isFinite(
-        numericExpiresIn,
-      ) &&
-      numericExpiresIn > 0
-    ) {
-      finalExpiresAt =
-        Date.now() +
-        numericExpiresIn;
-    }
-  }
-
-  if (finalExpiresAt) {
-    sessionStorage.setItem(
-      "accessTokenExpiresAt",
-      String(finalExpiresAt),
-    );
-
-    localStorage.setItem(
-      "token_expires_at",
-      String(finalExpiresAt),
-    );
-  } else {
-    sessionStorage.removeItem(
-      "accessTokenExpiresAt",
-    );
-
-    localStorage.removeItem(
-      "token_expires_at",
-    );
-  }
 }
 
 /* ================================
@@ -609,7 +294,7 @@ const Login = () => {
         otherwise = Employee
       */
       const resolvedRole =
-        getUserRole(
+        resolveUserRole(
           responseUser,
         );
 
@@ -618,7 +303,7 @@ const Login = () => {
         takes priority.
       */
       const dashboardPath =
-        getDashboardPath(
+        resolveDashboardPath(
           responseUser,
           result,
         );
@@ -657,12 +342,6 @@ const Login = () => {
         getResponseExpiresInMs(
           result,
         );
-
-      saveAuthenticatedUser(
-        authUser,
-        expiresAt,
-        expiresInMs,
-      );
 
       saveAuthSession({
         user:

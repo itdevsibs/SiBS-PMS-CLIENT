@@ -1,5 +1,7 @@
 // Stores and reads frontend authentication metadata.
 // The JWT itself stays in the backend-issued HttpOnly cookie.
+export const AUTH_CHANGED_EVENT = "pms-auth-changed";
+
 const AUTH_USER_KEY = "pms-auth-user";
 const AUTH_EXPIRES_AT_KEY = "pms-session-expires-at";
 
@@ -8,6 +10,13 @@ const LEGACY_LOCAL_TOKEN_KEY = "pms-auth-token";
 const LEGACY_LOCAL_EXPIRY_KEY = "token_expires_at";
 const LEGACY_SESSION_USER_KEY = "sibsAuthenticatedUser";
 const LEGACY_SESSION_EXPIRY_KEY = "accessTokenExpiresAt";
+
+
+function notifyAuthChanged() {
+  if (typeof window === "undefined") return;
+
+  window.dispatchEvent(new CustomEvent(AUTH_CHANGED_EVENT));
+}
 
 function resolveExpiresAt(expiresAt, expiresInMs) {
   const numericExpiresAt = Number(expiresAt);
@@ -33,7 +42,13 @@ export function saveAuthSession({ user, expiresAt, expiresInMs } = {}) {
     sessionStorage.setItem(LEGACY_SESSION_USER_KEY, serializedUser);
   }
 
-  return saveAuthSessionExpiry({ expiresAt, expiresInMs });
+  const finalExpiresAt = saveAuthSessionExpiry({ expiresAt, expiresInMs });
+
+  if (user) {
+    notifyAuthChanged();
+  }
+
+  return finalExpiresAt;
 }
 
 export function saveAuthSessionExpiry({ expiresAt, expiresInMs } = {}) {
@@ -121,4 +136,6 @@ export function clearAuthSession() {
 
   sessionStorage.removeItem(LEGACY_SESSION_USER_KEY);
   sessionStorage.removeItem(LEGACY_SESSION_EXPIRY_KEY);
+
+  notifyAuthChanged();
 }
