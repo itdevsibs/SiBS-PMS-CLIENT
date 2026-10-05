@@ -172,15 +172,15 @@ export async function downloadKpiGraphsAsPdf(targetElementOrId = "kpi-graphs-con
 export async function downloadSelectedKpiReportsAsPdf({
   sections = [],
   filename = null,
+  isAllReportsDashboard = false,
+  allReportsElementId = "export-all-reports-dashboard",
 }) {
-  if (!sections.length) return false;
-
   const html2canvasModule = await import("html2canvas-pro");
   const html2canvas = html2canvasModule.default || html2canvasModule.html2canvas;
   const { jsPDF } = await import("jspdf");
 
   // Short delay to allow transitions and renders to settle
-  await new Promise((resolve) => setTimeout(resolve, 200));
+  await new Promise((resolve) => setTimeout(resolve, 250));
 
   const pdf = new jsPDF({
     orientation: "landscape",
@@ -191,6 +191,64 @@ export async function downloadSelectedKpiReportsAsPdf({
   const pdfWidth = pdf.internal.pageSize.getWidth();
   const pdfHeight = pdf.internal.pageSize.getHeight();
   const now = new Date();
+  const fileDate = now.toISOString().slice(0, 10);
+
+  // If exporting the consolidated All Reports executive dashboard
+  if (isAllReportsDashboard) {
+    const element =
+      document.getElementById(allReportsElementId) ||
+      document.getElementById("all-reports-pdf-view");
+
+    if (!element) {
+      console.warn(`PDF Export: Element not found for All Reports Dashboard (id: ${allReportsElementId})`);
+      return false;
+    }
+
+    const canvas = await html2canvas(element, {
+      scale: 2,
+      useCORS: true,
+      logging: false,
+      backgroundColor: "#ffffff",
+    });
+
+    const imgData = canvas.toDataURL("image/png");
+
+    // Clean minimal margin around landscape page (4mm) to maximize chart visibility
+    const marginX = 4;
+    const marginY = 4;
+    const availableWidth = pdfWidth - marginX * 2;
+    const availableHeight = pdfHeight - marginY * 2;
+
+    const imgRatio = canvas.width / canvas.height;
+    let finalWidth = availableWidth;
+    let finalHeight = finalWidth / imgRatio;
+
+    if (finalHeight > availableHeight) {
+      finalHeight = availableHeight;
+      finalWidth = finalHeight * imgRatio;
+    }
+
+    const finalX = marginX + (availableWidth - finalWidth) / 2;
+    const finalY = marginY + (availableHeight - finalHeight) / 2;
+
+    pdf.addImage(
+      imgData,
+      "PNG",
+      finalX,
+      finalY,
+      finalWidth,
+      finalHeight,
+      undefined,
+      "FAST",
+    );
+
+    const saveName = filename || `All-Reports-Performance-Summary-${fileDate}.pdf`;
+    pdf.save(saveName);
+    return true;
+  }
+
+  if (!sections.length) return false;
+
   const timestamp =
     now.toLocaleDateString("en-US", {
       weekday: "short",
@@ -291,7 +349,6 @@ export async function downloadSelectedKpiReportsAsPdf({
     return false;
   }
 
-  const fileDate = now.toISOString().slice(0, 10);
   const saveName =
     filename ||
     (sections.length === 1

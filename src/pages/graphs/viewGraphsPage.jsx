@@ -26,6 +26,7 @@ import QualityAuditKpiDashboard, {
   QualityAuditSummaryCards,
 } from "@/components/kpi/QualityAuditKpiDashboard";
 import DownloadPdfModal from "@/components/kpi/DownloadPdfModal";
+import AllReportsExecutivePdfView from "@/components/kpi/AllReportsExecutivePdfView";
 import {
   downloadKpiGraphsAsPdf,
   downloadSelectedKpiReportsAsPdf,
@@ -284,19 +285,26 @@ export default function ViewGraphsPage() {
       setIsDownloadingPdf(true);
       setExportingSections(selectedReportIds);
 
+      const isAllReports =
+        selectedReportIds.length >= 4 ||
+        (selectedReportIds.includes("calls") &&
+          selectedReportIds.includes("emails") &&
+          selectedReportIds.includes("qa") &&
+          selectedReportIds.includes("occupancy"));
+
       // Ensure data is loaded for any selected report that isn't currently loaded
       const fetches = [];
-      if (selectedReportIds.includes("calls") && !kpiResponse) {
+      if ((isAllReports || selectedReportIds.includes("calls")) && !kpiResponse) {
         fetches.push(
           getWfmCallKpis(buildRequestParams(filters)).then((res) => setKpiResponse(res)),
         );
       }
-      if (selectedReportIds.includes("emails") && !emailKpiResponse) {
+      if ((isAllReports || selectedReportIds.includes("emails")) && !emailKpiResponse) {
         fetches.push(
           getWfmEmailKpis(buildEmailRequestParams(filters)).then((res) => setEmailKpiResponse(res)),
         );
       }
-      if (selectedReportIds.includes("qa") && !qualityAuditKpiResponse) {
+      if ((isAllReports || selectedReportIds.includes("qa")) && !qualityAuditKpiResponse) {
         fetches.push(
           getWfmQualityAuditKpis(buildQualityAuditRequestParams(filters)).then((res) => setQualityAuditKpiResponse(res)),
         );
@@ -307,7 +315,16 @@ export default function ViewGraphsPage() {
       }
 
       // Allow DOM to settle and render charts
-      await new Promise((resolve) => setTimeout(resolve, 350));
+      await new Promise((resolve) => setTimeout(resolve, 400));
+
+      if (isAllReports) {
+        await downloadSelectedKpiReportsAsPdf({
+          isAllReportsDashboard: true,
+          allReportsElementId: "export-all-reports-dashboard",
+        });
+        setShowDownloadPdfModal(false);
+        return;
+      }
 
       const sectionsToExport = [];
 
@@ -1171,13 +1188,22 @@ export default function ViewGraphsPage() {
             position: "fixed",
             left: "-9999px",
             top: 0,
-            width: "1350px",
+            width: "1500px",
             opacity: 0,
             pointerEvents: "none",
             zIndex: -1,
           }}
           aria-hidden="true"
         >
+          {/* Executive Consolidated Single-Page Dashboard for All Reports */}
+          <div id="export-all-reports-dashboard" style={{ width: "1500px", background: "#ffffff" }}>
+            <AllReportsExecutivePdfView
+              callData={kpiResponse?.data?.data || dashboardData || {}}
+              emailData={emailKpiResponse?.data?.data || emailDashboardData || {}}
+              qualityAuditData={qualityAuditKpiResponse?.data?.data || qualityAuditDashboardData || {}}
+            />
+          </div>
+
           {exportingSections.includes("calls") && !showCalls && (
             <div id="export-calls-section" style={{ width: "1350px", background: "#f8fbfd", padding: "16px" }}>
               <CallKpiDashboard
