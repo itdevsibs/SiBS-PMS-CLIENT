@@ -1,7 +1,7 @@
 import { useLayoutEffect, useRef } from "react";
 import { CheckCircle2, Mail, Percent } from "lucide-react";
 import { ChartShell } from "./CallKpiDashboard.jsx";
-import { getCallAxisTicks } from "./callKpiDashboardUtils.js";
+import { getCallAxisTicks, useSyncedHorizontalScroll } from "./callKpiDashboardUtils.js";
 
 function formatNumber(value, digits = 0) {
   const number = Number(value || 0);
@@ -45,8 +45,11 @@ function EmailVolumeChart({
   hideLegend = false,
   isSubmodule = false,
   showFilters = true,
+  scrollContainerRef: externalScrollRef,
+  onScroll,
+  onPointerEnter,
 }) {
-  if (!series.length || !series.some((item) => Number(item.emailVolume || 0) > 0)) {
+  if (!series.length) {
     return <EmptyChart message="No Email volume is available for this reporting range." isSubmodule={isSubmodule} showFilters={showFilters} />;
   }
 
@@ -68,14 +71,23 @@ function EmailVolumeChart({
 
   const minPeriodWidth = 86;
   const isScrollable = series.length > 6 || period === "custom";
-  const scrollContainerRef = useRef(null);
+  const internalScrollRef = useRef(null);
+
+  const setScrollRef = (node) => {
+    internalScrollRef.current = node;
+    if (typeof externalScrollRef === "function") {
+      externalScrollRef(node);
+    } else if (externalScrollRef && "current" in externalScrollRef) {
+      externalScrollRef.current = node;
+    }
+  };
 
   useLayoutEffect(() => {
-    if (isScrollable && scrollContainerRef.current) {
-      scrollContainerRef.current.scrollLeft = scrollContainerRef.current.scrollWidth;
+    if (isScrollable && internalScrollRef.current) {
+      internalScrollRef.current.scrollLeft = internalScrollRef.current.scrollWidth;
       const timeoutId = setTimeout(() => {
-        if (scrollContainerRef.current) {
-          scrollContainerRef.current.scrollLeft = scrollContainerRef.current.scrollWidth;
+        if (internalScrollRef.current) {
+          internalScrollRef.current.scrollLeft = internalScrollRef.current.scrollWidth;
         }
       }, 50);
       return () => clearTimeout(timeoutId);
@@ -121,7 +133,9 @@ function EmailVolumeChart({
         </div>
 
         <div
-          ref={scrollContainerRef}
+          ref={setScrollRef}
+          onScroll={onScroll}
+          onPointerEnter={onPointerEnter}
           className={`relative min-w-0 flex-1 ${isScrollable ? "overflow-x-auto pb-1 sibs-chart-scrollbar" : "overflow-hidden"} overflow-y-hidden`}
         >
           <div className={`relative min-w-full ${isScrollable ? "w-max" : "w-full"}`}>
@@ -234,8 +248,11 @@ function EmailRateChart({
   hideLegend = false,
   isSubmodule = false,
   showFilters = true,
+  scrollContainerRef: externalScrollRef,
+  onScroll,
+  onPointerEnter,
 }) {
-  if (!series.length || !series.some((item) => Number(item.emailVolume || 0) > 0)) {
+  if (!series.length) {
     return (
       <EmptyChart
         message="No Email ERR or service level data is available for this reporting range."
@@ -253,14 +270,23 @@ function EmailRateChart({
 
   const minPeriodWidth = 86;
   const isScrollable = series.length > 6 || period === "custom";
-  const scrollContainerRef = useRef(null);
+  const internalScrollRef = useRef(null);
+
+  const setScrollRef = (node) => {
+    internalScrollRef.current = node;
+    if (typeof externalScrollRef === "function") {
+      externalScrollRef(node);
+    } else if (externalScrollRef && "current" in externalScrollRef) {
+      externalScrollRef.current = node;
+    }
+  };
 
   useLayoutEffect(() => {
-    if (isScrollable && scrollContainerRef.current) {
-      scrollContainerRef.current.scrollLeft = scrollContainerRef.current.scrollWidth;
+    if (isScrollable && internalScrollRef.current) {
+      internalScrollRef.current.scrollLeft = internalScrollRef.current.scrollWidth;
       const timeoutId = setTimeout(() => {
-        if (scrollContainerRef.current) {
-          scrollContainerRef.current.scrollLeft = scrollContainerRef.current.scrollWidth;
+        if (internalScrollRef.current) {
+          internalScrollRef.current.scrollLeft = internalScrollRef.current.scrollWidth;
         }
       }, 50);
       return () => clearTimeout(timeoutId);
@@ -303,7 +329,9 @@ function EmailRateChart({
         </div>
 
         <div
-          ref={scrollContainerRef}
+          ref={setScrollRef}
+          onScroll={onScroll}
+          onPointerEnter={onPointerEnter}
           className={`relative min-w-0 flex-1 ${isScrollable ? "overflow-x-auto pb-1 sibs-chart-scrollbar" : "overflow-hidden"} overflow-y-hidden`}
         >
           <div className={`relative min-w-full ${isScrollable ? "w-max" : "w-full"}`}>
@@ -485,12 +513,16 @@ function EmailSummaryCards({ summary = {}, title = "Emails" }) {
 
 export default function EmailKpiDashboard({
   data = {},
+  period,
   showSummaryCards = true,
   isSubmodule = false,
   showFilters = true,
 }) {
   const series = Array.isArray(data.series) ? data.series : [];
-  const period = data.filters?.period || data.data?.filters?.period;
+  const currentPeriod = period || data.filters?.period || data.data?.filters?.period;
+  const isCustomPeriod = currentPeriod === "custom";
+
+  const registerScroll = useSyncedHorizontalScroll(isCustomPeriod);
 
   return (
     <section className="space-y-1.5 sm:space-y-2">
@@ -523,10 +555,11 @@ export default function EmailKpiDashboard({
           >
             <EmailVolumeChart
               series={series}
-              period={period}
+              period={currentPeriod}
               hideLegend={true}
               isSubmodule={isSubmodule}
               showFilters={showFilters}
+              scrollContainerRef={registerScroll}
             />
           </ChartShell>
         </div>
@@ -549,10 +582,11 @@ export default function EmailKpiDashboard({
           >
             <EmailRateChart
               series={series}
-              period={period}
+              period={currentPeriod}
               hideLegend={true}
               isSubmodule={isSubmodule}
               showFilters={showFilters}
+              scrollContainerRef={registerScroll}
             />
           </ChartShell>
         </div>

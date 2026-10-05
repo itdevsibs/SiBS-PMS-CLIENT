@@ -237,7 +237,7 @@ export default function MultiSelectDropdown({
   // Display label on trigger button
   const triggerText = useMemo(() => {
     if (selectedList.length === 0) {
-      return allOptionLabel || placeholder;
+      return placeholder || allOptionLabel;
     }
     if (isAllSelected) {
       return allOptionLabel || placeholder;
