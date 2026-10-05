@@ -1,83 +1,211 @@
-// Defines all frontend routes and page mappings.
-import { Navigate, Route, Routes } from "react-router-dom";
+// Defines frontend routes and protects dashboard pages using centralized permissions.
+import { Navigate, Route, Routes, useLocation } from "react-router-dom";
+
+import ProtectedRoute from "./components/auth/ProtectedRoute";
+import { PERMISSIONS } from "./config/accessControl";
+import { useAuthAccess } from "./context/AuthAccessContext";
 import AgentsPage from "./pages/dashboard/AgentsPage";
 import BoardOfDirectorsPage from "./pages/dashboard/BoardOfDirectorsPage";
 import ClientPage from "./pages/dashboard/ClientPage";
-import Login from "./pages/login/Login";
-import OperationsManagementPage from "./pages/operationsManager/OperationsManagementPage";
 import SuperAdminDashboard from "./pages/dashboard/SuperAdminDashboard";
-import SuperAdminHistoryLogs from "./pages/historyLogs/SuperAdminHistoryLogs";
+import SeniorOperationsManagerPage from "@/pages/dashboard/SeniorOperationsManagerPage";
+import EmployeeMasterDataPage from "./pages/employeeMasterData/EmployeeMasterDataPage";
+import ViewGraphsPage from "./pages/graphs/viewGraphsPage";
+import InterfaceAccessHistory from "./pages/historyLogs/InterfaceAccessHistory";
+import Login from "./pages/login/Login";
+import OccupancyPage from "./pages/occupancy/OccupancyPage";
+import OperationsManagementPage from "./pages/operationsManager/OperationsManagementPage";
+import TaskOrderLedger from "./pages/TaskOrderLedger/TaskOrderLedger";
 import TeamLeaderPage from "./pages/teamLeader/TeamLeaderPage";
 import WfmHistoryLogs from "./pages/workForceManagement/wfmHistoryLogs";
 import WfmImportDataPage from "./pages/workForceManagement/WfmImportDataPage";
 import WfmImportedRepository from "./pages/workForceManagement/WfmImportedRepository";
-import ViewGraphsPage from "./pages/graphs/viewGraphsPage";
-import WorkforceManagementPage from "./pages/dashboard/WorkforceManagementPage";
-import SeniorOperationsManagerPage from "@/pages/dashboard/SeniorOperationsManagerPage";
-import OccupancyPage from "./pages/occupancy/OccupancyPage";
-import EmployeeMasterDataPage from "./pages/employeeMasterData/EmployeeMasterDataPage";
-import TaskOrderLedger from "./pages/TaskOrderLedger/TaskOrderLedger";
+
+function Protected({ permission, children }) {
+  return (
+    <ProtectedRoute permission={permission}>
+      {children}
+    </ProtectedRoute>
+  );
+}
+
+function HomeRedirect() {
+  const { authUser, homeRoute } = useAuthAccess();
+
+  return (
+    <Navigate
+      to={authUser ? homeRoute : "/login"}
+      replace
+    />
+  );
+}
+
+function LegacyRedirect({ to }) {
+  const location = useLocation();
+
+  return (
+    <Navigate
+      to={`${to}${location.search}${location.hash}`}
+      replace
+    />
+  );
+}
 
 const Router = () => {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
-      <Route path="/" element={<Navigate to="/login" replace />} />
+      <Route path="/" element={<HomeRedirect />} />
+      <Route path="/dashboard" element={<HomeRedirect />} />
+
+      {/* Canonical feature routes */}
       <Route
-        path="/dashboard/employee-master-data"
-        element={<EmployeeMasterDataPage />}
+        path="/employee-master-data"
+        element={(
+          <Protected permission={PERMISSIONS.VIEW_EMPLOYEE_LEDGER}>
+            <EmployeeMasterDataPage />
+          </Protected>
+        )}
       />
       <Route
-        path="/dashboard/masterdata"
-        element={<EmployeeMasterDataPage />}
+        path="/task-order-ledger"
+        element={(
+          <Protected permission={PERMISSIONS.WFM_TASK_ORDER_LEDGER}>
+            <TaskOrderLedger />
+          </Protected>
+        )}
       />
       <Route
-        path="/dashboard/wfm/skills-ledger"
-        element={<TaskOrderLedger />}
+        path="/import-data"
+        element={(
+          <Protected permission={PERMISSIONS.WFM_IMPORT_DATA}>
+            <WfmImportDataPage />
+          </Protected>
+        )}
       />
       <Route
-        path="/dashboard/wfm/task-order-ledger"
-        element={<TaskOrderLedger />}
-      />
-      <Route path="/dashboard" element={<AgentsPage />} />
-      <Route path="/dashboard/agent" element={<AgentsPage />} />
-      <Route path="/dashboard/agents" element={<AgentsPage />} />
-      <Route path="/dashboard/wfm" element={<Navigate to="/dashboard/wfm/view-graphs" replace />} />
-      <Route
-        path="/dashboard/wfm/import-data"
-        element={<WfmImportDataPage />}
+        path="/import-repository"
+        element={(
+          <Protected permission={PERMISSIONS.WFM_IMPORT_REPOSITORY}>
+            <WfmImportedRepository />
+          </Protected>
+        )}
       />
       <Route
-        path="/dashboard/wfm/import-repository"
-        element={<WfmImportedRepository />}
+        path="/history"
+        element={(
+          <Protected permission={PERMISSIONS.WFM_HISTORY_LOGS}>
+            <WfmHistoryLogs />
+          </Protected>
+        )}
       />
       <Route
-        path="/dashboard/wfm/history-logs"
-        element={<WfmHistoryLogs />}
+        path="/view-graphs"
+        element={(
+          <Protected permission={PERMISSIONS.VIEW_WOW_REPORT}>
+            <ViewGraphsPage />
+          </Protected>
+        )}
       />
       <Route
-        path="/dashboard/wfm/view-graphs"
-        element={<ViewGraphsPage />}
+        path="/occupancy"
+        element={(
+          <Protected permission={PERMISSIONS.VIEW_OCCUPANCY}>
+            <OccupancyPage />
+          </Protected>
+        )}
+      />
+
+      {/* Canonical role landing routes */}
+      <Route
+        path="/agent"
+        element={(
+          <Protected permission={PERMISSIONS.VIEW_OWN_PERFORMANCE}>
+            <AgentsPage />
+          </Protected>
+        )}
       />
       <Route
-        path="/dashboard/occupancy"
-        element={<OccupancyPage />}
+        path="/om"
+        element={(
+          <Protected permission={PERMISSIONS.VIEW_OPERATIONS_PERFORMANCE}>
+            <OperationsManagementPage />
+          </Protected>
+        )}
       />
       <Route
-        path="/dashboard/wfm/occupancy"
-        element={<OccupancyPage />}
+        path="/tl"
+        element={(
+          <Protected permission={PERMISSIONS.VIEW_TEAM_PERFORMANCE}>
+            <TeamLeaderPage />
+          </Protected>
+        )}
       />
-      <Route path="/dashboard/om" element={<OperationsManagementPage />} />
-      <Route path="/dashboard/tl" element={<TeamLeaderPage />} />
-      <Route path="/dashboard/client" element={<ClientPage />} />
-      <Route path="/dashboard/bod" element={<BoardOfDirectorsPage />} />
-      <Route path="/dashboard/superadmin" element={<SuperAdminDashboard />} />
-      <Route path="/dashboard/som" element={<SeniorOperationsManagerPage />} />
       <Route
-        path="/dashboard/superadmin/history-logs"
-        element={<SuperAdminHistoryLogs />}
+        path="/client"
+        element={(
+          <Protected permission={PERMISSIONS.CLIENT_DASHBOARD}>
+            <ClientPage />
+          </Protected>
+        )}
       />
-      <Route path="*" element={<Navigate to="/login" replace />} />
+      <Route
+        path="/bod"
+        element={(
+          <Protected permission={PERMISSIONS.VIEW_WOW_REPORT}>
+            <BoardOfDirectorsPage />
+          </Protected>
+        )}
+      />
+      <Route
+        path="/superadmin"
+        element={(
+          <Protected permission={PERMISSIONS.SUPER_ADMIN_ACCESS}>
+            <SuperAdminDashboard />
+          </Protected>
+        )}
+      />
+      <Route
+        path="/som"
+        element={(
+          <Protected permission={PERMISSIONS.VIEW_WOW_REPORT}>
+            <SeniorOperationsManagerPage />
+          </Protected>
+        )}
+      />
+      <Route
+        path="/interface-access-history"
+        element={(
+          <Protected permission={PERMISSIONS.SUPER_ADMIN_HISTORY}>
+            <InterfaceAccessHistory />
+          </Protected>
+        )}
+      />
+
+      {/* Legacy URLs remain as compatibility redirects and preserve query/hash. */}
+      <Route path="/dashboard/agent" element={<LegacyRedirect to="/agent" />} />
+      <Route path="/dashboard/agents" element={<LegacyRedirect to="/agent" />} />
+      <Route path="/dashboard/tl" element={<LegacyRedirect to="/tl" />} />
+      <Route path="/dashboard/om" element={<LegacyRedirect to="/om" />} />
+      <Route path="/dashboard/client" element={<LegacyRedirect to="/client" />} />
+      <Route path="/dashboard/bod" element={<LegacyRedirect to="/bod" />} />
+      <Route path="/dashboard/superadmin" element={<LegacyRedirect to="/superadmin" />} />
+      <Route path="/dashboard/som" element={<LegacyRedirect to="/som" />} />
+      <Route path="/dashboard/superadmin/history-logs" element={<LegacyRedirect to="/interface-access-history" />} />
+      <Route path="/dashboard/wfm" element={<LegacyRedirect to="/view-graphs" />} />
+      <Route path="/dashboard/wfm/view-graphs" element={<LegacyRedirect to="/view-graphs" />} />
+      <Route path="/dashboard/wfm/import-data" element={<LegacyRedirect to="/import-data" />} />
+      <Route path="/dashboard/wfm/import-repository" element={<LegacyRedirect to="/import-repository" />} />
+      <Route path="/dashboard/wfm/history" element={<LegacyRedirect to="/history" />} />
+      <Route path="/dashboard/wfm/history-logs" element={<LegacyRedirect to="/history" />} />
+      <Route path="/dashboard/wfm/task-order-ledger" element={<LegacyRedirect to="/task-order-ledger" />} />
+      <Route path="/dashboard/wfm/skills-ledger" element={<LegacyRedirect to="/task-order-ledger" />} />
+      <Route path="/dashboard/employee-master-data" element={<LegacyRedirect to="/employee-master-data" />} />
+      <Route path="/dashboard/masterdata" element={<LegacyRedirect to="/employee-master-data" />} />
+      <Route path="/dashboard/occupancy" element={<LegacyRedirect to="/occupancy" />} />
+      <Route path="/dashboard/wfm/occupancy" element={<LegacyRedirect to="/occupancy" />} />
+
+      <Route path="*" element={<HomeRedirect />} />
     </Routes>
   );
 };

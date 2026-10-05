@@ -35,7 +35,7 @@ export default function WfmOccupancySnapshot({
 
         <button
           type="button"
-          onClick={() => navigate("/dashboard/occupancy")}
+          onClick={() => navigate("/occupancy")}
           className="inline-flex items-center gap-1 text-[11px] font-bold text-sibs-primary-1 hover:text-sibs-primary-2 cursor-pointer transition-colors"
         >
           <span>Roster</span>
@@ -167,7 +167,7 @@ export default function WfmOccupancySnapshot({
             <div className="pt-2.5 mt-1 border-t border-slate-100 flex items-center justify-end">
               <button
                 type="button"
-                onClick={() => navigate("/dashboard/occupancy")}
+                onClick={() => navigate("/occupancy")}
                 className="inline-flex items-center gap-1 text-[11px] font-bold text-sibs-primary-1 hover:text-sibs-primary-2 transition-colors cursor-pointer"
               >
                 <span>Full Occupancy Table</span>

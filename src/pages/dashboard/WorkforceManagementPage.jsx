@@ -318,7 +318,7 @@ function WorkforceManagementPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* Card 1: Import Data */}
             <div
-              onClick={() => navigate("/dashboard/wfm/import-data")}
+              onClick={() => navigate("/import-data")}
               className="group cursor-pointer rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs transition-all duration-200 hover:-translate-y-1 hover:border-sibs-primary-2 hover:shadow-md flex flex-col justify-between"
             >
               <div>
@@ -368,7 +368,7 @@ function WorkforceManagementPage() {
 
             {/* Card 2: View Graphs */}
             <div
-              onClick={() => navigate("/dashboard/wfm/view-graphs")}
+              onClick={() => navigate("/view-graphs")}
               className="group cursor-pointer rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs transition-all duration-200 hover:-translate-y-1 hover:border-sibs-primary-2 hover:shadow-md flex flex-col justify-between"
             >
               <div>
@@ -418,7 +418,7 @@ function WorkforceManagementPage() {
 
             {/* Card 3: Occupancy */}
             <div
-              onClick={() => navigate("/dashboard/occupancy")}
+              onClick={() => navigate("/occupancy")}
               className="group cursor-pointer rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs transition-all duration-200 hover:-translate-y-1 hover:border-sibs-primary-2 hover:shadow-md flex flex-col justify-between"
             >
               <div>
@@ -489,7 +489,7 @@ function WorkforceManagementPage() {
 
                 <button
                   type="button"
-                  onClick={() => navigate("/dashboard/wfm/history-logs")}
+                  onClick={() => navigate("/history")}
                   className="cursor-pointer text-xs font-bold text-sibs-primary-2 hover:underline inline-flex items-center gap-1.5"
                 >
                   View History Logs <ArrowRight size={13} />
@@ -549,7 +549,7 @@ function WorkforceManagementPage() {
 
               <button
                 type="button"
-                onClick={() => navigate("/dashboard/wfm/history-logs")}
+                onClick={() => navigate("/history")}
                 className="cursor-pointer text-xs font-bold text-slate-600 hover:text-sibs-primary-2 inline-flex items-center gap-1 transition-colors"
               >
                 <span>Go to History Logs</span>

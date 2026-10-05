@@ -68,7 +68,7 @@ export default function WfmRecentBatchesTable({
 
         <button
           type="button"
-          onClick={() => navigate("/dashboard/wfm/import-data")}
+          onClick={() => navigate("/import-data")}
           className="inline-flex items-center gap-1 text-[11px] font-bold text-sibs-primary-1 hover:text-sibs-primary-2 cursor-pointer transition-colors"
         >
           <span>View All</span>
@@ -164,7 +164,7 @@ export default function WfmRecentBatchesTable({
         <div className="pt-2.5 mt-2 border-t border-slate-100 flex items-center justify-end text-xs">
           <button
             type="button"
-            onClick={() => navigate("/dashboard/wfm/import-data")}
+            onClick={() => navigate("/import-data")}
             className="inline-flex items-center gap-1 text-[11px] font-bold text-sibs-primary-1 hover:text-sibs-primary-2 cursor-pointer transition-colors"
           >
             <span>Batch Details & Logs</span>
