@@ -315,60 +315,70 @@ export default function ViewGraphsPage() {
       }
 
       // Allow DOM to settle and render charts
-      await new Promise((resolve) => setTimeout(resolve, 400));
+      await new Promise((resolve) => setTimeout(resolve, 450));
 
-      if (isAllReports) {
-        await downloadSelectedKpiReportsAsPdf({
-          isAllReportsDashboard: true,
-          allReportsElementId: "export-all-reports-dashboard",
-        });
-        setShowDownloadPdfModal(false);
-        return;
+      const MONTH_NAMES = [
+        "January", "February", "March", "April", "May", "June",
+        "July", "August", "September", "October", "November", "December"
+      ];
+
+      // Format date for filename (e.g. July 26, 2026)
+      const formatFileDate = (dateStr) => {
+        if (!dateStr) return "";
+        const parts = String(dateStr).split("-");
+        if (parts.length === 3 && parts[0].length === 4) {
+          const year = parts[0];
+          const monthIndex = parseInt(parts[1], 10) - 1;
+          const day = parseInt(parts[2], 10);
+          const monthName = MONTH_NAMES[monthIndex] || parts[1];
+          return `${monthName} ${day}, ${year}`;
+        }
+        return String(dateStr).replace(/[/\\:*?"<>|]/g, "-");
+      };
+
+      const isCustomPeriod = filters.period === "custom";
+      let datePart = "";
+      if (isCustomPeriod && filters.from && filters.to) {
+        datePart = `${formatFileDate(filters.from)}_to_${formatFileDate(filters.to)}`;
+      } else {
+        const refDate = filters.referenceDate || new Date().toISOString().slice(0, 10);
+        datePart = formatFileDate(refDate);
       }
 
-      const sectionsToExport = [];
+      const rawTaskOrder = getTaskOrderLabel(filters.sourceSystem, filters.taskOrder);
+      const isAllTaskOrders =
+        !rawTaskOrder ||
+        rawTaskOrder === "All Task Orders" ||
+        rawTaskOrder === "All Task Order" ||
+        (Array.isArray(filters.taskOrder) &&
+          taskOrderOptions.length > 0 &&
+          filters.taskOrder.filter((v) => v && v !== "__NONE__").length ===
+            taskOrderOptions.filter((o) => o.value !== "").length);
 
-      if (selectedReportIds.includes("calls")) {
-        const elId = showCalls ? "calls-section" : "export-calls-section";
-        sectionsToExport.push({
-          id: "calls",
-          name: "Calls",
-          title: "CALLS KPI PERFORMANCE GRAPHS",
-          elementId: elId,
-        });
-      }
+      const taskOrderPart = (isAllTaskOrders ? "All Task Order" : rawTaskOrder)
+        .replace(/[/\\:*?"<>|]/g, "-")
+        .trim();
 
-      if (selectedReportIds.includes("emails")) {
-        const elId = showEmails ? "emails-section" : "export-emails-section";
-        sectionsToExport.push({
-          id: "emails",
-          name: "Email",
-          title: "EMAIL KPI PERFORMANCE GRAPHS",
-          elementId: elId,
-        });
-      }
+      const nameMap = {
+        calls: "Calls",
+        emails: "Email",
+        qa: "QA",
+        occupancy: "Occupancy",
+      };
 
-      if (selectedReportIds.includes("qa")) {
-        const elId = showQa ? "qa-section" : "export-qa-section";
-        sectionsToExport.push({
-          id: "qa",
-          name: "Quality-Audit",
-          title: "QUALITY AUDIT PERFORMANCE GRAPHS",
-          elementId: elId,
-        });
-      }
+      const reportPrefix = isAllReports
+        ? "All Reports"
+        : selectedReportIds.map((id) => nameMap[id] || id).join(" & ");
 
-      if (selectedReportIds.includes("occupancy")) {
-        const elId = showOccupancy ? "occupancy-section" : "export-occupancy-section";
-        sectionsToExport.push({
-          id: "occupancy",
-          name: "Occupancy",
-          title: "OCCUPANCY & HEADCOUNT PERFORMANCE",
-          elementId: elId,
-        });
-      }
+      const rawFilename = `${reportPrefix} - ${taskOrderPart} - ${datePart}.pdf`;
+      const filename = rawFilename.replace(/[<>:"/\\|?*]/g, "-");
 
-      await downloadSelectedKpiReportsAsPdf({ sections: sectionsToExport });
+      await downloadSelectedKpiReportsAsPdf({
+        isAllReportsDashboard: true,
+        allReportsElementId: "export-all-reports-dashboard",
+        filename,
+      });
+
       setShowDownloadPdfModal(false);
     } catch (err) {
       console.error("Failed to download PDF report:", err);
@@ -671,7 +681,7 @@ export default function ViewGraphsPage() {
     setFilters((current) => ({
       ...current,
       period: nextPeriod,
-      referenceDate: current.referenceDate || "2026-07-31",
+      referenceDate: current.referenceDate || new Date().toISOString().slice(0, 10),
       from: "",
       to: "",
     }));
@@ -691,7 +701,7 @@ export default function ViewGraphsPage() {
 
     setFilters((current) => ({
       ...current,
-      referenceDate: "2026-07-31",
+      referenceDate: new Date().toISOString().slice(0, 10),
       from: "",
       to: "",
     }));
@@ -1081,6 +1091,7 @@ export default function ViewGraphsPage() {
                     <div id="calls-section">
                       <CallKpiDashboard
                         data={dashboardData || {}}
+                        period={filters.period}
                         showSummaryCards={showFilters}
                         isSubmodule={isCallsOnly}
                         showFilters={showFilters}
@@ -1110,6 +1121,7 @@ export default function ViewGraphsPage() {
                       ) : null}
                       <EmailKpiDashboard
                         data={emailDashboardData || {}}
+                        period={filters.period}
                         showSummaryCards={isEmailsOnly ? showFilters : false}
                         isSubmodule={isEmailsOnly}
                         showFilters={showFilters}
@@ -1180,72 +1192,30 @@ export default function ViewGraphsPage() {
         activeSection={currentSection}
       />
 
-      {/* Off-screen render container for PDF export when sections are not currently visible */}
+      {/* Off-screen render container for PDF export */}
       {exportingSections.length > 0 && (
         <div
           id="pdf-offscreen-export-container"
           style={{
             position: "fixed",
-            left: "-9999px",
+            left: "-10000px",
             top: 0,
             width: "1500px",
-            opacity: 0,
+            opacity: 1,
             pointerEvents: "none",
-            zIndex: -1,
+            zIndex: -9999,
           }}
           aria-hidden="true"
         >
-          {/* Executive Consolidated Single-Page Dashboard for All Reports */}
+          {/* Executive Dashboard for All Reports & Filtered Reports */}
           <div id="export-all-reports-dashboard" style={{ width: "1500px", background: "#ffffff" }}>
             <AllReportsExecutivePdfView
               callData={kpiResponse?.data?.data || dashboardData || {}}
               emailData={emailKpiResponse?.data?.data || emailDashboardData || {}}
               qualityAuditData={qualityAuditKpiResponse?.data?.data || qualityAuditDashboardData || {}}
+              selectedSections={exportingSections}
             />
           </div>
-
-          {exportingSections.includes("calls") && !showCalls && (
-            <div id="export-calls-section" style={{ width: "1350px", background: "#f8fbfd", padding: "16px" }}>
-              <CallKpiDashboard
-                data={dashboardData || {}}
-                showSummaryCards={true}
-                isSubmodule={false}
-                showFilters={false}
-              />
-            </div>
-          )}
-          {exportingSections.includes("emails") && !showEmails && (
-            <div id="export-emails-section" style={{ width: "1350px", background: "#f8fbfd", padding: "16px" }}>
-              <EmailKpiDashboard
-                data={emailDashboardData || {}}
-                showSummaryCards={true}
-                isSubmodule={true}
-                showFilters={false}
-              />
-            </div>
-          )}
-          {exportingSections.includes("qa") && !showQa && (
-            <div id="export-qa-section" style={{ width: "1350px", background: "#f8fbfd", padding: "16px" }}>
-              <QualityAuditKpiDashboard
-                data={qualityAuditDashboardData || {}}
-                showSummaryCards={true}
-                period={filters.period}
-                isSubmodule={true}
-                showFilters={false}
-              />
-            </div>
-          )}
-          {exportingSections.includes("occupancy") && !showOccupancy && (
-            <div id="export-occupancy-section" className="sibs-card p-8 text-center" style={{ width: "1350px", background: "#f8fbfd", padding: "16px" }}>
-              <Users className="mx-auto mb-3 text-sibs-primary-1/60" size={36} />
-              <h2 className="m-0 text-base font-bold text-sibs-primary-1">
-                Occupancy & Headcount Performance
-              </h2>
-              <p className="mt-1 text-xs text-sibs-tertiary-5">
-                Occupancy & HC reporting metrics will be displayed here.
-              </p>
-            </div>
-          )}
         </div>
       )}
     </section>

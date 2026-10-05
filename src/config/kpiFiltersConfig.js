@@ -747,7 +747,7 @@ export const DEFAULT_FILTERS = {
   country: [],
   lob: "",
   period: "weekly",
-  referenceDate: "2026-07-31",
+  referenceDate: new Date().toISOString().slice(0, 10),
   from: "",
   to: "",
 };

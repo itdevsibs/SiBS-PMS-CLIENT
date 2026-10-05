@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 
 import DatePicker from "@/components/ui/Filter/DatePicker";
+import MultiSelectDropdown from "@/components/ui/Filter/MultiSelectDropdown";
 import { getCallAxisTicks } from "@/components/kpi/callKpiDashboardUtils";
 import {
   ChartShell,
@@ -171,7 +172,12 @@ function AgentCallsChart({ series = [] }) {
 
   const maxValue = Math.max(
     1,
-    ...series.map((item) => Number(item.callsHandled || item.handledCalls || 0)),
+    ...series.map((item) =>
+      Math.max(
+        Number(item.callsHandled ?? item.handledCalls ?? 0),
+        Number(item.handledWithinSla ?? item.handledWithSla ?? 0),
+      ),
+    ),
   );
   const axisTicks = getCallAxisTicks(maxValue, 4);
   const axisMax = Math.max(1, axisTicks[0] || maxValue);
@@ -179,10 +185,14 @@ function AgentCallsChart({ series = [] }) {
   return (
     <div className="w-full min-w-0">
       {/* Legend */}
-      <div className="mb-3 flex h-5 items-center gap-3 text-xs font-bold text-sibs-tertiary-5">
+      <div className="mb-1.5 flex h-5 items-center gap-3 text-xs font-bold text-sibs-tertiary-5">
         <span className="inline-flex items-center gap-1.5">
           <i className="inline-block h-2.5 w-2.5 rounded-full bg-[#0b3b68]" />
           Handled
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <i className="inline-block h-2.5 w-2.5 rounded-full bg-[#0284c7]" />
+          Handled within SLA
         </span>
       </div>
 
@@ -217,45 +227,90 @@ function AgentCallsChart({ series = [] }) {
             ))}
           </div>
 
-          {/* Single Bar per Period */}
+          {/* Clustered Bars per Period */}
           <div className="relative flex h-[300px] min-w-0 items-end gap-1.5 border-b border-sibs-tertiary-8 px-1 sm:gap-2.5">
             {series.map((item, periodIndex) => {
-              const numericValue = Number(item.callsHandled || item.handledCalls || 0);
-              const heightPercent =
-                numericValue > 0
-                  ? Math.max(2, (numericValue / axisMax) * 100)
+              const handledVal = Number(item.callsHandled ?? item.handledCalls ?? 0);
+              const slaVal = Number(item.handledWithinSla ?? item.handledWithSla ?? 0);
+
+              const handledHeight =
+                handledVal > 0
+                  ? Math.max(2, (handledVal / axisMax) * 100)
                   : 0;
+              const slaHeight =
+                slaVal > 0
+                  ? Math.max(2, (slaVal / axisMax) * 100)
+                  : 0;
+
+              const bars = [
+                {
+                  metric: "Handled",
+                  value: handledVal,
+                  className: "bg-[#0b3b68]",
+                  heightPercent: handledHeight,
+                },
+                {
+                  metric: "Handled within SLA",
+                  value: slaVal,
+                  className: "bg-[#0284c7]",
+                  heightPercent: slaHeight,
+                },
+              ];
 
               return (
                 <div
-                  key={item.key}
-                  className="group/period flex h-full min-w-0 flex-1 items-end justify-center px-0.5 sm:px-1"
+                  key={item.key || periodIndex}
+                  className="group/period relative flex h-full min-w-0 flex-1 items-end justify-center px-0.5 sm:px-1"
                 >
-                  <div className="group/bar relative flex h-full w-full max-w-[36px] items-end justify-center">
-                    {numericValue > 0 ? (
-                      <span
-                        className="pointer-events-none absolute left-1/2 z-10 -translate-x-1/2 whitespace-nowrap text-[10px] font-black text-sibs-primary-1 transition-all duration-200 group-hover/bar:-translate-y-0.5"
-                        style={{
-                          bottom: `calc(${heightPercent}% + 4px)`,
-                        }}
-                      >
-                        {numericValue >= 1000
-                          ? `${(numericValue / 1000).toFixed(1)}k`
-                          : numericValue}
-                      </span>
-                    ) : null}
+                  <div className="relative flex h-full w-full max-w-[72px] sm:max-w-[80px] items-end justify-center gap-1">
+                    {bars.map(({ metric, value, className, heightPercent }, barIndex) => {
+                      const isInsideBar = heightPercent > 10;
+                      return (
+                        <div
+                          key={metric}
+                          className="group/bar relative flex h-full min-w-0 flex-1 items-end justify-center"
+                        >
+                          {value > 0 ? (
+                            <span
+                              className={`pointer-events-none absolute left-1/2 z-10 -translate-x-1/2 whitespace-nowrap text-[8.5px] sm:text-[9px] 2xl:text-[9.5px] font-bold tracking-tight transition-all duration-200 group-hover/bar:-translate-y-0.5 sibs-graph-number-in ${isInsideBar
+                                  ? "text-white drop-shadow-xs"
+                                  : "text-sibs-primary-1"
+                                }`}
+                              style={{
+                                bottom: isInsideBar
+                                  ? `calc(${heightPercent}% - 15px)`
+                                  : `calc(${heightPercent}% + 3px)`,
+                                animationDelay: `${Math.min(periodIndex * 80 + barIndex * 40, 650)}ms`,
+                              }}
+                            >
+                              {value >= 1000
+                                ? `${(value / 1000).toFixed(1)}k`
+                                : value}
+                            </span>
+                          ) : null}
+
+                          {/* Bar Pillar */}
+                          <div
+                            className={`w-full max-w-[32px] sm:max-w-[36px] rounded-t-[4px] ${className} shadow-xs transition-all duration-200 ease-out group-hover/bar:-translate-y-0.5 group-hover/bar:brightness-110 sibs-graph-bar-rise`}
+                            style={{
+                              height: `${heightPercent}%`,
+                              animationDelay: `${Math.min(periodIndex * 80 + barIndex * 40, 650)}ms`,
+                            }}
+                          />
+                        </div>
+                      );
+                    })}
 
                     {/* Tooltip Modal */}
                     <div
-                      className={`pointer-events-none absolute z-50 hidden min-w-[150px] rounded-xl border border-sibs-tertiary-10/80 bg-white/95 p-2.5 shadow-xl backdrop-blur-md group-hover/bar:block ${
-                        periodIndex >= series.length - 1
+                      className={`pointer-events-none absolute z-50 hidden min-w-[160px] rounded-xl border border-sibs-tertiary-10/80 bg-white/95 p-2.5 shadow-xl backdrop-blur-md group-hover/period:block ${periodIndex >= series.length - 1
                           ? "left-1/2 -translate-x-[75%]"
                           : periodIndex === 0
-                          ? "left-1/2 -translate-x-[25%]"
-                          : "left-1/2 -translate-x-1/2"
-                      }`}
+                            ? "left-1/2 -translate-x-[25%]"
+                            : "left-1/2 -translate-x-1/2"
+                        }`}
                       style={{
-                        bottom: `calc(${heightPercent}% + 44px)`,
+                        bottom: `calc(${Math.max(handledHeight, slaHeight)}% + 36px)`,
                       }}
                     >
                       <div className="flex items-center justify-between border-b border-slate-100 pb-1">
@@ -267,15 +322,38 @@ function AgentCallsChart({ series = [] }) {
                         </span>
                       </div>
 
-                      <div className="mt-1.5 flex items-center justify-between text-xs">
-                        <span className="flex items-center gap-1.5 font-bold text-slate-600">
-                          <span className="h-2.5 w-2.5 rounded-full bg-[#0b3b68]" />
-                          Handled:
-                        </span>
-                        <span className="font-extrabold text-sibs-primary-1">
-                          {formatNumber(numericValue)}
-                        </span>
+                      <div className="mt-1.5 space-y-1 text-xs">
+                        <div className="flex items-center justify-between">
+                          <span className="flex items-center gap-1.5 font-bold text-slate-600">
+                            <span className="h-2.5 w-2.5 rounded-full bg-[#0b3b68]" />
+                            Handled:
+                          </span>
+                          <span className="font-extrabold text-sibs-primary-1">
+                            {formatNumber(handledVal)}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center justify-between">
+                          <span className="flex items-center gap-1.5 font-bold text-slate-600">
+                            <span className="h-2.5 w-2.5 rounded-full bg-[#0284c7]" />
+                            Handled w/ SLA:
+                          </span>
+                          <span className="font-extrabold text-sibs-primary-1">
+                            {formatNumber(slaVal)}
+                          </span>
+                        </div>
                       </div>
+
+                      {handledVal > 0 ? (
+                        <div className="mt-1 flex items-center justify-between border-t border-slate-100 pt-1 text-[11px]">
+                          <span className="font-semibold text-slate-500">
+                            SLA Compliance:
+                          </span>
+                          <span className="font-extrabold text-sibs-primary-1">
+                            {((slaVal / handledVal) * 100).toFixed(1)}%
+                          </span>
+                        </div>
+                      ) : null}
 
                       {item.ahtSeconds || item.averageHandleSeconds ? (
                         <div className="mt-1 flex items-center justify-between border-t border-slate-100 pt-1 text-[11px]">
@@ -288,14 +366,6 @@ function AgentCallsChart({ series = [] }) {
                         </div>
                       ) : null}
                     </div>
-
-                    {/* Single Bar Pillar */}
-                    <div
-                      className="w-full rounded-t-[4px] bg-[#0b3b68] shadow-xs transition-all duration-200 ease-out group-hover/bar:-translate-y-0.5 group-hover/bar:brightness-110"
-                      style={{
-                        height: `${heightPercent}%`,
-                      }}
-                    />
                   </div>
                 </div>
               );
@@ -387,30 +457,34 @@ export default function AgentPerformanceDashboard({
   const performance = data?.performance || {};
   const summary = performance.summary || {};
   const rawSeries = Array.isArray(performance.series) ? performance.series : [];
-  const chartSeries = rawSeries.map((item) => ({
-    key: item.key,
-    label: item.label,
-    callsOffered: Number(item.callsOffered ?? item.interactionCount ?? item.handledCalls ?? 0),
-    callsHandled: Number(item.callsHandled ?? item.handledCalls ?? 0),
-    handledWithinSla: Number(item.handledWithinSla ?? item.handledCalls ?? 0),
-    answerRatePct: Number(
-      item.answerRatePct ??
-        (Number(item.callsOffered || item.handledCalls || 0) > 0
-          ? (Number(item.callsHandled || item.handledCalls || 0) /
-              Number(item.callsOffered || item.handledCalls || 1)) *
-            100
-          : 0),
-    ),
-    serviceLevelPct: Number(
-      item.serviceLevelPct ??
-        (Number(item.callsOffered || item.handledCalls || 0) > 0
-          ? (Number(item.handledWithinSla || item.handledCalls || 0) /
-              Number(item.callsOffered || item.handledCalls || 1)) *
-            100
-          : 0),
-    ),
-    ahtSeconds: item.averageHandleSeconds ?? item.ahtSeconds ?? 0,
-  }));
+  const chartSeries = rawSeries.map((item) => {
+    const offered = Number(item.callsOffered ?? item.interactionCount ?? item.handledCalls ?? 0);
+    const handled = Number(item.callsHandled ?? item.handledCalls ?? 0);
+    const handledSla = Number(
+      item.handledWithinSla ??
+      item.handledWithSla ??
+      item.handledWithinSlt ??
+      item.handledCalls ??
+      0
+    );
+
+    return {
+      key: item.key,
+      label: item.label,
+      callsOffered: offered,
+      callsHandled: handled,
+      handledWithinSla: handledSla,
+      answerRatePct: Number(
+        item.answerRatePct ??
+        (offered > 0 ? (handled / offered) * 100 : 0),
+      ),
+      serviceLevelPct: Number(
+        item.serviceLevelPct ??
+        (offered > 0 ? (handledSla / offered) * 100 : 0),
+      ),
+      ahtSeconds: item.averageHandleSeconds ?? item.ahtSeconds ?? 0,
+    };
+  });
 
   const skillRows = Array.isArray(data?.skillBreakdown)
     ? data.skillBreakdown.filter((item) => item.skillName)
@@ -429,56 +503,46 @@ export default function AgentPerformanceDashboard({
 
         <div className="flex flex-wrap items-end gap-2 px-2 pt-3 pb-2.5">
           {/* 1. Country */}
-          <label className="block w-full min-w-0 sm:w-52">
-            <span className="mb-0.5 block text-[9.5px] font-extrabold uppercase text-sibs-tertiary-5">
-              Country
-            </span>
-            <select
+          <div className="w-full min-w-0 sm:w-52">
+            <MultiSelectDropdown
+              label="Country"
               value={filters.country}
-              onChange={(event) => {
-                const country = event.target.value;
-                const keepSkill = isAgentSkillAvailableForCountry(
-                  availableFilters,
-                  filters.skill,
-                  country,
+              onChange={(newCountries) => {
+                const validSkills = new Set(
+                  getAgentSkillOptions(availableFilters, newCountries).map((s) =>
+                    s.value.toLowerCase(),
+                  ),
                 );
+                const nextSkill = Array.isArray(filters.skill)
+                  ? filters.skill.filter((s) => validSkills.has(String(s || "").trim().toLowerCase()))
+                  : (validSkills.has(String(filters.skill || "").trim().toLowerCase())
+                    ? filters.skill
+                    : []);
 
                 onFilterChange({
-                  country,
-                  ...(keepSkill ? {} : { skill: "" }),
+                  country: newCountries,
+                  skill: nextSkill,
                 });
               }}
+              options={countryOptions}
+              placeholder="All Countries"
+              allOptionLabel="All Countries"
               disabled={isLoading}
-              className="h-8 w-full cursor-pointer rounded-lg border border-sibs-tertiary-8 bg-white px-2.5 text-xs font-semibold text-sibs-primary-1 outline-none transition hover:border-sibs-primary-1 hover:bg-slate-50/50 focus:border-sibs-primary-1 focus:ring-1 focus:ring-sibs-primary-1/20 disabled:cursor-not-allowed disabled:opacity-60"
-              aria-label="Country"
-            >
-              {countryOptions.map((option) => (
-                <option key={option.value || "ALL_COUNTRIES"} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </label>
+            />
+          </div>
 
           {/* 2. Skill */}
-          <label className="block w-full min-w-0 sm:w-72">
-            <span className="mb-0.5 block text-[9.5px] font-extrabold uppercase text-sibs-tertiary-5">
-              Skill
-            </span>
-            <select
+          <div className="w-full min-w-0 sm:w-72">
+            <MultiSelectDropdown
+              label="Skill"
               value={filters.skill}
-              onChange={(event) => onFilterChange({ skill: event.target.value })}
+              onChange={(newSkills) => onFilterChange({ skill: newSkills })}
+              options={skillOptions}
+              placeholder="All Skills"
+              allOptionLabel="All Skills"
               disabled={isLoading}
-              className="h-8 w-full cursor-pointer rounded-lg border border-sibs-tertiary-8 bg-white px-2.5 text-xs font-semibold text-sibs-primary-1 outline-none transition hover:border-sibs-primary-1 hover:bg-slate-50/50 focus:border-sibs-primary-1 focus:ring-1 focus:ring-sibs-primary-1/20 disabled:cursor-not-allowed disabled:opacity-60"
-              aria-label="Skill"
-            >
-              {skillOptions.map((option) => (
-                <option key={option.value || "ALL_SKILLS"} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </label>
+            />
+          </div>
 
           {/* 3. Reporting Period */}
           <label className="block w-full min-w-0 sm:w-52">
@@ -541,13 +605,17 @@ export default function AgentPerformanceDashboard({
               <div className="w-full min-w-0 sm:w-52">
                 <button
                   type="button"
-                  onClick={() => onFilterChange({ referenceDate: "" })}
+                  onClick={() =>
+                    onFilterChange({
+                      referenceDate: new Date().toISOString().slice(0, 10),
+                    })
+                  }
                   disabled={isLoading}
-                  title="Use the latest available date."
+                  title="Use the current date (today)."
                   className="inline-flex h-8 w-full cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-xs font-bold text-sibs-primary-1 shadow-xs transition hover:border-sibs-primary-1 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   <Clock size={12} className="shrink-0" />
-                  <span>Latest</span>
+                  <span>Today</span>
                 </button>
               </div>
             </>
@@ -557,8 +625,12 @@ export default function AgentPerformanceDashboard({
         <div className="flex flex-wrap items-center gap-x-3.5 gap-y-1 border-t border-sibs-tertiary-10 px-3.5 py-1 text-[10px] font-semibold text-sibs-tertiary-5">
           <span>Source: Agent Level Interactions</span>
           <span>Period: {PERIOD_OPTIONS.find((opt) => opt.value === filters.period)?.label || filters.period}</span>
-          {filters.skill ? <span>Skill: {filters.skill}</span> : null}
-          {filters.country ? <span>Country: {filters.country}</span> : null}
+          {Array.isArray(filters.skill)
+            ? (filters.skill.length ? <span>Skill: {filters.skill.join(", ")}</span> : null)
+            : (filters.skill ? <span>Skill: {filters.skill}</span> : null)}
+          {Array.isArray(filters.country)
+            ? (filters.country.length ? <span>Country: {filters.country.join(", ")}</span> : null)
+            : (filters.country ? <span>Country: {filters.country}</span> : null)}
           {filters.referenceDate && !isCustom ? <span>Reference date: {filters.referenceDate}</span> : null}
           {filters.from && filters.to && isCustom ? <span>Range: {filters.from} to {filters.to}</span> : null}
         </div>
@@ -568,7 +640,7 @@ export default function AgentPerformanceDashboard({
         <EmptyState title="Unable to load performance" message={error} />
       ) : null}
 
-      {!error && !isLoading && !hasData ? (
+      {!error && !isLoading && !hasData && (!availableFilters.countries?.length && !availableFilters.skills?.length) ? (
         <EmptyState />
       ) : null}
 
@@ -597,14 +669,24 @@ export default function AgentPerformanceDashboard({
           title="Answer Rate & Service Level"
           subtitle="Answer % and service level performance against target"
         >
-          <LineChart series={chartSeries} target={90} />
+          <LineChart
+            series={chartSeries}
+            target={90}
+            chartHeight="300px"
+            showPeriodSubtitle
+          />
         </ChartShell>
 
         <ChartShell
           title="Average Handling Time"
           subtitle="Call AHT measured in seconds against target"
         >
-          <AhtChart series={chartSeries} target={420} />
+          <AhtChart
+            series={chartSeries}
+            target={420}
+            chartHeight="300px"
+            showPeriodSubtitle
+          />
         </ChartShell>
       </div>
 

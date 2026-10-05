@@ -3,6 +3,7 @@ import {
   buildVolumeBarItems,
   convertDurationToSeconds,
   getCallAxisTicks,
+  useSyncedHorizontalScroll,
 } from "./callKpiDashboardUtils.js";
 
 function formatNumber(value, digits = 0) {
@@ -131,17 +132,15 @@ function EmptyChart({ message = "No KPI data is available for this reporting ran
   );
 }
 
-function VolumeChart({ series, period, hideLegend = false, isSubmodule = false, showFilters = true }) {
+function VolumeChart({
+  series,
+  period,
+  hideLegend = false,
+  isSubmodule = false,
+  showFilters = true,
+  scrollContainerRef,
+}) {
   if (!series.length) return <EmptyChart message="No call volume recorded for this reporting range." isSubmodule={isSubmodule} showFilters={showFilters} />;
-
-  const totalVolume = series.reduce(
-    (acc, item) => acc + Number(item.callsOffered || 0),
-    0,
-  );
-
-  if (totalVolume === 0) {
-    return <EmptyChart message="No call volume recorded for this reporting range." isSubmodule={isSubmodule} showFilters={showFilters} />;
-  }
 
   const maxValue = Math.max(
     1,
@@ -155,7 +154,7 @@ function VolumeChart({ series, period, hideLegend = false, isSubmodule = false, 
   const axisTicks = getCallAxisTicks(maxValue, 4);
   const axisMax = Math.max(1, axisTicks[0] || maxValue);
   const minPeriodWidth = 84;
-  const isScrollable = series.length > 6;
+  const isScrollable = series.length > 6 || period === "custom";
 
   const chartHeightStyle = isSubmodule
     ? {
@@ -206,7 +205,10 @@ function VolumeChart({ series, period, hideLegend = false, isSubmodule = false, 
           ))}
         </div>
 
-        <div className={`relative min-w-0 flex-1 ${isScrollable ? "overflow-x-auto pb-1 sibs-chart-scrollbar" : "overflow-hidden"} overflow-y-hidden`}>
+        <div
+          ref={scrollContainerRef}
+          className={`relative min-w-0 flex-1 ${isScrollable ? "overflow-x-auto pb-1 sibs-chart-scrollbar" : "overflow-hidden"} overflow-y-hidden`}
+        >
           <div className={`relative min-w-full ${isScrollable ? "w-max" : "w-full"}`}>
             <div
               className={`relative flex ${!isSubmodule ? "h-[190px] sm:h-[208px]" : ""} min-w-0 items-end gap-1 border-b border-sibs-tertiary-8 px-1 transition-all duration-300 ease-in-out`}
@@ -365,18 +367,18 @@ function VolumeChart({ series, period, hideLegend = false, isSubmodule = false, 
   );
 }
 
-function LineChart({ series, target = 90, period, hideLegend = false, isSubmodule = false, showFilters = true }) {
+function LineChart({
+  series,
+  target = 90,
+  period,
+  hideLegend = false,
+  isSubmodule = false,
+  showFilters = true,
+  chartHeight = null,
+  showPeriodSubtitle = false,
+  scrollContainerRef,
+}) {
   if (!series.length) return <EmptyChart message="No answer rate or service level data available for this reporting range." isSubmodule={isSubmodule} showFilters={showFilters} />;
-
-  const activeSeries = series.filter(
-    (item) => Number(item.callsOffered || 0) > 0,
-  );
-
-  if (activeSeries.length === 0) {
-    return (
-      <EmptyChart message="No answer rate or service level data available for this reporting range." isSubmodule={isSubmodule} showFilters={showFilters} />
-    );
-  }
 
   const numericTarget = Number(target || 90);
   const axisTicks = [100, 75, 50, 25, 0];
@@ -397,15 +399,19 @@ function LineChart({ series, target = 90, period, hideLegend = false, isSubmodul
   ];
 
   const minPeriodWidth = 84;
-  const isScrollable = series.length > 6;
+  const isScrollable = series.length > 6 || period === "custom";
 
-  const chartHeightStyle = isSubmodule
+  const customHeightStyle = chartHeight
+    ? { height: typeof chartHeight === "number" ? `${chartHeight}px` : chartHeight }
+    : undefined;
+
+  const chartHeightStyle = customHeightStyle || (isSubmodule
     ? {
         height: showFilters
           ? "clamp(140px, calc(50vh - 225px), 220px)"
           : "clamp(220px, calc(50vh - 150px), 320px)",
       }
-    : undefined;
+    : undefined);
 
   return (
     <div className="w-full min-w-0 select-none">
@@ -434,7 +440,7 @@ function LineChart({ series, target = 90, period, hideLegend = false, isSubmodul
       <div className="flex w-full min-w-0">
         {/* 2. Y-Axis Ticks */}
         <div
-          className={`relative ${!isSubmodule ? "h-[190px] sm:h-[208px]" : ""} w-10 sm:w-11 shrink-0 border-r border-sibs-tertiary-8 pr-1 bg-white z-10 transition-all duration-300 ease-in-out`}
+          className={`relative ${!isSubmodule && !chartHeight ? "h-[190px] sm:h-[208px]" : ""} w-10 sm:w-11 shrink-0 border-r border-sibs-tertiary-8 pr-1 bg-white z-10 transition-all duration-300 ease-in-out`}
           style={chartHeightStyle}
         >
           {axisTicks.map((tick, index) => (
@@ -451,11 +457,14 @@ function LineChart({ series, target = 90, period, hideLegend = false, isSubmodul
         </div>
 
         {/* 3. Main Chart Canvas */}
-        <div className={`relative min-w-0 flex-1 ${isScrollable ? "overflow-x-auto pb-1 sibs-chart-scrollbar" : "overflow-hidden"} overflow-y-hidden`}>
+        <div
+          ref={scrollContainerRef}
+          className={`relative min-w-0 flex-1 ${isScrollable ? "overflow-x-auto pb-1 sibs-chart-scrollbar" : "overflow-hidden"} overflow-y-hidden`}
+        >
           <div className={`relative min-w-full ${isScrollable ? "w-max" : "w-full"}`}>
             {/* Clustered Bars Container */}
             <div
-              className={`relative flex ${!isSubmodule ? "h-[190px] sm:h-[208px]" : ""} min-w-0 items-end ${isScrollable ? "gap-2.5 sm:gap-3.5" : "gap-1 sm:gap-1.5"} border-b border-sibs-tertiary-8 px-1 sm:px-1.5 transition-all duration-300 ease-in-out`}
+              className={`relative flex ${!isSubmodule && !chartHeight ? "h-[190px] sm:h-[208px]" : ""} min-w-0 items-end ${isScrollable ? "gap-2.5 sm:gap-3.5" : "gap-1 sm:gap-1.5"} border-b border-sibs-tertiary-8 px-1 sm:px-1.5 transition-all duration-300 ease-in-out`}
               style={chartHeightStyle}
             >
               {/* Horizontal Grid Lines */}
@@ -482,7 +491,10 @@ function LineChart({ series, target = 90, period, hideLegend = false, isSubmodul
               </div>
 
               {series.map((item, periodIndex) => {
-                const hasData = Number(item.callsOffered || 0) > 0;
+                const hasData =
+                  Number(item.callsOffered || item.callsHandled || item.interactionCount || 0) > 0 ||
+                  Number(item.answerRatePct || 0) > 0 ||
+                  Number(item.serviceLevelPct || 0) > 0;
                 const bars = rateBarItems(item);
 
                 return (
@@ -615,6 +627,11 @@ function LineChart({ series, target = 90, period, hideLegend = false, isSubmodul
                 >
                   {item.label}
                 </p>
+                {showPeriodSubtitle ? (
+                  <p className="m-0 text-[9px] font-semibold uppercase text-sibs-tertiary-5">
+                    Period {periodIndex + 1}
+                  </p>
+                ) : null}
               </div>
             ))}
           </div>
@@ -625,20 +642,23 @@ function LineChart({ series, target = 90, period, hideLegend = false, isSubmodul
   );
 }
 
-function AhtChart({ series, target, period, hideLegend = false, isSubmodule = false, showFilters = true }) {
+function AhtChart({
+  series,
+  target,
+  period,
+  hideLegend = false,
+  isSubmodule = false,
+  showFilters = true,
+  chartHeight = null,
+  showPeriodSubtitle = false,
+  scrollContainerRef,
+}) {
   if (!series.length) return <EmptyChart message="No average handling time data available for this reporting range." isSubmodule={isSubmodule} showFilters={showFilters} />;
 
   const normalizedTarget = convertDurationToSeconds(target);
-  const activeAhtSeries = series.filter(
-    (item) => convertDurationToSeconds(item.ahtSeconds) > 0,
-  );
-
-  if (activeAhtSeries.length === 0) {
-    return <EmptyChart message="No average handling time data available for this reporting range." isSubmodule={isSubmodule} showFilters={showFilters} />;
-  }
 
   const maxValue = Math.max(
-    normalizedTarget,
+    normalizedTarget || 420,
     ...series.map((item) =>
       convertDurationToSeconds(item.ahtSeconds),
     ),
@@ -654,15 +674,19 @@ function AhtChart({ series, target, period, hideLegend = false, isSubmodule = fa
   );
 
   const minPeriodWidth = 76;
-  const isScrollable = series.length > 6;
+  const isScrollable = series.length > 6 || period === "custom";
 
-  const chartHeightStyle = isSubmodule
+  const customHeightStyle = chartHeight
+    ? { height: typeof chartHeight === "number" ? `${chartHeight}px` : chartHeight }
+    : undefined;
+
+  const chartHeightStyle = customHeightStyle || (isSubmodule
     ? {
         height: showFilters
           ? "clamp(140px, calc(50vh - 225px), 220px)"
           : "clamp(220px, calc(50vh - 150px), 320px)",
       }
-    : undefined;
+    : undefined);
 
   return (
     <div className="w-full min-w-0 select-none">
@@ -684,7 +708,7 @@ function AhtChart({ series, target, period, hideLegend = false, isSubmodule = fa
 
       <div className="flex w-full min-w-0">
         <div
-          className={`relative ${!isSubmodule ? "h-[190px] sm:h-[208px]" : ""} w-10 sm:w-11 shrink-0 border-r border-sibs-tertiary-8 pr-1 bg-white z-10 transition-all duration-300 ease-in-out`}
+          className={`relative ${!isSubmodule && !chartHeight ? "h-[190px] sm:h-[208px]" : ""} w-10 sm:w-11 shrink-0 border-r border-sibs-tertiary-8 pr-1 bg-white z-10 transition-all duration-300 ease-in-out`}
           style={chartHeightStyle}
         >
           {axisTicks.map((tick, index) => (
@@ -700,10 +724,13 @@ function AhtChart({ series, target, period, hideLegend = false, isSubmodule = fa
           ))}
         </div>
 
-        <div className={`relative min-w-0 flex-1 ${isScrollable ? "overflow-x-auto pb-1 sibs-chart-scrollbar" : "overflow-hidden"} overflow-y-hidden`}>
+        <div
+          ref={scrollContainerRef}
+          className={`relative min-w-0 flex-1 ${isScrollable ? "overflow-x-auto pb-1 sibs-chart-scrollbar" : "overflow-hidden"} overflow-y-hidden`}
+        >
           <div className={`relative min-w-full ${isScrollable ? "w-max" : "w-full"}`}>
             <div
-              className={`relative flex ${!isSubmodule ? "h-[190px] sm:h-[208px]" : ""} min-w-0 items-end gap-1 border-b border-sibs-tertiary-8 px-1 transition-all duration-300 ease-in-out`}
+              className={`relative flex ${!isSubmodule && !chartHeight ? "h-[190px] sm:h-[208px]" : ""} min-w-0 items-end gap-1 border-b border-sibs-tertiary-8 px-1 transition-all duration-300 ease-in-out`}
               style={chartHeightStyle}
             >
               {/* Horizontal Gridlines spanning 100% of bars container */}
@@ -756,9 +783,7 @@ function AhtChart({ series, target, period, hideLegend = false, isSubmodule = fa
                     >
                       {Math.round(ahtSec)}s
                     </p>
-                  ) : (
-                    <span className="mb-1.5 text-[10px] font-semibold text-slate-400">-</span>
-                  )}
+                  ) : null}
 
                   {/* Tooltip Modal */}
                   {hasAht ? (
@@ -806,7 +831,7 @@ function AhtChart({ series, target, period, hideLegend = false, isSubmodule = fa
                     </div>
                   ) : null}
 
-                  {hasAht ? (
+                  {hasAht && heightPct > 0 ? (
                     <div
                       className={`w-full ${isSubmodule ? "max-w-[64px]" : "max-w-[54px]"} rounded-t-[4px] bg-[#0b3b68] transition-all duration-200 group-hover/aht:brightness-110 group-hover/aht:-translate-y-0.5 shadow-xs sibs-graph-bar-rise`}
                       style={{
@@ -815,7 +840,7 @@ function AhtChart({ series, target, period, hideLegend = false, isSubmodule = fa
                       }}
                     />
                   ) : (
-                    <div className="h-0.5 w-6 rounded bg-slate-200" />
+                    <div className="h-0 w-full" />
                   )}
                 </div>
               );
@@ -835,6 +860,11 @@ function AhtChart({ series, target, period, hideLegend = false, isSubmodule = fa
                 >
                   {item.label}
                 </p>
+                {showPeriodSubtitle ? (
+                  <p className="m-0 text-[9px] font-semibold uppercase text-sibs-tertiary-5">
+                    Period {periodIndex + 1}
+                  </p>
+                ) : null}
               </div>
             ))}
           </div>
@@ -847,6 +877,7 @@ function AhtChart({ series, target, period, hideLegend = false, isSubmodule = fa
 
 export default function CallKpiDashboard({
   data,
+  period,
   showSummaryCards = true,
   afterCards = null,
   isSubmodule = false,
@@ -892,7 +923,9 @@ export default function CallKpiDashboard({
       ? summaryAsaSeconds <= targetAsaSeconds && summaryAsaSeconds > 0
       : null;
 
-  const period = data?.filters?.period || data?.data?.filters?.period;
+  const currentPeriod = period || data?.filters?.period || data?.data?.filters?.period;
+  const isCustomPeriod = currentPeriod === "custom";
+  const registerScroll = useSyncedHorizontalScroll(isCustomPeriod);
 
   return (
     <div className={isSubmodule && isFiltersVisible ? "space-y-1.5 sm:space-y-2" : "space-y-2.5"}>
@@ -1039,10 +1072,11 @@ export default function CallKpiDashboard({
                   ? series
                   : data?.data?.series || []
               }
-              period={period}
+              period={currentPeriod}
               hideLegend={true}
               isSubmodule={isSubmodule}
               showFilters={isFiltersVisible}
+              scrollContainerRef={registerScroll}
             />
           </ChartShell>
         </div>
@@ -1077,10 +1111,11 @@ export default function CallKpiDashboard({
                 targets.serviceLevelPct ||
                 data?.data?.targets?.serviceLevelPct
               }
-              period={period}
+              period={currentPeriod}
               hideLegend={true}
               isSubmodule={isSubmodule}
               showFilters={isFiltersVisible}
+              scrollContainerRef={registerScroll}
             />
           </ChartShell>
         </div>
@@ -1111,10 +1146,11 @@ export default function CallKpiDashboard({
                 targets.ahtSeconds ||
                 data?.data?.targets?.ahtSeconds
               }
-              period={period}
+              period={currentPeriod}
               hideLegend={true}
               isSubmodule={isSubmodule}
               showFilters={isFiltersVisible}
+              scrollContainerRef={registerScroll}
             />
           </ChartShell>
         </div>

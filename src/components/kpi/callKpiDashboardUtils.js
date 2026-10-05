@@ -1,3 +1,5 @@
+import { useCallback, useEffect, useRef } from "react";
+
 export function convertDurationToSeconds(value) {
   if (typeof value === "number" && Number.isFinite(value)) {
     return Math.max(0, value);
@@ -359,3 +361,54 @@ export async function downloadSelectedKpiReportsAsPdf({
   return true;
 }
 
+export function useSyncedHorizontalScroll(isCustomPeriod = false) {
+  const containerSet = useRef(new Set());
+  const cleanupMap = useRef(new Map());
+  const isSyncingRef = useRef(false);
+  const isActiveRef = useRef(isCustomPeriod);
+
+  useEffect(() => {
+    isActiveRef.current = isCustomPeriod;
+  }, [isCustomPeriod]);
+
+  // Clean up all listeners on unmount
+  useEffect(() => {
+    const cleanups = cleanupMap.current;
+    return () => {
+      cleanups.forEach((fn, el) => {
+        el.removeEventListener("scroll", fn);
+      });
+      cleanups.clear();
+      containerSet.current.clear();
+    };
+  }, []);
+
+  const register = useCallback((node) => {
+    if (node) {
+      if (cleanupMap.current.has(node)) return;
+
+      containerSet.current.add(node);
+
+      const onScroll = () => {
+        if (!isActiveRef.current || isSyncingRef.current) return;
+        isSyncingRef.current = true;
+        const scrollLeft = node.scrollLeft;
+
+        containerSet.current.forEach((other) => {
+          if (other && other !== node && Math.abs(other.scrollLeft - scrollLeft) > 0.5) {
+            other.scrollLeft = scrollLeft;
+          }
+        });
+
+        requestAnimationFrame(() => {
+          isSyncingRef.current = false;
+        });
+      };
+
+      node.addEventListener("scroll", onScroll, { passive: true });
+      cleanupMap.current.set(node, onScroll);
+    }
+  }, []);
+
+  return register;
+}
