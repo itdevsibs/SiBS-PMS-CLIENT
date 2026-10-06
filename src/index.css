@@ -499,6 +499,23 @@
     will-change: transform, opacity;
   }
 
+  @keyframes sibsGraphBarGrowX {
+    from {
+      transform: scaleX(0);
+      opacity: 0.15;
+    }
+    to {
+      transform: scaleX(1);
+      opacity: 1;
+    }
+  }
+
+  .sibs-graph-bar-grow-x {
+    transform-origin: left;
+    animation: sibsGraphBarGrowX 1100ms cubic-bezier(0.22, 1, 0.36, 1) both;
+    will-change: transform, opacity;
+  }
+
   /* Fade-in for bar numbers so they never float before the graph rises */
   @keyframes sibsGraphNumberIn {
     0% {

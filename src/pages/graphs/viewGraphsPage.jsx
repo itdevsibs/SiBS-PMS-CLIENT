@@ -25,6 +25,9 @@ import EmailKpiDashboard, {
 import QualityAuditKpiDashboard, {
   QualityAuditSummaryCards,
 } from "@/components/kpi/QualityAuditKpiDashboard";
+import OccupancyKpiDashboard, {
+  OccupancySummaryCards,
+} from "@/components/kpi/OccupancyKpiDashboard";
 import DownloadPdfModal from "@/components/kpi/DownloadPdfModal";
 import AllReportsExecutivePdfView from "@/components/kpi/AllReportsExecutivePdfView";
 import {
@@ -41,6 +44,7 @@ import {
   getWfmCallSkills,
   getWfmEmailKpis,
   getWfmQualityAuditKpis,
+  getWfmOccupancyKpis,
 } from "@/lib/axios/wfm-kpis";
 import {
   PERIOD_OPTIONS,
@@ -268,10 +272,12 @@ export default function ViewGraphsPage() {
   const [kpiResponse, setKpiResponse] = useState(null);
   const [emailKpiResponse, setEmailKpiResponse] = useState(null);
   const [qualityAuditKpiResponse, setQualityAuditKpiResponse] = useState(null);
+  const [occupancyKpiResponse, setOccupancyKpiResponse] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [emailError, setEmailError] = useState("");
   const [qualityAuditError, setQualityAuditError] = useState("");
+  const [occupancyError, setOccupancyError] = useState("");
   const [skillsByCountryState, setSkillsByCountryState] = useState(SKILLS_BY_COUNTRY);
   const [showFilters, setShowFilters] = useState(true);
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
@@ -307,6 +313,11 @@ export default function ViewGraphsPage() {
       if ((isAllReports || selectedReportIds.includes("qa")) && !qualityAuditKpiResponse) {
         fetches.push(
           getWfmQualityAuditKpis(buildQualityAuditRequestParams(filters)).then((res) => setQualityAuditKpiResponse(res)),
+        );
+      }
+      if ((isAllReports || selectedReportIds.includes("occupancy")) && !occupancyKpiResponse) {
+        fetches.push(
+          getWfmOccupancyKpis(buildEmailRequestParams(filters)).then((res) => setOccupancyKpiResponse(res)),
         );
       }
 
@@ -509,11 +520,31 @@ export default function ViewGraphsPage() {
         setQualityAuditKpiResponse(null);
       }
 
+      if (showOccupancy) {
+        const occupancyParams = buildEmailRequestParams(filters);
+        promises.push(
+          getWfmOccupancyKpis(occupancyParams)
+            .then((res) => {
+              setOccupancyKpiResponse(res);
+            })
+            .catch((err) => {
+              const occMessage =
+                err?.response?.data?.message ||
+                err?.message ||
+                "Unable to load Occupancy & Headcount KPI data.";
+              setOccupancyError(occMessage);
+              setOccupancyKpiResponse(null);
+            }),
+        );
+      } else {
+        setOccupancyKpiResponse(null);
+      }
+
       await Promise.allSettled(promises);
     } finally {
       setIsLoading(false);
     }
-  }, [canViewGraphs, filters, showCalls, showEmails, showQa]);
+  }, [canViewGraphs, filters, showCalls, showEmails, showQa, showOccupancy]);
 
   useEffect(() => {
     loadKpis();
@@ -523,10 +554,12 @@ export default function ViewGraphsPage() {
     const callReturnedFilters = kpiResponse?.data?.data?.filters || {};
     const emailReturnedFilters = emailKpiResponse?.data?.data?.filters || {};
     const qualityAuditReturnedFilters = qualityAuditKpiResponse?.data?.data?.filters || {};
+    const occupancyReturnedFilters = occupancyKpiResponse?.data?.data?.filters || {};
     const returnedReferenceDate =
       callReturnedFilters.referenceDate ||
       emailReturnedFilters.referenceDate ||
       qualityAuditReturnedFilters.referenceDate ||
+      occupancyReturnedFilters.referenceDate ||
       "";
     if (
       returnedReferenceDate &&
@@ -534,9 +567,10 @@ export default function ViewGraphsPage() {
       filters.period !== "custom"
     ) {
       const allAligned =
-        callReturnedFilters.referenceDate === returnedReferenceDate &&
-        emailReturnedFilters.referenceDate === returnedReferenceDate &&
-        qualityAuditReturnedFilters.referenceDate === returnedReferenceDate;
+        (!showCalls || callReturnedFilters.referenceDate === returnedReferenceDate) &&
+        (!showEmails || emailReturnedFilters.referenceDate === returnedReferenceDate) &&
+        (!showQa || qualityAuditReturnedFilters.referenceDate === returnedReferenceDate) &&
+        (!showOccupancy || occupancyReturnedFilters.referenceDate === returnedReferenceDate);
       skipNextFetchRef.current = allAligned;
       setFilters((current) => ({
         ...current,
@@ -716,6 +750,9 @@ export default function ViewGraphsPage() {
   const qualityAuditDashboardData =
     qualityAuditKpiResponse?.data?.data || {};
 
+  const occupancyDashboardData =
+    occupancyKpiResponse?.data?.data || {};
+
   const availableGrains =
     Array.isArray(dashboardData.availableGrains)
       ? dashboardData.availableGrains
@@ -859,7 +896,15 @@ export default function ViewGraphsPage() {
                     />
 
                     <h1 className="m-0 text-sm font-extrabold text-sibs-primary-1">
-                      Calls, Emails & Quality Performance
+                      {isCallsOnly
+                        ? "Calls Performance"
+                        : isEmailsOnly
+                        ? "Emails Performance"
+                        : isQaOnly
+                        ? "Quality Audit Performance"
+                        : isOccupancyOnly
+                        ? "Occupancy & Headcount Performance"
+                        : "Calls, Emails & Quality Performance"}
                     </h1>
                   </div>
 
@@ -1070,6 +1115,8 @@ export default function ViewGraphsPage() {
                         ? "Loading Email KPI data"
                         : isQaOnly
                         ? "Loading Quality KPI data"
+                        : isOccupancyOnly
+                        ? "Loading Occupancy & Headcount KPI data"
                         : "Loading Calls, Email & Quality KPI data"}
                     </p>
 
@@ -1103,6 +1150,9 @@ export default function ViewGraphsPage() {
                               />
                               <QualityAuditSummaryCards
                                 summary={qualityAuditDashboardData?.summary || {}}
+                              />
+                              <OccupancySummaryCards
+                                summary={occupancyDashboardData?.summary || {}}
                               />
                             </div>
                           ) : null
@@ -1148,14 +1198,20 @@ export default function ViewGraphsPage() {
                   )}
 
                   {showOccupancy && (
-                    <div id="occupancy-section" className="sibs-card p-8 text-center">
-                      <Users className="mx-auto mb-3 text-sibs-primary-1/60" size={36} />
-                      <h2 className="m-0 text-base font-bold text-sibs-primary-1">
-                        Occupancy & Headcount Performance
-                      </h2>
-                      <p className="mt-1 text-xs text-sibs-tertiary-5">
-                        Occupancy & HC reporting metrics will be displayed here.
-                      </p>
+                    <div id="occupancy-section" className={!currentSection ? "mt-1 sm:mt-1.5" : ""}>
+                      {occupancyError ? (
+                        <div className="sibs-card mb-2 flex items-start gap-2 border border-amber-200 bg-amber-50/70 p-2.5 text-xs font-semibold text-amber-800">
+                          <AlertCircle size={16} className="mt-0.5 shrink-0" />
+                          <span>{occupancyError}</span>
+                        </div>
+                      ) : null}
+                      <OccupancyKpiDashboard
+                        data={occupancyDashboardData || {}}
+                        showSummaryCards={isOccupancyOnly ? showFilters : false}
+                        period={filters.period}
+                        isSubmodule={isOccupancyOnly}
+                        showFilters={showFilters}
+                      />
                     </div>
                   )}
                 </div>
@@ -1213,6 +1269,7 @@ export default function ViewGraphsPage() {
               callData={kpiResponse?.data?.data || dashboardData || {}}
               emailData={emailKpiResponse?.data?.data || emailDashboardData || {}}
               qualityAuditData={qualityAuditKpiResponse?.data?.data || qualityAuditDashboardData || {}}
+              occupancyData={occupancyKpiResponse?.data?.data || occupancyDashboardData || {}}
               selectedSections={exportingSections}
             />
           </div>
