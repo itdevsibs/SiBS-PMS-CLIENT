@@ -65,8 +65,8 @@ function EmailVolumeChart({
   const axisMax = Math.max(1, axisTicks[0] || maxValue);
   const barsFor = (item) => [
     { label: "Volume", value: Number(item.emailVolume || 0), className: "bg-[#0b3b68]" },
-    { label: "Handled", value: Number(item.handled || 0), className: "bg-[#2f6f9f]" },
-    { label: "Handled w/SLA", value: Number(item.handledWithinSla || 0), className: "bg-[#4c9aca]" },
+    { label: "Resolved", value: Number(item.handled || 0), className: "bg-[#2f6f9f]" },
+    { label: "Resolved w/SLA", value: Number(item.handledWithinSla || 0), className: "bg-[#4c9aca]" },
   ];
 
   const minPeriodWidth = 86;
@@ -114,8 +114,8 @@ function EmailVolumeChart({
         <div className="mb-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs font-bold text-sibs-tertiary-5">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
             <span className="inline-flex items-center gap-1.5"><i className="h-2.5 w-2.5 rounded-full bg-[#0b3b68]" />Volume</span>
-            <span className="inline-flex items-center gap-1.5"><i className="h-2.5 w-2.5 rounded-full bg-[#2f6f9f]" />Handled</span>
-            <span className="inline-flex items-center gap-1.5"><i className="h-2.5 w-2.5 rounded-full bg-[#4c9aca]" />Handled w/SLA</span>
+            <span className="inline-flex items-center gap-1.5"><i className="h-2.5 w-2.5 rounded-full bg-[#2f6f9f]" />Resolved</span>
+            <span className="inline-flex items-center gap-1.5"><i className="h-2.5 w-2.5 rounded-full bg-[#4c9aca]" />Resolved w/SLA</span>
           </div>
         </div>
       ) : null}
@@ -167,12 +167,12 @@ function EmailVolumeChart({
                       const volume = Number(item.emailVolume || 0);
                       const handled = Number(item.handled || 0);
                       const detailRate =
-                        bar.label === "Handled"
+                        bar.label === "Resolved" || bar.label === "Handled"
                           ? Number(item.errPct || (volume > 0 ? (bar.value / volume) * 100 : 0))
-                          : bar.label === "Handled w/SLA"
+                          : bar.label === "Resolved w/SLA" || bar.label === "Handled w/SLA"
                           ? Number(item.serviceLevelPct || (handled > 0 ? (bar.value / handled) * 100 : 0))
                           : null;
-                      const detailRateLabel = bar.label === "Handled" ? "ERR" : "SL %";
+                      const detailRateLabel = bar.label === "Resolved" || bar.label === "Handled" ? "ERR" : "SL %";
 
                       return (
                         <div
@@ -182,8 +182,11 @@ function EmailVolumeChart({
                         >
                           {bar.value > 0 ? (
                             <span
-                              className={`pointer-events-none absolute left-1/2 z-10 -translate-x-1/2 whitespace-nowrap ${isSubmodule ? "text-[8.5px] sm:text-[9px] font-semibold" : "text-[8px] sm:text-[8.5px] 2xl:text-[9px] font-black"} tracking-tight transition-all duration-200 group-hover/bar:-translate-y-0.5 ${inside ? "text-white drop-shadow-xs" : "text-sibs-primary-1"}`}
-                              style={{ bottom: inside ? `calc(${height}% - 17px)` : `calc(${height}% + 4px)` }}
+                              className={`pointer-events-none absolute left-1/2 z-10 -translate-x-1/2 whitespace-nowrap ${isSubmodule ? "text-[8.5px] sm:text-[9px] font-semibold" : "text-[8px] sm:text-[8.5px] 2xl:text-[9px] font-black"} tracking-tight transition-all duration-200 group-hover/bar:-translate-y-0.5 sibs-graph-number-in ${inside ? "text-white drop-shadow-xs" : "text-sibs-primary-1"}`}
+                              style={{
+                                bottom: inside ? `calc(${height}% - 17px)` : `calc(${height}% + 4px)`,
+                                animationDelay: `${Math.min(periodIndex * 80 + barIndex * 40, 650)}ms`,
+                              }}
                             >
                               {formatNumber(bar.value)}
                             </span>
@@ -215,7 +218,7 @@ function EmailVolumeChart({
                             </div>
                           ) : null}
 
-                          <div className={`w-full ${isSubmodule ? "max-w-[46px]" : "max-w-[42px]"} rounded-t-[4px] ${bar.className} transition-all duration-200 group-hover/bar:brightness-110 group-hover/bar:-translate-y-0.5 shadow-xs`} style={{ height: `${height}%`, animationDelay: `${Math.min(periodIndex * 80 + barIndex * 40, 650)}ms` }} />
+                          <div className={`w-full ${isSubmodule ? "max-w-[46px]" : "max-w-[42px]"} rounded-t-[4px] ${bar.className} transition-all duration-200 group-hover/bar:brightness-110 group-hover/bar:-translate-y-0.5 shadow-xs sibs-graph-bar-rise`} style={{ height: `${height}%`, animationDelay: `${Math.min(periodIndex * 80 + barIndex * 40, 650)}ms` }} />
                         </div>
                       );
                     })}
@@ -357,7 +360,7 @@ function EmailRateChart({
                   style={isScrollable ? { minWidth: `${minPeriodWidth}px` } : undefined}
                 >
                   <div className={`flex h-full w-full ${isSubmodule ? "max-w-[100px]" : "max-w-[82px]"} items-end justify-center gap-0`}>
-                    {barsFor(item).map((bar) => {
+                    {barsFor(item).map((bar, barIndex) => {
                       const value = Math.max(0, Math.min(100, bar.value));
                       const isErr = bar.label === "ERR";
                       const isInsideBar = value > (isSubmodule ? 7 : 10);
@@ -373,12 +376,15 @@ function EmailRateChart({
                         >
                           {value > 0 ? (
                             <span
-                              className={`pointer-events-none absolute left-1/2 z-10 -translate-x-1/2 whitespace-nowrap ${isSubmodule ? "text-[8.5px] sm:text-[9px] font-semibold" : "text-[8px] sm:text-[8.5px] 2xl:text-[9px] font-black"} transition-all duration-200 group-hover/bar:-translate-y-0.5 ${
+                              className={`pointer-events-none absolute left-1/2 z-10 -translate-x-1/2 whitespace-nowrap ${isSubmodule ? "text-[8.5px] sm:text-[9px] font-semibold" : "text-[8px] sm:text-[8.5px] 2xl:text-[9px] font-black"} transition-all duration-200 group-hover/bar:-translate-y-0.5 sibs-graph-number-in ${
                                 isInsideBar
-                                  ? "text-white drop-shadow-xs"
-                                  : "text-sibs-primary-1"
+                                   ? "text-white drop-shadow-xs"
+                                   : "text-sibs-primary-1"
                               }`}
-                              style={{ bottom: labelBottom }}
+                              style={{
+                                bottom: labelBottom,
+                                animationDelay: `${Math.min(periodIndex * 80 + barIndex * 40, 650)}ms`,
+                              }}
                             >
                               {value >= 100 || value.toFixed(2) === "100.00"
                                 ? "100%"
@@ -407,7 +413,7 @@ function EmailRateChart({
                                 {isErr ? (
                                   <>
                                     <div className="flex items-center justify-between gap-3">
-                                      <span>Handled:</span>
+                                      <span>Resolved:</span>
                                       <span className="font-bold text-slate-700">{formatNumber(item.handled)}</span>
                                     </div>
                                     <div className="flex items-center justify-between gap-3">
@@ -418,11 +424,11 @@ function EmailRateChart({
                                 ) : (
                                   <>
                                     <div className="flex items-center justify-between gap-3">
-                                      <span>Handled w/SLA:</span>
+                                      <span>Resolved w/SLA:</span>
                                       <span className="font-bold text-slate-700">{formatNumber(item.handledWithinSla)}</span>
                                     </div>
                                     <div className="flex items-center justify-between gap-3">
-                                      <span>Handled:</span>
+                                      <span>Resolved:</span>
                                       <span className="font-bold text-slate-700">{formatNumber(item.handled)}</span>
                                     </div>
                                   </>
@@ -431,7 +437,7 @@ function EmailRateChart({
                             </div>
                           ) : null}
 
-                          <div className={`w-full ${isSubmodule ? "max-w-[46px]" : "max-w-[42px]"} rounded-t-[4px] ${bar.className} transition-all duration-200 group-hover/bar:brightness-110 group-hover/bar:-translate-y-0.5 shadow-xs`} style={{ height: `${value}%` }} />
+                          <div className={`w-full ${isSubmodule ? "max-w-[46px]" : "max-w-[42px]"} rounded-t-[4px] ${bar.className} transition-all duration-200 group-hover/bar:brightness-110 group-hover/bar:-translate-y-0.5 shadow-xs sibs-graph-bar-rise`} style={{ height: `${value}%`, animationDelay: `${Math.min(periodIndex * 80 + barIndex * 40, 650)}ms` }} />
                         </div>
                       );
                     })}
@@ -462,7 +468,7 @@ function EmailSummaryCards({ summary = {}, title = "Emails" }) {
   const cards = [
     { label: "Email Volume", value: formatNumber(summary.emailVolume), icon: Mail, hint: "Distinct Email cases created" },
     {
-      label: "Handled",
+      label: "Resolved",
       value: formatNumber(summary.handled),
       icon: CheckCircle2,
       hint: (
@@ -472,9 +478,9 @@ function EmailSummaryCards({ summary = {}, title = "Emails" }) {
       ),
       rawHint: "Resolved by SiBS Employee",
     },
-    { label: "Handled w/SLA", value: formatNumber(summary.handledWithinSla), icon: CheckCircle2, hint: "Handled within 2 business days" },
-    { label: "ERR", value: formatPercent(summary.errPct), icon: Percent, hint: "Handled ÷ Email Volume" },
-    { label: "SL %", value: formatPercent(summary.serviceLevelPct), icon: Percent, hint: "Handled w/SLA ÷ Handled" },
+    { label: "Resolved w/SLA", value: formatNumber(summary.handledWithinSla), icon: CheckCircle2, hint: "Resolved within 2 business days" },
+    { label: "ERR", value: formatPercent(summary.errPct), icon: Percent, hint: "Resolved ÷ Email Volume" },
+    { label: "SL %", value: formatPercent(summary.serviceLevelPct), icon: Percent, hint: "Resolved w/SLA ÷ Resolved" },
   ];
 
   return (
@@ -544,11 +550,11 @@ export default function EmailKpiDashboard({
                 </span>
                 <span className="inline-flex items-center gap-1 font-bold text-[#2f6f9f]">
                   <i className="h-2 w-2 rounded-full bg-[#2f6f9f]" />
-                  Handled
+                  Resolved
                 </span>
                 <span className="inline-flex items-center gap-1 font-bold text-[#4c9aca]">
                   <i className="h-2 w-2 rounded-full bg-[#4c9aca]" />
-                  Handled w/SLA
+                  Resolved w/SLA
                 </span>
               </>
             }

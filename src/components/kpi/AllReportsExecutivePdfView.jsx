@@ -15,6 +15,7 @@ export default function AllReportsExecutivePdfView({
   callData = {},
   emailData = {},
   qualityAuditData = {},
+  occupancyData = {},
   selectedSections = null,
 }) {
   const showCalls = !selectedSections || selectedSections.includes("calls");
@@ -36,10 +37,15 @@ export default function AllReportsExecutivePdfView({
 
   const qaChartHeight = isTwoSections ? "370px" : isSingleSection ? "365px" : "220px";
   const qaAxisHeight = isTwoSections ? "330px" : isSingleSection ? "325px" : "185px";
+
+  const occChartHeight = isTwoSections ? "370px" : isSingleSection ? "365px" : "220px";
+  const occAxisHeight = isTwoSections ? "330px" : isSingleSection ? "325px" : "185px";
+
   // Extract canonical week/period labels from the active graphs
   const callList = Array.isArray(callData?.series) ? callData.series : [];
   const emailList = Array.isArray(emailData?.series) ? emailData.series : [];
   const qaList = Array.isArray(qualityAuditData?.series) ? qualityAuditData.series : [];
+  const occList = Array.isArray(occupancyData?.series) ? occupancyData.series : [];
 
   // Determine chronological week labels present on the graph
   const weekLabels =
@@ -49,6 +55,8 @@ export default function AllReportsExecutivePdfView({
       ? emailList.map((s) => s.label)
       : qaList.length > 0
       ? qaList.map((s) => s.label)
+      : occList.length > 0
+      ? occList.map((s) => s.label)
       : [];
 
   const callMap = new Map(callList.map((s) => [s.label, s]));
@@ -131,12 +139,553 @@ export default function AllReportsExecutivePdfView({
   const qaTxTicks = getCallAxisTicks(maxQaTx, 4);
   const qaTxAxisMax = Math.max(10, qaTxTicks[0] || maxQaTx);
 
+  const occMap = new Map();
+  for (const s of occList) {
+    if (s.label) occMap.set(String(s.label).trim().toLowerCase(), s);
+    if (s.key) occMap.set(String(s.key).trim().toLowerCase(), s);
+  }
+
+  const effectiveLabels = weekLabels.length > 0 ? weekLabels : occList.map((s) => s.label);
+
+  const occSeries = effectiveLabels.map((lbl, idx) => {
+    const item =
+      occMap.get(String(lbl).trim().toLowerCase()) ||
+      occList.find((s) => String(s.label).trim().toLowerCase() === String(lbl).trim().toLowerCase()) ||
+      occList[idx] ||
+      {};
+    return {
+      label: lbl || item.label || `Week ${idx + 1}`,
+      occupancyPct: Number(item.occupancyPct || 0),
+      actualHeadcount: Number(item.actualHeadcount || 0),
+    };
+  });
+
+  // Calculate scales for Headcount
+  const maxHc = Math.max(10, ...occSeries.map((d) => d.actualHeadcount));
+  const hcTicks = getCallAxisTicks(maxHc, 4);
+  const hcAxisMax = Math.max(10, hcTicks[0] || maxHc);
+
   // Color Palette
   const navyDark = "#002b49"; // Header banner
   const blueDark = "#0c3b64"; // Primary bars (Volume, ERR, Transactions)
   const blueMid = "#2f71a3";  // Handled, SL %
   const blueLight = "#4c9aca"; // Handled w/SLA, Score
-  const redAlert = "#d32f2f"; // Target lines & red formula labels
+  const redAlert = "#d32f2f";  // Target lines & red formula labels
+  // If Quality Audit is the only selected section, export dedicated full-page Quality Audit view
+  if (isSingleSection && showQa) {
+    return (
+      <div
+        id="all-reports-pdf-view"
+        style={{
+          width: "1500px",
+          height: "1040px",
+          minHeight: "1040px",
+          maxHeight: "1040px",
+          backgroundColor: "#ffffff",
+          fontFamily: "'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+          padding: "6px 8px 8px 8px",
+          boxSizing: "border-box",
+          display: "flex",
+          flexDirection: "column",
+          gap: "8px",
+          color: "#0c3b64",
+          border: "none",
+          overflow: "hidden",
+        }}
+      >
+        {/* Top: QUALITY AUDIT TRANSACTIONS */}
+        <div
+          style={{
+            border: `2px solid ${navyDark}`,
+            borderRadius: "6px",
+            overflow: "hidden",
+            display: "flex",
+            flexDirection: "column",
+            flex: 1,
+            backgroundColor: "#f8fafc",
+          }}
+        >
+          <div
+            style={{
+              backgroundColor: navyDark,
+              color: "#ffffff",
+              textAlign: "center",
+              fontWeight: "900",
+              fontSize: "16px",
+              letterSpacing: "0.5em",
+              padding: "6px 0",
+              textTransform: "uppercase",
+              flexShrink: 0,
+            }}
+          >
+            Q U A L I T Y &nbsp; A U D I T &nbsp; T R A N S A C T I O N S
+          </div>
+
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "space-between",
+              border: "1.5px solid #cbd5e1",
+              borderRadius: "6px",
+              backgroundColor: "#ffffff",
+              boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
+              padding: "10px 16px 8px 16px",
+              margin: "10px",
+              flex: 1,
+            }}
+          >
+            {/* Legend */}
+            <div style={{ display: "flex", justifyContent: "center", gap: "24px", fontSize: "12.5px", fontWeight: "700", marginBottom: "4px" }}>
+              <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                <span style={{ width: "10px", height: "10px", borderRadius: "50%", backgroundColor: blueDark, display: "inline-block" }} />
+                Audits
+              </span>
+            </div>
+
+            {/* Chart */}
+            <div style={{ display: "flex", height: "365px" }}>
+              <div style={{ width: "48px", height: "325px", position: "relative", borderRight: "1.5px solid #cbd5e1", fontSize: "10.5px", color: "#475569", fontWeight: "700" }}>
+                {qaTxTicks.map((val, idx) => (
+                  <span key={idx} style={{ position: "absolute", top: `${(idx / (qaTxTicks.length - 1)) * 100}%`, transform: "translateY(-50%)", right: "5px" }}>
+                    {Math.round(val)}
+                  </span>
+                ))}
+              </div>
+
+              <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+                <div style={{ height: "325px", position: "relative", borderBottom: "1.5px solid #cbd5e1", display: "flex", padding: "0 10px" }}>
+                  {qaTxTicks.map((_, idx) => (
+                    <div key={idx} style={{ position: "absolute", left: 0, right: 0, top: `${(idx / (qaTxTicks.length - 1)) * 100}%`, borderTop: "1px solid #f1f5f9" }} />
+                  ))}
+
+                  {qaSeries.map((item, idx) => {
+                    const h = item.transactions > 0 ? Math.min(100, Math.max(9, (item.transactions / qaTxAxisMax) * 100)) : 0;
+                    return (
+                      <div key={idx} style={{ flex: 1, display: "flex", alignItems: "flex-end", justifyContent: "center", position: "relative", zIndex: 1 }}>
+                        {item.transactions > 0 && (
+                          <div style={{ width: "44px", height: `${h}%`, backgroundColor: blueDark, position: "relative", display: "flex", justifyContent: "center", borderRadius: "2px 2px 0 0" }}>
+                            <span style={{ position: "absolute", top: "4px", color: "#ffffff", fontSize: "8.5px", fontWeight: "800", whiteSpace: "nowrap" }}>
+                              {item.transactions}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div style={{ height: "26px", display: "flex", padding: "0 10px" }}>
+                  {qaSeries.map((item, idx) => (
+                    <div key={idx} style={{ flex: 1, textAlign: "center", fontSize: "12px", fontWeight: "800", color: "#0c3b64", paddingTop: "5px", whiteSpace: "nowrap" }}>
+                      {item.label}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div style={{ textAlign: "center", color: redAlert, fontSize: "11px", fontWeight: "800", marginTop: "4px", letterSpacing: "0.04em" }}>
+              QA TRANSACTION : QA TRANSACTIONS
+            </div>
+          </div>
+        </div>
+
+        {/* Bottom: QUALITY AUDIT SCORE */}
+        <div
+          style={{
+            border: `2px solid ${navyDark}`,
+            borderRadius: "6px",
+            overflow: "hidden",
+            display: "flex",
+            flexDirection: "column",
+            flex: 1,
+            backgroundColor: "#f8fafc",
+          }}
+        >
+          <div
+            style={{
+              backgroundColor: navyDark,
+              color: "#ffffff",
+              textAlign: "center",
+              fontWeight: "900",
+              fontSize: "16px",
+              letterSpacing: "0.5em",
+              padding: "6px 0",
+              textTransform: "uppercase",
+              flexShrink: 0,
+            }}
+          >
+            Q U A L I T Y &nbsp; A U D I T &nbsp; S C O R E
+          </div>
+
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "space-between",
+              border: "1.5px solid #cbd5e1",
+              borderRadius: "6px",
+              backgroundColor: "#ffffff",
+              boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
+              padding: "10px 16px 8px 16px",
+              margin: "10px",
+              flex: 1,
+            }}
+          >
+            {/* Legend */}
+            <div style={{ display: "flex", justifyContent: "center", gap: "24px", fontSize: "12.5px", fontWeight: "700", marginBottom: "4px" }}>
+              <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                <span style={{ width: "10px", height: "10px", borderRadius: "50%", backgroundColor: blueMid, display: "inline-block" }} />
+                Audit Score
+              </span>
+            </div>
+
+            {/* Chart Area */}
+            <div style={{ display: "flex", flexDirection: "column", height: "365px", justifyContent: "space-between" }}>
+              <div style={{ height: "325px", display: "flex", flexDirection: "column", justifyContent: "space-around" }}>
+                {qaSeries.map((item, idx) => {
+                  const widthPct = item.score > 0 ? Math.min(100, item.score) : 0;
+                  return (
+                    <div key={idx} style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                      <span style={{ width: "86px", fontSize: "12px", fontWeight: "800", color: "#0c3b64", textAlign: "right", whiteSpace: "nowrap" }}>
+                        {item.label}
+                      </span>
+                      <div style={{ flex: 1, height: "26px", backgroundColor: "#f1f5f9", position: "relative", borderRadius: "5px", overflow: "hidden" }}>
+                        {item.score > 0 && (
+                          <div
+                            style={{
+                              width: `${widthPct}%`,
+                              height: "100%",
+                              backgroundColor: blueMid,
+                              borderRadius: "5px",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "flex-end",
+                              paddingRight: "10px",
+                            }}
+                          >
+                            <span style={{ color: "#ffffff", fontSize: "10px", fontWeight: "800", letterSpacing: "-0.02em" }}>
+                              {item.score.toFixed(2)}%
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Bottom X-Axis (0% - 100%) */}
+              <div style={{ display: "flex", paddingLeft: "98px", borderTop: "1.5px solid #cbd5e1", paddingTop: "4px", justifyContent: "space-between", fontSize: "10.5px", color: "#475569", fontWeight: "700" }}>
+                <span>0%</span>
+                <span>20.00%</span>
+                <span>40.00%</span>
+                <span>60.00%</span>
+                <span>80.00%</span>
+                <span>100.00%</span>
+              </div>
+            </div>
+
+            <div style={{ textAlign: "center", color: redAlert, fontSize: "11px", fontWeight: "800", marginTop: "4px", letterSpacing: "0.04em" }}>
+              QA SCORE : AVERAGE OF TOTAL QA SCORE %
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // If Occupancy is the only selected section, export dedicated full-page Occupancy & Headcount view
+  if (isSingleSection && showOccupancy) {
+    return (
+      <div
+        id="all-reports-pdf-view"
+        style={{
+          width: "1500px",
+          height: "1040px",
+          minHeight: "1040px",
+          maxHeight: "1040px",
+          backgroundColor: "#ffffff",
+          fontFamily: "'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+          padding: "6px 8px 8px 8px",
+          boxSizing: "border-box",
+          display: "flex",
+          flexDirection: "column",
+          gap: "8px",
+          color: "#0c3b64",
+          border: "none",
+          overflow: "hidden",
+        }}
+      >
+        {/* Top: OCCUPANCY & UTILIZATION */}
+        <div
+          style={{
+            border: `2px solid ${navyDark}`,
+            borderRadius: "6px",
+            overflow: "hidden",
+            display: "flex",
+            flexDirection: "column",
+            flex: 1,
+            backgroundColor: "#f8fafc",
+          }}
+        >
+          <div
+            style={{
+              backgroundColor: navyDark,
+              color: "#ffffff",
+              textAlign: "center",
+              fontWeight: "900",
+              fontSize: "16px",
+              letterSpacing: "0.5em",
+              padding: "6px 0",
+              textTransform: "uppercase",
+              flexShrink: 0,
+            }}
+          >
+            O C C U P A N C Y &nbsp; & &nbsp; U T I L I Z A T I O N
+          </div>
+
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "space-between",
+              border: "1.5px solid #cbd5e1",
+              borderRadius: "6px",
+              backgroundColor: "#ffffff",
+              boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
+              padding: "10px 16px 8px 16px",
+              margin: "10px",
+              flex: 1,
+            }}
+          >
+            {/* Legend */}
+            <div style={{ display: "flex", justifyContent: "center", gap: "24px", fontSize: "12.5px", fontWeight: "700", marginBottom: "4px" }}>
+              <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                <span style={{ width: "10px", height: "10px", borderRadius: "50%", backgroundColor: blueDark, display: "inline-block" }} />
+                Occupancy
+              </span>
+              <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                <span style={{ width: "10px", height: "10px", borderRadius: "50%", backgroundColor: blueMid, display: "inline-block" }} />
+                Utilization
+              </span>
+              <span style={{ display: "flex", alignItems: "center", gap: "6px", color: redAlert }}>
+                <span style={{ width: "16px", borderTop: "1.5px dashed red", display: "inline-block" }} />
+                Target: 85%
+              </span>
+            </div>
+
+            {/* Chart */}
+            <div style={{ display: "flex", height: "365px" }}>
+              <div style={{ width: "48px", height: "325px", position: "relative", borderRight: "1.5px solid #cbd5e1", fontSize: "10px", color: "#475569", fontWeight: "700" }}>
+                {["100.00%", "80.00%", "60.00%", "40.00%", "20.00%", "0%"].map((pct, idx) => (
+                  <span key={idx} style={{ position: "absolute", top: `${idx * 20}%`, transform: "translateY(-50%)", right: "5px" }}>
+                    {pct}
+                  </span>
+                ))}
+              </div>
+
+              <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+                <div style={{ height: "325px", position: "relative", borderBottom: "1.5px solid #cbd5e1", display: "flex", padding: "0 10px" }}>
+                  {[0, 20, 40, 60, 80, 100].map((val, idx) => (
+                    <div key={idx} style={{ position: "absolute", left: 0, right: 0, top: `${val}%`, borderTop: "1px solid #f1f5f9" }} />
+                  ))}
+                  {/* Target line 85% */}
+                  <div style={{ position: "absolute", left: 0, right: 0, top: "15%", borderTop: "1.5px dashed #d32f2f", zIndex: 3 }} />
+
+                  {occSeries.map((item, idx) => {
+                    const occH = item.occupancyPct > 0 ? Math.min(100, Math.max(9, item.occupancyPct)) : 0;
+                    return (
+                      <div key={idx} style={{ flex: 1, display: "flex", alignItems: "flex-end", justifyContent: "center", position: "relative", zIndex: 2 }}>
+                        {item.occupancyPct > 0 && (
+                          <div style={{ width: "42px", height: `${occH}%`, backgroundColor: blueDark, position: "relative", display: "flex", justifyContent: "center", borderRadius: "2px 2px 0 0" }}>
+                            <span style={{ position: "absolute", top: "4px", fontSize: "8.5px", fontWeight: "800", color: "#ffffff", whiteSpace: "nowrap" }}>
+                              {item.occupancyPct.toFixed(2)}%
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div style={{ height: "26px", display: "flex", padding: "0 10px" }}>
+                  {occSeries.map((item, idx) => (
+                    <div key={idx} style={{ flex: 1, textAlign: "center", fontSize: "12px", fontWeight: "800", color: "#0c3b64", paddingTop: "5px", whiteSpace: "nowrap" }}>
+                      {item.label}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div style={{ textAlign: "center", color: redAlert, fontSize: "11px", fontWeight: "800", marginTop: "4px" }}>
+              OCCUPANCY % : TOTAL HANDLING TIME / (TOTAL HANDLING TIME + AVAILABLE TIME)
+            </div>
+          </div>
+        </div>
+
+        {/* Bottom: HEADCOUNT VS PEOPLE METRICS */}
+        <div
+          style={{
+            border: `2px solid ${navyDark}`,
+            borderRadius: "6px",
+            overflow: "hidden",
+            display: "flex",
+            flexDirection: "column",
+            flex: 1,
+            backgroundColor: "#f8fafc",
+          }}
+        >
+          <div
+            style={{
+              backgroundColor: navyDark,
+              color: "#ffffff",
+              textAlign: "center",
+              fontWeight: "900",
+              fontSize: "16px",
+              letterSpacing: "0.38em",
+              padding: "6px 0",
+              textTransform: "uppercase",
+              flexShrink: 0,
+            }}
+          >
+            H E A D C O U N T &nbsp; V S &nbsp; P E O P L E &nbsp; M E T R I C S
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", backgroundColor: "#f8fafc", padding: "10px", gap: "10px", flex: 1 }}>
+            {/* Left: Headcount Metrics */}
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                justifyContent: "space-between",
+                border: "1.5px solid #cbd5e1",
+                borderRadius: "6px",
+                backgroundColor: "#ffffff",
+                boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
+                padding: "10px 14px 8px 14px",
+                flex: 1,
+              }}
+            >
+              <div style={{ display: "flex", justifyContent: "center", gap: "14px", fontSize: "12px", fontWeight: "700", marginBottom: "4px" }}>
+                <span style={{ display: "flex", alignItems: "center", gap: "5px" }}>
+                  <span style={{ width: "9px", height: "9px", borderRadius: "50%", backgroundColor: blueDark, display: "inline-block" }} />
+                  Required FTE
+                </span>
+                <span style={{ display: "flex", alignItems: "center", gap: "5px" }}>
+                  <span style={{ width: "9px", height: "9px", borderRadius: "50%", backgroundColor: blueMid, display: "inline-block" }} />
+                  Actual HC
+                </span>
+                <span style={{ display: "flex", alignItems: "center", gap: "5px" }}>
+                  <span style={{ width: "9px", height: "9px", borderRadius: "50%", backgroundColor: "#7b9ebc", display: "inline-block" }} />
+                  Buffer
+                </span>
+                <span style={{ display: "flex", alignItems: "center", gap: "5px" }}>
+                  <span style={{ width: "9px", height: "9px", borderRadius: "50%", backgroundColor: "#b0c4de", display: "inline-block" }} />
+                  Attrited
+                </span>
+              </div>
+
+              <div style={{ display: "flex", height: "365px" }}>
+                <div style={{ width: "40px", height: "325px", position: "relative", borderRight: "1.5px solid #cbd5e1", fontSize: "10px", color: "#475569", fontWeight: "700" }}>
+                  {hcTicks.map((val, idx) => (
+                    <span key={idx} style={{ position: "absolute", top: `${(idx / (hcTicks.length - 1)) * 100}%`, transform: "translateY(-50%)", right: "5px" }}>
+                      {Math.round(val)}
+                    </span>
+                  ))}
+                </div>
+
+                <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+                  <div style={{ height: "325px", position: "relative", borderBottom: "1.5px solid #cbd5e1", display: "flex", padding: "0 8px" }}>
+                    {hcTicks.map((_, idx) => (
+                      <div key={idx} style={{ position: "absolute", left: 0, right: 0, top: `${(idx / (hcTicks.length - 1)) * 100}%`, borderTop: "1px solid #f1f5f9" }} />
+                    ))}
+
+                    {occSeries.map((item, idx) => {
+                      const h = item.actualHeadcount > 0 ? Math.min(100, Math.max(9, (item.actualHeadcount / hcAxisMax) * 100)) : 0;
+                      return (
+                        <div key={idx} style={{ flex: 1, display: "flex", alignItems: "flex-end", justifyContent: "center", position: "relative", zIndex: 1 }}>
+                          {item.actualHeadcount > 0 && (
+                            <div style={{ width: "38px", height: `${h}%`, backgroundColor: blueMid, position: "relative", display: "flex", justifyContent: "center", borderRadius: "2px 2px 0 0" }}>
+                              <span style={{ position: "absolute", top: "4px", color: "#ffffff", fontSize: "8.5px", fontWeight: "800" }}>
+                                {item.actualHeadcount}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <div style={{ height: "26px", display: "flex", padding: "0 8px" }}>
+                    {occSeries.map((item, idx) => (
+                      <div key={idx} style={{ flex: 1, textAlign: "center", fontSize: "12px", fontWeight: "800", color: "#0c3b64", paddingTop: "5px", whiteSpace: "nowrap" }}>
+                        {item.label}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Right: People Metrics */}
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                justifyContent: "space-between",
+                border: "1.5px solid #cbd5e1",
+                borderRadius: "6px",
+                backgroundColor: "#ffffff",
+                boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
+                padding: "10px 14px 8px 14px",
+                flex: 1,
+              }}
+            >
+              <div style={{ display: "flex", justifyContent: "center", gap: "18px", fontSize: "12px", fontWeight: "700", marginBottom: "4px" }}>
+                <span style={{ display: "flex", alignItems: "center", gap: "5px" }}>
+                  <span style={{ width: "9px", height: "9px", borderRadius: "50%", backgroundColor: blueDark, display: "inline-block" }} />
+                  Absenteeism %
+                </span>
+                <span style={{ display: "flex", alignItems: "center", gap: "5px" }}>
+                  <span style={{ width: "9px", height: "9px", borderRadius: "50%", backgroundColor: blueMid, display: "inline-block" }} />
+                  Attrition %
+                </span>
+              </div>
+
+              <div style={{ display: "flex", height: "365px" }}>
+                <div style={{ width: "40px", height: "325px", position: "relative", borderRight: "1.5px solid #cbd5e1", fontSize: "10px", color: "#475569", fontWeight: "700" }}>
+                  {["20%", "15%", "10%", "5%", "0%"].map((pct, idx) => (
+                    <span key={idx} style={{ position: "absolute", top: `${idx * 25}%`, transform: "translateY(-50%)", right: "5px" }}>
+                      {pct}
+                    </span>
+                  ))}
+                </div>
+
+                <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+                  <div style={{ height: "325px", position: "relative", borderBottom: "1.5px solid #cbd5e1", display: "flex", padding: "0 8px" }}>
+                    {[0, 25, 50, 75, 100].map((val, idx) => (
+                      <div key={idx} style={{ position: "absolute", left: 0, right: 0, top: `${val}%`, borderTop: "1px solid #f1f5f9" }} />
+                    ))}
+                  </div>
+
+                  <div style={{ height: "26px", display: "flex", padding: "0 8px" }}>
+                    {occSeries.map((item, idx) => (
+                      <div key={idx} style={{ flex: 1, textAlign: "center", fontSize: "12px", fontWeight: "800", color: "#0c3b64", paddingTop: "5px", whiteSpace: "nowrap" }}>
+                        {item.label}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -612,11 +1161,11 @@ export default function AllReportsExecutivePdfView({
               </span>
               <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                 <span style={{ width: "10px", height: "10px", borderRadius: "50%", backgroundColor: blueMid, display: "inline-block" }} />
-                Handled
+                Resolved
               </span>
               <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                 <span style={{ width: "10px", height: "10px", borderRadius: "50%", backgroundColor: blueLight, display: "inline-block" }} />
-                Handled w/SLA
+                Resolved w/SLA
               </span>
             </div>
 
@@ -702,7 +1251,7 @@ export default function AllReportsExecutivePdfView({
 
             {/* Red Subtitle */}
             <div style={{ textAlign: "center", color: redAlert, fontSize: isTwoSections ? "11.5px" : "11px", fontWeight: "800", marginTop: "3px", letterSpacing: "0.04em" }}>
-              EMAIL VOLUME , HANDLED , HANDLED W/ SLA
+              EMAIL VOLUME , RESOLVED , RESOLVED W/ SLA
             </div>
           </div>
 
@@ -791,7 +1340,7 @@ export default function AllReportsExecutivePdfView({
 
             {/* Red Subtitle */}
             <div style={{ textAlign: "center", color: redAlert, fontSize: isTwoSections ? "11.5px" : "11px", fontWeight: "800", marginTop: "3px", letterSpacing: "0.04em" }}>
-              ERR % : HANDLED / OFFERED &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; SL % : HANDLED W/SLA / HANDLED
+              ERR % : RESOLVED / OFFERED &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; SL % : RESOLVED W/SLA / RESOLVED
             </div>
           </div>
         </div>
@@ -802,10 +1351,10 @@ export default function AllReportsExecutivePdfView({
       {/* SECTION 3: QUALITY AUDIT  &  HEADCOUNT VS PEOPLE METRICS                */}
       {/* ========================================================================= */}
       {showSection3 && (
-      <div style={{ display: "grid", gridTemplateColumns: showQa && showOccupancy ? "1fr 1.05fr" : "1fr", gap: "10px", flex: activeCount >= 3 ? 1 : "initial" }}>
+      <div style={{ display: "grid", gridTemplateColumns: showQa && showOccupancy ? "1fr 1.05fr" : "1fr", gap: "10px", flex: 1 }}>
         {/* 3A: QUALITY AUDIT */}
         {showQa && (
-        <div style={{ border: `2px solid ${navyDark}`, borderRadius: "3px", overflow: "hidden", display: "flex", flexDirection: "column" }}>
+        <div style={{ border: `2px solid ${navyDark}`, borderRadius: "6px", overflow: "hidden", display: "flex", flexDirection: "column", flex: 1 }}>
           {/* Banner */}
           <div
             style={{
@@ -941,7 +1490,7 @@ export default function AllReportsExecutivePdfView({
         </div>
         )}
 
-        {/* 3B: HEADCOUNT VS PEOPLE METRICS (EMPTY PLACEHOLDER CARD) */}
+        {/* 3B: OCCUPANCY & HEADCOUNT */}
         {showOccupancy && (
         <div style={{ border: `2px solid ${navyDark}`, borderRadius: "3px", overflow: "hidden", display: "flex", flexDirection: "column", minHeight: isSingleSection ? "380px" : "auto" }}>
           {/* Banner */}
@@ -957,31 +1506,157 @@ export default function AllReportsExecutivePdfView({
               textTransform: "uppercase",
             }}
           >
-            H E A D C O U N T &nbsp; V S &nbsp; P E O P L E &nbsp; M E T R I C S
+            O C C U P A N C Y &nbsp; & &nbsp; H E A D C O U N T
           </div>
 
-          {/* Clean Empty Placeholder Body */}
-          <div
-            style={{
-              flex: 1,
-              backgroundColor: "#ffffff",
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              justifyContent: "center",
-              padding: "28px",
-              margin: "8px",
-              border: "1.5px dashed #cbd5e1",
-              borderRadius: "4px",
-              textAlign: "center",
-            }}
-          >
-            <Users size={42} style={{ color: "#94a3b8", marginBottom: "10px" }} />
-            <div style={{ fontSize: "14px", fontWeight: "800", color: "#0c3b64", marginBottom: "6px" }}>
-              Occupancy & Headcount Performance
+          {/* Sub-grid: Occupancy & Utilization (Left) & Headcount Metrics (Right) */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", backgroundColor: "#ffffff", padding: "6px 12px 6px 12px", gap: "14px", flex: 1 }}>
+            {/* Left: Occupancy & Utilization */}
+            <div style={{ display: "flex", flexDirection: "column", borderRight: "1.5px solid #e2e8f0", paddingRight: "12px" }}>
+              {/* Title & Legend Stacked */}
+              <div style={{ fontSize: "12px", fontWeight: "900", color: "#0c3b64", textTransform: "uppercase", textAlign: "center", letterSpacing: "0.03em" }}>
+                OCCUPANCY &amp; UTILIZATION
+              </div>
+              <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: "12px", fontSize: "10px", fontWeight: "700", marginTop: "1px", marginBottom: "4px" }}>
+                <span style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                  <span style={{ width: "8px", height: "8px", borderRadius: "50%", backgroundColor: blueDark, display: "inline-block" }} />
+                  Occupancy
+                </span>
+                <span style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                  <span style={{ width: "8px", height: "8px", borderRadius: "50%", backgroundColor: blueMid, display: "inline-block" }} />
+                  Utilization
+                </span>
+                <span style={{ display: "flex", alignItems: "center", gap: "4px", color: redAlert, fontWeight: "800" }}>
+                  <span style={{ width: "12px", borderTop: `1.5px dashed ${redAlert}`, display: "inline-block" }} />
+                  Target (85%)
+                </span>
+              </div>
+
+              {/* Chart Area */}
+              <div style={{ display: "flex", height: occChartHeight }}>
+                {/* Y Axis 0-100% */}
+                <div style={{ width: "32px", height: occAxisHeight, position: "relative", borderRight: "1.5px solid #cbd5e1", fontSize: "9px", color: "#475569", fontWeight: "700" }}>
+                  {["100%", "80%", "60%", "40%", "20%", "0%"].map((pct, idx) => (
+                    <span key={idx} style={{ position: "absolute", top: `${idx * 20}%`, transform: "translateY(-50%)", right: "3px" }}>
+                      {pct}
+                    </span>
+                  ))}
+                </div>
+
+                <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+                  <div style={{ height: occAxisHeight, position: "relative", borderBottom: "1.5px solid #cbd5e1", display: "flex", padding: "0 6px" }}>
+                    {[0, 20, 40, 60, 80, 100].map((val, idx) => (
+                      <div key={idx} style={{ position: "absolute", left: 0, right: 0, top: `${val}%`, borderTop: "1px solid #f1f5f9" }} />
+                    ))}
+                    {/* Red 85% Target Line */}
+                    <div style={{ position: "absolute", left: 0, right: 0, top: "15%", borderTop: `1.5px dashed ${redAlert}`, zIndex: 3 }} />
+
+                    {occSeries.map((item, idx) => {
+                      const occH = item.occupancyPct > 0 ? Math.min(100, Math.max(9, item.occupancyPct)) : 0;
+                      return (
+                        <div key={idx} style={{ flex: 1, display: "flex", alignItems: "flex-end", justifyContent: "center", position: "relative", zIndex: 2 }}>
+                          {item.occupancyPct > 0 && (
+                            <div style={{ width: isSingleSection ? "36px" : "30px", height: `${occH}%`, backgroundColor: blueDark, position: "relative", display: "flex", justifyContent: "center", borderRadius: "2px 2px 0 0" }}>
+                              <span style={{ position: "absolute", top: "3px", fontSize: isSingleSection ? "8px" : "7px", fontWeight: "800", color: "#ffffff", whiteSpace: "nowrap", letterSpacing: "-0.03em" }}>
+                                {item.occupancyPct.toFixed(2)}%
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* X Labels */}
+                  <div style={{ height: "26px", display: "flex", padding: "0 4px" }}>
+                    {occSeries.map((item, idx) => (
+                      <div key={idx} style={{ flex: 1, textAlign: "center", fontSize: "9px", fontWeight: "800", color: "#0c3b64", paddingTop: "5px", whiteSpace: "nowrap", letterSpacing: "-0.03em", overflow: "visible" }}>
+                        {item.label}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Red Formula Subtitle */}
+              <div style={{ textAlign: "center", color: redAlert, fontSize: "9px", fontWeight: "800", marginTop: "3px", whiteSpace: "nowrap" }}>
+                OCCUPANCY % : TOTAL HANDLING TIME / (THT + AVAILABLE TIME)
+              </div>
             </div>
-            <div style={{ fontSize: "11.5px", color: "#64748b", fontWeight: "500" }}>
-              Occupancy & HC reporting metrics will be displayed here.
+
+            {/* Right: Headcount Metrics */}
+            <div style={{ display: "flex", flexDirection: "column" }}>
+              {/* Title & Legend Stacked */}
+              <div style={{ fontSize: "12px", fontWeight: "900", color: "#0c3b64", textTransform: "uppercase", textAlign: "center", letterSpacing: "0.03em" }}>
+                HEADCOUNT METRICS
+              </div>
+              <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: "10px", fontSize: "10px", fontWeight: "700", marginTop: "1px", marginBottom: "4px" }}>
+                <span style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                  <span style={{ width: "8px", height: "8px", borderRadius: "50%", backgroundColor: blueDark, display: "inline-block" }} />
+                  Req FTE
+                </span>
+                <span style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                  <span style={{ width: "8px", height: "8px", borderRadius: "50%", backgroundColor: blueMid, display: "inline-block" }} />
+                  Actual HC
+                </span>
+                <span style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                  <span style={{ width: "8px", height: "8px", borderRadius: "50%", backgroundColor: "#7b9ebc", display: "inline-block" }} />
+                  Buffer
+                </span>
+                <span style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                  <span style={{ width: "8px", height: "8px", borderRadius: "50%", backgroundColor: "#b0c4de", display: "inline-block" }} />
+                  Attrited
+                </span>
+              </div>
+
+              {/* Chart Area */}
+              <div style={{ display: "flex", height: occChartHeight }}>
+                {/* Y Axis */}
+                <div style={{ width: "32px", height: occAxisHeight, position: "relative", borderRight: "1.5px solid #cbd5e1", fontSize: "9.5px", color: "#475569", fontWeight: "700" }}>
+                  {hcTicks.map((val, idx) => (
+                    <span key={idx} style={{ position: "absolute", top: `${(idx / (hcTicks.length - 1)) * 100}%`, transform: "translateY(-50%)", right: "3px" }}>
+                      {Math.round(val)}
+                    </span>
+                  ))}
+                </div>
+
+                <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+                  <div style={{ height: occAxisHeight, position: "relative", borderBottom: "1.5px solid #cbd5e1", display: "flex", padding: "0 6px" }}>
+                    {hcTicks.map((_, idx) => (
+                      <div key={idx} style={{ position: "absolute", left: 0, right: 0, top: `${(idx / (hcTicks.length - 1)) * 100}%`, borderTop: "1px solid #f1f5f9" }} />
+                    ))}
+
+                    {occSeries.map((item, idx) => {
+                      const h = item.actualHeadcount > 0 ? Math.min(100, Math.max(7, (item.actualHeadcount / hcAxisMax) * 100)) : 0;
+                      return (
+                        <div key={idx} style={{ flex: 1, display: "flex", alignItems: "flex-end", justifyContent: "center", position: "relative", zIndex: 1 }}>
+                          {item.actualHeadcount > 0 && (
+                            <div style={{ width: isSingleSection ? "36px" : "30px", height: `${h}%`, backgroundColor: blueMid, position: "relative", display: "flex", justifyContent: "center", borderRadius: "2px 2px 0 0" }}>
+                              <span style={{ position: "absolute", top: "3px", color: "#ffffff", fontSize: isSingleSection ? "8px" : "7px", fontWeight: "800", letterSpacing: "-0.03em" }}>
+                                {item.actualHeadcount}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* X Labels */}
+                  <div style={{ height: "26px", display: "flex", padding: "0 4px" }}>
+                    {occSeries.map((item, idx) => (
+                      <div key={idx} style={{ flex: 1, textAlign: "center", fontSize: "9px", fontWeight: "800", color: "#0c3b64", paddingTop: "5px", whiteSpace: "nowrap", letterSpacing: "-0.03em", overflow: "visible" }}>
+                        {item.label}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Subtitle to match baseline with left card */}
+              <div style={{ textAlign: "center", color: redAlert, fontSize: "9px", fontWeight: "800", marginTop: "3px", whiteSpace: "nowrap" }}>
+                HEADCOUNT : ACTUAL ACTIVE EMPLOYEES
+              </div>
             </div>
           </div>
         </div>

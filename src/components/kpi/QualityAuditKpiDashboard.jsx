@@ -155,10 +155,13 @@ function QaTransactionsChart({
                     <div className={`group/bar relative hover:z-50 flex h-full w-full ${isSubmodule ? "max-w-[70px]" : "max-w-[50px]"} items-end justify-center`}>
                       {value > 0 ? (
                         <span
-                          className={`pointer-events-none absolute left-1/2 z-10 -translate-x-1/2 whitespace-nowrap ${isSubmodule ? "text-[11px] sm:text-xs 2xl:text-[13px] font-extrabold" : "text-[8.5px] sm:text-[9px] font-bold"} transition-all group-hover/bar:-translate-y-0.5 ${
+                          className={`pointer-events-none absolute left-1/2 z-10 -translate-x-1/2 whitespace-nowrap ${isSubmodule ? "text-[11px] sm:text-xs 2xl:text-[13px] font-extrabold" : "text-[8.5px] sm:text-[9px] font-bold"} transition-all group-hover/bar:-translate-y-0.5 sibs-graph-number-in ${
                             isInside ? "text-white drop-shadow-xs" : "text-sibs-primary-1"
                           }`}
-                          style={{ bottom: isInside ? `calc(${height}% - ${isSubmodule ? 22 : 17}px)` : `calc(${height}% + 4px)` }}
+                          style={{
+                            bottom: isInside ? `calc(${height}% - ${isSubmodule ? 22 : 17}px)` : `calc(${height}% + 4px)`,
+                            animationDelay: `${Math.min(index * 60, 500)}ms`,
+                          }}
                         >
                           {formatNumber(value)}
                         </span>
@@ -183,8 +186,11 @@ function QaTransactionsChart({
                       </div>
 
                       <div
-                        className={`w-full ${isSubmodule ? "max-w-[70px]" : "max-w-[50px]"} rounded-t-[5px] bg-[#174f7f] shadow-xs transition-all duration-200 group-hover/bar:-translate-y-0.5 group-hover/bar:brightness-110`}
-                        style={{ height: `${height}%` }}
+                        className={`w-full ${isSubmodule ? "max-w-[70px]" : "max-w-[50px]"} rounded-t-[5px] bg-[#174f7f] shadow-xs transition-all duration-200 group-hover/bar:-translate-y-0.5 group-hover/bar:brightness-110 sibs-graph-bar-rise`}
+                        style={{
+                          height: `${height}%`,
+                          animationDelay: `${Math.min(index * 60, 500)}ms`,
+                        }}
                       />
                     </div>
                   </div>
@@ -384,19 +390,28 @@ function QaScoreChart({
                 </span>
                 <div className={`relative ${barHeightClass} overflow-visible rounded-lg bg-slate-100 shadow-inner`}>
                   <div
-                    className="flex h-full min-w-0 items-center justify-end rounded-lg bg-[#557da4] px-2.5 transition-all duration-200 group-hover/score:brightness-110 shadow-2xs"
-                    style={{ width: `${score}%` }}
+                    className="flex h-full min-w-0 items-center justify-end rounded-lg bg-[#557da4] px-2.5 transition-all duration-200 group-hover/score:brightness-110 shadow-2xs sibs-graph-bar-grow-x"
+                    style={{
+                      width: `${score}%`,
+                      animationDelay: `${Math.min(index * 60, 500)}ms`,
+                    }}
                   >
                     {score >= 20 ? (
-                      <span className={`whitespace-nowrap ${scoreTextClass} text-white drop-shadow-xs`}>
+                      <span
+                        className={`whitespace-nowrap ${scoreTextClass} text-white drop-shadow-xs sibs-graph-number-in`}
+                        style={{ animationDelay: `${Math.min(index * 60, 500)}ms` }}
+                      >
                         {formatNumber(score, 2)}%
                       </span>
                     ) : null}
                   </div>
                   {score < 20 ? (
                     <span
-                      className={`absolute top-1/2 -translate-y-1/2 whitespace-nowrap ${scoreTextClass} text-sibs-primary-1`}
-                      style={{ left: `calc(${score}% + 6px)` }}
+                      className={`absolute top-1/2 -translate-y-1/2 whitespace-nowrap ${scoreTextClass} text-sibs-primary-1 sibs-graph-number-in`}
+                      style={{
+                        left: `calc(${score}% + 6px)`,
+                        animationDelay: `${Math.min(index * 60, 500)}ms`,
+                      }}
                     >
                       {formatNumber(score, 2)}%
                     </span>

@@ -20,3 +20,8 @@ export async function getWfmQualityAuditKpis(params = {}) {
   const response = await api.get("/wfm/kpis/quality-audit", { params });
   return response;
 }
+
+export async function getWfmOccupancyKpis(params = {}) {
+  const response = await api.get("/wfm/kpis/occupancy", { params });
+  return response;
+}

@@ -1,4 +1,4 @@
-﻿// Visual summary bar chart for WFM feed volume & integrity.
+// Visual summary bar chart for WFM feed volume & integrity.
 import { useMemo } from "react";
 import { BarChart3 } from "lucide-react";
 
@@ -66,7 +66,7 @@ export default function WfmIngestionBarChart({
 
       {/* Bars Container */}
       <div className="flex-1 flex items-end justify-around gap-2 pt-8 pb-3 px-2">
-        {chartData.map((item) => {
+        {chartData.map((item, index) => {
           const validHeight = Math.max(item.valid > 0 ? (item.valid / maxVal) * 100 : 0, 4);
           const totalHeight = Math.max(item.total > 0 ? (item.total / maxVal) * 100 : 0, 4);
           const issuesHeight = Math.max(item.issues > 0 ? (item.issues / maxVal) * 100 : 0, item.issues > 0 ? 4 : 0);
@@ -77,20 +77,29 @@ export default function WfmIngestionBarChart({
               <div className="flex items-end justify-center gap-1 w-full h-[180px]">
                 {/* Bar 1: Valid (Coral) */}
                 <div
-                  className="w-2.5 sm:w-3 rounded-t-full bg-gradient-to-t from-[#ff6b6b] to-[#ff9068] transition-all duration-300 group-hover:brightness-110 relative"
-                  style={{ height: `${validHeight}%` }}
+                  className="w-2.5 sm:w-3 rounded-t-full bg-gradient-to-t from-[#ff6b6b] to-[#ff9068] transition-all duration-300 group-hover:brightness-110 relative sibs-graph-bar-rise"
+                  style={{
+                    height: `${validHeight}%`,
+                    animationDelay: `${Math.min(index * 60, 500)}ms`,
+                  }}
                   title={`Valid: ${item.valid.toLocaleString()}`}
                 />
                 {/* Bar 2: Total (Blue) */}
                 <div
-                  className="w-2.5 sm:w-3 rounded-t-full bg-gradient-to-t from-[#2f80ed] to-[#56ccf2] transition-all duration-300 group-hover:brightness-110 relative"
-                  style={{ height: `${totalHeight}%` }}
+                  className="w-2.5 sm:w-3 rounded-t-full bg-gradient-to-t from-[#2f80ed] to-[#56ccf2] transition-all duration-300 group-hover:brightness-110 relative sibs-graph-bar-rise"
+                  style={{
+                    height: `${totalHeight}%`,
+                    animationDelay: `${Math.min(index * 60 + 20, 520)}ms`,
+                  }}
                   title={`Total: ${item.total.toLocaleString()}`}
                 />
                 {/* Bar 3: Exceptions (Purple) */}
                 <div
-                  className="w-2.5 sm:w-3 rounded-t-full bg-gradient-to-t from-[#8b5cf6] to-[#c084fc] transition-all duration-300 group-hover:brightness-110 relative"
-                  style={{ height: `${issuesHeight}%` }}
+                  className="w-2.5 sm:w-3 rounded-t-full bg-gradient-to-t from-[#8b5cf6] to-[#c084fc] transition-all duration-300 group-hover:brightness-110 relative sibs-graph-bar-rise"
+                  style={{
+                    height: `${issuesHeight}%`,
+                    animationDelay: `${Math.min(index * 60 + 40, 540)}ms`,
+                  }}
                   title={`Exceptions: ${item.issues.toLocaleString()}`}
                 />
               </div>
