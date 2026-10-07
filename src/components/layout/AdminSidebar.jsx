@@ -22,15 +22,7 @@ const AdminSidebar = ({
   const [isCollapsed, setIsCollapsed] = useState(
     () => localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "true",
   );
-  const [expandedModules, setExpandedModules] = useState(() => ["Wow Report"]);
-
-  useEffect(() => {
-    if (location.pathname.includes("view-graphs")) {
-      setExpandedModules((prev) =>
-        prev.includes("Wow Report") ? prev : [...prev, "Wow Report"]
-      );
-    }
-  }, [location.pathname]);
+  const [expandedModules, setExpandedModules] = useState([]);
 
   const toggleExpand = (moduleName) => {
     setExpandedModules((prev) =>
@@ -120,59 +112,65 @@ const AdminSidebar = ({
               if (hasSubmodules) {
                 return (
                   <div key={item.name} className="flex flex-col">
-                    <button
-                      type="button"
-                      title={item.name}
-                      onClick={() => {
-                        if (collapsed) {
-                          navigate(item.path);
-                          if (mobile) onMobileClose?.();
-                        } else {
-                          toggleExpand(item.name);
-                          if (location.pathname !== item.path) {
-                            navigate(item.path);
-                            if (mobile) onMobileClose?.();
-                          }
-                        }
-                      }}
-                      className={`group flex h-[38px] w-full cursor-pointer items-center gap-3 rounded-xl border-0 px-3 text-left font-semibold transition-all duration-150 ${
+                    <div
+                      className={`group flex h-[38px] w-full items-center rounded-xl transition-all duration-150 ${
                         isParentActive && !location.search
-                          ? "bg-[#ff5c28] text-white shadow-md shadow-orange-950/20 hover:!bg-[#ff5c28] hover:!text-white"
+                          ? "bg-[#ff5c28] text-white shadow-md shadow-orange-950/20"
                           : isParentActive
                             ? "bg-white/[0.12] text-white font-bold"
                             : "text-[#cad5e2] hover:bg-white/[0.08] hover:text-white"
-                      } ${collapsed ? "h-[38px] justify-center px-0" : ""}`}
+                      } ${collapsed ? "justify-center px-0" : "px-3"}`}
                     >
-                      <Icon
-                        className={`h-[19px] w-[19px] shrink-0 transition-colors ${
-                          isParentActive ? "text-white" : "text-[#90a1b9] group-hover:text-white"
+                      <button
+                        type="button"
+                        title={item.name}
+                        onClick={() => {
+                          navigate(item.path);
+                          if (mobile) onMobileClose?.();
+                        }}
+                        className={`flex flex-1 min-w-0 cursor-pointer items-center gap-3 border-0 bg-transparent p-0 text-left font-semibold text-inherit outline-none ${
+                          collapsed ? "h-[38px] w-[38px] justify-center" : ""
                         }`}
-                        strokeWidth={1.9}
-                        aria-hidden="true"
-                      />
-                      {!collapsed && (
-                        <>
+                      >
+                        <Icon
+                          className={`h-[19px] w-[19px] shrink-0 transition-colors ${
+                            isParentActive ? "text-white" : "text-[#90a1b9] group-hover:text-white"
+                          }`}
+                          strokeWidth={1.9}
+                          aria-hidden="true"
+                        />
+                        {!collapsed && (
                           <span className="min-w-0 flex-1 truncate text-left text-[12.5px] font-semibold leading-5 tracking-normal">
                             {item.name}
                           </span>
-                          <span
-                            className="p-0.5 text-[#90a1b9] transition-colors group-hover:text-white shrink-0"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              toggleExpand(item.name);
-                            }}
-                          >
-                            <ChevronDown
-                              size={14}
-                              strokeWidth={2.2}
-                              className={`transform transition-transform duration-300 ease-in-out ${
-                                isExpanded ? "rotate-180" : "rotate-0"
-                              }`}
-                            />
-                          </span>
-                        </>
+                        )}
+                      </button>
+
+                      {!collapsed && (
+                        <button
+                          type="button"
+                          aria-label={isExpanded ? `Collapse ${item.name}` : `Expand ${item.name}`}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            toggleExpand(item.name);
+                          }}
+                          className={`flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-lg border-0 bg-transparent p-0 transition-all hover:bg-white/10 outline-none ${
+                            isParentActive && !location.search
+                              ? "text-white/80 hover:text-white"
+                              : "text-[#90a1b9] hover:text-white"
+                          }`}
+                        >
+                          <ChevronDown
+                            size={14}
+                            strokeWidth={2.2}
+                            className={`transform transition-transform duration-300 ease-in-out ${
+                              isExpanded ? "rotate-180" : "rotate-0"
+                            }`}
+                          />
+                        </button>
                       )}
-                    </button>
+                    </div>
 
                     {/* Smooth Submodules Accordion (indented with vertical branch line) */}
                     {!collapsed && (
