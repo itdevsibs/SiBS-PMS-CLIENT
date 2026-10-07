@@ -472,7 +472,7 @@ export default function AllReportsExecutivePdfView({
               </span>
               <span style={{ display: "flex", alignItems: "center", gap: "6px", color: redAlert }}>
                 <span style={{ width: "16px", borderTop: "1.5px dashed red", display: "inline-block" }} />
-                Target: 85%
+                Target: 70%
               </span>
             </div>
 
@@ -491,8 +491,8 @@ export default function AllReportsExecutivePdfView({
                   {[0, 20, 40, 60, 80, 100].map((val, idx) => (
                     <div key={idx} style={{ position: "absolute", left: 0, right: 0, top: `${val}%`, borderTop: "1px solid #f1f5f9" }} />
                   ))}
-                  {/* Target line 85% */}
-                  <div style={{ position: "absolute", left: 0, right: 0, top: "15%", borderTop: "1.5px dashed #d32f2f", zIndex: 3 }} />
+                  {/* Occupancy target line: 70% */}
+                  <div style={{ position: "absolute", left: 0, right: 0, top: "30%", borderTop: "1.5px dashed #d32f2f", zIndex: 3 }} />
 
                   {occSeries.map((item, idx) => {
                     const occH = item.occupancyPct > 0 ? Math.min(100, Math.max(9, item.occupancyPct)) : 0;
@@ -521,7 +521,7 @@ export default function AllReportsExecutivePdfView({
             </div>
 
             <div style={{ textAlign: "center", color: redAlert, fontSize: "11px", fontWeight: "800", marginTop: "4px" }}>
-              OCCUPANCY % : TOTAL HANDLING TIME / (TOTAL HANDLING TIME + AVAILABLE TIME)
+              OCCUPANCY % : TOTAL WORK TIME / PRODUCTIVE TIME
             </div>
           </div>
         </div>
@@ -1528,7 +1528,7 @@ export default function AllReportsExecutivePdfView({
                 </span>
                 <span style={{ display: "flex", alignItems: "center", gap: "4px", color: redAlert, fontWeight: "800" }}>
                   <span style={{ width: "12px", borderTop: `1.5px dashed ${redAlert}`, display: "inline-block" }} />
-                  Target (85%)
+                  Target (70%)
                 </span>
               </div>
 
@@ -1548,8 +1548,8 @@ export default function AllReportsExecutivePdfView({
                     {[0, 20, 40, 60, 80, 100].map((val, idx) => (
                       <div key={idx} style={{ position: "absolute", left: 0, right: 0, top: `${val}%`, borderTop: "1px solid #f1f5f9" }} />
                     ))}
-                    {/* Red 85% Target Line */}
-                    <div style={{ position: "absolute", left: 0, right: 0, top: "15%", borderTop: `1.5px dashed ${redAlert}`, zIndex: 3 }} />
+                    {/* Red 70% Occupancy Target Line */}
+                    <div style={{ position: "absolute", left: 0, right: 0, top: "30%", borderTop: `1.5px dashed ${redAlert}`, zIndex: 3 }} />
 
                     {occSeries.map((item, idx) => {
                       const occH = item.occupancyPct > 0 ? Math.min(100, Math.max(9, item.occupancyPct)) : 0;
@@ -1580,7 +1580,7 @@ export default function AllReportsExecutivePdfView({
 
               {/* Red Formula Subtitle */}
               <div style={{ textAlign: "center", color: redAlert, fontSize: "9px", fontWeight: "800", marginTop: "3px", whiteSpace: "nowrap" }}>
-                OCCUPANCY % : TOTAL HANDLING TIME / (THT + AVAILABLE TIME)
+                OCCUPANCY % : TOTAL WORK TIME / PRODUCTIVE TIME
               </div>
             </div>
 

@@ -35,12 +35,12 @@ export function OccupancySummaryCards({
     {
       label: "Occupancy Rate",
       value: summary?.occupancyPct != null ? `${formatNumber(summary.occupancyPct, 2)}%` : "0%",
-      hint: "Logged-in handling time",
+      hint: "Total work time ÷ productive time",
       icon: Gauge,
       status: {
-        label: "Target 85%",
+        label: "Target ≥70%",
         className:
-          (summary?.occupancyPct || 0) >= 85
+          (summary?.occupancyPct || 0) >= 70
             ? "bg-green-100 text-green-700"
             : "bg-amber-100 text-amber-700",
       },
@@ -397,7 +397,7 @@ export default function OccupancyKpiDashboard({
               xAxisLabels={xAxisLabels}
               isSubmodule={isSubmodule}
               showFilters={showFilters}
-              targetLine={85}
+              targetLine={70}
               series={series}
               barKey="occupancyPct"
               barColor="bg-[#0b3b68]"
