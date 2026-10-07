@@ -25,6 +25,7 @@ export const PERMISSIONS = Object.freeze({
   WFM_TASK_ORDER_LEDGER: "WFM_TASK_ORDER_LEDGER",
   VIEW_EMPLOYEE_LEDGER: "VIEW_EMPLOYEE_LEDGER",
   VIEW_OCCUPANCY: "VIEW_OCCUPANCY",
+  VIEW_ATTENDANCE_SHEET: "VIEW_ATTENDANCE_SHEET",
   SUPER_ADMIN_ACCESS: "SUPER_ADMIN_ACCESS",
   SUPER_ADMIN_HISTORY: "SUPER_ADMIN_HISTORY",
   CLIENT_DASHBOARD: "CLIENT_DASHBOARD",
@@ -116,7 +117,17 @@ const PERMISSION_RULES = Object.freeze({
     ],
   },
   [PERMISSIONS.VIEW_OCCUPANCY]: {
-    access: [ACCESS.BOD, ACCESS.SUPER_ADMIN, ACCESS.WFM, ACCESS.SOM],
+    access: [
+      ACCESS.OM,
+      ACCESS.BOD,
+      ACCESS.SUPER_ADMIN,
+      ACCESS.TL,
+      ACCESS.WFM,
+      ACCESS.SOM,
+    ],
+  },
+  [PERMISSIONS.VIEW_ATTENDANCE_SHEET]: {
+    access: [ACCESS.SUPER_ADMIN, ACCESS.WFM],
   },
   [PERMISSIONS.SUPER_ADMIN_ACCESS]: {
     access: [ACCESS.SUPER_ADMIN],
@@ -221,6 +232,13 @@ export const DASHBOARD_MODULES = Object.freeze([
     permission: PERMISSIONS.VIEW_OCCUPANCY,
   },
   {
+    key: "attendance-sheet",
+    name: "Attendance Sheet",
+    iconKey: "clipboard-check",
+    path: "/attendance-sheet",
+    permission: PERMISSIONS.VIEW_ATTENDANCE_SHEET,
+  },
+  {
     key: "wfm-history",
     name: "History Logs",
     iconKey: "clipboard-list",
@@ -254,6 +272,7 @@ const ROUTE_PERMISSION_RULES = Object.freeze([
   { paths: ["/task-order-ledger"], permission: PERMISSIONS.WFM_TASK_ORDER_LEDGER },
   { paths: ["/employee-master-data"], permission: PERMISSIONS.VIEW_EMPLOYEE_LEDGER },
   { paths: ["/occupancy"], permission: PERMISSIONS.VIEW_OCCUPANCY },
+  { paths: ["/attendance-sheet"], permission: PERMISSIONS.VIEW_ATTENDANCE_SHEET },
   { paths: ["/superadmin"], permission: PERMISSIONS.SUPER_ADMIN_ACCESS },
   { paths: ["/interface-access-history"], permission: PERMISSIONS.SUPER_ADMIN_HISTORY },
   { paths: ["/client"], permission: PERMISSIONS.CLIENT_DASHBOARD },
