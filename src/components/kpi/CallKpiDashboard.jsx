@@ -33,14 +33,19 @@ function formatDuration(seconds) {
 }
 
 function getTooltipPositionClass(periodIndex, seriesLength) {
-  if (periodIndex === 0) return "left-0";
-  if (periodIndex >= seriesLength - 1) return "right-0";
+  if (periodIndex <= 1) return "left-0";
+  if (periodIndex >= seriesLength - 2) return "right-0";
   return "left-1/2 -translate-x-1/2";
 }
 
-function KpiCard({ icon: Icon, label, value, hint, status, title }) {
+function KpiCard({ icon: Icon, label, value, hint, status, title, onClick = null }) {
   return (
-    <article className="sibs-card rounded-xl min-w-0 px-2.5 py-1.5 sm:px-3 sm:py-2 shadow-2xs flex flex-col justify-between gap-1 transition-all duration-150 hover:border-sibs-primary-1/30">
+    <article
+      onClick={onClick || undefined}
+      className={`sibs-card rounded-xl min-w-0 px-2.5 py-1.5 sm:px-3 sm:py-2 shadow-2xs flex flex-col justify-between gap-1 transition-all duration-150 hover:border-sibs-primary-1/30 ${
+        onClick ? "cursor-pointer" : ""
+      }`}
+    >
       {/* 1. Header: Label + Icon */}
       <div className="flex items-center justify-between gap-1 min-w-0">
         <span
@@ -83,30 +88,54 @@ function KpiCard({ icon: Icon, label, value, hint, status, title }) {
   );
 }
 
-function ChartShell({ title, subtitle, legend, children }) {
+function ChartShell({
+  title,
+  subtitle,
+  legend,
+  children,
+  legendAlign = "between",
+  tightLeft = false,
+  onClick = null,
+  className = "",
+}) {
   return (
-    <article className="sibs-card relative z-10 flex flex-col h-full shadow-xs">
-      <div className="border-b border-sibs-tertiary-10 bg-sibs-primary-3/30 px-3 py-1 sm:px-3 sm:py-1 rounded-t-xl">
-        <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
-          <h3 className="m-0 text-[11px] sm:text-xs font-extrabold uppercase tracking-[0.1em] text-sibs-primary-1 truncate">
+    <article
+      onClick={onClick || undefined}
+      className={`sibs-card relative z-10 hover:z-30 focus-within:z-30 flex flex-col h-full min-h-0 shadow-xs ${
+        onClick ? "cursor-pointer" : ""
+      } ${className}`}
+    >
+      <div className="shrink-0 border-b border-sibs-tertiary-10 bg-sibs-primary-3/30 px-2 py-0.5 rounded-t-xl">
+        <div
+          className={`flex flex-wrap items-center ${
+            legendAlign === "left"
+              ? "justify-start gap-x-2.5 sm:gap-x-3"
+              : "justify-between gap-x-1.5"
+          } gap-y-0.5`}
+        >
+          <h3 className="m-0 text-[10px] sm:text-[10.5px] font-extrabold uppercase tracking-[0.08em] text-sibs-primary-1 truncate shrink-0">
             {title}
           </h3>
 
           {legend ? (
-            <div className="inline-flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[9.5px]">
+            <div className="inline-flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[8.5px]">
               {legend}
             </div>
           ) : null}
         </div>
 
         {subtitle ? (
-          <div className="mt-0.5 text-[10px] sm:text-[10.5px] text-sibs-tertiary-5 leading-tight">
+          <div className="text-[9px] text-sibs-tertiary-5 leading-tight">
             <span>{subtitle}</span>
           </div>
         ) : null}
       </div>
 
-      <div className="p-1.5 sm:p-2 pb-1.5 flex-1 flex flex-col min-w-0 overflow-visible relative z-20">
+      <div
+        className={`${
+          tightLeft ? "pl-1.5 pr-1 py-1 pb-0.5" : "p-1 pb-0.5"
+        } flex-1 min-h-0 flex flex-col min-w-0 relative z-20`}
+      >
         {children}
       </div>
     </article>
@@ -120,7 +149,10 @@ function EmptyChart({ message = "No KPI data is available for this reporting ran
           ? "clamp(140px, calc(50vh - 225px), 220px)"
           : "clamp(220px, calc(50vh - 150px), 320px)",
       }
-    : { minHeight: "208px" };
+    : {
+        height: "clamp(55px, calc((100vh - 270px) / 5.2), 85px)",
+        maxHeight: "88px",
+      };
 
   return (
     <div
@@ -153,65 +185,83 @@ function VolumeChart({
 
   const axisTicks = getCallAxisTicks(maxValue, 4);
   const axisMax = Math.max(1, axisTicks[0] || maxValue);
+  const maxTickCharLength = Math.max(
+    ...axisTicks.map((t) => formatGraphNumber(t).length),
+    1,
+  );
   const minPeriodWidth = 84;
   const isScrollable = series.length > 6 || period === "custom";
 
   const chartHeightStyle = isSubmodule
     ? {
         height: showFilters
-          ? "clamp(140px, calc(50vh - 225px), 220px)"
-          : "clamp(220px, calc(50vh - 150px), 320px)",
+          ? "clamp(180px, calc((100vh - 350px) / 2), 340px)"
+          : "clamp(240px, calc((100vh - 200px) / 2), 440px)",
       }
     : undefined;
 
   return (
-    <div className="w-full min-w-0 select-none">
+    <div className={`w-full min-w-0 select-none ${!isSubmodule ? "flex-1 min-h-0 flex flex-col justify-between" : ""}`}>
       {!hideLegend ? (
-        <div className="mb-1.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs font-bold text-sibs-tertiary-5">
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+        <div className="mb-1 flex flex-wrap items-center justify-between gap-x-3 gap-y-0.5 text-xs font-bold text-sibs-tertiary-5 shrink-0">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5">
             <span className="inline-flex items-center gap-1.5">
-              <i className="inline-block h-2.5 w-2.5 rounded-full bg-[#0b3b68]" />
+              <i className="inline-block h-2 w-2 rounded-full bg-[#0b3b68]" />
               Volume
             </span>
 
             <span className="inline-flex items-center gap-1.5">
-              <i className="inline-block h-2.5 w-2.5 rounded-full bg-[#2f6f9f]" />
+              <i className="inline-block h-2 w-2 rounded-full bg-[#2f6f9f]" />
               Handled
             </span>
 
             <span className="inline-flex items-center gap-1.5">
-              <i className="inline-block h-2.5 w-2.5 rounded-full bg-[#4c9aca]" />
+              <i className="inline-block h-2 w-2 rounded-full bg-[#4c9aca]" />
               Handled w/SLA
             </span>
           </div>
         </div>
       ) : null}
 
-      <div className="flex w-full min-w-0">
-        <div
-          className={`relative ${!isSubmodule ? "h-[190px] sm:h-[208px]" : ""} w-10 sm:w-11 shrink-0 border-r border-sibs-tertiary-8 pr-1 bg-white z-10 transition-all duration-300 ease-in-out`}
-          style={chartHeightStyle}
-        >
-          {axisTicks.map((tick, index) => (
-            <span
-              key={`${tick}-${index}`}
-              className={`absolute right-1 -translate-y-1/2 ${isSubmodule ? "text-[10px] sm:text-[11px] font-bold" : "text-[10px] font-semibold"} text-sibs-tertiary-5`}
-              style={{
-                top: `${(index / (axisTicks.length - 1)) * 100}%`,
-              }}
-            >
-              {formatGraphNumber(tick)}
-            </span>
-          ))}
+      <div className={`flex w-full min-w-0 ${!isSubmodule ? "flex-1 min-h-0" : ""}`}>
+        <div className={`flex flex-col shrink-0 ${!isSubmodule ? "h-full" : ""}`}>
+          <div
+            className={`relative ${!isSubmodule ? "" : "w-10 sm:w-11"} shrink-0 border-r border-sibs-tertiary-8 pr-1 bg-white z-10 overflow-visible transition-all duration-300 ease-in-out ${!isSubmodule ? "flex-1 min-h-0" : ""}`}
+            style={{
+              ...chartHeightStyle,
+              width: !isSubmodule
+                ? `${Math.max(22, Math.ceil(maxTickCharLength * 7.5 + 8))}px`
+                : undefined,
+            }}
+          >
+            {axisTicks.map((tick, index) => (
+              <span
+                key={`${tick}-${index}`}
+                className={`absolute right-1 ${
+                  index === 0
+                    ? "translate-y-0"
+                    : index === axisTicks.length - 1
+                    ? "-translate-y-full"
+                    : "-translate-y-1/2"
+                } whitespace-nowrap ${isSubmodule ? "text-[10px] sm:text-[11px] font-bold" : "text-[8.5px] font-bold"} text-sibs-tertiary-5 leading-none`}
+                style={{
+                  top: `${(index / (axisTicks.length - 1)) * 100}%`,
+                }}
+              >
+                {formatGraphNumber(tick)}
+              </span>
+            ))}
+          </div>
+          {!isSubmodule && <div className="shrink-0 h-5 border-r border-sibs-tertiary-8" />}
         </div>
 
         <div
           ref={scrollContainerRef}
-          className={`relative min-w-0 flex-1 ${isScrollable ? "overflow-x-auto pb-1 sibs-chart-scrollbar" : "overflow-hidden"} overflow-y-hidden`}
+          className={`relative min-w-0 flex-1 ${isScrollable ? "overflow-x-auto pb-1 sibs-chart-scrollbar" : "overflow-hidden"} overflow-y-hidden ${!isSubmodule ? "h-full flex flex-col" : ""}`}
         >
-          <div className={`relative min-w-full ${isScrollable ? "w-max" : "w-full"}`}>
+          <div className={`relative min-w-full ${isScrollable ? "w-max" : "w-full"} ${!isSubmodule ? "flex-1 min-h-0 flex flex-col" : ""}`}>
             <div
-              className={`relative flex ${!isSubmodule ? "h-[190px] sm:h-[208px]" : ""} min-w-0 items-end gap-1 border-b border-sibs-tertiary-8 px-1 transition-all duration-300 ease-in-out`}
+              className={`relative flex min-w-0 items-end gap-1 border-b border-sibs-tertiary-8 ${!isSubmodule ? "px-0.5" : "px-1"} transition-all duration-300 ease-in-out ${!isSubmodule ? "flex-1 min-h-0" : ""}`}
               style={chartHeightStyle}
             >
               {/* Horizontal Gridlines spanning 100% of the bars container */}
@@ -344,11 +394,11 @@ function VolumeChart({
           })}
           </div>
 
-          <div className="flex w-full min-w-full gap-1 px-1">
+          <div className={`shrink-0 flex w-full min-w-full gap-1 ${!isSubmodule ? "px-0.5" : "px-1"}`}>
             {series.map((item, periodIndex) => (
               <div
                 key={item.key || periodIndex}
-                className="mt-1.5 min-w-0 flex-1 px-0.5 text-center"
+                className="mt-1 min-w-0 flex-1 px-0.5 text-center"
                 style={isScrollable ? { minWidth: `${minPeriodWidth}px` } : undefined}
               >
                 <p
@@ -408,63 +458,82 @@ function LineChart({
   const chartHeightStyle = customHeightStyle || (isSubmodule
     ? {
         height: showFilters
-          ? "clamp(140px, calc(50vh - 225px), 220px)"
-          : "clamp(220px, calc(50vh - 150px), 320px)",
+          ? "clamp(180px, calc((100vh - 350px) / 2), 340px)"
+          : "clamp(240px, calc((100vh - 200px) / 2), 440px)",
       }
     : undefined);
 
+  const maxTickCharLength = Math.max(
+    ...axisTicks.map((t) => `${t}%`.length),
+    1,
+  );
+
   return (
-    <div className="w-full min-w-0 select-none">
+    <div className={`w-full min-w-0 select-none ${!isSubmodule ? "flex-1 min-h-0 flex flex-col justify-between" : ""}`}>
       {/* 1. Header Legend */}
       {!hideLegend ? (
-        <div className="mb-1.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs font-bold text-sibs-tertiary-5">
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+        <div className="mb-1 flex flex-wrap items-center justify-between gap-x-3 gap-y-0.5 text-xs font-bold text-sibs-tertiary-5 shrink-0">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5">
             <span className="inline-flex items-center gap-1.5 text-[#0b3b68]">
-              <i className="h-2.5 w-2.5 rounded-full bg-[#0b3b68]" />
+              <i className="h-2 w-2 rounded-full bg-[#0b3b68]" />
               Answer
             </span>
 
             <span className="inline-flex items-center gap-1.5 text-[#0284c7]">
-              <i className="h-2.5 w-2.5 rounded-full bg-[#0284c7]" />
+              <i className="h-2 w-2 rounded-full bg-[#0284c7]" />
               Service Level
             </span>
 
             <span className="inline-flex items-center gap-1 text-red-500">
-              <i className="inline-block h-0.5 w-3.5 bg-red-500 border-t border-dashed border-red-500" />
+              <i className="inline-block h-0.5 w-3 bg-red-500 border-t border-dashed border-red-500" />
               Target: {numericTarget}%
             </span>
           </div>
         </div>
       ) : null}
 
-      <div className="flex w-full min-w-0">
+      <div className={`flex w-full min-w-0 ${!isSubmodule ? "flex-1 min-h-0" : ""}`}>
         {/* 2. Y-Axis Ticks */}
-        <div
-          className={`relative ${!isSubmodule && !chartHeight ? "h-[190px] sm:h-[208px]" : ""} w-10 sm:w-11 shrink-0 border-r border-sibs-tertiary-8 pr-1 bg-white z-10 transition-all duration-300 ease-in-out`}
-          style={chartHeightStyle}
-        >
-          {axisTicks.map((tick, index) => (
-            <span
-              key={`${tick}-${index}`}
-              className={`absolute right-1 -translate-y-1/2 ${isSubmodule ? "text-[10px] sm:text-[11px] font-bold" : "text-[10px] font-semibold"} text-sibs-tertiary-5`}
-              style={{
-                top: `${(index / (axisTicks.length - 1)) * 100}%`,
-              }}
-            >
-              {tick}%
-            </span>
-          ))}
+        <div className={`flex flex-col shrink-0 ${!isSubmodule ? "h-full" : ""}`}>
+          <div
+            className={`relative ${!isSubmodule ? "" : "w-10 sm:w-11"} shrink-0 border-r border-sibs-tertiary-8 pr-1 bg-white z-10 overflow-visible transition-all duration-300 ease-in-out ${!isSubmodule ? "flex-1 min-h-0" : ""}`}
+            style={{
+              ...chartHeightStyle,
+              width: !isSubmodule
+                ? `${Math.max(22, Math.ceil(maxTickCharLength * 7.5 + 8))}px`
+                : undefined,
+            }}
+          >
+            {axisTicks.map((tick, index) => (
+              <span
+                key={`${tick}-${index}`}
+                className={`absolute right-1 ${
+                  index === 0
+                    ? "translate-y-0"
+                    : index === axisTicks.length - 1
+                    ? "-translate-y-full"
+                    : "-translate-y-1/2"
+                } whitespace-nowrap ${isSubmodule ? "text-[10px] sm:text-[11px] font-bold" : "text-[8.5px] font-bold"} text-sibs-tertiary-5 leading-none`}
+                style={{
+                  top: `${(index / (axisTicks.length - 1)) * 100}%`,
+                }}
+              >
+                {tick}%
+              </span>
+            ))}
+          </div>
+          {!isSubmodule && <div className="shrink-0 h-5 border-r border-sibs-tertiary-8" />}
         </div>
 
         {/* 3. Main Chart Canvas */}
         <div
           ref={scrollContainerRef}
-          className={`relative min-w-0 flex-1 ${isScrollable ? "overflow-x-auto pb-1 sibs-chart-scrollbar" : "overflow-hidden"} overflow-y-hidden`}
+          className={`relative min-w-0 flex-1 ${isScrollable ? "overflow-x-auto pb-1 sibs-chart-scrollbar" : "overflow-hidden"} overflow-y-hidden ${!isSubmodule ? "h-full flex flex-col" : ""}`}
         >
-          <div className={`relative min-w-full ${isScrollable ? "w-max" : "w-full"}`}>
+          <div className={`relative min-w-full ${isScrollable ? "w-max" : "w-full"} ${!isSubmodule ? "flex-1 min-h-0 flex flex-col" : ""}`}>
             {/* Clustered Bars Container */}
             <div
-              className={`relative flex ${!isSubmodule && !chartHeight ? "h-[190px] sm:h-[208px]" : ""} min-w-0 items-end ${isScrollable ? "gap-2.5 sm:gap-3.5" : "gap-1 sm:gap-1.5"} border-b border-sibs-tertiary-8 px-1 sm:px-1.5 transition-all duration-300 ease-in-out`}
+              className={`relative flex min-w-0 items-end ${isScrollable ? "gap-2.5 sm:gap-3.5" : "gap-1 sm:gap-1.5"} border-b border-sibs-tertiary-8 ${!isSubmodule ? "px-0.5" : "px-1 sm:px-1.5"} transition-all duration-300 ease-in-out ${!isSubmodule ? "flex-1 min-h-0" : ""}`}
               style={chartHeightStyle}
             >
               {/* Horizontal Grid Lines */}
@@ -614,11 +683,11 @@ function LineChart({
           </div>
 
           {/* 4. X-Axis Labels */}
-          <div className={`flex w-full min-w-full ${isScrollable ? "gap-2.5 sm:gap-3.5" : "gap-1 sm:gap-1.5"} px-1 sm:px-1.5`}>
+          <div className={`shrink-0 flex w-full min-w-full ${isScrollable ? "gap-2.5 sm:gap-3.5" : "gap-1 sm:gap-1.5"} px-1 sm:px-1.5`}>
             {series.map((item, periodIndex) => (
               <div
                 key={item.key || periodIndex}
-                className="mt-1.5 min-w-0 flex-1 px-0.5 text-center"
+                className="mt-1 min-w-0 flex-1 px-0.5 text-center"
                 style={isScrollable ? { minWidth: `${minPeriodWidth}px` } : undefined}
               >
                 <p
@@ -683,54 +752,73 @@ function AhtChart({
   const chartHeightStyle = customHeightStyle || (isSubmodule
     ? {
         height: showFilters
-          ? "clamp(140px, calc(50vh - 225px), 220px)"
-          : "clamp(220px, calc(50vh - 150px), 320px)",
+          ? "clamp(180px, calc((100vh - 350px) / 2), 340px)"
+          : "clamp(240px, calc((100vh - 200px) / 2), 440px)",
       }
     : undefined);
 
+  const maxTickCharLength = Math.max(
+    ...axisTicks.map((t) => `${formatNumber(t)}s`.length),
+    1,
+  );
+
   return (
-    <div className="w-full min-w-0 select-none">
+    <div className={`w-full min-w-0 select-none ${!isSubmodule ? "flex-1 min-h-0 flex flex-col justify-between" : ""}`}>
       {!hideLegend ? (
-        <div className="mb-1.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs font-bold text-sibs-tertiary-5">
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+        <div className="mb-1 flex flex-wrap items-center justify-between gap-x-3 gap-y-0.5 text-xs font-bold text-sibs-tertiary-5 shrink-0">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5">
             <span className="inline-flex items-center gap-1.5">
-              <i className="inline-block h-2.5 w-2.5 rounded-full bg-[#0b3b68]" />
+              <i className="inline-block h-2 w-2 rounded-full bg-[#0b3b68]" />
               Call AHT
             </span>
 
             <span className="inline-flex items-center gap-1 text-red-500">
-              <i className="inline-block h-0.5 w-3.5 bg-red-500" />
+              <i className="inline-block h-0.5 w-3 bg-red-500" />
               Target: {formatNumber(normalizedTarget)}s
             </span>
           </div>
         </div>
       ) : null}
 
-      <div className="flex w-full min-w-0">
-        <div
-          className={`relative ${!isSubmodule && !chartHeight ? "h-[190px] sm:h-[208px]" : ""} w-10 sm:w-11 shrink-0 border-r border-sibs-tertiary-8 pr-1 bg-white z-10 transition-all duration-300 ease-in-out`}
-          style={chartHeightStyle}
-        >
-          {axisTicks.map((tick, index) => (
-            <span
-              key={`${tick}-${index}`}
-              className={`absolute right-1 -translate-y-1/2 ${isSubmodule ? "text-[10px] sm:text-[11px] font-bold" : "text-[10px] font-semibold"} text-sibs-tertiary-5`}
-              style={{
-                top: `${(index / (axisTicks.length - 1)) * 100}%`,
-              }}
-            >
-              {formatNumber(tick)}s
-            </span>
-          ))}
+      <div className={`flex w-full min-w-0 ${!isSubmodule ? "flex-1 min-h-0" : ""}`}>
+        <div className={`flex flex-col shrink-0 ${!isSubmodule ? "h-full" : ""}`}>
+          <div
+            className={`relative ${!isSubmodule ? "" : "w-10 sm:w-11"} shrink-0 border-r border-sibs-tertiary-8 pr-1 bg-white z-10 overflow-visible transition-all duration-300 ease-in-out ${!isSubmodule ? "flex-1 min-h-0" : ""}`}
+            style={{
+              ...chartHeightStyle,
+              width: !isSubmodule
+                ? `${Math.max(22, Math.ceil(maxTickCharLength * 7.5 + 8))}px`
+                : undefined,
+            }}
+          >
+            {axisTicks.map((tick, index) => (
+              <span
+                key={`${tick}-${index}`}
+                className={`absolute right-1 ${
+                  index === 0
+                    ? "translate-y-0"
+                    : index === axisTicks.length - 1
+                    ? "-translate-y-full"
+                    : "-translate-y-1/2"
+                } whitespace-nowrap ${isSubmodule ? "text-[10px] sm:text-[11px] font-bold" : "text-[8.5px] font-bold"} text-sibs-tertiary-5 leading-none`}
+                style={{
+                  top: `${(index / (axisTicks.length - 1)) * 100}%`,
+                }}
+              >
+                {formatNumber(tick)}s
+              </span>
+            ))}
+          </div>
+          {!isSubmodule && <div className="shrink-0 h-5 border-r border-sibs-tertiary-8" />}
         </div>
 
         <div
           ref={scrollContainerRef}
-          className={`relative min-w-0 flex-1 ${isScrollable ? "overflow-x-auto pb-1 sibs-chart-scrollbar" : "overflow-hidden"} overflow-y-hidden`}
+          className={`relative min-w-0 flex-1 ${isScrollable ? "overflow-x-auto pb-1 sibs-chart-scrollbar" : "overflow-hidden"} overflow-y-hidden ${!isSubmodule ? "h-full flex flex-col" : ""}`}
         >
-          <div className={`relative min-w-full ${isScrollable ? "w-max" : "w-full"}`}>
+          <div className={`relative min-w-full ${isScrollable ? "w-max" : "w-full"} ${!isSubmodule ? "flex-1 min-h-0 flex flex-col" : ""}`}>
             <div
-              className={`relative flex ${!isSubmodule && !chartHeight ? "h-[190px] sm:h-[208px]" : ""} min-w-0 items-end gap-1 border-b border-sibs-tertiary-8 px-1 transition-all duration-300 ease-in-out`}
+              className={`relative flex min-w-0 items-end gap-1 border-b border-sibs-tertiary-8 ${!isSubmodule ? "px-0.5" : "px-1"} transition-all duration-300 ease-in-out ${!isSubmodule ? "flex-1 min-h-0" : ""}`}
               style={chartHeightStyle}
             >
               {/* Horizontal Gridlines spanning 100% of bars container */}
@@ -847,11 +935,11 @@ function AhtChart({
             })}
           </div>
 
-          <div className="flex w-full min-w-full gap-1 px-1">
+          <div className="shrink-0 flex w-full min-w-full gap-1 px-1">
             {series.map((item, periodIndex) => (
               <div
                 key={item.key || periodIndex}
-                className="mt-1.5 min-w-0 flex-1 px-0.5 text-center"
+                className="mt-1 min-w-0 flex-1 px-0.5 text-center"
                 style={isScrollable ? { minWidth: `${minPeriodWidth}px` } : undefined}
               >
                 <p
@@ -882,6 +970,7 @@ export default function CallKpiDashboard({
   afterCards = null,
   isSubmodule = false,
   showFilters = true,
+  onSectionClick = null,
 }) {
   const isFiltersVisible = showFilters !== undefined ? showFilters : showSummaryCards;
   const summary = data?.summary || {};
@@ -927,109 +1016,147 @@ export default function CallKpiDashboard({
   const isCustomPeriod = currentPeriod === "custom";
   const registerScroll = useSyncedHorizontalScroll(isCustomPeriod);
 
+  const cardClickProps = !isSubmodule && onSectionClick ? {
+    onClick: onSectionClick,
+  } : {};
+
   return (
-    <div className={isSubmodule && isFiltersVisible ? "space-y-1.5 sm:space-y-2" : "space-y-2.5"}>
+    <div className={isSubmodule ? (isFiltersVisible ? "space-y-1.5 sm:space-y-2" : "space-y-2.5") : "flex-1 min-h-0 flex flex-col"}>
       {/* 7 Compact KPI Stat Cards */}
-      {showSummaryCards ? (
-        <div className={isSubmodule ? "space-y-1" : "space-y-1.5 sm:space-y-2"}>
-          <div>
-            <div className="flex items-center gap-1.5 mb-1 px-0.5">
-              <span className="flex items-center gap-1 text-[10px] sm:text-[10.5px] font-black uppercase tracking-wider text-sibs-primary-1">
-                <PhoneCall size={11} className="text-sibs-primary-1" />
-                Calls
-              </span>
-              <div className="h-px flex-1 bg-slate-200/70" />
+      <div
+        className={`grid transition-[grid-template-rows,opacity] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] ${
+          showSummaryCards ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0 pointer-events-none"
+        }`}
+      >
+        <div className="overflow-hidden min-h-0">
+          <div className={isSubmodule ? "space-y-1 pb-1" : "space-y-1.5 sm:space-y-2 pb-1"}>
+            <div>
+              <div className="flex items-center gap-1.5 mb-1 px-0.5">
+                <span className="flex items-center gap-1 text-[10px] sm:text-[10.5px] font-black uppercase tracking-wider text-sibs-primary-1">
+                  <PhoneCall size={11} className="text-sibs-primary-1" />
+                  Calls
+                </span>
+                <div className="h-px flex-1 bg-slate-200/70" />
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 2xl:grid-cols-7 gap-1 sm:gap-1.5">
+                <KpiCard
+                  icon={PhoneCall}
+                  label="Call Volume"
+                  value={formatNumber(summary.callsOffered)}
+                  hint="Total calls offered"
+                  {...cardClickProps}
+                />
+
+                <KpiCard
+                  icon={PhoneCall}
+                  label="Handled"
+                  value={formatNumber(summary.callsHandled)}
+                  hint="Total handled calls"
+                  {...cardClickProps}
+                />
+
+                <KpiCard
+                  icon={CheckCircle2}
+                  label="Handled w/SLA"
+                  value={formatNumber(summary.handledWithinSla)}
+                  hint="Handled within SLT"
+                  {...cardClickProps}
+                />
+
+                <KpiCard
+                  icon={Gauge}
+                  label="Answer %"
+                  value={formatPercent(summary.answerRatePct)}
+                  hint="Handled ÷ offered"
+                  {...cardClickProps}
+                />
+
+                <KpiCard
+                  icon={Gauge}
+                  label="Service Level"
+                  value={formatPercent(summary.serviceLevelPct)}
+                  hint={`Target ${formatPercent(
+                    targets.serviceLevelPct,
+                  )}`}
+                  status={{
+                    label: serviceLevelMet
+                      ? "Target met"
+                      : "Below target",
+                    className: serviceLevelMet
+                      ? "bg-green-100 text-green-700"
+                      : "bg-amber-100 text-amber-700",
+                  }}
+                  {...cardClickProps}
+                />
+
+                <KpiCard
+                  icon={Clock3}
+                  label="Call AHT"
+                  value={summaryAhtSeconds > 0 ? `${formatNumber(summaryAhtSeconds)}s` : "--"}
+                  hint={`Target ${formatNumber(targetAhtSeconds)}s`}
+                  status={{
+                    label: ahtMet
+                      ? "Target met"
+                      : "Above target",
+                    className: ahtMet
+                      ? "bg-green-100 text-green-700"
+                      : "bg-amber-100 text-amber-700",
+                  }}
+                  {...cardClickProps}
+                />
+
+                <div className="col-span-2 sm:col-span-1">
+                  <KpiCard
+                    icon={Clock3}
+                    label="ASA"
+                    title="Average Speed of Answer (ASA)"
+                    value={summaryAsaSeconds > 0 ? `${formatNumber(summaryAsaSeconds)}s` : "--"}
+                    hint={
+                      targetAsaSeconds !== null
+                        ? `Target ${formatNumber(targetAsaSeconds)}s`
+                        : "Speed to answer"
+                    }
+                    status={
+                      targetAsaSeconds !== null
+                        ? {
+                            label: asaMet ? "Target met" : "Above target",
+                            className: asaMet
+                              ? "bg-green-100 text-green-700"
+                              : "bg-amber-100 text-amber-700",
+                          }
+                        : null
+                    }
+                    {...cardClickProps}
+                  />
+                </div>
+              </div>
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 2xl:grid-cols-7 gap-1 sm:gap-1.5">
-              <KpiCard
-                icon={PhoneCall}
-                label="Call Volume"
-                value={formatNumber(summary.callsOffered)}
-                hint="Total calls offered"
-              />
 
-            <KpiCard
-              icon={PhoneCall}
-              label="Handled"
-              value={formatNumber(summary.callsHandled)}
-              hint="Total handled calls"
-            />
-
-            <KpiCard
-              icon={CheckCircle2}
-              label="Handled w/SLA"
-              value={formatNumber(summary.handledWithinSla)}
-              hint="Handled within SLT"
-            />
-
-            <KpiCard
-              icon={Gauge}
-              label="Answer %"
-              value={formatPercent(summary.answerRatePct)}
-              hint="Handled ÷ offered"
-            />
-
-            <KpiCard
-              icon={Gauge}
-              label="Service Level"
-              value={formatPercent(summary.serviceLevelPct)}
-              hint={`Target ${formatPercent(
-                targets.serviceLevelPct,
-              )}`}
-              status={{
-                label: serviceLevelMet
-                  ? "Target met"
-                  : "Below target",
-                className: serviceLevelMet
-                  ? "bg-green-100 text-green-700"
-                  : "bg-amber-100 text-amber-700",
-              }}
-            />
-
-            <KpiCard
-              icon={Clock3}
-              label="Call AHT"
-              value={summaryAhtSeconds > 0 ? `${formatNumber(summaryAhtSeconds)}s` : "--"}
-              hint={`Target ${formatNumber(targetAhtSeconds)}s`}
-              status={{
-                label: ahtMet
-                  ? "Target met"
-                  : "Above target",
-                className: ahtMet
-                  ? "bg-green-100 text-green-700"
-                  : "bg-amber-100 text-amber-700",
-              }}
-            />
-
-            <div className="col-span-2 sm:col-span-1">
-              <KpiCard
-                icon={Clock3}
-                label="ASA"
-                title="Average Speed of Answer (ASA)"
-                value={summaryAsaSeconds > 0 ? `${formatNumber(summaryAsaSeconds)}s` : "--"}
-                hint={
-                  targetAsaSeconds !== null
-                    ? `Target ${formatNumber(targetAsaSeconds)}s`
-                    : "Speed to answer"
-                }
-                status={
-                  targetAsaSeconds !== null
-                    ? {
-                        label: asaMet ? "Target met" : "Above target",
-                        className: asaMet
-                          ? "bg-green-100 text-green-700"
-                          : "bg-amber-100 text-amber-700",
-                      }
-                    : null
-                }
-              />
-            </div>
+            {afterCards}
           </div>
         </div>
-
-        {afterCards}
       </div>
-      ) : null}
+
+      {!isSubmodule && (
+        <div
+          onClick={onSectionClick || undefined}
+          className={`shrink-0 flex items-center justify-between rounded-md border border-sibs-tertiary-9/80 bg-gradient-to-r from-[#0b3b68]/10 via-[#0b3b68]/5 to-transparent px-2.5 py-0.5 shadow-2xs ${
+            onSectionClick ? "cursor-pointer" : ""
+          }`}
+        >
+          <div className="flex items-center gap-1.5">
+            <span className="flex h-4 w-4 items-center justify-center rounded bg-[#0b3b68] text-white shadow-xs">
+              <PhoneCall size={10} />
+            </span>
+            <span className="text-[11px] font-black uppercase tracking-wider text-[#0b3b68]">
+              1. Calls Performance
+            </span>
+          </div>
+          <span className="text-[10px] font-bold text-sibs-tertiary-5 hidden sm:inline">
+            Volume &bull; Answer Rate &bull; Service Level &bull; AHT &bull; ASA
+          </span>
+        </div>
+      )}
 
       {/* 3 Prominent Graphs:
           In submodule view:
@@ -1040,15 +1167,19 @@ export default function CallKpiDashboard({
         id="kpi-graphs-container"
         data-pdf-charts="true"
         key={`kpi-charts-${series.map((s) => s.key || s.label).join("-")}`}
+        style={!isSubmodule && showFilters ? { height: "200px", minHeight: "200px" } : undefined}
         className={`grid grid-cols-1 ${
           isSubmodule
             ? "lg:grid-cols-2"
-            : "2xl:grid-cols-[minmax(0,1.3fr)_minmax(0,1.1fr)_minmax(0,0.95fr)]"
-        } ${isSubmodule && isFiltersVisible ? "gap-2 sm:gap-2.5" : "gap-3 sm:gap-3.5"} w-full min-w-0 transition-all duration-300 ease-in-out`}
+            : "md:grid-cols-3 grid-rows-1"
+        } ${isSubmodule && showFilters ? "gap-2 sm:gap-2.5" : "gap-1 sm:gap-1.5"} w-full min-w-0 flex-1 min-h-0 transition-all duration-300 ease-in-out`}
       >
-        <div className={isSubmodule ? "col-span-1 lg:col-span-2" : "col-span-1"}>
+        <div className={isSubmodule ? "col-span-1 lg:col-span-2" : "col-span-1 h-full min-h-0 flex flex-col"}>
           <ChartShell
             title="Calls"
+            legendAlign={!isSubmodule ? "left" : "between"}
+            tightLeft={!isSubmodule}
+            {...cardClickProps}
             legend={
               <>
                 <span className="inline-flex items-center gap-1 font-bold text-[#0b3b68]">
@@ -1081,9 +1212,11 @@ export default function CallKpiDashboard({
           </ChartShell>
         </div>
 
-        <div className="col-span-1">
+        <div className={isSubmodule ? "col-span-1" : "col-span-1 h-full min-h-0 flex flex-col"}>
           <ChartShell
             title="Answer Rate & Service Level"
+            tightLeft={!isSubmodule}
+            {...cardClickProps}
             legend={
               <>
                 <span className="inline-flex items-center gap-1 font-bold text-[#0b3b68]">
@@ -1120,9 +1253,11 @@ export default function CallKpiDashboard({
           </ChartShell>
         </div>
 
-        <div className="col-span-1">
+        <div className={isSubmodule ? "col-span-1" : "col-span-1 h-full min-h-0 flex flex-col"}>
           <ChartShell
             title="Average Handling Time"
+            tightLeft={!isSubmodule}
+            {...cardClickProps}
             legend={
               <>
                 <span className="inline-flex items-center gap-1 font-bold text-[#0b3b68]">

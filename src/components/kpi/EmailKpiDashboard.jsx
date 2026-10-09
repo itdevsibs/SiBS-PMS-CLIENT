@@ -15,8 +15,8 @@ function formatPercent(value) {
 }
 
 function getTooltipPositionClass(periodIndex, seriesLength) {
-  if (periodIndex === 0) return "left-0";
-  if (periodIndex >= seriesLength - 1) return "right-0";
+  if (periodIndex <= 1) return "left-0";
+  if (periodIndex >= seriesLength - 2) return "right-0";
   return "left-1/2 -translate-x-1/2";
 }
 
@@ -31,7 +31,7 @@ function EmptyChart({ message, isSubmodule = false, showFilters = true }) {
 
   return (
     <div
-      className={`flex ${!isSubmodule ? "min-h-[190px] sm:min-h-[208px]" : ""} items-center justify-center rounded-xl border border-dashed border-sibs-tertiary-8 bg-sibs-tertiary-10/30 px-3 text-center text-xs font-semibold text-sibs-tertiary-5`}
+      className={`flex ${!isSubmodule ? "h-[75px] sm:h-[85px]" : ""} items-center justify-center rounded-xl border border-dashed border-sibs-tertiary-8 bg-sibs-tertiary-10/30 px-3 text-center text-xs font-semibold text-sibs-tertiary-5`}
       style={chartHeightStyle}
     >
       {message}
@@ -97,50 +97,67 @@ function EmailVolumeChart({
   const chartHeightStyle = isSubmodule
     ? {
         height: showFilters
-          ? "clamp(140px, calc(50vh - 225px), 220px)"
-          : "clamp(220px, calc(50vh - 150px), 320px)",
-        maxHeight: showFilters
-          ? "clamp(140px, calc(50vh - 225px), 220px)"
-          : "clamp(220px, calc(50vh - 150px), 320px)",
+          ? "clamp(180px, calc((100vh - 350px) / 2), 340px)"
+          : "clamp(240px, calc((100vh - 200px) / 2), 440px)",
       }
-    : {
-        height: "208px",
-        maxHeight: "208px",
-      };
+    : undefined;
+
+  const maxTickCharLength = Math.max(
+    ...axisTicks.map((t) => formatNumber(t).length),
+    1,
+  );
 
   return (
-    <div className="w-full min-w-0 select-none">
+    <div className={`w-full min-w-0 select-none ${!isSubmodule ? "flex-1 min-h-0 flex flex-col justify-between" : ""}`}>
       {!hideLegend ? (
-        <div className="mb-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs font-bold text-sibs-tertiary-5">
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-            <span className="inline-flex items-center gap-1.5"><i className="h-2.5 w-2.5 rounded-full bg-[#0b3b68]" />Volume</span>
-            <span className="inline-flex items-center gap-1.5"><i className="h-2.5 w-2.5 rounded-full bg-[#2f6f9f]" />Resolved</span>
-            <span className="inline-flex items-center gap-1.5"><i className="h-2.5 w-2.5 rounded-full bg-[#4c9aca]" />Resolved w/SLA</span>
+        <div className="mb-1 flex flex-wrap items-center justify-between gap-x-3 gap-y-0.5 text-xs font-bold text-sibs-tertiary-5 shrink-0">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5">
+            <span className="inline-flex items-center gap-1.5"><i className="h-2 w-2 rounded-full bg-[#0b3b68]" />Volume</span>
+            <span className="inline-flex items-center gap-1.5"><i className="h-2 w-2 rounded-full bg-[#2f6f9f]" />Resolved</span>
+            <span className="inline-flex items-center gap-1.5"><i className="h-2 w-2 rounded-full bg-[#4c9aca]" />Resolved w/SLA</span>
           </div>
         </div>
       ) : null}
 
-      <div className="flex w-full min-w-0">
-        <div
-          className={`relative ${!isSubmodule ? "h-[190px] sm:h-[208px]" : ""} w-10 sm:w-11 shrink-0 border-r border-sibs-tertiary-8 pr-1 bg-white z-10 transition-all duration-300 ease-in-out`}
-          style={chartHeightStyle}
-        >
-          {axisTicks.map((tick, index) => (
-            <span key={`${tick}-${index}`} className={`absolute right-1 -translate-y-1/2 ${isSubmodule ? "text-[10px] sm:text-[11px] font-bold" : "text-[10px] font-semibold"} text-sibs-tertiary-5`} style={{ top: `${(index / (axisTicks.length - 1)) * 100}%` }}>
-              {formatNumber(tick)}
-            </span>
-          ))}
+      <div className={`flex w-full min-w-0 ${!isSubmodule ? "flex-1 min-h-0" : ""}`}>
+        <div className={`flex flex-col shrink-0 ${!isSubmodule ? "h-full" : ""}`}>
+          <div
+            className={`relative ${!isSubmodule ? "" : "w-10 sm:w-11"} shrink-0 border-r border-sibs-tertiary-8 pr-1 bg-white z-10 overflow-visible transition-all duration-300 ease-in-out ${!isSubmodule ? "flex-1 min-h-0" : ""}`}
+            style={{
+              ...chartHeightStyle,
+              width: !isSubmodule
+                ? `${Math.max(22, Math.ceil(maxTickCharLength * 7.5 + 8))}px`
+                : undefined,
+            }}
+          >
+            {axisTicks.map((tick, index) => (
+              <span
+                key={`${tick}-${index}`}
+                className={`absolute right-1 ${
+                  index === 0
+                    ? "translate-y-0"
+                    : index === axisTicks.length - 1
+                    ? "-translate-y-full"
+                    : "-translate-y-1/2"
+                } whitespace-nowrap ${isSubmodule ? "text-[10px] sm:text-[11px] font-bold" : "text-[8.5px] font-bold"} text-sibs-tertiary-5 leading-none`}
+                style={{ top: `${(index / (axisTicks.length - 1)) * 100}%` }}
+              >
+                {formatNumber(tick)}
+              </span>
+            ))}
+          </div>
+          {!isSubmodule && <div className="shrink-0 h-5 border-r border-sibs-tertiary-8" />}
         </div>
 
         <div
           ref={setScrollRef}
           onScroll={onScroll}
           onPointerEnter={onPointerEnter}
-          className={`relative min-w-0 flex-1 ${isScrollable ? "overflow-x-auto pb-1 sibs-chart-scrollbar" : "overflow-hidden"} overflow-y-hidden`}
+          className={`relative min-w-0 flex-1 ${isScrollable ? "overflow-x-auto pb-1 sibs-chart-scrollbar" : "overflow-hidden"} overflow-y-hidden ${!isSubmodule ? "h-full flex flex-col" : ""}`}
         >
-          <div className={`relative min-w-full ${isScrollable ? "w-max" : "w-full"}`}>
+          <div className={`relative min-w-full ${isScrollable ? "w-max" : "w-full"} ${!isSubmodule ? "flex-1 min-h-0 flex flex-col" : ""}`}>
             <div
-              className={`relative flex ${!isSubmodule ? "h-[190px] sm:h-[208px]" : ""} w-full min-w-0 items-end gap-1.5 border-b border-sibs-tertiary-8 px-1 sm:gap-2.5 transition-all duration-300 ease-in-out`}
+              className={`relative flex w-full min-w-0 items-end gap-1.5 border-b border-sibs-tertiary-8 px-1 sm:gap-2.5 transition-all duration-300 ease-in-out ${!isSubmodule ? "flex-1 min-h-0" : ""}`}
               style={chartHeightStyle}
             >
               {/* Horizontal Gridlines spanning 100% of the bars container */}
@@ -227,11 +244,11 @@ function EmailVolumeChart({
               ))}
             </div>
 
-            <div className="flex w-full min-w-full gap-1.5 px-1 sm:gap-2.5">
+            <div className="shrink-0 flex w-full min-w-full gap-1.5 px-1 sm:gap-2.5">
               {series.map((item, index) => (
                 <div
                   key={item.key || index}
-                  className="mt-1.5 min-w-0 flex-1 px-0.5 sm:px-1 text-center"
+                  className="mt-1 min-w-0 flex-1 px-0.5 sm:px-1 text-center"
                   style={isScrollable ? { minWidth: `${minPeriodWidth}px` } : undefined}
                 >
                   <p className={`m-0 truncate ${isSubmodule ? "text-[10px] sm:text-[11px] font-bold tracking-tight" : "text-[9px] sm:text-[9.5px] font-bold tracking-tight"} text-sibs-primary-1 leading-tight`} title={item.label}>{item.label}</p>
@@ -299,47 +316,61 @@ function EmailRateChart({
   const chartHeightStyle = isSubmodule
     ? {
         height: showFilters
-          ? "clamp(140px, calc(50vh - 225px), 220px)"
-          : "clamp(220px, calc(50vh - 150px), 320px)",
-        maxHeight: showFilters
-          ? "clamp(140px, calc(50vh - 225px), 220px)"
-          : "clamp(220px, calc(50vh - 150px), 320px)",
+          ? "clamp(180px, calc((100vh - 350px) / 2), 340px)"
+          : "clamp(240px, calc((100vh - 200px) / 2), 440px)",
       }
-    : {
-        height: "208px",
-        maxHeight: "208px",
-      };
+    : undefined;
 
   return (
-    <div className="w-full min-w-0 select-none">
+    <div className={`w-full min-w-0 select-none ${!isSubmodule ? "flex-1 min-h-0 flex flex-col justify-between" : ""}`}>
       {!hideLegend ? (
-        <div className="mb-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs font-bold text-sibs-tertiary-5">
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-            <span className="inline-flex items-center gap-1.5"><i className="h-2.5 w-2.5 rounded-full bg-[#245d8f]" />ERR</span>
-            <span className="inline-flex items-center gap-1.5"><i className="h-2.5 w-2.5 rounded-full bg-[#3f7fb5]" />SL %</span>
+        <div className="mb-1 flex flex-wrap items-center justify-between gap-x-3 gap-y-0.5 text-xs font-bold text-sibs-tertiary-5 shrink-0">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5">
+            <span className="inline-flex items-center gap-1.5"><i className="h-2 w-2 rounded-full bg-[#245d8f]" />ERR</span>
+            <span className="inline-flex items-center gap-1.5"><i className="h-2 w-2 rounded-full bg-[#3f7fb5]" />SL %</span>
           </div>
         </div>
       ) : null}
 
-      <div className="flex w-full min-w-0">
-        <div
-          className={`relative ${!isSubmodule ? "h-[190px] sm:h-[208px]" : ""} w-10 sm:w-11 shrink-0 border-r border-sibs-tertiary-8 pr-1 bg-white z-10 transition-all duration-300 ease-in-out`}
-          style={chartHeightStyle}
-        >
-          {axisTicks.map((tick, index) => (
-            <span key={tick} className={`absolute right-1 -translate-y-1/2 ${isSubmodule ? "text-[10px] sm:text-[11px] font-bold" : "text-[10px] font-semibold"} text-sibs-tertiary-5`} style={{ top: `${(index / (axisTicks.length - 1)) * 100}%` }}>{tick}%</span>
-          ))}
+      <div className={`flex w-full min-w-0 ${!isSubmodule ? "flex-1 min-h-0" : ""}`}>
+        <div className={`flex flex-col shrink-0 ${!isSubmodule ? "h-full" : ""}`}>
+          <div
+            className={`relative ${!isSubmodule ? "" : "w-10 sm:w-11"} shrink-0 border-r border-sibs-tertiary-8 pr-1 bg-white z-10 overflow-visible transition-all duration-300 ease-in-out ${!isSubmodule ? "flex-1 min-h-0" : ""}`}
+            style={{
+              ...chartHeightStyle,
+              width: !isSubmodule
+                ? `${Math.max(22, Math.ceil(4 * 7.5 + 8))}px`
+                : undefined,
+            }}
+          >
+            {axisTicks.map((tick, index) => (
+              <span
+                key={tick}
+                className={`absolute right-1 ${
+                  index === 0
+                    ? "translate-y-0"
+                    : index === axisTicks.length - 1
+                    ? "-translate-y-full"
+                    : "-translate-y-1/2"
+                } whitespace-nowrap ${isSubmodule ? "text-[10px] sm:text-[11px] font-bold" : "text-[8.5px] font-bold"} text-sibs-tertiary-5 leading-none`}
+                style={{ top: `${((100 - tick) / 100) * 100}%` }}
+              >
+                {tick}%
+              </span>
+            ))}
+          </div>
+          {!isSubmodule && <div className="shrink-0 h-5 border-r border-sibs-tertiary-8" />}
         </div>
 
         <div
           ref={setScrollRef}
           onScroll={onScroll}
           onPointerEnter={onPointerEnter}
-          className={`relative min-w-0 flex-1 ${isScrollable ? "overflow-x-auto pb-1 sibs-chart-scrollbar" : "overflow-hidden"} overflow-y-hidden`}
+          className={`relative min-w-0 flex-1 ${isScrollable ? "overflow-x-auto pb-1 sibs-chart-scrollbar" : "overflow-hidden"} overflow-y-hidden ${!isSubmodule ? "h-full flex flex-col" : ""}`}
         >
-          <div className={`relative min-w-full ${isScrollable ? "w-max" : "w-full"}`}>
+          <div className={`relative min-w-full ${isScrollable ? "w-max" : "w-full"} ${!isSubmodule ? "flex-1 min-h-0 flex flex-col" : ""}`}>
             <div
-              className={`relative flex ${!isSubmodule ? "h-[190px] sm:h-[208px]" : ""} min-w-0 items-end gap-1.5 border-b border-sibs-tertiary-8 px-1 sm:gap-2.5 transition-all duration-300 ease-in-out`}
+              className={`relative flex min-w-0 items-end gap-1.5 border-b border-sibs-tertiary-8 px-1 sm:gap-2.5 transition-all duration-300 ease-in-out ${!isSubmodule ? "flex-1 min-h-0" : ""}`}
               style={chartHeightStyle}
             >
               {/* Horizontal Gridlines spanning 100% of the bars container */}
@@ -446,11 +477,11 @@ function EmailRateChart({
               ))}
             </div>
 
-            <div className="flex w-full min-w-full gap-1.5 px-1 sm:gap-2.5">
+            <div className="shrink-0 flex w-full min-w-full gap-1.5 px-1 sm:gap-2.5">
               {series.map((item, index) => (
                 <div
                   key={item.key || index}
-                  className="mt-1.5 min-w-0 flex-1 px-0.5 sm:px-1 text-center"
+                  className="mt-1 min-w-0 flex-1 px-0.5 sm:px-1 text-center"
                   style={isScrollable ? { minWidth: `${minPeriodWidth}px` } : undefined}
                 >
                   <p className={`m-0 truncate ${isSubmodule ? "text-[10px] sm:text-[11px] font-bold tracking-tight" : "text-[9px] sm:text-[9.5px] font-bold tracking-tight"} text-sibs-primary-1 leading-tight`} title={item.label}>{item.label}</p>
@@ -464,7 +495,7 @@ function EmailRateChart({
   );
 }
 
-function EmailSummaryCards({ summary = {}, title = "Emails" }) {
+function EmailSummaryCards({ summary = {}, title = "Emails", onCardClick = null }) {
   const cards = [
     { label: "Email Volume", value: formatNumber(summary.emailVolume), icon: Mail, hint: "Distinct Email cases created" },
     {
@@ -497,7 +528,12 @@ function EmailSummaryCards({ summary = {}, title = "Emails" }) {
       <div className="grid grid-cols-2 gap-1.5 sm:gap-2 sm:grid-cols-3 xl:grid-cols-5">
         {cards.map(({ label, value, icon: Icon, hint, rawHint }, idx) => (
           <div key={label} className={idx === cards.length - 1 ? "col-span-2 sm:col-span-1 xl:col-span-1" : ""}>
-            <article className="sibs-card rounded-xl min-w-0 px-2.5 py-1.5 sm:px-3 sm:py-2 shadow-2xs h-full flex flex-col justify-between gap-1 transition-all duration-150 hover:border-sibs-primary-1/30">
+            <article
+              onClick={onCardClick || undefined}
+              className={`sibs-card rounded-xl min-w-0 px-2.5 py-1.5 sm:px-3 sm:py-2 shadow-2xs h-full flex flex-col justify-between gap-1 transition-all duration-150 hover:border-sibs-primary-1/30 ${
+                onCardClick ? "cursor-pointer" : ""
+              }`}
+            >
               <div className="flex items-center justify-between gap-1">
                 <span className="truncate text-[9px] xl:text-[9.5px] font-extrabold uppercase tracking-wider text-sibs-tertiary-5 leading-none">{label}</span>
                 <span className="rounded p-0.5 text-sibs-tertiary-5/80 shrink-0"><Icon size={12} /></span>
@@ -523,6 +559,7 @@ export default function EmailKpiDashboard({
   showSummaryCards = true,
   isSubmodule = false,
   showFilters = true,
+  onSectionClick = null,
 }) {
   const series = Array.isArray(data.series) ? data.series : [];
   const currentPeriod = period || data.filters?.period || data.data?.filters?.period;
@@ -531,17 +568,31 @@ export default function EmailKpiDashboard({
   const registerScroll = useSyncedHorizontalScroll(isCustomPeriod);
 
   return (
-    <section className="space-y-1.5 sm:space-y-2">
-      {showSummaryCards ? <EmailSummaryCards summary={data.summary || {}} /> : null}
+    <section className={isSubmodule ? "space-y-1.5 sm:space-y-2" : "flex-1 min-h-0 flex flex-col"}>
+      <div
+        className={`grid transition-[grid-template-rows,opacity] duration-300 ease-in-out ${
+          showSummaryCards ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0 pointer-events-none"
+        }`}
+      >
+        <div className="overflow-hidden pb-1">
+          <EmailSummaryCards
+            summary={data.summary || {}}
+            onCardClick={!isSubmodule ? onSectionClick : undefined}
+          />
+        </div>
+      </div>
 
       <div
+        style={!isSubmodule && showFilters ? { height: "200px", minHeight: "200px" } : undefined}
         className={`grid grid-cols-1 ${
-          isSubmodule ? "grid-cols-1" : "2xl:grid-cols-2"
-        } ${isSubmodule && showFilters ? "gap-1.5 sm:gap-2" : "gap-2.5 sm:gap-3"} w-full min-w-0 transition-all duration-300 ease-in-out`}
+          isSubmodule ? "grid-cols-1" : "md:grid-cols-2 grid-rows-1"
+        } ${isSubmodule && showFilters ? "gap-1.5 sm:gap-2" : "gap-1 sm:gap-1.5"} w-full min-w-0 flex-1 min-h-0 transition-all duration-300 ease-in-out`}
       >
-        <div className="col-span-1">
+        <div className={isSubmodule ? "col-span-1" : "col-span-1 h-full min-h-0 flex flex-col"}>
           <ChartShell
             title="Emails"
+            tightLeft={!isSubmodule}
+            onClick={!isSubmodule ? onSectionClick : undefined}
             legend={
               <>
                 <span className="inline-flex items-center gap-1 font-bold text-[#0b3b68]">
@@ -570,9 +621,11 @@ export default function EmailKpiDashboard({
           </ChartShell>
         </div>
 
-        <div className="col-span-1">
+        <div className={isSubmodule ? "col-span-1" : "col-span-1 h-full min-h-0 flex flex-col"}>
           <ChartShell
             title="Email Response & Service Level"
+            tightLeft={!isSubmodule}
+            onClick={!isSubmodule ? onSectionClick : undefined}
             legend={
               <>
                 <span className="inline-flex items-center gap-1 font-bold text-[#245d8f]">

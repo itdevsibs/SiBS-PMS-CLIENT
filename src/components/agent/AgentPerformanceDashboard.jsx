@@ -202,7 +202,13 @@ function AgentCallsChart({ series = [] }) {
           {axisTicks.map((tick, index) => (
             <span
               key={`${tick}-${index}`}
-              className="absolute right-1.5 -translate-y-1/2 text-[10px] font-semibold text-sibs-tertiary-5"
+              className={`absolute right-1.5 ${
+                index === 0
+                  ? "translate-y-0"
+                  : index === axisTicks.length - 1
+                  ? "-translate-y-full"
+                  : "-translate-y-1/2"
+              } whitespace-nowrap text-[10px] font-semibold text-sibs-tertiary-5 leading-none`}
               style={{
                 top: `${(index / (axisTicks.length - 1)) * 100}%`,
               }}

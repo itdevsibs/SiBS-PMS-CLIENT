@@ -130,19 +130,17 @@ export default function DownloadPdfModal({
           {/* All Reports Option */}
           <div
             onClick={!isDownloading ? handleToggleAll : undefined}
-            className={`flex items-center justify-between rounded-xl border p-3 cursor-pointer transition-all ${
-              isAllSelected
-                ? "border-sibs-primary-1/30 bg-blue-50/50 shadow-xs"
-                : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/60"
-            }`}
+            className={`flex items-center justify-between rounded-xl border p-3 cursor-pointer transition-all ${isAllSelected
+              ? "border-sibs-primary-1/30 bg-blue-50/50 shadow-xs"
+              : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/60"
+              }`}
           >
             <div className="flex items-center gap-3">
               <div
-                className={`flex h-8 w-8 items-center justify-center rounded-lg transition-colors ${
-                  isAllSelected
-                    ? "bg-sibs-primary-1 text-white"
-                    : "bg-slate-100 text-slate-500"
-                }`}
+                className={`flex h-8 w-8 items-center justify-center rounded-lg transition-colors ${isAllSelected
+                  ? "bg-sibs-primary-1 text-white"
+                  : "bg-slate-100 text-slate-500"
+                  }`}
               >
                 <Layers size={16} />
               </div>
@@ -157,11 +155,10 @@ export default function DownloadPdfModal({
             </div>
 
             <div
-              className={`flex h-5 w-5 items-center justify-center rounded-md border transition-all ${
-                isAllSelected
-                  ? "border-sibs-primary-1 bg-sibs-primary-1 text-white"
-                  : "border-slate-300 bg-white"
-              }`}
+              className={`flex h-5 w-5 items-center justify-center rounded-md border transition-all ${isAllSelected
+                ? "border-sibs-primary-1 bg-sibs-primary-1 text-white"
+                : "border-slate-300 bg-white"
+                }`}
             >
               {isAllSelected && <Check size={13} strokeWidth={3} />}
             </div>
@@ -187,19 +184,17 @@ export default function DownloadPdfModal({
                 <div
                   key={option.id}
                   onClick={!isDownloading ? () => handleToggleSingle(option.id) : undefined}
-                  className={`flex items-center justify-between rounded-xl border p-2.5 cursor-pointer transition-all ${
-                    isChecked
-                      ? "border-sibs-primary-1/30 bg-blue-50/40 shadow-xs"
-                      : "border-slate-200/90 bg-white hover:border-slate-300 hover:bg-slate-50/60"
-                  }`}
+                  className={`flex items-center justify-between rounded-xl border p-2.5 cursor-pointer transition-all ${isChecked
+                    ? "border-sibs-primary-1/30 bg-blue-50/40 shadow-xs"
+                    : "border-slate-200/90 bg-white hover:border-slate-300 hover:bg-slate-50/60"
+                    }`}
                 >
                   <div className="flex items-center gap-3 min-w-0">
                     <div
-                      className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors ${
-                        isChecked
-                          ? "bg-sibs-primary-1 text-white"
-                          : "bg-slate-100 text-slate-500"
-                      }`}
+                      className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors ${isChecked
+                        ? "bg-sibs-primary-1 text-white"
+                        : "bg-slate-100 text-slate-500"
+                        }`}
                     >
                       <Icon size={15} />
                     </div>
@@ -214,11 +209,10 @@ export default function DownloadPdfModal({
                   </div>
 
                   <div
-                    className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border transition-all ${
-                      isChecked
-                        ? "border-sibs-primary-1 bg-sibs-primary-1 text-white"
-                        : "border-slate-300 bg-white"
-                    }`}
+                    className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border transition-all ${isChecked
+                      ? "border-sibs-primary-1 bg-sibs-primary-1 text-white"
+                      : "border-slate-300 bg-white"
+                      }`}
                   >
                     {isChecked && <Check size={13} strokeWidth={3} />}
                   </div>

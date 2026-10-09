@@ -13,6 +13,7 @@ import EmployeeMasterDataPage from "./pages/employeeMasterData/EmployeeMasterDat
 import ViewGraphsPage from "./pages/graphs/viewGraphsPage";
 import InterfaceAccessHistory from "./pages/historyLogs/InterfaceAccessHistory";
 import AttendanceSheetPage from "./pages/attendanceSheet/AttendanceSheetPage";
+import CallsReportPage from "./pages/callsReport/CallsReportPage";
 import Login from "./pages/login/Login";
 import OccupancyPage from "./pages/occupancy/OccupancyPage";
 import OperationsManagementPage from "./pages/operationsManager/OperationsManagementPage";
@@ -121,6 +122,14 @@ const Router = () => {
         element={(
           <Protected permission={PERMISSIONS.VIEW_ATTENDANCE_SHEET}>
             <AttendanceSheetPage />
+          </Protected>
+        )}
+      />
+      <Route
+        path="/calls-report"
+        element={(
+          <Protected permission={PERMISSIONS.VIEW_CALLS_REPORT}>
+            <CallsReportPage />
           </Protected>
         )}
       />

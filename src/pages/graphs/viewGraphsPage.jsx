@@ -1,15 +1,18 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   AlertCircle,
   BarChart3,
   ChevronDown,
+  ClipboardCheck,
   Clock,
   Database,
   Download,
   Filter,
   Loader2,
+  Mail,
   Menu,
+  PhoneCall,
   RefreshCw,
   Users,
 } from "lucide-react";
@@ -239,6 +242,7 @@ function buildQualityAuditRequestParams(filters) {
 export default function ViewGraphsPage() {
   const dashboard = useDashboardPage();
   const location = useLocation();
+  const navigate = useNavigate();
 
   const searchParams = new URLSearchParams(location.search);
   const currentSection = (searchParams.get("section") || "").toLowerCase();
@@ -250,7 +254,13 @@ export default function ViewGraphsPage() {
   const showCalls = !currentSection || isCallsOnly;
   const showEmails = !currentSection || isEmailsOnly;
   const showQa = !currentSection || isQaOnly;
-  const showOccupancy = isOccupancyOnly;
+  const showOccupancy = !currentSection || isOccupancyOnly;
+
+  const handleNavigateToSection = useCallback((sectionKey) => {
+    const params = new URLSearchParams(location.search);
+    params.set("section", sectionKey);
+    navigate(`/view-graphs?${params.toString()}`);
+  }, [location.search, navigate]);
 
   useEffect(() => {
     const mainContainer = document.querySelector(".sibs-scrollbar");
@@ -846,25 +856,15 @@ export default function ViewGraphsPage() {
       />
 
       <main className="min-w-0 flex-1 flex flex-col h-full overflow-hidden">
-        <AppHeader
-          title={
-            isCallsOnly
-              ? "Calls Performance"
-              : isEmailsOnly
-              ? "Emails Performance"
-              : isQaOnly
-              ? "Quality Audit Performance"
-              : isOccupancyOnly
-              ? "Occupancy & Headcount"
-              : "Calls, Emails & Quality Performance"
-          }
-          subtitle="Performance Management System"
-          userName={dashboard.userName}
-          onMenuClick={() => dashboard.setIsMobileSidebarOpen(true)}
-          onLogoutClick={() => dashboard.setShowLogoutModal(true)}
-        />
-
-        <div className="sibs-scrollbar flex-1 overflow-y-auto overflow-x-hidden p-1.5 sm:p-2 pb-1 sm:pb-1.5">
+        <div
+          className={`sibs-scrollbar flex-1 ${
+            !currentSection
+              ? showFilters
+                ? "overflow-y-auto overflow-x-hidden p-1.5 sm:p-2 pb-6"
+                : "h-full overflow-hidden p-1 flex flex-col"
+              : "overflow-y-auto overflow-x-hidden p-1.5 sm:p-2 pb-1 sm:pb-1.5"
+          }`}
+        >
           {!canViewGraphs ? (
             <div className="sibs-card p-6 text-center">
               <AlertCircle
@@ -882,20 +882,32 @@ export default function ViewGraphsPage() {
               </p>
             </div>
           ) : (
-            <div className="space-y-1.5">
-              <section className="sibs-card relative z-40 overflow-visible shadow-xs">
+            <div className={!currentSection ? (!showFilters ? "h-full min-h-0 flex flex-col gap-1 overflow-hidden" : "space-y-3") : "space-y-1.5"}>
+              <section className="sibs-card relative z-40 overflow-visible shadow-xs shrink-0">
                 <div
-                  className={`flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 bg-sibs-primary-3/30 px-3 sm:px-3.5 py-2 sm:py-1.5 select-none ${showFilters ? "border-b border-sibs-tertiary-10" : ""
-                    }`}
+                  className={`flex flex-col xl:flex-row xl:items-center justify-between gap-1.5 bg-sibs-primary-3/30 px-2.5 sm:px-3 ${
+                    !currentSection ? "py-1" : "py-2 sm:py-1.5"
+                  } select-none ${
+                    showFilters ? "border-b border-sibs-tertiary-10" : ""
+                  }`}
                 >
+                  {/* Left: Mobile menu trigger, Icon, and Title */}
                   <div className="flex items-center gap-2 min-w-0">
+                    <button
+                      type="button"
+                      onClick={() => dashboard.setIsMobileSidebarOpen(true)}
+                      className="lg:hidden p-1 -ml-1 text-sibs-primary-1 hover:bg-sibs-primary-1/10 rounded-md shrink-0 cursor-pointer"
+                      title="Open navigation menu"
+                    >
+                      <Menu size={18} />
+                    </button>
 
                     <BarChart3
-                      size={16}
+                      size={17}
                       className="text-sibs-primary-1 shrink-0"
                     />
 
-                    <h1 className="m-0 text-sm font-extrabold text-sibs-primary-1">
+                    <h1 className="m-0 text-sm font-extrabold text-sibs-primary-1 leading-tight truncate">
                       {isCallsOnly
                         ? "Calls Performance"
                         : isEmailsOnly
@@ -904,11 +916,12 @@ export default function ViewGraphsPage() {
                         ? "Quality Audit Performance"
                         : isOccupancyOnly
                         ? "Occupancy & Headcount Performance"
-                        : "Calls, Emails & Quality Performance"}
+                        : "Calls, Emails, QA & Occupancy Performance"}
                     </h1>
                   </div>
 
-                  <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 justify-between sm:justify-end w-full sm:w-auto">
+                  {/* Right: PDF and Filter Toggles */}
+                  <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 justify-between sm:justify-end">
                     <button
                       type="button"
                       onClick={(e) => {
@@ -947,126 +960,132 @@ export default function ViewGraphsPage() {
                   </div>
                 </div>
 
-                {showFilters && (
-                  <div className={`grid grid-cols-1 gap-2 p-2.5 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 ${isCustomPeriod ? "xl:grid-cols-8" : "xl:grid-cols-7"} items-end`}>
-                    {/* 1. Account / Source (Hidden in QA) */}
-                    {!isQaOnly && (
+                <div
+                  className={`grid transition-[grid-template-rows,opacity] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] ${
+                    showFilters ? "grid-rows-[1fr] opacity-100 overflow-visible" : "grid-rows-[0fr] opacity-0 pointer-events-none overflow-hidden"
+                  }`}
+                >
+                  <div className={`min-h-0 ${showFilters ? "overflow-visible" : "overflow-hidden"}`}>
+                    <div className={`grid grid-cols-1 gap-2 p-2.5 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 ${isCustomPeriod ? "xl:grid-cols-8" : "xl:grid-cols-7"} items-end`}>
+                      {/* 1. Account / Source (Hidden in QA) */}
+                      {!isQaOnly && (
+                        <MultiSelectDropdown
+                          label="Account / Source"
+                          value={filters.sourceSystem}
+                          onChange={handleSourceChange}
+                          options={SOURCE_OPTIONS}
+                          placeholder="All Sources"
+                          allOptionLabel="US Visa (All Sources)"
+                        />
+                      )}
+
+                      {/* 2. Task Order */}
                       <MultiSelectDropdown
-                        label="Account / Source"
-                        value={filters.sourceSystem}
-                        onChange={handleSourceChange}
-                        options={SOURCE_OPTIONS}
-                        placeholder="All Sources"
-                        allOptionLabel="US Visa (All Sources)"
+                        label="Task Order"
+                        value={filters.taskOrder}
+                        onChange={handleTaskOrderChange}
+                        options={taskOrderOptions}
+                        placeholder="All Task Orders"
+                        allOptionLabel="All Task Orders"
                       />
-                    )}
 
-                    {/* 2. Task Order */}
-                    <MultiSelectDropdown
-                      label="Task Order"
-                      value={filters.taskOrder}
-                      onChange={handleTaskOrderChange}
-                      options={taskOrderOptions}
-                      placeholder="All Task Orders"
-                      allOptionLabel="All Task Orders"
-                    />
+                      {/* 3. Country */}
+                      <MultiSelectDropdown
+                        label="Country"
+                        value={filters.country}
+                        onChange={handleCountryChange}
+                        options={countryOptions}
+                        placeholder="All Countries"
+                        allOptionLabel="All Countries"
+                      />
 
-                    {/* 3. Country */}
-                    <MultiSelectDropdown
-                      label="Country"
-                      value={filters.country}
-                      onChange={handleCountryChange}
-                      options={countryOptions}
-                      placeholder="All Countries"
-                      allOptionLabel="All Countries"
-                    />
+                      {/* 4. Skill */}
+                      <MultiSelectDropdown
+                        label="Skill"
+                        value={filters.skill}
+                        onChange={handleSkillChange}
+                        options={skillOptions}
+                        placeholder="All Skills"
+                        allOptionLabel="All Skills"
+                      />
 
-                    {/* 4. Skill */}
-                    <MultiSelectDropdown
-                      label="Skill"
-                      value={filters.skill}
-                      onChange={handleSkillChange}
-                      options={skillOptions}
-                      placeholder="All Skills"
-                      allOptionLabel="All Skills"
-                    />
+                      {/* 5. LOB (Only in QA Module) */}
+                      {isQaOnly && (
+                        <SingleSelectDropdown
+                          label="LOB"
+                          value={filters.lob}
+                          onChange={handleLobChange}
+                          options={LOB_OPTIONS}
+                          placeholder="All LOBs"
+                        />
+                      )}
 
-                    {/* 5. LOB (Only in QA Module) */}
-                    {isQaOnly && (
+                      {/* 6. Reporting Period */}
                       <SingleSelectDropdown
-                        label="LOB"
-                        value={filters.lob}
-                        onChange={handleLobChange}
-                        options={LOB_OPTIONS}
-                        placeholder="All LOBs"
+                        label="Reporting Period"
+                        value={filters.period}
+                        onChange={handlePeriodChange}
+                        options={PERIOD_OPTIONS}
+                        placeholder="Weekly"
                       />
-                    )}
 
-                    {/* 6. Reporting Period */}
-                    <SingleSelectDropdown
-                      label="Reporting Period"
-                      value={filters.period}
-                      onChange={handlePeriodChange}
-                      options={PERIOD_OPTIONS}
-                      placeholder="Weekly"
-                    />
+                      {/* 6. Reference Date (or From + To) */}
+                      {isCustomPeriod ? (
+                        <>
+                          <DatePicker
+                            label="From"
+                            value={filters.from}
+                            onChange={(from) =>
+                              setFilters((current) => ({
+                                ...current,
+                                from: from || "",
+                              }))
+                            }
+                          />
 
-                    {/* 6. Reference Date (or From + To) */}
-                    {isCustomPeriod ? (
-                      <>
-                        <DatePicker
-                          label="From"
-                          value={filters.from}
-                          onChange={(from) =>
-                            setFilters((current) => ({
-                              ...current,
-                              from: from || "",
-                            }))
-                          }
-                        />
+                          <DatePicker
+                            label="To"
+                            value={filters.to}
+                            onChange={(to) =>
+                              setFilters((current) => ({
+                                ...current,
+                                to: to || "",
+                              }))
+                            }
+                          />
+                        </>
+                      ) : (
+                        <>
+                          <DatePicker
+                            label="Reference Date"
+                            value={filters.referenceDate}
+                            onChange={handleReferenceDateChange}
+                          />
 
-                        <DatePicker
-                          label="To"
-                          value={filters.to}
-                          onChange={(to) =>
-                            setFilters((current) => ({
-                              ...current,
-                              to: to || "",
-                            }))
-                          }
-                        />
-                      </>
-                    ) : (
-                      <>
-                        <DatePicker
-                          label="Reference Date"
-                          value={filters.referenceDate}
-                          onChange={handleReferenceDateChange}
-                        />
-
-                        {/* 7. Latest button */}
-                        <div className="flex flex-col justify-end">
-                          <span
-                            className="mb-0.5 block text-[9.5px] font-extrabold uppercase select-none text-transparent"
-                            aria-hidden="true"
-                          >
-                            &nbsp;
-                          </span>
-                          <button
-                            type="button"
-                            onClick={handleLatestRange}
-                            disabled={isLoading}
-                            title="Use the latest available KPI date."
-                            className="inline-flex h-8 w-full cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-xs font-bold text-sibs-primary-1 shadow-xs transition hover:border-sibs-primary-1 hover:bg-sibs-primary-1 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
-                          >
-                            <Clock size={12} className="shrink-0" />
-                            <span>Latest</span>
-                          </button>
-                        </div>
-                      </>
-                    )}
+                          {/* 7. Latest button */}
+                          <div className="flex flex-col justify-end">
+                            <span
+                              className="mb-0.5 block text-[9.5px] font-extrabold uppercase select-none text-transparent"
+                              aria-hidden="true"
+                            >
+                              &nbsp;
+                            </span>
+                            <button
+                              type="button"
+                              onClick={handleLatestRange}
+                              disabled={isLoading}
+                              title="Use the latest available KPI date."
+                              className="inline-flex h-8 w-full cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-xs font-bold text-sibs-primary-1 shadow-xs transition hover:border-sibs-primary-1 hover:bg-sibs-primary-1 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+                            >
+                              <Clock size={12} className="shrink-0" />
+                              <span>Latest</span>
+                            </button>
+                          </div>
+                        </>
+                      )}
+                    </div>
                   </div>
-                )}
+                </div>
               </section>
 
               {showCalls && error ? (
@@ -1117,7 +1136,7 @@ export default function ViewGraphsPage() {
                         ? "Loading Quality KPI data"
                         : isOccupancyOnly
                         ? "Loading Occupancy & Headcount KPI data"
-                        : "Loading Calls, Email & Quality KPI data"}
+                        : "Loading Performance KPI data"}
                     </p>
 
                     <p className="mt-1 mb-0 text-sm text-sibs-tertiary-5">
@@ -1127,7 +1146,7 @@ export default function ViewGraphsPage() {
                   </div>
                 </div>
               ) : (
-                <div className="relative z-0 min-w-0 w-full">
+                <div className={`relative z-0 min-w-0 w-full ${!currentSection ? (!showFilters ? "flex-1 min-h-0 grid grid-rows-4 gap-1 overflow-visible" : "space-y-2.5 pb-6") : ""}`}>
                   {emptyDataMessage && !error ? (
                     <div className="sibs-card mb-4 p-4 text-sm font-semibold text-sibs-tertiary-5">
                       {emptyDataMessage}
@@ -1135,24 +1154,28 @@ export default function ViewGraphsPage() {
                   ) : null}
 
                   {showCalls && (
-                    <div id="calls-section">
+                    <div id="calls-section" className={!currentSection ? (!showFilters ? "h-full min-h-0 flex flex-col gap-0.5 overflow-visible" : "space-y-1 sm:space-y-1.5") : "space-y-1 sm:space-y-1.5"}>
                       <CallKpiDashboard
                         data={dashboardData || {}}
                         period={filters.period}
                         showSummaryCards={showFilters}
                         isSubmodule={isCallsOnly}
                         showFilters={showFilters}
+                        onSectionClick={!currentSection ? () => handleNavigateToSection("calls") : null}
                         afterCards={
                           !currentSection ? (
                             <div className="space-y-1.5 sm:space-y-2">
                               <EmailSummaryCards
                                 summary={emailDashboardData?.summary || {}}
+                                onCardClick={() => handleNavigateToSection("emails")}
                               />
                               <QualityAuditSummaryCards
                                 summary={qualityAuditDashboardData?.summary || {}}
+                                onCardClick={() => handleNavigateToSection("qa")}
                               />
                               <OccupancySummaryCards
                                 summary={occupancyDashboardData?.summary || {}}
+                                onCardClick={() => handleNavigateToSection("occupancy")}
                               />
                             </div>
                           ) : null
@@ -1162,10 +1185,28 @@ export default function ViewGraphsPage() {
                   )}
 
                   {showEmails && (
-                    <div id="emails-section" className={!currentSection ? "mt-1 sm:mt-1.5" : ""}>
+                    <div id="emails-section" className={!currentSection ? (!showFilters ? "h-full min-h-0 flex flex-col gap-0.5 overflow-visible" : "space-y-1 sm:space-y-1.5") : "space-y-1 sm:space-y-1.5"}>
+                      {!currentSection && (
+                        <div
+                          onClick={() => handleNavigateToSection("emails")}
+                          className="shrink-0 flex items-center justify-between rounded-md border border-sibs-tertiary-9/80 bg-gradient-to-r from-[#174f7f]/10 via-[#174f7f]/5 to-transparent px-2.5 py-0.5 shadow-2xs cursor-pointer"
+                        >
+                          <div className="flex items-center gap-1.5">
+                            <span className="flex h-4 w-4 items-center justify-center rounded bg-[#174f7f] text-white shadow-xs">
+                              <Mail size={10} />
+                            </span>
+                            <span className="text-[11px] font-black uppercase tracking-wider text-[#174f7f]">
+                              2. Emails Performance
+                            </span>
+                          </div>
+                          <span className="text-[10px] font-bold text-sibs-tertiary-5 hidden sm:inline">
+                            Volume &bull; Resolved &bull; Resolved w/ SLA &bull; ERR % &bull; Service Level %
+                          </span>
+                        </div>
+                      )}
                       {emailError ? (
-                        <div className="sibs-card mb-2 flex items-start gap-2 border border-amber-200 bg-amber-50/70 p-2.5 text-xs font-semibold text-amber-800">
-                          <AlertCircle size={16} className="mt-0.5 shrink-0" />
+                        <div className="sibs-card mb-1 flex items-start gap-2 border border-amber-200 bg-amber-50/70 p-2 text-xs font-semibold text-amber-800">
+                          <AlertCircle size={14} className="mt-0.5 shrink-0" />
                           <span>{emailError}</span>
                         </div>
                       ) : null}
@@ -1175,15 +1216,34 @@ export default function ViewGraphsPage() {
                         showSummaryCards={isEmailsOnly ? showFilters : false}
                         isSubmodule={isEmailsOnly}
                         showFilters={showFilters}
+                        onSectionClick={!currentSection ? () => handleNavigateToSection("emails") : null}
                       />
                     </div>
                   )}
 
                   {showQa && (
-                    <div id="qa-section" className={!currentSection ? "mt-1 sm:mt-1.5" : ""}>
+                    <div id="qa-section" className={!currentSection ? (!showFilters ? "h-full min-h-0 flex flex-col gap-0.5 overflow-visible" : "space-y-1 sm:space-y-1.5") : "space-y-1 sm:space-y-1.5"}>
+                      {!currentSection && (
+                        <div
+                          onClick={() => handleNavigateToSection("qa")}
+                          className="shrink-0 flex items-center justify-between rounded-md border border-sibs-tertiary-9/80 bg-gradient-to-r from-[#2b6598]/10 via-[#2b6598]/5 to-transparent px-2.5 py-0.5 shadow-2xs cursor-pointer"
+                        >
+                          <div className="flex items-center gap-1.5">
+                            <span className="flex h-4 w-4 items-center justify-center rounded bg-[#2b6598] text-white shadow-xs">
+                              <ClipboardCheck size={10} />
+                            </span>
+                            <span className="text-[11px] font-black uppercase tracking-wider text-[#2b6598]">
+                              3. Quality Audit Performance
+                            </span>
+                          </div>
+                          <span className="text-[10px] font-bold text-sibs-tertiary-5 hidden sm:inline">
+                            Total Audits &bull; Call Audits &bull; Case Audits &bull; QA Score %
+                          </span>
+                        </div>
+                      )}
                       {qualityAuditError ? (
-                        <div className="sibs-card mb-2 flex items-start gap-2 border border-amber-200 bg-amber-50/70 p-2.5 text-xs font-semibold text-amber-800">
-                          <AlertCircle size={16} className="mt-0.5 shrink-0" />
+                        <div className="sibs-card mb-1 flex items-start gap-2 border border-amber-200 bg-amber-50/70 p-2 text-xs font-semibold text-amber-800">
+                          <AlertCircle size={14} className="mt-0.5 shrink-0" />
                           <span>{qualityAuditError}</span>
                         </div>
                       ) : null}
@@ -1193,15 +1253,34 @@ export default function ViewGraphsPage() {
                         period={filters.period}
                         isSubmodule={isQaOnly}
                         showFilters={showFilters}
+                        onSectionClick={!currentSection ? () => handleNavigateToSection("qa") : null}
                       />
                     </div>
                   )}
 
                   {showOccupancy && (
-                    <div id="occupancy-section" className={!currentSection ? "mt-1 sm:mt-1.5" : ""}>
+                    <div id="occupancy-section" className={!currentSection ? (!showFilters ? "h-full min-h-0 flex flex-col gap-0.5 overflow-visible" : "space-y-1 sm:space-y-1.5") : "space-y-1 sm:space-y-1.5"}>
+                      {!currentSection && (
+                        <div
+                          onClick={() => handleNavigateToSection("occupancy")}
+                          className="shrink-0 flex items-center justify-between rounded-md border border-sibs-tertiary-9/80 bg-gradient-to-r from-[#3f7fb5]/10 via-[#3f7fb5]/5 to-transparent px-2.5 py-0.5 shadow-2xs cursor-pointer"
+                        >
+                          <div className="flex items-center gap-1.5">
+                            <span className="flex h-4 w-4 items-center justify-center rounded bg-[#3f7fb5] text-white shadow-xs">
+                              <Users size={10} />
+                            </span>
+                            <span className="text-[11px] font-black uppercase tracking-wider text-[#3f7fb5]">
+                              4. Occupancy & Headcount Performance
+                            </span>
+                          </div>
+                          <span className="text-[10px] font-bold text-sibs-tertiary-5 hidden sm:inline">
+                            Occupancy % &bull; Utilization % &bull; Headcount &bull; People Metrics
+                          </span>
+                        </div>
+                      )}
                       {occupancyError ? (
-                        <div className="sibs-card mb-2 flex items-start gap-2 border border-amber-200 bg-amber-50/70 p-2.5 text-xs font-semibold text-amber-800">
-                          <AlertCircle size={16} className="mt-0.5 shrink-0" />
+                        <div className="sibs-card mb-1 flex items-start gap-2 border border-amber-200 bg-amber-50/70 p-2 text-xs font-semibold text-amber-800">
+                          <AlertCircle size={14} className="mt-0.5 shrink-0" />
                           <span>{occupancyError}</span>
                         </div>
                       ) : null}
@@ -1211,6 +1290,7 @@ export default function ViewGraphsPage() {
                         period={filters.period}
                         isSubmodule={isOccupancyOnly}
                         showFilters={showFilters}
+                        onSectionClick={!currentSection ? () => handleNavigateToSection("occupancy") : null}
                       />
                     </div>
                   )}

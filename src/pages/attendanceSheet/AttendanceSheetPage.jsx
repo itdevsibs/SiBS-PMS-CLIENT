@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertCircle,
   CalendarDays,
+  Check,
   CheckCircle2,
   ChevronDown,
   Clock3,
@@ -10,15 +11,19 @@ import {
   Loader2,
   RefreshCw,
   RotateCcw,
+  Search,
   Server,
   ShieldCheck,
   Users,
+  X,
 } from "lucide-react";
 
 import AdminSidebar from "@/components/layout/AdminSidebar";
 import AppHeader from "@/components/layout/AppHeader";
 import TablePagination from "@/components/tables/TablePagination";
+import { Button } from "@/components/ui/button";
 import ConfirmationModal from "@/components/ui/confirmation-modal";
+import DatePicker from "@/components/ui/Filter/DatePicker";
 import LoadingModal from "@/components/ui/loading-modal";
 import useDashboardPage from "@/hooks/useDashboardPage";
 import {
@@ -182,6 +187,17 @@ function getAttendanceAccountId(row, responseMeta, selectedAccount) {
   );
 }
 
+function getAttendanceAccountName(row, responseMeta, selectedAccount) {
+  return (
+    responseMeta?.scope?.accountName ??
+    selectedAccount?.accountName ??
+    row?.accountName ??
+    row?.kronosAccountName ??
+    findRowValue(row, ["account_name", "accountName", "gy_acc_name", "acc_name"]) ??
+    "—"
+  );
+}
+
 function getAttendanceLogin(row, responseMeta) {
   const configuredField = responseMeta?.fieldConfiguration?.firstLogin;
   return (
@@ -257,22 +273,67 @@ export default function AttendanceSheetPage() {
   const [metadataError, setMetadataError] = useState(null);
 
   const [selectedAccountId, setSelectedAccountId] = useState("");
-  const [employeeCode, setEmployeeCode] = useState("");
-  const [dateFrom, setDateFrom] = useState(initialRange.dateFrom);
-  const [dateTo, setDateTo] = useState(initialRange.dateTo);
+  const [employeeSearch, setEmployeeSearch] = useState("");
+  const [selectedDate, setSelectedDate] = useState(() => formatManilaDate());
   const [pageSize, setPageSize] = useState(25);
 
-  const [dataRows, setDataRows] = useState([]);
-  const [responseMeta, setResponseMeta] = useState(null);
-  const [pagination, setPagination] = useState({
-    currentPage: 1,
-    totalPages: 1,
-    total: 0,
-    limit: 25,
+  const [isAccountDropdownOpen, setIsAccountDropdownOpen] = useState(false);
+  const [accountSearchTerm, setAccountSearchTerm] = useState("");
+  const accountDropdownRef = useRef(null);
+
+  const [dataRows, setDataRows] = useState(() => {
+    try {
+      const cached = localStorage.getItem("sibs_attendance_cache");
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed?.rows) && parsed.rows.length > 0) {
+          return parsed.rows;
+        }
+      }
+    } catch {
+      // ignore cache parsing error
+    }
+    return [];
+  });
+  const [responseMeta, setResponseMeta] = useState(() => {
+    try {
+      const cached = localStorage.getItem("sibs_attendance_cache");
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        return parsed?.meta || null;
+      }
+    } catch {
+      // ignore
+    }
+    return null;
+  });
+  const [pagination, setPagination] = useState(() => {
+    try {
+      const cached = localStorage.getItem("sibs_attendance_cache");
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed?.pagination) return parsed.pagination;
+      }
+    } catch {
+      // ignore
+    }
+    return {
+      currentPage: 1,
+      totalPages: 1,
+      total: 0,
+      limit: 25,
+    };
   });
   const [isLoadingData, setIsLoadingData] = useState(false);
   const [dataError, setDataError] = useState(null);
-  const [hasLoadedData, setHasLoadedData] = useState(false);
+  const [hasLoadedData, setHasLoadedData] = useState(() => {
+    try {
+      const cached = localStorage.getItem("sibs_attendance_cache");
+      return Boolean(cached);
+    } catch {
+      return false;
+    }
+  });
 
   const mappedAccounts = useMemo(
     () => accounts.filter((account) => Number(account?.kronosMapping?.kronosAccountId) > 0),
@@ -283,6 +344,27 @@ export default function AttendanceSheetPage() {
     () => accounts.find((account) => String(account.accountId) === String(selectedAccountId)) || null,
     [accounts, selectedAccountId],
   );
+
+  // Close account dropdown on outside click
+  useEffect(() => {
+    if (!isAccountDropdownOpen) return;
+    const handleClickOutside = (event) => {
+      if (accountDropdownRef.current && !accountDropdownRef.current.contains(event.target)) {
+        setIsAccountDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [isAccountDropdownOpen]);
+
+  const filteredAccountOptions = useMemo(() => {
+    if (!accountSearchTerm.trim()) return accounts;
+    const term = accountSearchTerm.toLowerCase();
+    return accounts.filter((acc) =>
+      String(acc.accountName || "").toLowerCase().includes(term) ||
+      String(acc.accountId || "").includes(term)
+    );
+  }, [accounts, accountSearchTerm]);
 
   const attendanceFieldsReady = Boolean(
     responseMeta?.fieldConfiguration?.complete || status?.attendanceFieldConfiguration?.complete,
@@ -378,22 +460,32 @@ export default function AttendanceSheetPage() {
         return;
       }
 
-      if (dateFrom && dateTo && dateFrom > dateTo) {
+      if (!selectedDate) {
         setDataError({
-          code: "ATTENDANCE_DATE_RANGE_INVALID",
-          message: "Date From cannot be later than Date To.",
+          code: "ATTENDANCE_DATE_REQUIRED",
+          message: "Please select a date to view attendance records.",
         });
         return;
       }
 
+      // Optimistically update pagination state instantly so the active button clicks immediately without lag
+      setPagination((prev) => ({
+        ...prev,
+        currentPage: targetPage,
+      }));
+
       setIsLoadingData(true);
       setDataError(null);
 
+      const trimmedSearch = employeeSearch.trim();
+      const normalizedCode = normalizeEmployeeCode(trimmedSearch);
+
       const params = {
         accountId: selectedAccountId,
-        gyEmpCode: normalizeEmployeeCode(employeeCode) || undefined,
-        dateFrom: dateFrom || undefined,
-        dateTo: dateTo || undefined,
+        search: normalizedCode || undefined,
+        gyEmpCode: /^\d+$/.test(normalizedCode) ? normalizedCode : undefined,
+        dateFrom: selectedDate,
+        dateTo: selectedDate,
         page: targetPage,
         limit: pageSize,
       };
@@ -406,7 +498,7 @@ export default function AttendanceSheetPage() {
 
         setDataRows(rows);
         setResponseMeta(payload);
-        setPagination({
+        const resolvedPagination = {
           currentPage: Number(nextPagination.currentPage || targetPage) || targetPage,
           totalPages: Math.max(1, Number(nextPagination.totalPages || 1) || 1),
           total:
@@ -414,51 +506,74 @@ export default function AttendanceSheetPage() {
               ? Number(nextPagination.total)
               : rows.length,
           limit: Number(nextPagination.limit || pageSize) || pageSize,
-        });
+        };
+        setPagination(resolvedPagination);
         setHasLoadedData(true);
+
+        if (rows.length > 0 && !trimmedSearch && targetPage === 1) {
+          try {
+            localStorage.setItem(
+              "sibs_attendance_cache",
+              JSON.stringify({
+                rows,
+                meta: payload,
+                pagination: resolvedPagination,
+              }),
+            );
+          } catch {
+            // ignore localStorage quota error
+          }
+        }
       } catch (error) {
         const details = getErrorDetails(error, "Unable to load attendance data.");
         setDataError(details);
-        setDataRows([]);
-        setResponseMeta(null);
-        setPagination({
-          currentPage: targetPage,
-          totalPages: 1,
-          total: 0,
-          limit: pageSize,
-        });
         setHasLoadedData(true);
       } finally {
         setIsLoadingData(false);
       }
     },
     [
-      dateFrom,
-      dateTo,
-      employeeCode,
+      selectedDate,
+      employeeSearch,
       pageSize,
       selectedAccount,
       selectedAccountId,
     ],
   );
 
+  // Debounced/automatic loader: automatically fetch data when filters or pagination change
+  useEffect(() => {
+    if (!selectedAccountId || !selectedAccount?.kronosMapping?.kronosAccountId) {
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      void loadViewerData(1);
+    }, 250);
+
+    return () => clearTimeout(timer);
+  }, [
+    selectedAccountId,
+    selectedAccount,
+    employeeSearch,
+    selectedDate,
+    pageSize,
+    loadViewerData,
+  ]);
+
   const handleReset = () => {
-    const range = getInitialDateRange();
+    const today = formatManilaDate();
     const preferredUsVisa = mappedAccounts.find((account) =>
       /us\s*visa/i.test(String(account?.accountName || "")),
     );
     setSelectedAccountId(
       String(preferredUsVisa?.accountId || mappedAccounts[0]?.accountId || ""),
     );
-    setEmployeeCode("");
-    setDateFrom(range.dateFrom);
-    setDateTo(range.dateTo);
+    setIsAccountDropdownOpen(false);
+    setAccountSearchTerm("");
+    setEmployeeSearch("");
+    setSelectedDate(today);
     setPageSize(25);
-    setDataRows([]);
-    setResponseMeta(null);
-    setPagination({ currentPage: 1, totalPages: 1, total: 0, limit: 25 });
-    setDataError(null);
-    setHasLoadedData(false);
   };
 
   const tableMinWidth = 760;
@@ -474,93 +589,13 @@ export default function AttendanceSheetPage() {
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         <AppHeader
           title="Attendance Sheet"
-          subtitle="Live Call Center Operations attendance data through the secured PMS server"
+          subtitle="Call Center Operations attendance data"
           userName={dashboard.userName}
           onMenuClick={() => dashboard.setIsMobileSidebarOpen(true)}
           onLogoutClick={() => dashboard.setShowLogoutModal(true)}
         />
 
         <main className="flex min-h-0 flex-1 flex-col gap-2.5 overflow-hidden px-2.5 pb-2 pt-2.5 sm:gap-3 sm:px-4 sm:pt-3 lg:px-5">
-          <div className="shrink-0 rounded-xl border border-slate-200 bg-white shadow-xs">
-            <div className="flex flex-col gap-3 border-b border-slate-100 px-3 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-4">
-              <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <Server className="h-4 w-4 text-[#ff5c28]" aria-hidden="true" />
-                  <h1 className="m-0 text-sm font-extrabold text-[#0b3b68]">
-                    Live Attendance Connection
-                  </h1>
-                </div>
-                <p className="m-0 mt-1 text-[11px] leading-4 text-slate-500">
-                  No attendance data is stored locally. Every request is fetched live from the attendance source.
-                </p>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => void loadMetadata()}
-                disabled={isLoadingMetadata}
-                className="inline-flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-[11px] font-bold text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer"
-              >
-                <RefreshCw
-                  className={`h-3.5 w-3.5 ${isLoadingMetadata ? "animate-spin" : ""}`}
-                />
-                Refresh Status
-              </button>
-            </div>
-
-            <div className="grid grid-cols-2 gap-px bg-slate-100 sm:grid-cols-4">
-              <div className="bg-white px-3 py-2.5 sm:px-4">
-                <p className="m-0 text-[10px] font-bold uppercase tracking-wide text-slate-400">
-                  API Connection
-                </p>
-                <div className="mt-1.5">
-                  <StatusPill
-                    active={Boolean(status?.credentialsConfigured && status?.tokenUsable)}
-                    activeText="Connected"
-                    inactiveText={status?.credentialsConfigured ? "Token Pending" : "Not Configured"}
-                  />
-                </div>
-              </div>
-
-              <div className="bg-white px-3 py-2.5 sm:px-4">
-                <p className="m-0 text-[10px] font-bold uppercase tracking-wide text-slate-400">
-                  CCO Accounts Resolved
-                </p>
-                <div className="mt-1 flex items-end gap-1.5">
-                  <span className="text-lg font-extrabold leading-none text-[#0b3b68]">
-                    {mappedAccounts.length}
-                  </span>
-                  <span className="text-[10px] font-semibold text-slate-400">
-                    of {accounts.length} live matched
-                  </span>
-                </div>
-              </div>
-
-              <div className="bg-white px-3 py-2.5 sm:px-4">
-                <p className="m-0 text-[10px] font-bold uppercase tracking-wide text-slate-400">
-                  Attendance Fields
-                </p>
-                <div className="mt-1.5">
-                  <StatusPill
-                    active={attendanceFieldsReady}
-                    activeText="Confirmed"
-                    inactiveText="Pending Mapping"
-                  />
-                </div>
-              </div>
-
-              <div className="bg-white px-3 py-2.5 sm:px-4">
-                <p className="m-0 text-[10px] font-bold uppercase tracking-wide text-slate-400">
-                  Storage Mode
-                </p>
-                <div className="mt-1.5 inline-flex items-center gap-1.5 text-xs font-extrabold text-[#0b3b68]">
-                  <Database className="h-3.5 w-3.5 text-[#ff5c28]" />
-                  Live Fetch Only
-                </div>
-              </div>
-            </div>
-          </div>
-
           {metadataError && (
             <div className="shrink-0 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2.5 text-xs text-rose-700">
               <div className="flex items-start gap-2">
@@ -573,173 +608,154 @@ export default function AttendanceSheetPage() {
             </div>
           )}
 
-          <div className="shrink-0 rounded-xl border border-slate-200 bg-white p-3 shadow-xs sm:p-4">
-            <div className="mb-3 flex items-center gap-2">
-              <Filter className="h-4 w-4 text-[#0b3b68]" />
-              <div>
-                <p className="m-0 text-xs font-extrabold text-[#0b3b68]">Viewer Filters</p>
-                <p className="m-0 text-[10px] text-slate-400">
-                  Department is locked to Call Center Operations. Select an account to load attendance data.
-                </p>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 gap-2.5 md:grid-cols-2 xl:grid-cols-5">
-              <label className="block xl:col-span-1">
-                <span className="mb-1 block text-[10px] font-bold uppercase tracking-wide text-slate-500">
-                  Department
-                </span>
-                <div className="flex h-9 items-center gap-2 rounded-lg border border-slate-200 bg-slate-100 px-3 text-xs font-semibold text-slate-600">
-                  <ShieldCheck className="h-3.5 w-3.5 shrink-0 text-[#0b3b68]" />
-                  <span className="truncate">Call Center Operations</span>
-                </div>
-              </label>
-
-              <label className="block xl:col-span-1">
-                <span className="mb-1 block text-[10px] font-bold uppercase tracking-wide text-slate-500">
-                  Account
-                </span>
-                <div className="relative">
-                  <select
-                    value={selectedAccountId}
-                    onChange={(event) => {
-                      setSelectedAccountId(event.target.value);
-                      invalidateViewerData();
-                    }}
-                    disabled={isLoadingMetadata || accounts.length === 0}
-                    className="h-9 w-full appearance-none rounded-lg border border-slate-200 bg-slate-50 px-3 pr-8 text-xs font-semibold text-slate-700 outline-none transition focus:border-[#0b3b68] focus:bg-white disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    <option value="">Select account</option>
-                    {accounts.map((account) => {
-                      const mapped = Number(account?.kronosMapping?.kronosAccountId) > 0;
-                      return (
-                        <option
-                          key={account.accountId}
-                          value={account.accountId}
-                          disabled={!mapped}
-                        >
-                          {account.accountName}{mapped ? "" : " — not found in attendance source"}
-                        </option>
-                      );
-                    })}
-                  </select>
-                  <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
-                </div>
-              </label>
-
-              <label className="block xl:col-span-1">
-                <span className="mb-1 block text-[10px] font-bold uppercase tracking-wide text-slate-500">
-                  SIBS ID
-                </span>
-                <div className="relative">
-                  <Users className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+          {/* Search and filter toolbar matching reference bar */}
+          <div className="shrink-0 flex flex-col lg:flex-row lg:items-end justify-between gap-3 sm:gap-3.5 rounded-xl border border-slate-200 bg-white p-3 sm:p-4 shadow-xs">
+            <div className="flex flex-wrap items-end gap-3 sm:gap-3.5 flex-1 min-w-0 w-full">
+              {/* 1. Search Employee - Very Left */}
+              <div className="w-full sm:w-auto sm:flex-1 sm:min-w-[180px] lg:max-w-xs">
+                <label className="text-xs font-bold text-slate-800 block mb-1.5">
+                  Search Employee
+                </label>
+                <div className="relative flex h-9.5 items-center rounded-lg border border-slate-200 bg-white px-3 hover:border-slate-300 transition-colors focus-within:border-[#0b3b68] focus-within:ring-1 focus-within:ring-[#0b3b68]/20">
+                  <Search className="h-4 w-4 text-slate-400 shrink-0 mr-2" />
                   <input
                     type="text"
-                    value={employeeCode}
+                    value={employeeSearch}
                     onChange={(event) => {
-                      setEmployeeCode(event.target.value);
-                      invalidateViewerData();
+                      setEmployeeSearch(event.target.value);
                     }}
-                    placeholder="Optional"
-                    className="h-9 w-full rounded-lg border border-slate-200 bg-slate-50 pl-8 pr-3 text-xs font-medium text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-[#0b3b68] focus:bg-white"
+                    placeholder="Search by name or SIBS ID..."
+                    className="w-full bg-transparent text-xs sm:text-[13px] font-medium text-slate-800 placeholder:text-slate-400 outline-none"
                   />
-                </div>
-              </label>
-
-              <label className="block xl:col-span-1">
-                <span className="mb-1 block text-[10px] font-bold uppercase tracking-wide text-slate-500">
-                  Date From
-                </span>
-                <div className="relative">
-                  <CalendarDays className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
-                  <input
-                    type="date"
-                    value={dateFrom}
-                    onChange={(event) => {
-                      setDateFrom(event.target.value);
-                      invalidateViewerData();
-                    }}
-                    className="h-9 w-full rounded-lg border border-slate-200 bg-slate-50 pl-8 pr-2 text-xs font-medium text-slate-700 outline-none transition focus:border-[#0b3b68] focus:bg-white"
-                  />
-                </div>
-              </label>
-
-              <label className="block xl:col-span-1">
-                <span className="mb-1 block text-[10px] font-bold uppercase tracking-wide text-slate-500">
-                  Date To
-                </span>
-                <div className="relative">
-                  <CalendarDays className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
-                  <input
-                    type="date"
-                    value={dateTo}
-                    onChange={(event) => {
-                      setDateTo(event.target.value);
-                      invalidateViewerData();
-                    }}
-                    className="h-9 w-full rounded-lg border border-slate-200 bg-slate-50 pl-8 pr-2 text-xs font-medium text-slate-700 outline-none transition focus:border-[#0b3b68] focus:bg-white"
-                  />
-                </div>
-              </label>
-            </div>
-
-            <div className="mt-3 flex flex-col gap-2 border-t border-slate-100 pt-3 sm:flex-row sm:items-center sm:justify-between">
-              <div className="min-w-0">
-                <p className="m-0 text-[11px] font-bold text-slate-600">Employee Attendance</p>
-                <p className="m-0 mt-0.5 truncate text-[10px] text-slate-400">
-                  Live attendance records for the selected Call Center Operations account.
-                </p>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-2 shrink-0">
-                <label className="flex h-9 items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-2.5 text-[11px] font-semibold text-slate-500">
-                  Rows
-                  <select
-                    value={pageSize}
-                    onChange={(event) => {
-                      setPageSize(Number(event.target.value));
-                      setDataRows([]);
-                                                          setResponseMeta(null);
-                      setDataError(null);
-                      setHasLoadedData(false);
-                      setPagination({
-                        currentPage: 1,
-                        totalPages: 1,
-                        total: 0,
-                        limit: Number(event.target.value),
-                      });
-                    }}
-                    className="bg-transparent text-[11px] font-bold text-slate-700 outline-none cursor-pointer"
-                  >
-                    {PAGE_SIZE_OPTIONS.map((size) => (
-                      <option key={size} value={size}>{size}</option>
-                    ))}
-                  </select>
-                </label>
-
-                <button
-                  type="button"
-                  onClick={handleReset}
-                  className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-600 transition hover:bg-slate-50 cursor-pointer"
-                >
-                  <RotateCcw className="h-3.5 w-3.5" />
-                  Reset
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => void loadViewerData(1)}
-                  disabled={isLoadingData || !selectedAccountId}
-                  className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-[#0b3b68] bg-[#0b3b68] px-4 text-xs font-bold text-white transition hover:bg-[#164f7b] disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
-                >
-                  {isLoadingData ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  ) : (
-                    <RefreshCw className="h-3.5 w-3.5" />
+                  {employeeSearch && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEmployeeSearch("");
+                      }}
+                      className="ml-1 text-slate-400 hover:text-slate-600 cursor-pointer"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
                   )}
-                  Load Data
-                </button>
+                </div>
               </div>
+
+              {/* 2. Department */}
+              <div className="w-full sm:w-auto sm:flex-1 sm:min-w-[180px] lg:max-w-xs">
+                <label className="text-xs font-bold text-slate-800 block mb-1.5">
+                  Department
+                </label>
+                <div className="flex h-9.5 items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 text-xs font-semibold text-slate-600">
+                  <ShieldCheck className="h-4 w-4 shrink-0 text-[#0b3b68]" />
+                  <span className="truncate">Call Center Operations</span>
+                </div>
+              </div>
+
+              {/* 3. Account Dropdown */}
+              <div className="relative w-full sm:w-auto sm:flex-1 sm:min-w-[180px] lg:max-w-xs" ref={accountDropdownRef}>
+                <label className="text-xs font-bold text-slate-800 block mb-1.5">
+                  Account
+                </label>
+                <button
+                  type="button"
+                  disabled={isLoadingMetadata || accounts.length === 0}
+                  onClick={() => setIsAccountDropdownOpen((prev) => !prev)}
+                  className={`flex h-9.5 w-full cursor-pointer items-center justify-between gap-2 rounded-lg border bg-white px-3 text-xs font-semibold transition hover:bg-slate-50 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60 ${
+                    isAccountDropdownOpen
+                      ? "border-[#0b3b68] ring-1 ring-[#0b3b68]/20"
+                      : "border-slate-200 text-slate-800 hover:border-slate-300"
+                  }`}
+                >
+                  <span className="truncate">
+                    {selectedAccount?.accountName || "Select account"}
+                  </span>
+                  <ChevronDown
+                    className={`h-4 w-4 text-slate-400 transition-transform ${
+                      isAccountDropdownOpen ? "rotate-180" : ""
+                    }`}
+                  />
+                </button>
+
+                {isAccountDropdownOpen && (
+                  <div className="absolute left-0 top-full z-50 mt-1 max-h-80 w-full min-w-[240px] overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-lg shadow-slate-900/10">
+                    <div className="border-b border-slate-100 p-1.5">
+                      <div className="relative">
+                        <Search className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+                        <input
+                          type="text"
+                          value={accountSearchTerm}
+                          onChange={(e) => setAccountSearchTerm(e.target.value)}
+                          placeholder="Search account..."
+                          className="h-7 w-full rounded-md border border-slate-200 bg-slate-50 pl-6 pr-2 text-[11px] text-slate-800 focus:border-[#0b3b68] focus:bg-white focus:outline-none"
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="max-h-64 overflow-y-auto sibs-scrollbar">
+                      {filteredAccountOptions.length > 0 ? (
+                        filteredAccountOptions.map((account) => {
+                          const isSelected = String(account.accountId) === String(selectedAccountId);
+                          const isMapped = Number(account?.kronosMapping?.kronosAccountId) > 0;
+                          return (
+                            <button
+                              key={account.accountId}
+                              type="button"
+                              disabled={!isMapped}
+                              onClick={() => {
+                                setSelectedAccountId(account.accountId);
+                                setIsAccountDropdownOpen(false);
+                                setAccountSearchTerm("");
+                              }}
+                              className={`flex w-full items-center justify-between px-3 py-2 text-left text-xs transition ${
+                                !isMapped
+                                  ? "cursor-not-allowed opacity-40 text-slate-400"
+                                  : isSelected
+                                  ? "bg-sky-50 font-bold text-[#0b3b68] cursor-pointer"
+                                  : "text-slate-700 hover:bg-slate-50 hover:text-slate-900 cursor-pointer"
+                              }`}
+                            >
+                              <span className="truncate">
+                                {account.accountName}
+                                {!isMapped && " (Unmapped)"}
+                              </span>
+                              {isSelected && (
+                                <Check className="h-3.5 w-3.5 text-[#0b3b68] shrink-0" />
+                              )}
+                            </button>
+                          );
+                        })
+                      ) : (
+                        <div className="px-3 py-3 text-center text-xs text-slate-400">
+                          No accounts found
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* 4. Select Date */}
+              <div className="w-full sm:w-auto min-w-0 sm:min-w-[155px]">
+                <DatePicker
+                  label="Select Date"
+                  labelClassName="text-xs font-bold text-slate-800 block mb-1.5"
+                  buttonClassName="h-9.5 w-full sm:w-auto rounded-full border border-slate-300 bg-white px-3.5 text-xs font-semibold text-slate-700 shadow-2xs hover:border-[#0b3b68]"
+                  value={selectedDate}
+                  onChange={(val) => {
+                    setSelectedDate(val || "");
+                  }}
+                />
+              </div>
+
+              {/* Status Indicator */}
+              {isLoadingData && (
+                <div className="hidden sm:flex items-center gap-1.5 h-9.5 px-3 rounded-lg bg-sky-50 text-[11px] font-semibold text-[#0b3b68] border border-sky-100 animate-pulse">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin text-[#ff5c28]" />
+                  <span>Updating...</span>
+                </div>
+              )}
             </div>
           </div>
 
@@ -756,35 +772,6 @@ export default function AttendanceSheetPage() {
           )}
 
           <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs">
-            <div className="flex shrink-0 flex-col gap-2 border-b border-slate-200 px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between sm:px-4">
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-2">
-                  <p className="m-0 text-xs font-extrabold text-[#0b3b68]">
-                    Employee Attendance
-                  </p>
-                  {selectedAccount && (
-                    <span className="rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-[9.5px] font-bold text-blue-700">
-                      {selectedAccount.accountName}
-                    </span>
-                  )}
-                  <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[9.5px] font-bold uppercase text-slate-500">
-                    Live API
-                  </span>
-                </div>
-                <p className="m-0 mt-0.5 truncate text-[10px] text-slate-400">
-                  Showing only employee ID, name, account ID, login, and logout for the selected account.
-                </p>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-2 text-[10px] font-semibold text-slate-500 shrink-0">
-                {responseMeta?.scope?.kronosMapping?.kronosAccountId && (
-                  <span className="rounded-lg bg-slate-100 px-2 py-1 text-slate-600">
-                    Source Account #{responseMeta.scope.kronosMapping.kronosAccountId}
-                  </span>
-                )}
-              </div>
-            </div>
-
             <div className="min-h-0 flex-1 overflow-auto sibs-scrollbar">
               <table
                 className="w-full table-auto border-collapse text-left text-xs"
@@ -792,7 +779,7 @@ export default function AttendanceSheetPage() {
               >
                 <thead className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50 shadow-xs">
                     <tr>
-                      {["Employee ID", "Name", "Account ID", "Login", "Logout"].map((label) => (
+                      {["Employee ID", "Name", "Account Name", "Login", "Logout"].map((label) => (
                         <th
                           key={label}
                           className="whitespace-nowrap px-3 py-2.5 text-[10px] font-bold uppercase tracking-wider text-slate-600"
@@ -803,35 +790,18 @@ export default function AttendanceSheetPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 text-xs text-slate-700">
-                    {isLoadingData ? (
-                      <tr>
-                        <td colSpan={5} className="py-20 text-center text-slate-400">
-                          <div className="flex items-center justify-center gap-2">
-                            <Loader2 className="h-4 w-4 animate-spin text-[#ff5c28]" />
-                            Fetching live attendance data…
-                          </div>
-                        </td>
-                      </tr>
-                    ) : dataRows.length === 0 ? (
-                      <tr>
-                        <td colSpan={5} className="py-20 text-center text-slate-400">
-                          {hasLoadedData
-                            ? "No attendance records found for the selected filters."
-                            : "Select an account and click Load Data to view attendance records."}
-                        </td>
-                      </tr>
-                    ) : (
+                    {dataRows.length > 0 ? (
                       dataRows.map((row, rowIndex) => {
                         const employeeId = getAttendanceEmployeeId(row, responseMeta);
                         const employeeName = getAttendanceEmployeeName(row);
-                        const accountId = getAttendanceAccountId(row, responseMeta, selectedAccount);
+                        const accountName = getAttendanceAccountName(row, responseMeta, selectedAccount);
                         const login = getAttendanceLogin(row, responseMeta);
                         const logout = getAttendanceLogout(row, responseMeta);
 
                         return (
                           <tr
                             key={row?.gy_tracker_id || row?.id || `${employeeId}-${rowIndex}`}
-                            className="hover:bg-slate-50/70"
+                            className={`hover:bg-slate-50/70 ${isLoadingData ? "opacity-60" : ""} transition-opacity`}
                           >
                             <td className="whitespace-nowrap px-3 py-2 font-bold text-slate-900">
                               {employeeId || "—"}
@@ -840,7 +810,7 @@ export default function AttendanceSheetPage() {
                               {employeeName || "—"}
                             </td>
                             <td className="whitespace-nowrap px-3 py-2 font-semibold text-[#0b3b68]">
-                              {accountId || "—"}
+                              {accountName || "—"}
                             </td>
                             <td className="whitespace-nowrap px-3 py-2">
                               {formatDateTime(login)}
@@ -851,12 +821,40 @@ export default function AttendanceSheetPage() {
                           </tr>
                         );
                       })
+                    ) : isLoadingData ? (
+                      Array.from({ length: 8 }).map((_, i) => (
+                        <tr key={`skeleton-${i}`} className="animate-pulse">
+                          <td className="px-3 py-2.5">
+                            <div className="h-4 w-14 bg-slate-200 rounded-md" />
+                          </td>
+                          <td className="px-3 py-2.5">
+                            <div className="h-4 w-36 bg-slate-200 rounded-md" />
+                          </td>
+                          <td className="px-3 py-2.5">
+                            <div className="h-4 w-12 bg-slate-200 rounded-md" />
+                          </td>
+                          <td className="px-3 py-2.5">
+                            <div className="h-4 w-28 bg-slate-200 rounded-md" />
+                          </td>
+                          <td className="px-3 py-2.5">
+                            <div className="h-4 w-28 bg-slate-200 rounded-md" />
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={5} className="py-20 text-center text-slate-400">
+                          {hasLoadedData
+                            ? "No attendance records found for the selected filters."
+                            : "Select an account to view attendance records."}
+                        </td>
+                      </tr>
                     )}
                   </tbody>
               </table>
             </div>
 
-            {!isLoadingData && hasLoadedData && !dataError && (
+            {hasLoadedData && !dataError && (
               <TablePagination
                 currentPage={pagination.currentPage}
                 totalPages={pagination.totalPages}
@@ -864,7 +862,7 @@ export default function AttendanceSheetPage() {
                 pageSize={pagination.limit}
                 onPageChange={(page) => void loadViewerData(page)}
                 itemLabel="records"
-                disabled={isLoadingData}
+                disabled={false}
                 className="shrink-0"
                 extraLeft={
                   <span className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-500">
