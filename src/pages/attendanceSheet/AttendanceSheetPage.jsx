@@ -63,15 +63,16 @@ function normalizeEmployeeCode(value) {
 function formatDateTime(value) {
   if (!value) return "—";
   const raw = String(value).trim();
-  if (!raw) return "—";
+  if (!raw || raw.startsWith("0000-00-00") || raw.startsWith("1970-01-01 00:00:00")) return "—";
 
   const sqlMatch = raw.match(/^(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2})(?::(\d{2}))?/);
   if (sqlMatch) {
+    if (sqlMatch[1] === "0000-00-00") return "—";
     return `${sqlMatch[1]} ${sqlMatch[2]}:${sqlMatch[3] || "00"}`;
   }
 
   const parsed = new Date(raw);
-  if (Number.isNaN(parsed.getTime())) return raw;
+  if (Number.isNaN(parsed.getTime())) return "—";
 
   return parsed.toLocaleString("en-PH", {
     year: "numeric",
@@ -608,16 +609,16 @@ export default function AttendanceSheetPage() {
             </div>
           )}
 
-          {/* Search and filter toolbar matching reference bar */}
-          <div className="shrink-0 flex flex-col lg:flex-row lg:items-end justify-between gap-3 sm:gap-3.5 rounded-xl border border-slate-200 bg-white p-3 sm:p-4 shadow-xs">
-            <div className="flex flex-wrap items-end gap-3 sm:gap-3.5 flex-1 min-w-0 w-full">
-              {/* 1. Search Employee - Very Left */}
-              <div className="w-full sm:w-auto sm:flex-1 sm:min-w-[180px] lg:max-w-xs">
-                <label className="text-xs font-bold text-slate-800 block mb-1.5">
+          {/* Search and filter toolbar matching WOW Report & Calls Report bar */}
+          <div className="sibs-card relative z-40 overflow-visible shadow-xs shrink-0 p-2.5 sm:p-3 bg-white">
+            <div className="flex flex-wrap items-end gap-2.5 sm:gap-3">
+              {/* 1. Search Employee */}
+              <div className="w-full sm:w-auto sm:flex-1 sm:min-w-[170px] sm:max-w-[220px]">
+                <span className="mb-0.5 block text-[9.5px] font-extrabold uppercase text-sibs-tertiary-5">
                   Search Employee
-                </label>
-                <div className="relative flex h-9.5 items-center rounded-lg border border-slate-200 bg-white px-3 hover:border-slate-300 transition-colors focus-within:border-[#0b3b68] focus-within:ring-1 focus-within:ring-[#0b3b68]/20">
-                  <Search className="h-4 w-4 text-slate-400 shrink-0 mr-2" />
+                </span>
+                <div className="relative flex h-8 items-center rounded-lg border border-sibs-tertiary-8 bg-white px-2.5 hover:border-sibs-primary-1 transition-colors focus-within:border-sibs-primary-1 focus-within:ring-1 focus-within:ring-sibs-primary-1/20">
+                  <Search size={12} className="text-slate-400 shrink-0 mr-1.5" />
                   <input
                     type="text"
                     value={employeeSearch}
@@ -625,7 +626,7 @@ export default function AttendanceSheetPage() {
                       setEmployeeSearch(event.target.value);
                     }}
                     placeholder="Search by name or SIBS ID..."
-                    className="w-full bg-transparent text-xs sm:text-[13px] font-medium text-slate-800 placeholder:text-slate-400 outline-none"
+                    className="w-full bg-transparent text-xs font-semibold text-slate-800 placeholder:text-slate-400 outline-none"
                   />
                   {employeeSearch && (
                     <button
@@ -635,44 +636,51 @@ export default function AttendanceSheetPage() {
                       }}
                       className="ml-1 text-slate-400 hover:text-slate-600 cursor-pointer"
                     >
-                      <X className="h-3.5 w-3.5" />
+                      <X size={12} />
                     </button>
                   )}
                 </div>
               </div>
 
               {/* 2. Department */}
-              <div className="w-full sm:w-auto sm:flex-1 sm:min-w-[180px] lg:max-w-xs">
-                <label className="text-xs font-bold text-slate-800 block mb-1.5">
+              <div className="w-full sm:w-auto sm:flex-1 sm:min-w-[160px] sm:max-w-[210px]">
+                <span className="mb-0.5 block text-[9.5px] font-extrabold uppercase text-sibs-tertiary-5">
                   Department
-                </label>
-                <div className="flex h-9.5 items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 text-xs font-semibold text-slate-600">
-                  <ShieldCheck className="h-4 w-4 shrink-0 text-[#0b3b68]" />
+                </span>
+                <div className="flex h-8 items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50/80 px-2.5 text-xs font-semibold text-slate-700">
+                  <ShieldCheck size={13} className="shrink-0 text-sibs-primary-1" />
                   <span className="truncate">Call Center Operations</span>
                 </div>
               </div>
 
               {/* 3. Account Dropdown */}
-              <div className="relative w-full sm:w-auto sm:flex-1 sm:min-w-[180px] lg:max-w-xs" ref={accountDropdownRef}>
-                <label className="text-xs font-bold text-slate-800 block mb-1.5">
+              <div className="relative w-full sm:w-auto sm:flex-1 sm:min-w-[160px] sm:max-w-[210px]" ref={accountDropdownRef}>
+                <span className="mb-0.5 block text-[9.5px] font-extrabold uppercase text-sibs-tertiary-5">
                   Account
-                </label>
+                </span>
                 <button
                   type="button"
                   disabled={isLoadingMetadata || accounts.length === 0}
                   onClick={() => setIsAccountDropdownOpen((prev) => !prev)}
-                  className={`flex h-9.5 w-full cursor-pointer items-center justify-between gap-2 rounded-lg border bg-white px-3 text-xs font-semibold transition hover:bg-slate-50 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60 ${
+                  className={`group flex h-8 w-full cursor-pointer items-center justify-between gap-1.5 rounded-lg border bg-white px-2.5 text-left text-xs font-semibold outline-none transition disabled:cursor-not-allowed disabled:opacity-50 ${
                     isAccountDropdownOpen
-                      ? "border-[#0b3b68] ring-1 ring-[#0b3b68]/20"
-                      : "border-slate-200 text-slate-800 hover:border-slate-300"
+                      ? "border-sibs-primary-1 ring-1 ring-sibs-primary-1/20"
+                      : "border-sibs-tertiary-8 hover:border-sibs-primary-1 hover:bg-slate-50/50"
                   }`}
                 >
-                  <span className="truncate">
+                  <span
+                    className={`truncate min-w-0 flex-1 ${
+                      selectedAccount
+                        ? "font-bold text-sibs-primary-1"
+                        : "font-semibold text-slate-800"
+                    }`}
+                  >
                     {selectedAccount?.accountName || "Select account"}
                   </span>
                   <ChevronDown
-                    className={`h-4 w-4 text-slate-400 transition-transform ${
-                      isAccountDropdownOpen ? "rotate-180" : ""
+                    size={13}
+                    className={`shrink-0 text-slate-500 transition-transform duration-200 group-hover:text-sibs-primary-1 ${
+                      isAccountDropdownOpen ? "rotate-180 text-sibs-primary-1" : ""
                     }`}
                   />
                 </button>
@@ -737,11 +745,9 @@ export default function AttendanceSheetPage() {
               </div>
 
               {/* 4. Select Date */}
-              <div className="w-full sm:w-auto min-w-0 sm:min-w-[155px]">
+              <div className="w-full sm:w-auto sm:flex-1 sm:min-w-[150px] sm:max-w-[190px]">
                 <DatePicker
                   label="Select Date"
-                  labelClassName="text-xs font-bold text-slate-800 block mb-1.5"
-                  buttonClassName="h-9.5 w-full sm:w-auto rounded-full border border-slate-300 bg-white px-3.5 text-xs font-semibold text-slate-700 shadow-2xs hover:border-[#0b3b68]"
                   value={selectedDate}
                   onChange={(val) => {
                     setSelectedDate(val || "");
@@ -751,7 +757,7 @@ export default function AttendanceSheetPage() {
 
               {/* Status Indicator */}
               {isLoadingData && (
-                <div className="hidden sm:flex items-center gap-1.5 h-9.5 px-3 rounded-lg bg-sky-50 text-[11px] font-semibold text-[#0b3b68] border border-sky-100 animate-pulse">
+                <div className="flex items-center gap-1.5 h-8 px-2.5 rounded-lg bg-sky-50 text-[11px] font-semibold text-sibs-primary-1 border border-sky-100 animate-pulse ml-auto sm:ml-0">
                   <Loader2 className="h-3.5 w-3.5 animate-spin text-[#ff5c28]" />
                   <span>Updating...</span>
                 </div>
@@ -774,53 +780,67 @@ export default function AttendanceSheetPage() {
           <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs">
             <div className="min-h-0 flex-1 overflow-auto sibs-scrollbar">
               <table
-                className="w-full table-auto border-collapse text-left text-xs"
+                className="w-full table-auto border-collapse text-left text-[12.5px]"
                 style={{ minWidth: `${tableMinWidth}px` }}
               >
-                <thead className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50 shadow-xs">
-                    <tr>
-                      {["Employee ID", "Name", "Account Name", "Login", "Logout"].map((label) => (
-                        <th
-                          key={label}
-                          className="whitespace-nowrap px-3 py-2.5 text-[10px] font-bold uppercase tracking-wider text-slate-600"
-                        >
-                          {label}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 text-xs text-slate-700">
-                    {dataRows.length > 0 ? (
-                      dataRows.map((row, rowIndex) => {
-                        const employeeId = getAttendanceEmployeeId(row, responseMeta);
-                        const employeeName = getAttendanceEmployeeName(row);
-                        const accountName = getAttendanceAccountName(row, responseMeta, selectedAccount);
-                        const login = getAttendanceLogin(row, responseMeta);
-                        const logout = getAttendanceLogout(row, responseMeta);
+                <thead className="sticky top-0 z-10 border-b border-slate-200 bg-slate-100/90 backdrop-blur-xs shadow-2xs">
+                  <tr>
+                    {["Employee ID", "Name", "Account Name", "Login", "Logout"].map((label) => (
+                      <th
+                        key={label}
+                        className="whitespace-nowrap px-4 py-3 text-[11px] font-extrabold uppercase tracking-wider text-slate-700"
+                      >
+                        {label}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 text-slate-800">
+                  {dataRows.length > 0 ? (
+                    dataRows.map((row, rowIndex) => {
+                      const employeeId = getAttendanceEmployeeId(row, responseMeta);
+                      const employeeName = getAttendanceEmployeeName(row);
+                      const accountName = getAttendanceAccountName(row, responseMeta, selectedAccount);
+                      const login = getAttendanceLogin(row, responseMeta);
+                      const logout = getAttendanceLogout(row, responseMeta);
+                      const formattedLogin = formatDateTime(login);
+                      const formattedLogout = formatDateTime(logout);
 
-                        return (
-                          <tr
-                            key={row?.gy_tracker_id || row?.id || `${employeeId}-${rowIndex}`}
-                            className={`hover:bg-slate-50/70 ${isLoadingData ? "opacity-60" : ""} transition-opacity`}
-                          >
-                            <td className="whitespace-nowrap px-3 py-2 font-bold text-slate-900">
-                              {employeeId || "—"}
-                            </td>
-                            <td className="whitespace-nowrap px-3 py-2 font-semibold text-slate-700">
-                              {employeeName || "—"}
-                            </td>
-                            <td className="whitespace-nowrap px-3 py-2 font-semibold text-[#0b3b68]">
+                      return (
+                        <tr
+                          key={row?.gy_tracker_id || row?.id || `${employeeId}-${rowIndex}`}
+                          className={`transition-colors hover:bg-sky-50/60 ${
+                            rowIndex % 2 === 0 ? "bg-white" : "bg-slate-50/40"
+                          } ${isLoadingData ? "opacity-60" : ""}`}
+                        >
+                          <td className="whitespace-nowrap px-4 py-3 font-bold text-slate-900">
+                            {employeeId || "—"}
+                          </td>
+                          <td className="whitespace-nowrap px-4 py-3 font-semibold text-slate-800">
+                            {employeeName || "—"}
+                          </td>
+                          <td className="whitespace-nowrap px-4 py-3">
+                            <span className="inline-flex items-center rounded-md bg-sky-50 px-2 py-0.5 text-[11px] font-bold text-[#0b3b68] border border-sky-200/80 shadow-2xs">
                               {accountName || "—"}
-                            </td>
-                            <td className="whitespace-nowrap px-3 py-2">
-                              {formatDateTime(login)}
-                            </td>
-                            <td className="whitespace-nowrap px-3 py-2">
-                              {formatDateTime(logout)}
-                            </td>
-                          </tr>
-                        );
-                      })
+                            </span>
+                          </td>
+                          <td className="whitespace-nowrap px-4 py-3 font-mono text-[12px] text-slate-700">
+                            {formattedLogin === "—" ? (
+                              <span className="text-slate-400 font-sans">—</span>
+                            ) : (
+                              formattedLogin
+                            )}
+                          </td>
+                          <td className="whitespace-nowrap px-4 py-3 font-mono text-[12px] text-slate-700">
+                            {formattedLogout === "—" ? (
+                              <span className="text-slate-400 font-sans">—</span>
+                            ) : (
+                              formattedLogout
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })
                     ) : isLoadingData ? (
                       Array.from({ length: 8 }).map((_, i) => (
                         <tr key={`skeleton-${i}`} className="animate-pulse">
