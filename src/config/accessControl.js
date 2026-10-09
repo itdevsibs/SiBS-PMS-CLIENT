@@ -26,6 +26,7 @@ export const PERMISSIONS = Object.freeze({
   VIEW_EMPLOYEE_LEDGER: "VIEW_EMPLOYEE_LEDGER",
   VIEW_OCCUPANCY: "VIEW_OCCUPANCY",
   VIEW_ATTENDANCE_SHEET: "VIEW_ATTENDANCE_SHEET",
+  VIEW_CALLS_REPORT: "VIEW_CALLS_REPORT",
   SUPER_ADMIN_ACCESS: "SUPER_ADMIN_ACCESS",
   SUPER_ADMIN_HISTORY: "SUPER_ADMIN_HISTORY",
   CLIENT_DASHBOARD: "CLIENT_DASHBOARD",
@@ -127,6 +128,9 @@ const PERMISSION_RULES = Object.freeze({
     ],
   },
   [PERMISSIONS.VIEW_ATTENDANCE_SHEET]: {
+    access: [ACCESS.SUPER_ADMIN, ACCESS.WFM],
+  },
+  [PERMISSIONS.VIEW_CALLS_REPORT]: {
     access: [ACCESS.SUPER_ADMIN, ACCESS.WFM],
   },
   [PERMISSIONS.SUPER_ADMIN_ACCESS]: {
@@ -237,6 +241,13 @@ export const DASHBOARD_MODULES = Object.freeze([
     iconKey: "clipboard-check",
     path: "/attendance-sheet",
     permission: PERMISSIONS.VIEW_ATTENDANCE_SHEET,
+  },
+  {
+    key: "calls-report",
+    name: "Calls Report",
+    iconKey: "phone-call",
+    path: "/calls-report",
+    permission: PERMISSIONS.VIEW_CALLS_REPORT,
   },
   {
     key: "wfm-history",

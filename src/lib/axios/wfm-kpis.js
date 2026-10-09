@@ -25,3 +25,8 @@ export async function getWfmOccupancyKpis(params = {}) {
   const response = await api.get("/wfm/kpis/occupancy", { params });
   return response;
 }
+
+export async function getCallsReport(params = {}) {
+  const response = await api.get("/wfm/kpis/calls-report", { params });
+  return response?.data || response;
+}

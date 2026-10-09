@@ -97,11 +97,8 @@ function EmailVolumeChart({
   const chartHeightStyle = isSubmodule
     ? {
         height: showFilters
-          ? "clamp(140px, calc(50vh - 225px), 220px)"
-          : "clamp(220px, calc(50vh - 150px), 320px)",
-        maxHeight: showFilters
-          ? "clamp(140px, calc(50vh - 225px), 220px)"
-          : "clamp(220px, calc(50vh - 150px), 320px)",
+          ? "clamp(180px, calc((100vh - 350px) / 2), 340px)"
+          : "clamp(240px, calc((100vh - 200px) / 2), 440px)",
       }
     : undefined;
 
@@ -319,11 +316,8 @@ function EmailRateChart({
   const chartHeightStyle = isSubmodule
     ? {
         height: showFilters
-          ? "clamp(140px, calc(50vh - 225px), 220px)"
-          : "clamp(220px, calc(50vh - 150px), 320px)",
-        maxHeight: showFilters
-          ? "clamp(140px, calc(50vh - 225px), 220px)"
-          : "clamp(220px, calc(50vh - 150px), 320px)",
+          ? "clamp(180px, calc((100vh - 350px) / 2), 340px)"
+          : "clamp(240px, calc((100vh - 200px) / 2), 440px)",
       }
     : undefined;
 

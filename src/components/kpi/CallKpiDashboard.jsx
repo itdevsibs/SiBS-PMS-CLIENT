@@ -195,8 +195,8 @@ function VolumeChart({
   const chartHeightStyle = isSubmodule
     ? {
         height: showFilters
-          ? "clamp(140px, calc(50vh - 225px), 220px)"
-          : "clamp(220px, calc(50vh - 150px), 320px)",
+          ? "clamp(180px, calc((100vh - 350px) / 2), 340px)"
+          : "clamp(240px, calc((100vh - 200px) / 2), 440px)",
       }
     : undefined;
 
@@ -458,8 +458,8 @@ function LineChart({
   const chartHeightStyle = customHeightStyle || (isSubmodule
     ? {
         height: showFilters
-          ? "clamp(140px, calc(50vh - 225px), 220px)"
-          : "clamp(220px, calc(50vh - 150px), 320px)",
+          ? "clamp(180px, calc((100vh - 350px) / 2), 340px)"
+          : "clamp(240px, calc((100vh - 200px) / 2), 440px)",
       }
     : undefined);
 
@@ -752,8 +752,8 @@ function AhtChart({
   const chartHeightStyle = customHeightStyle || (isSubmodule
     ? {
         height: showFilters
-          ? "clamp(140px, calc(50vh - 225px), 220px)"
-          : "clamp(220px, calc(50vh - 150px), 320px)",
+          ? "clamp(180px, calc((100vh - 350px) / 2), 340px)"
+          : "clamp(240px, calc((100vh - 200px) / 2), 440px)",
       }
     : undefined);
 
@@ -1024,11 +1024,11 @@ export default function CallKpiDashboard({
     <div className={isSubmodule ? (isFiltersVisible ? "space-y-1.5 sm:space-y-2" : "space-y-2.5") : "flex-1 min-h-0 flex flex-col"}>
       {/* 7 Compact KPI Stat Cards */}
       <div
-        className={`grid transition-[grid-template-rows,opacity] duration-300 ease-in-out ${
+        className={`grid transition-[grid-template-rows,opacity] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] ${
           showSummaryCards ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0 pointer-events-none"
         }`}
       >
-        <div className="overflow-hidden">
+        <div className="overflow-hidden min-h-0">
           <div className={isSubmodule ? "space-y-1 pb-1" : "space-y-1.5 sm:space-y-2 pb-1"}>
             <div>
               <div className="flex items-center gap-1.5 mb-1 px-0.5">

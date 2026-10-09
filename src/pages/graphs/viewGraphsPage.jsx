@@ -961,11 +961,11 @@ export default function ViewGraphsPage() {
                 </div>
 
                 <div
-                  className={`grid transition-[grid-template-rows,opacity] duration-300 ease-in-out ${
-                    showFilters ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0 pointer-events-none"
+                  className={`grid transition-[grid-template-rows,opacity] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] ${
+                    showFilters ? "grid-rows-[1fr] opacity-100 overflow-visible" : "grid-rows-[0fr] opacity-0 pointer-events-none overflow-hidden"
                   }`}
                 >
-                  <div className="overflow-hidden">
+                  <div className={`min-h-0 ${showFilters ? "overflow-visible" : "overflow-hidden"}`}>
                     <div className={`grid grid-cols-1 gap-2 p-2.5 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 ${isCustomPeriod ? "xl:grid-cols-8" : "xl:grid-cols-7"} items-end`}>
                       {/* 1. Account / Source (Hidden in QA) */}
                       {!isQaOnly && (

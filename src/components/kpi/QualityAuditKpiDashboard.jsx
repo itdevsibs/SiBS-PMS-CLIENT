@@ -21,8 +21,8 @@ function EmptyChart({ message, isSubmodule = false, showFilters = true }) {
   const emptyHeightStyle = isSubmodule
     ? {
         height: showFilters
-          ? "clamp(260px, calc(100vh - 425px), 480px)"
-          : "clamp(340px, calc(100vh - 250px), 620px)",
+          ? "clamp(340px, calc(100vh - 290px), 720px)"
+          : "clamp(440px, calc(100vh - 170px), 860px)",
       }
     : undefined;
 
@@ -81,11 +81,8 @@ function QaTransactionsChart({
   const chartHeightStyle = isSubmodule
     ? {
         height: showFilters
-          ? "clamp(260px, calc(100vh - 425px), 480px)"
-          : "clamp(340px, calc(100vh - 250px), 620px)",
-        maxHeight: showFilters
-          ? "clamp(260px, calc(100vh - 425px), 480px)"
-          : "clamp(340px, calc(100vh - 250px), 620px)",
+          ? "clamp(340px, calc(100vh - 290px), 720px)"
+          : "clamp(440px, calc(100vh - 170px), 860px)",
       }
     : undefined;
 
@@ -301,11 +298,8 @@ function QaScoreChart({
   const chartHeightStyle = isSubmodule
     ? {
         height: showFilters
-          ? "clamp(260px, calc(100vh - 425px), 480px)"
-          : "clamp(340px, calc(100vh - 250px), 620px)",
-        maxHeight: showFilters
-          ? "clamp(260px, calc(100vh - 425px), 480px)"
-          : "clamp(340px, calc(100vh - 250px), 620px)",
+          ? "clamp(340px, calc(100vh - 290px), 720px)"
+          : "clamp(440px, calc(100vh - 170px), 860px)",
       }
     : undefined;
 
@@ -320,10 +314,12 @@ function QaScoreChart({
   // Dynamic bar height: thick and chunky in submodule, visible and well-proportioned in Wow Report
   const barHeightClass = isSubmodule
     ? isScrollable
-      ? "h-11 sm:h-12"
+      ? "h-12 sm:h-14"
       : series.length <= 4
-      ? "h-14 sm:h-16"
-      : "h-11 sm:h-12"
+      ? "h-16 sm:h-20"
+      : series.length <= 6
+      ? "h-12 sm:h-14 2xl:h-16"
+      : "h-10 sm:h-12"
     : "h-4.5 sm:h-5";
 
   const labelTextClass = isSubmodule ? "text-[10px] sm:text-[11px] font-bold tracking-tight" : "text-[9px] sm:text-[9.5px] font-bold tracking-tight";
@@ -387,13 +383,13 @@ function QaScoreChart({
           isScrollable
             ? "overflow-y-auto overflow-x-hidden pr-1.5 sibs-chart-scrollbar py-0.5"
             : "flex flex-col justify-evenly py-0.5 overflow-visible"
-        } ${!isSubmodule ? "flex-1 min-h-0 h-full" : ""} transition-all duration-300 ease-in-out`}
+        } flex-1 min-h-0 h-full transition-all duration-300 ease-in-out`}
         style={chartHeightStyle}
       >
         <div
-          className={`min-w-0 ${!isSubmodule ? "h-full flex-1" : ""} ${
+          className={`min-w-0 h-full flex-1 ${
             isScrollable
-              ? "flex flex-col gap-2 sm:gap-2.5 pb-2"
+              ? "flex flex-col gap-2.5 sm:gap-3 pb-2"
               : "flex-1 flex flex-col justify-between py-0.5"
           }`}
         >
@@ -585,7 +581,7 @@ export default function QualityAuditKpiDashboard({
         style={!isSubmodule && showFilters ? { height: "200px", minHeight: "200px" } : undefined}
         className={`grid grid-cols-1 ${!isSubmodule ? "gap-1 sm:gap-1.5 grid-rows-1" : "gap-3.5"} md:grid-cols-2 flex-1 min-h-0 w-full`}
       >
-        <div className={!isSubmodule ? "col-span-1 h-full min-h-0 flex flex-col" : "col-span-1"}>
+        <div className="col-span-1 h-full min-h-0 flex flex-col">
           <ChartShell
             title="QA Transactions"
             tightLeft={!isSubmodule}
@@ -606,7 +602,7 @@ export default function QualityAuditKpiDashboard({
             />
           </ChartShell>
         </div>
-        <div className={!isSubmodule ? "col-span-1 h-full min-h-0 flex flex-col" : "col-span-1"}>
+        <div className="col-span-1 h-full min-h-0 flex flex-col">
           <ChartShell
             title="QA Score"
             tightLeft={!isSubmodule}
