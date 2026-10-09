@@ -4,10 +4,16 @@ import AppHeader from "@/components/layout/AppHeader";
 import ConfirmationModal from "@/components/ui/confirmation-modal";
 import LoadingModal from "@/components/ui/loading-modal";
 import TablePagination from "@/components/tables/TablePagination";
+import DatePicker from "@/components/ui/Filter/DatePicker";
+import MultiSelectDropdown from "@/components/ui/Filter/MultiSelectDropdown";
+import SingleSelectDropdown from "@/components/ui/Filter/SingleSelectDropdown";
 import useDashboardPage from "@/hooks/useDashboardPage";
 import { getCallsReport } from "@/lib/axios/wfm-kpis";
 import {
   AlertCircle,
+  Calendar,
+  Check,
+  ChevronDown,
   Clock,
   Loader2,
   Percent,
@@ -19,6 +25,29 @@ import {
   ShieldCheck,
   X,
 } from "lucide-react";
+
+function formatManilaDate(date = new Date()) {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Manila",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${values.year}-${values.month}-${values.day}`;
+}
+
+function formatDisplayDate(dateStr) {
+  if (!dateStr) return "—";
+  const [year, month, day] = dateStr.split("-").map(Number);
+  if (!year || !month || !day) return dateStr;
+  const dateObj = new Date(year, month - 1, day);
+  return dateObj.toLocaleDateString("en-US", {
+    month: "short",
+    day: "2-digit",
+    year: "numeric",
+  });
+}
 
 export default function CallsReportPage() {
   const dashboard = useDashboardPage();
@@ -45,7 +74,8 @@ export default function CallsReportPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [fetchError, setFetchError] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedCountry, setSelectedCountry] = useState("all");
+  const [selectedDate, setSelectedDate] = useState(() => formatManilaDate()); // Default to today's date
+  const [selectedCountries, setSelectedCountries] = useState([]); // Array of selected country names, empty means all
   const [selectedLanguage, setSelectedLanguage] = useState("all");
   const [selectedSkill, setSelectedSkill] = useState("all");
 
@@ -57,7 +87,11 @@ export default function CallsReportPage() {
     setIsLoading(true);
     setFetchError(null);
     try {
-      const res = await getCallsReport();
+      const params = {};
+      if (selectedDate) {
+        params.date = selectedDate;
+      }
+      const res = await getCallsReport(params);
       const rows = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
       setReportData(rows);
     } catch (err) {
@@ -72,47 +106,55 @@ export default function CallsReportPage() {
 
   useEffect(() => {
     void fetchCallsReport();
-  }, []);
+  }, [selectedDate]);
 
-  // Unique country list
+  // Unique country list formatted for MultiSelectDropdown
   const countryOptions = useMemo(() => {
     const set = new Set();
     reportData.forEach((row) => {
       if (row.country && row.country !== "—") set.add(row.country);
     });
-    return Array.from(set).sort((a, b) => a.localeCompare(b));
+    return Array.from(set)
+      .sort((a, b) => a.localeCompare(b))
+      .map((c) => ({ value: c, label: c }));
   }, [reportData]);
 
-  // Unique language list
+  // Unique language list formatted for SingleSelectDropdown
   const languageOptions = useMemo(() => {
     const set = new Set();
     reportData.forEach((row) => {
-      if (
-        (selectedCountry === "all" || row.country === selectedCountry) &&
-        row.language &&
-        row.language !== "—"
-      ) {
+      const matchCountry =
+        selectedCountries.length === 0 || selectedCountries.includes(row.country);
+      if (matchCountry && row.language && row.language !== "—") {
         set.add(row.language);
       }
     });
-    return Array.from(set).sort((a, b) => a.localeCompare(b));
-  }, [reportData, selectedCountry]);
+    const sorted = Array.from(set).sort((a, b) => a.localeCompare(b));
+    return [
+      { value: "all", label: "All Languages" },
+      ...sorted.map((lang) => ({ value: lang, label: lang })),
+    ];
+  }, [reportData, selectedCountries]);
 
-  // Unique skills list
+  // Unique skills list formatted for SingleSelectDropdown
   const skillOptions = useMemo(() => {
     const set = new Set();
     reportData.forEach((row) => {
       if (row.skill && row.skill !== "—") set.add(row.skill);
     });
-    return Array.from(set).sort((a, b) => a.localeCompare(b));
+    const sorted = Array.from(set).sort((a, b) => a.localeCompare(b));
+    return [
+      { value: "all", label: "All Skills" },
+      ...sorted.map((sk) => ({ value: sk, label: sk })),
+    ];
   }, [reportData]);
 
-  // Filter rows by Search, Country, Language, and Skill
+  // Filter rows by Search, selectedCountries, Language, and Skill
   const filteredData = useMemo(() => {
     const term = searchTerm.toLowerCase().trim();
     return reportData.filter((row) => {
       const matchesCountry =
-        selectedCountry === "all" || row.country === selectedCountry;
+        selectedCountries.length === 0 || selectedCountries.includes(row.country);
       const matchesLanguage =
         selectedLanguage === "all" || row.language === selectedLanguage;
       const matchesSkill =
@@ -130,12 +172,12 @@ export default function CallsReportPage() {
         skill.includes(term)
       );
     });
-  }, [reportData, searchTerm, selectedCountry, selectedLanguage, selectedSkill]);
+  }, [reportData, searchTerm, selectedCountries, selectedLanguage, selectedSkill]);
 
   // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, selectedCountry, selectedLanguage, selectedSkill]);
+  }, [searchTerm, selectedCountries, selectedLanguage, selectedSkill]);
 
   // Paginated Rows
   const totalItems = filteredData.length;
@@ -214,9 +256,141 @@ export default function CallsReportPage() {
         />
 
         <main className="flex min-h-0 flex-1 flex-col gap-2.5 overflow-hidden px-2.5 pb-2 pt-2.5 sm:gap-3 sm:px-4 sm:pt-3 lg:px-5">
+          {/* Search & Filter Toolbar (Matching WOW Report Filter Design) */}
+          <div className="sibs-card relative z-40 overflow-visible shadow-xs shrink-0 p-2.5 sm:p-3 bg-white">
+            <div className="flex flex-wrap items-end gap-2.5 sm:gap-3">
+              {/* 1. Search */}
+              <div className="w-full sm:w-auto sm:flex-1 sm:min-w-[170px] sm:max-w-[220px]">
+                <span className="mb-0.5 block text-[9.5px] font-extrabold uppercase text-sibs-tertiary-5">
+                  Search
+                </span>
+                <div className="relative flex h-8 items-center rounded-lg border border-sibs-tertiary-8 bg-white px-2.5 hover:border-sibs-primary-1 transition-colors focus-within:border-sibs-primary-1 focus-within:ring-1 focus-within:ring-sibs-primary-1/20">
+                  <Search size={12} className="text-slate-400 shrink-0 mr-1.5" />
+                  <input
+                    type="text"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    placeholder="Search country/lang..."
+                    className="w-full bg-transparent text-xs font-semibold text-slate-800 placeholder:text-slate-400 outline-none"
+                  />
+                  {searchTerm && (
+                    <button
+                      type="button"
+                      onClick={() => setSearchTerm("")}
+                      className="ml-1 text-slate-400 hover:text-slate-600 cursor-pointer"
+                    >
+                      <X size={12} />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* 2. Country (Multi-Select) */}
+              <div className="w-full sm:w-auto sm:flex-1 sm:min-w-[160px] sm:max-w-[210px]">
+                <MultiSelectDropdown
+                  label="Country"
+                  value={selectedCountries}
+                  onChange={(val) => {
+                    setSelectedCountries(Array.isArray(val) ? val : []);
+                  }}
+                  options={countryOptions}
+                  placeholder="All Countries"
+                  allOptionLabel="All Countries"
+                />
+              </div>
+
+              {/* 3. Language */}
+              <div className="w-full sm:w-auto sm:flex-1 sm:min-w-[140px] sm:max-w-[190px]">
+                <SingleSelectDropdown
+                  label="Language"
+                  value={selectedLanguage}
+                  onChange={(e) => setSelectedLanguage(e?.target?.value || e || "all")}
+                  options={languageOptions}
+                  placeholder="All Languages"
+                />
+              </div>
+
+              {/* 4. Skill */}
+              <div className="w-full sm:w-auto sm:flex-1 sm:min-w-[140px] sm:max-w-[190px]">
+                <SingleSelectDropdown
+                  label="Skill"
+                  value={selectedSkill}
+                  onChange={(e) => setSelectedSkill(e?.target?.value || e || "all")}
+                  options={skillOptions}
+                  placeholder="All Skills"
+                />
+              </div>
+
+              {/* 5. Select Date */}
+              <div className="w-full sm:w-auto sm:flex-1 sm:min-w-[140px] sm:max-w-[180px]">
+                <DatePicker
+                  label="Select Date"
+                  value={selectedDate}
+                  onChange={(val) => {
+                    setSelectedDate(val || "");
+                  }}
+                />
+              </div>
+
+              {/* 6. Reset & Refresh Actions */}
+              <div className="flex items-center gap-1.5 ml-auto sm:ml-0 mt-1 sm:mt-0">
+                {(selectedDate || selectedCountries.length > 0 || selectedLanguage !== "all" || selectedSkill !== "all" || searchTerm) && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedDate("");
+                      setSelectedCountries([]);
+                      setSelectedLanguage("all");
+                      setSelectedSkill("all");
+                      setSearchTerm("");
+                    }}
+                    className="inline-flex h-8 items-center justify-center px-2.5 text-xs font-bold text-rose-600 hover:text-white hover:bg-rose-600 rounded-lg transition cursor-pointer border border-rose-200 shadow-2xs"
+                    title="Reset all filters"
+                  >
+                    Reset
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  onClick={fetchCallsReport}
+                  disabled={isLoading}
+                  title="Refresh data"
+                  className="inline-flex h-8 cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-sibs-tertiary-8 bg-white px-3 text-xs font-bold text-sibs-primary-1 shadow-2xs transition hover:border-sibs-primary-1 hover:bg-sibs-primary-1 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  <RefreshCw
+                    size={12}
+                    className={`shrink-0 ${
+                      isLoading ? "animate-spin text-inherit" : ""
+                    }`}
+                  />
+                  <span>Refresh</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
           {/* High-level KPI summary cards - Compact corporate sizing matching Occupancy */}
-          <div className="shrink-0 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
-            {/* 1. Calls Received */}
+          <div className="shrink-0 grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-7">
+            {/* 1. Date */}
+            <div className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 sm:px-3 sm:py-2 shadow-2xs transition-all hover:border-slate-300">
+              <div className="flex items-center justify-between gap-1.5">
+                <span
+                  className="text-[10px] font-bold uppercase tracking-wider text-slate-500 truncate"
+                  title="Report Date"
+                >
+                  Date
+                </span>
+                <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-slate-100 text-slate-600">
+                  <Calendar size={11} />
+                </div>
+              </div>
+              <div className="mt-0.5 text-xs sm:text-sm font-extrabold text-sibs-primary-1 leading-snug truncate" title={selectedDate || "All Dates"}>
+                {selectedDate ? formatDisplayDate(selectedDate) : "All Dates"}
+              </div>
+            </div>
+
+            {/* 2. Calls Received */}
             <div className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 sm:px-3 sm:py-2 shadow-2xs transition-all hover:border-slate-300">
               <div className="flex items-center justify-between gap-1.5">
                 <span
@@ -325,134 +499,6 @@ export default function CallsReportPage() {
             </div>
           </div>
 
-          {/* Search & Filter Toolbar */}
-          <div className="shrink-0 flex flex-col lg:flex-row lg:items-end justify-between gap-3 sm:gap-3.5 rounded-xl border border-slate-200 bg-white p-3 sm:p-4 shadow-xs">
-            <div className="flex flex-wrap items-end gap-3 sm:gap-3.5 flex-1 min-w-0 w-full">
-              {/* 1. Search Employee / Skill */}
-              <div className="w-full sm:w-auto sm:flex-1 sm:min-w-[200px] lg:max-w-xs">
-                <label className="text-xs font-bold text-slate-800 block mb-1.5">
-                  Search
-                </label>
-                <div className="relative flex h-9.5 items-center rounded-lg border border-slate-200 bg-white px-3 hover:border-slate-300 transition-colors focus-within:border-[#0b3b68] focus-within:ring-1 focus-within:ring-[#0b3b68]/20">
-                  <Search className="h-4 w-4 text-slate-400 shrink-0 mr-2" />
-                  <input
-                    type="text"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    placeholder="Search country or language..."
-                    className="w-full bg-transparent text-xs sm:text-[13px] font-medium text-slate-800 placeholder:text-slate-400 outline-none"
-                  />
-                  {searchTerm && (
-                    <button
-                      type="button"
-                      onClick={() => setSearchTerm("")}
-                      className="ml-1 text-slate-400 hover:text-slate-600 cursor-pointer"
-                    >
-                      <X className="h-3.5 w-3.5" />
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              {/* 2. Country Dropdown */}
-              <div className="w-full sm:w-auto sm:flex-1 sm:min-w-[170px] lg:max-w-xs">
-                <label className="text-xs font-bold text-slate-800 block mb-1.5">
-                  Country
-                </label>
-                <select
-                  value={selectedCountry}
-                  onChange={(e) => {
-                    setSelectedCountry(e.target.value);
-                    setSelectedLanguage("all");
-                  }}
-                  className="h-9.5 w-full rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 outline-none hover:border-slate-300 focus:border-[#0b3b68] focus:ring-1 focus:ring-[#0b3b68]/20 cursor-pointer"
-                >
-                  <option value="all">All Countries</option>
-                  {countryOptions.map((c) => (
-                    <option key={c} value={c}>
-                      {c}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* 3. Language Dropdown */}
-              <div className="w-full sm:w-auto sm:flex-1 sm:min-w-[160px] lg:max-w-xs">
-                <label className="text-xs font-bold text-slate-800 block mb-1.5">
-                  Language
-                </label>
-                <select
-                  value={selectedLanguage}
-                  onChange={(e) => setSelectedLanguage(e.target.value)}
-                  className="h-9.5 w-full rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 outline-none hover:border-slate-300 focus:border-[#0b3b68] focus:ring-1 focus:ring-[#0b3b68]/20 cursor-pointer"
-                >
-                  <option value="all">All Languages</option>
-                  {languageOptions.map((lang) => (
-                    <option key={lang} value={lang}>
-                      {lang}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* 4. Skills Dropdown */}
-              <div className="w-full sm:w-auto sm:flex-1 sm:min-w-[140px] lg:max-w-xs">
-                <label className="text-xs font-bold text-slate-800 block mb-1.5">
-                  Skills
-                </label>
-                <select
-                  value={selectedSkill}
-                  onChange={(e) => setSelectedSkill(e.target.value)}
-                  className="h-9.5 w-full rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 outline-none hover:border-slate-300 focus:border-[#0b3b68] focus:ring-1 focus:ring-[#0b3b68]/20 cursor-pointer"
-                >
-                  <option value="all">All Skills</option>
-                  {skillOptions.map((sk) => (
-                    <option key={sk} value={sk}>
-                      {sk}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Reset Filters (shown if active) */}
-              {(selectedCountry !== "all" || selectedLanguage !== "all" || selectedSkill !== "all" || searchTerm) && (
-                <div className="w-full sm:w-auto">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSelectedCountry("all");
-                      setSelectedLanguage("all");
-                      setSelectedSkill("all");
-                      setSearchTerm("");
-                    }}
-                    className="inline-flex h-9.5 items-center justify-center px-3.5 text-xs font-semibold text-rose-600 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition cursor-pointer border border-rose-200"
-                    title="Clear filters"
-                  >
-                    Reset
-                  </button>
-                </div>
-              )}
-
-              {/* Refresh button */}
-              <div className="w-full sm:w-auto sm:ml-auto">
-                <button
-                  type="button"
-                  onClick={fetchCallsReport}
-                  disabled={isLoading}
-                  title="Refresh data"
-                  className="inline-flex h-9.5 w-full sm:w-auto items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition cursor-pointer disabled:opacity-60"
-                >
-                  <RefreshCw
-                    className={`h-3.5 w-3.5 text-slate-500 ${
-                      isLoading ? "animate-spin text-[#ff5c28]" : ""
-                    }`}
-                  />
-                  <span>Refresh</span>
-                </button>
-              </div>
-            </div>
-          </div>
-
           {fetchError && (
             <div className="shrink-0 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2.5 text-xs text-rose-700">
               <div className="flex items-start gap-2">
@@ -466,90 +512,131 @@ export default function CallsReportPage() {
           <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs">
             <div className="min-h-0 flex-1 overflow-auto sibs-scrollbar">
               <table
-                className="w-full table-auto border-collapse text-left text-xs"
+                className="w-full table-auto border-collapse text-left text-[12.5px]"
                 style={{ minWidth: `${tableMinWidth}px` }}
               >
-                <thead className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50 shadow-xs">
+                <thead className="sticky top-0 z-10 border-b border-slate-200 bg-slate-100/90 backdrop-blur-xs shadow-2xs">
                   <tr>
-                    <th className="whitespace-nowrap px-3.5 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-600">
+                    <th className="whitespace-nowrap px-4 py-3 text-[11px] font-extrabold uppercase tracking-wider text-slate-700">
                       Country
                     </th>
-                    <th className="whitespace-nowrap px-3.5 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-600">
+                    <th className="whitespace-nowrap px-4 py-3 text-[11px] font-extrabold uppercase tracking-wider text-slate-700">
                       Language
                     </th>
-                    <th className="whitespace-nowrap px-3.5 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-600">
+                    <th className="whitespace-nowrap px-4 py-3 text-[11px] font-extrabold uppercase tracking-wider text-slate-700">
                       Skills
                     </th>
-                    <th className="whitespace-nowrap px-3.5 py-3 text-right text-[11px] font-bold uppercase tracking-wider text-slate-600">
+                    <th className="whitespace-nowrap px-4 py-3 text-right text-[11px] font-extrabold uppercase tracking-wider text-slate-700">
                       Calls Received
                     </th>
-                    <th className="whitespace-nowrap px-3.5 py-3 text-right text-[11px] font-bold uppercase tracking-wider text-slate-600">
+                    <th className="whitespace-nowrap px-4 py-3 text-right text-[11px] font-extrabold uppercase tracking-wider text-slate-700">
                       Calls Answered
                     </th>
-                    <th className="whitespace-nowrap px-3.5 py-3 text-right text-[11px] font-bold uppercase tracking-wider text-slate-600">
+                    <th className="whitespace-nowrap px-4 py-3 text-right text-[11px] font-extrabold uppercase tracking-wider text-slate-700">
                       Calls Abandoned
                     </th>
-                    <th className="whitespace-nowrap px-3.5 py-3 text-right text-[11px] font-bold uppercase tracking-wider text-slate-600">
+                    <th className="whitespace-nowrap px-4 py-3 text-right text-[11px] font-extrabold uppercase tracking-wider text-slate-700">
                       Calls Abandoned after SL
                     </th>
-                    <th className="whitespace-nowrap px-3.5 py-3 text-right text-[11px] font-bold uppercase tracking-wider text-slate-600">
+                    <th className="whitespace-nowrap px-4 py-3 text-right text-[11px] font-extrabold uppercase tracking-wider text-slate-700">
                       Calls Answered within SL
                     </th>
-                    <th className="whitespace-nowrap px-3.5 py-3 text-right text-[11px] font-bold uppercase tracking-wider text-slate-600">
+                    <th className="whitespace-nowrap px-4 py-3 text-right text-[11px] font-extrabold uppercase tracking-wider text-slate-700">
                       AHT
                     </th>
-                    <th className="whitespace-nowrap px-3.5 py-3 text-right text-[11px] font-bold uppercase tracking-wider text-slate-600">
+                    <th className="whitespace-nowrap px-4 py-3 text-right text-[11px] font-extrabold uppercase tracking-wider text-slate-700">
                       Abandoned Rate
                     </th>
-                    <th className="whitespace-nowrap px-3.5 py-3 text-right text-[11px] font-bold uppercase tracking-wider text-slate-600">
+                    <th className="whitespace-nowrap px-4 py-3 text-right text-[11px] font-extrabold uppercase tracking-wider text-slate-700">
                       SL (Answered within 60 secs.)
                     </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 text-xs text-slate-700">
+                <tbody className="divide-y divide-slate-100 text-slate-800">
                   {paginatedData.length > 0 ? (
-                    paginatedData.map((row, idx) => (
-                      <tr
-                        key={`${row.country}-${row.language}-${row.skill || ""}-${idx}`}
-                        className="hover:bg-slate-50/70 transition-colors"
-                      >
-                        <td className="whitespace-nowrap px-3.5 py-2.5 font-bold text-slate-900">
-                          {row.country || "—"}
-                        </td>
-                        <td className="whitespace-nowrap px-3.5 py-2.5 font-semibold text-slate-700">
-                          {row.language || "—"}
-                        </td>
-                        <td className="whitespace-nowrap px-3.5 py-2.5 font-semibold text-[#0b3b68]">
-                          <span className="inline-flex items-center rounded-md bg-sky-50 px-2 py-0.5 text-[11px] font-bold text-[#0b3b68] border border-sky-100">
-                            {row.skill || "—"}
-                          </span>
-                        </td>
-                        <td className="whitespace-nowrap px-3.5 py-2.5 text-right font-medium text-slate-800">
-                          {(row.callsReceived ?? 0).toLocaleString()}
-                        </td>
-                        <td className="whitespace-nowrap px-3.5 py-2.5 text-right font-semibold text-emerald-700">
-                          {(row.callsAnswered ?? 0).toLocaleString()}
-                        </td>
-                        <td className="whitespace-nowrap px-3.5 py-2.5 text-right font-medium text-rose-700">
-                          {(row.callsAbandoned ?? 0).toLocaleString()}
-                        </td>
-                        <td className="whitespace-nowrap px-3.5 py-2.5 text-right font-medium text-amber-700">
-                          {(row.callsAbandonedAfterSl ?? 0).toLocaleString()}
-                        </td>
-                        <td className="whitespace-nowrap px-3.5 py-2.5 text-right font-medium text-[#0b3b68]">
-                          {(row.callsAnsweredWithinSl ?? 0).toLocaleString()}
-                        </td>
-                        <td className="whitespace-nowrap px-3.5 py-2.5 text-right font-mono font-medium text-slate-700">
-                          {row.aht || "00:00"}
-                        </td>
-                        <td className="whitespace-nowrap px-3.5 py-2.5 text-right font-semibold text-rose-600">
-                          {row.abandonedRate || "0.00%"}
-                        </td>
-                        <td className="whitespace-nowrap px-3.5 py-2.5 text-right font-bold text-[#0b3b68]">
-                          {row.sl || "0.00%"}
-                        </td>
-                      </tr>
-                    ))
+                    paginatedData.map((row, idx) => {
+                      const isAbandonedZero = Number(row.callsAbandoned || 0) === 0;
+                      const isAbandonedAfterSlZero = Number(row.callsAbandonedAfterSl || 0) === 0;
+                      const slNumber = parseFloat(row.sl) || 0;
+                      const isHighSL = slNumber >= 80;
+
+                      return (
+                        <tr
+                          key={`${row.country}-${row.language}-${row.skill || ""}-${idx}`}
+                          className={`transition-colors hover:bg-sky-50/60 ${
+                            idx % 2 === 0 ? "bg-white" : "bg-slate-50/40"
+                          }`}
+                        >
+                          <td className="whitespace-nowrap px-4 py-3 font-bold text-slate-900">
+                            {row.country || "—"}
+                          </td>
+                          <td className="whitespace-nowrap px-4 py-3 font-semibold text-slate-800">
+                            {row.language || "—"}
+                          </td>
+                          <td className="whitespace-nowrap px-4 py-3">
+                            <span className="inline-flex items-center rounded-md bg-sky-50 px-2 py-0.5 text-[11px] font-bold text-[#0b3b68] border border-sky-200/80 shadow-2xs">
+                              {row.skill || "—"}
+                            </span>
+                          </td>
+                          <td className="whitespace-nowrap px-4 py-3 text-right font-bold text-slate-900">
+                            {(row.callsReceived ?? 0).toLocaleString()}
+                          </td>
+                          <td className="whitespace-nowrap px-4 py-3 text-right font-bold text-emerald-600">
+                            {(row.callsAnswered ?? 0).toLocaleString()}
+                          </td>
+                          <td className="whitespace-nowrap px-4 py-3 text-right">
+                            <span
+                              className={`font-semibold ${
+                                isAbandonedZero
+                                  ? "text-slate-400"
+                                  : "text-rose-600 font-bold"
+                              }`}
+                            >
+                              {(row.callsAbandoned ?? 0).toLocaleString()}
+                            </span>
+                          </td>
+                          <td className="whitespace-nowrap px-4 py-3 text-right">
+                            <span
+                              className={`font-semibold ${
+                                isAbandonedAfterSlZero
+                                  ? "text-slate-400"
+                                  : "text-amber-600 font-bold"
+                              }`}
+                            >
+                              {(row.callsAbandonedAfterSl ?? 0).toLocaleString()}
+                            </span>
+                          </td>
+                          <td className="whitespace-nowrap px-4 py-3 text-right font-semibold text-[#0b3b68]">
+                            {(row.callsAnsweredWithinSl ?? 0).toLocaleString()}
+                          </td>
+                          <td className="whitespace-nowrap px-4 py-3 text-right font-mono font-semibold text-slate-800">
+                            {row.aht || "00:00"}
+                          </td>
+                          <td className="whitespace-nowrap px-4 py-3 text-right">
+                            <span
+                              className={`inline-block font-bold ${
+                                isAbandonedZero
+                                  ? "text-slate-400"
+                                  : "text-rose-600"
+                              }`}
+                            >
+                              {row.abandonedRate || "0.00%"}
+                            </span>
+                          </td>
+                          <td className="whitespace-nowrap px-4 py-3 text-right">
+                            <span
+                              className={`inline-flex items-center justify-end font-bold ${
+                                isHighSL
+                                  ? "text-emerald-700"
+                                  : "text-amber-600"
+                              }`}
+                            >
+                              {row.sl || "0.00%"}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })
                   ) : isLoading ? (
                     Array.from({ length: 10 }).map((_, i) => (
                       <tr key={`skeleton-${i}`} className="animate-pulse">
