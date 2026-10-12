@@ -48,6 +48,7 @@ import {
   getWfmEmailKpis,
   getWfmQualityAuditKpis,
   getWfmOccupancyKpis,
+  getWfmUtilizationKpis,
 } from "@/lib/axios/wfm-kpis";
 import {
   PERIOD_OPTIONS,
@@ -224,6 +225,34 @@ function buildEmailRequestParams(filters) {
   return params;
 }
 
+function mergeOccupancyAndUtilization(occupancyData = {}, utilizationData = {}) {
+  const occupancySeries = Array.isArray(occupancyData?.series) ? occupancyData.series : [];
+  const utilizationSeries = Array.isArray(utilizationData?.series) ? utilizationData.series : [];
+  const utilizationByKey = new Map(
+    utilizationSeries.map((item) => [item?.key, item]),
+  );
+  const occupancyKeys = new Set(occupancySeries.map((item) => item?.key));
+
+  const mergedSeries = occupancySeries.map((item) => ({
+    ...item,
+    ...(utilizationByKey.get(item?.key) || {}),
+  }));
+
+  for (const item of utilizationSeries) {
+    if (!occupancyKeys.has(item?.key)) mergedSeries.push(item);
+  }
+
+  return {
+    ...occupancyData,
+    summary: {
+      ...(occupancyData?.summary || {}),
+      ...(utilizationData?.summary || {}),
+    },
+    series: mergedSeries,
+    utilization: utilizationData?.utilization || occupancyData?.utilization || null,
+  };
+}
+
 function buildQualityAuditRequestParams(filters) {
   // Quality Audit uses the shared reporting range, Task Order, Country, and LOB.
   // Account/Source and Skill are Calls-only filters and must not affect QA.
@@ -283,17 +312,21 @@ export default function ViewGraphsPage() {
   const [emailKpiResponse, setEmailKpiResponse] = useState(null);
   const [qualityAuditKpiResponse, setQualityAuditKpiResponse] = useState(null);
   const [occupancyKpiResponse, setOccupancyKpiResponse] = useState(null);
+  const [utilizationKpiResponse, setUtilizationKpiResponse] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isUtilizationLoading, setIsUtilizationLoading] = useState(false);
   const [error, setError] = useState("");
   const [emailError, setEmailError] = useState("");
   const [qualityAuditError, setQualityAuditError] = useState("");
   const [occupancyError, setOccupancyError] = useState("");
+  const [utilizationError, setUtilizationError] = useState("");
   const [skillsByCountryState, setSkillsByCountryState] = useState(SKILLS_BY_COUNTRY);
   const [showFilters, setShowFilters] = useState(true);
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
   const [showDownloadPdfModal, setShowDownloadPdfModal] = useState(false);
   const [exportingSections, setExportingSections] = useState([]);
   const skipNextFetchRef = useRef(false);
+  const utilizationRequestRef = useRef(0);
 
   const handleExecutePdfDownload = async (selectedReportIds = []) => {
     if (isDownloadingPdf || !selectedReportIds.length) return;
@@ -328,6 +361,11 @@ export default function ViewGraphsPage() {
       if ((isAllReports || selectedReportIds.includes("occupancy")) && !occupancyKpiResponse) {
         fetches.push(
           getWfmOccupancyKpis(buildEmailRequestParams(filters)).then((res) => setOccupancyKpiResponse(res)),
+        );
+      }
+      if ((isAllReports || selectedReportIds.includes("occupancy")) && !utilizationKpiResponse) {
+        fetches.push(
+          getWfmUtilizationKpis(buildEmailRequestParams(filters)).then((res) => setUtilizationKpiResponse(res)),
         );
       }
 
@@ -470,6 +508,8 @@ export default function ViewGraphsPage() {
     setError("");
     setEmailError("");
     setQualityAuditError("");
+    setOccupancyError("");
+    setUtilizationError("");
 
     try {
       const promises = [];
@@ -532,6 +572,9 @@ export default function ViewGraphsPage() {
 
       if (showOccupancy) {
         const occupancyParams = buildEmailRequestParams(filters);
+        const utilizationRequestId = ++utilizationRequestRef.current;
+
+        // Occupancy remains a fast PMS-only request and controls the main page loader.
         promises.push(
           getWfmOccupancyKpis(occupancyParams)
             .then((res) => {
@@ -546,8 +589,36 @@ export default function ViewGraphsPage() {
               setOccupancyKpiResponse(null);
             }),
         );
+
+        // Utilization is intentionally loaded in parallel but is NOT added to the
+        // main blocking promise list. The Occupancy graph can render immediately
+        // while the smaller targeted Kronos request finishes in the background.
+        setIsUtilizationLoading(true);
+        setUtilizationKpiResponse(null);
+        getWfmUtilizationKpis(occupancyParams)
+          .then((res) => {
+            if (utilizationRequestId !== utilizationRequestRef.current) return;
+            setUtilizationKpiResponse(res);
+          })
+          .catch((err) => {
+            if (utilizationRequestId !== utilizationRequestRef.current) return;
+            const utilizationMessage =
+              err?.response?.data?.message ||
+              err?.message ||
+              "Unable to load Utilization KPI data.";
+            setUtilizationError(utilizationMessage);
+            setUtilizationKpiResponse(null);
+          })
+          .finally(() => {
+            if (utilizationRequestId === utilizationRequestRef.current) {
+              setIsUtilizationLoading(false);
+            }
+          });
       } else {
+        utilizationRequestRef.current += 1;
         setOccupancyKpiResponse(null);
+        setUtilizationKpiResponse(null);
+        setIsUtilizationLoading(false);
       }
 
       await Promise.allSettled(promises);
@@ -760,8 +831,13 @@ export default function ViewGraphsPage() {
   const qualityAuditDashboardData =
     qualityAuditKpiResponse?.data?.data || {};
 
-  const occupancyDashboardData =
-    occupancyKpiResponse?.data?.data || {};
+  const utilizationDashboardData =
+    utilizationKpiResponse?.data?.data || {};
+
+  const occupancyDashboardData = mergeOccupancyAndUtilization(
+    occupancyKpiResponse?.data?.data || {},
+    utilizationDashboardData,
+  );
 
   const availableGrains =
     Array.isArray(dashboardData.availableGrains)
@@ -1284,6 +1360,17 @@ export default function ViewGraphsPage() {
                           <span>{occupancyError}</span>
                         </div>
                       ) : null}
+                      {!occupancyError && isUtilizationLoading ? (
+                        <div className="mb-1 flex items-center gap-1.5 px-1 text-[10px] font-semibold text-sibs-tertiary-5">
+                          <RefreshCw size={11} className="animate-spin text-sibs-primary-1" />
+                          <span>Occupancy loaded. Fetching targeted Utilization attendance in the background...</span>
+                        </div>
+                      ) : utilizationError ? (
+                        <div className="mb-1 flex items-center gap-1.5 px-1 text-[10px] font-semibold text-amber-700">
+                          <AlertCircle size={11} />
+                          <span>{utilizationError}</span>
+                        </div>
+                      ) : null}
                       <OccupancyKpiDashboard
                         data={occupancyDashboardData || {}}
                         showSummaryCards={isOccupancyOnly ? showFilters : false}
@@ -1349,7 +1436,7 @@ export default function ViewGraphsPage() {
               callData={kpiResponse?.data?.data || dashboardData || {}}
               emailData={emailKpiResponse?.data?.data || emailDashboardData || {}}
               qualityAuditData={qualityAuditKpiResponse?.data?.data || qualityAuditDashboardData || {}}
-              occupancyData={occupancyKpiResponse?.data?.data || occupancyDashboardData || {}}
+              occupancyData={occupancyDashboardData || {}}
               selectedSections={exportingSections}
             />
           </div>
