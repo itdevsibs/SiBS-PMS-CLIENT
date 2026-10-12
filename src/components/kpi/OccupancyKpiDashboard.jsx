@@ -48,12 +48,17 @@ export function OccupancySummaryCards({
     },
     {
       label: "Utilization Rate",
-      value: summary?.utilizationPct != null ? `${formatNumber(summary.utilizationPct, 2)}%` : "0%",
-      hint: "Productive working time",
+      value: summary?.utilizationPct != null ? `${formatNumber(summary.utilizationPct, 2)}%` : "—",
+      hint: "Productive time ÷ total shift time",
       icon: TrendingUp,
       status: {
-        label: "Target 90%",
-        className: "bg-amber-100 text-amber-700",
+        label: "Target ≥80%",
+        className:
+          summary?.utilizationPct == null
+            ? "bg-slate-100 text-slate-600"
+            : Number(summary.utilizationPct) >= 80
+            ? "bg-green-100 text-green-700"
+            : "bg-amber-100 text-amber-700",
       },
     },
     {
@@ -158,6 +163,9 @@ function ChartCanvasGrid({
   series = [],
   barKey = null,
   barColor = "bg-[#0b3b68]",
+  secondaryBarKey = null,
+  secondaryBarColor = "bg-[#557da4]",
+  secondaryTooltipLabel = "",
   maxAxisValue = 100,
   formatValue = null,
   tooltipLabel = "",
@@ -242,80 +250,114 @@ function ChartCanvasGrid({
             {/* Dynamic Bars */}
             {series && series.length > 0 && barKey ? (
               series.map((item, index) => {
-                const rawVal = item[barKey];
-                const value = rawVal != null ? Number(rawVal) : 0;
-                const maxValue = maxAxisValue || 100;
-                const height =
-                  maxValue > 0 ? Math.min(100, Math.max(0, (value / maxValue) * 100)) : 0;
-                const isInside = height > (isSubmodule ? 7 : 10);
+                const barSpecs = [
+                  {
+                    key: barKey,
+                    color: barColor,
+                    label: tooltipLabel || "Value",
+                  },
+                  ...(secondaryBarKey
+                    ? [
+                        {
+                          key: secondaryBarKey,
+                          color: secondaryBarColor,
+                          label: secondaryTooltipLabel || "Value",
+                        },
+                      ]
+                    : []),
+                ];
 
                 return (
                   <div
                     key={item.key || index}
                     className="group/period relative z-10 hover:z-50 flex h-full min-w-0 flex-1 items-end justify-center px-0.5"
                   >
-                    <div className="group/bar relative hover:z-50 flex h-full w-full max-w-[48px] items-end justify-center">
-                      {value > 0 ? (
-                        <span
-                          className={`pointer-events-none absolute left-1/2 z-10 -translate-x-1/2 whitespace-nowrap ${
-                            isSubmodule
-                              ? "text-[8px] sm:text-[8.5px] font-bold tracking-tight"
-                              : "text-[7.5px] sm:text-[8px] font-bold tracking-tight"
-                          } transition-all group-hover/bar:-translate-y-0.5 sibs-graph-number-in ${
-                            isInside ? "text-white" : "text-sibs-primary-1"
-                          }`}
-                          style={{
-                            bottom: isInside
-                              ? `calc(${height}% - ${isSubmodule ? 13 : 12}px)`
-                              : `calc(${height}% + 3px)`,
-                            animationDelay: `${Math.min(index * 60, 500)}ms`,
-                          }}
-                        >
-                          {formatValue ? formatValue(value) : value}
-                        </span>
-                      ) : null}
+                    <div
+                      className={`relative flex h-full w-full items-end justify-center ${
+                        barSpecs.length > 1 ? "max-w-[68px] gap-0.5" : "max-w-[48px]"
+                      }`}
+                    >
+                      {barSpecs.map((spec, barIndex) => {
+                        const rawVal = item[spec.key];
+                        const hasValue = rawVal != null && Number.isFinite(Number(rawVal));
+                        const value = hasValue ? Number(rawVal) : null;
+                        const maxValue = maxAxisValue || 100;
+                        const height =
+                          value != null && maxValue > 0
+                            ? Math.min(100, Math.max(0, (value / maxValue) * 100))
+                            : 0;
+                        const isInside = height > (isSubmodule ? 7 : 10);
 
-                      {value > 0 ? (
-                        <div
-                          className={`w-full max-w-[42px] rounded-t-[3px] ${barColor} transition-all duration-200 ease-out group-hover/bar:-translate-y-0.5 group-hover/bar:brightness-110 shadow-xs sibs-graph-bar-rise`}
-                          style={{
-                            height: `${height}%`,
-                            animationDelay: `${Math.min(index * 60, 500)}ms`,
-                          }}
-                        />
-                      ) : null}
-
-                      {/* Tooltip */}
-                      {value > 0 ? (
-                        <div
-                          className={`pointer-events-none absolute top-2 z-50 hidden min-w-36 rounded-xl border border-sibs-tertiary-10/80 bg-white/95 p-2 shadow-xl backdrop-blur-md group-hover/bar:block ${
-                            index <= 1
-                              ? "left-0"
-                              : index >= series.length - 2
-                              ? "right-0"
-                              : "left-1/2 -translate-x-1/2"
-                          }`}
-                        >
-                          <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-1">
-                            <span className="truncate text-xs font-black text-sibs-primary-1">
-                              {item.label}
-                            </span>
-                            {tooltipLabel ? (
-                              <span className="text-[10px] font-bold text-sibs-tertiary-5">
-                                {tooltipLabel}
+                        return (
+                          <div
+                            key={spec.key}
+                            className="group/bar relative hover:z-50 flex h-full min-w-0 flex-1 items-end justify-center"
+                          >
+                            {value != null ? (
+                              <span
+                                className={`pointer-events-none absolute left-1/2 z-10 -translate-x-1/2 whitespace-nowrap ${
+                                  barSpecs.length > 1
+                                    ? isSubmodule
+                                      ? "text-[7px] sm:text-[7.5px] font-bold tracking-tight"
+                                      : "text-[6.5px] sm:text-[7px] font-bold tracking-tight"
+                                    : isSubmodule
+                                    ? "text-[8px] sm:text-[8.5px] font-bold tracking-tight"
+                                    : "text-[7.5px] sm:text-[8px] font-bold tracking-tight"
+                                } transition-all group-hover/bar:-translate-y-0.5 sibs-graph-number-in ${
+                                  isInside ? "text-white" : "text-sibs-primary-1"
+                                }`}
+                                style={{
+                                  bottom: isInside
+                                    ? `calc(${height}% - ${isSubmodule ? 13 : 12}px)`
+                                    : `calc(${height}% + 3px)`,
+                                  animationDelay: `${Math.min(index * 60 + barIndex * 30, 500)}ms`,
+                                }}
+                              >
+                                {formatValue ? formatValue(value) : value}
                               </span>
                             ) : null}
+
+                            {value != null ? (
+                              <div
+                                className={`w-full ${
+                                  barSpecs.length > 1 ? "max-w-[30px]" : "max-w-[42px]"
+                                } rounded-t-[3px] ${spec.color} transition-all duration-200 ease-out group-hover/bar:-translate-y-0.5 group-hover/bar:brightness-110 shadow-xs sibs-graph-bar-rise`}
+                                style={{
+                                  height: `${height}%`,
+                                  animationDelay: `${Math.min(index * 60 + barIndex * 30, 500)}ms`,
+                                }}
+                              />
+                            ) : null}
+
+                            {value != null ? (
+                              <div
+                                className={`pointer-events-none absolute top-2 z-50 hidden min-w-36 rounded-xl border border-sibs-tertiary-10/80 bg-white/95 p-2 shadow-xl backdrop-blur-md group-hover/bar:block ${
+                                  index <= 1
+                                    ? "left-0"
+                                    : index >= series.length - 2
+                                    ? "right-0"
+                                    : "left-1/2 -translate-x-1/2"
+                                }`}
+                              >
+                                <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-1">
+                                  <span className="truncate text-xs font-black text-sibs-primary-1">
+                                    {item.label}
+                                  </span>
+                                  <span className="text-[10px] font-bold text-sibs-tertiary-5">
+                                    {spec.label}
+                                  </span>
+                                </div>
+                                <div className="mt-1 flex items-center justify-between text-xs">
+                                  <span className="font-bold text-slate-600">{spec.label}:</span>
+                                  <span className="font-extrabold text-sibs-primary-1">
+                                    {formatValue ? formatValue(value) : value}
+                                  </span>
+                                </div>
+                              </div>
+                            ) : null}
                           </div>
-                          <div className="mt-1 flex items-center justify-between text-xs">
-                            <span className="font-bold text-slate-600">
-                              {tooltipLabel || "Value"}:
-                            </span>
-                            <span className="font-extrabold text-sibs-primary-1">
-                              {formatValue ? formatValue(value) : value}
-                            </span>
-                          </div>
-                        </div>
-                      ) : null}
+                        );
+                      })}
                     </div>
                   </div>
                 );
@@ -374,6 +416,25 @@ export default function OccupancyKpiDashboard({
       ? series.map((item) => item.label)
       : ["Week 18", "Week 19", "Week 20", "Week 21", "Week 22", "Week 23"];
 
+  const maxOccupancyUtilization = Math.max(
+    100,
+    ...series.flatMap((item) => [
+      Number(item?.occupancyPct || 0),
+      Number(item?.utilizationPct || 0),
+    ]),
+  );
+  const occupancyUtilizationTicks =
+    maxOccupancyUtilization > 100
+      ? getCallAxisTicks(maxOccupancyUtilization, 4)
+      : [100, 80, 60, 40, 20, 0];
+  const occupancyUtilizationAxisMax = Math.max(
+    100,
+    Number(occupancyUtilizationTicks[0] || 100),
+  );
+  const occupancyUtilizationLabels = occupancyUtilizationTicks.map(
+    (value) => `${value}%`,
+  );
+
   // Dynamic Headcount axis ticks if data exists
   const hasHcData = series.some((item) => Number(item.actualHeadcount || 0) > 0);
   const maxHc = hasHcData
@@ -428,15 +489,17 @@ export default function OccupancyKpiDashboard({
                 }
               >
                 <ChartCanvasGrid
-                  yAxisLabels={["100%", "80%", "60%", "40%", "20%", "0%"]}
+                  yAxisLabels={occupancyUtilizationLabels}
                   xAxisLabels={xAxisLabels}
                   isSubmodule={isSubmodule}
                   showFilters={showFilters}
-                  targetLine={85}
                   series={series}
                   barKey="occupancyPct"
                   barColor="bg-[#0b3b68]"
-                  maxAxisValue={100}
+                  secondaryBarKey="utilizationPct"
+                  secondaryBarColor="bg-[#557da4]"
+                  secondaryTooltipLabel="Utilization"
+                  maxAxisValue={occupancyUtilizationAxisMax}
                   formatValue={(val) => `${formatNumber(val, 2)}%`}
                   tooltipLabel="Occupancy"
                 />
@@ -547,15 +610,17 @@ export default function OccupancyKpiDashboard({
               }
             >
               <ChartCanvasGrid
-                yAxisLabels={["100%", "80%", "60%", "40%", "20%", "0%"]}
+                yAxisLabels={occupancyUtilizationLabels}
                 xAxisLabels={xAxisLabels}
                 isSubmodule={false}
                 showFilters={showFilters}
-                targetLine={85}
                 series={series}
                 barKey="occupancyPct"
                 barColor="bg-[#0b3b68]"
-                maxAxisValue={100}
+                secondaryBarKey="utilizationPct"
+                secondaryBarColor="bg-[#557da4]"
+                secondaryTooltipLabel="Utilization"
+                maxAxisValue={occupancyUtilizationAxisMax}
                 formatValue={(val) => `${formatNumber(val, 2)}%`}
                 tooltipLabel="Occupancy"
               />
