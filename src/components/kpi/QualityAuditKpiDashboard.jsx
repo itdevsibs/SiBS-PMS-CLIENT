@@ -578,10 +578,15 @@ export default function QualityAuditKpiDashboard({
       </div>
 
       <div
-        style={!isSubmodule && showFilters ? { height: "200px", minHeight: "200px" } : undefined}
-        className={`grid grid-cols-1 ${!isSubmodule ? "gap-1 sm:gap-1.5 grid-rows-1" : "gap-3.5"} md:grid-cols-2 flex-1 min-h-0 w-full`}
+        className={`grid grid-cols-1 ${!isSubmodule ? "gap-1.5 sm:gap-1.5 md:grid-rows-1" : "gap-3.5"} md:grid-cols-2 flex-1 min-h-0 w-full transition-all duration-300 ease-in-out ${
+          !isSubmodule && showFilters
+            ? "min-h-[200px]"
+            : !isSubmodule
+            ? "min-h-[170px]"
+            : ""
+        }`}
       >
-        <div className="col-span-1 h-full min-h-0 flex flex-col">
+        <div className="col-span-1 min-h-[160px] md:min-h-0 md:h-full flex flex-col">
           <ChartShell
             title="QA Transactions"
             tightLeft={!isSubmodule}
@@ -602,7 +607,7 @@ export default function QualityAuditKpiDashboard({
             />
           </ChartShell>
         </div>
-        <div className="col-span-1 h-full min-h-0 flex flex-col">
+        <div className="col-span-1 min-h-[160px] md:min-h-0 md:h-full flex flex-col">
           <ChartShell
             title="QA Score"
             tightLeft={!isSubmodule}
