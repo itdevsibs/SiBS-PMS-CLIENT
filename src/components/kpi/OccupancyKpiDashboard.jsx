@@ -619,7 +619,7 @@ export default function OccupancyKpiDashboard({
       ) : (
         /* Unified 3-column row for Wow Report (All 4 Modules view) */
         <div
-          className={`grid grid-cols-1 md:grid-cols-3 md:grid-rows-1 gap-1.5 sm:gap-1.5 w-full min-w-0 flex-1 min-h-0 transition-all duration-300 ease-in-out ${
+          className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 md:grid-rows-1 gap-1.5 sm:gap-1.5 w-full min-w-0 flex-1 min-h-0 transition-all duration-300 ease-in-out ${
             !isSubmodule && showFilters
               ? "min-h-[200px]"
               : !isSubmodule
@@ -628,7 +628,7 @@ export default function OccupancyKpiDashboard({
           }`}
         >
           {/* Chart 1: Occupancy & Utilization */}
-          <div className="col-span-1 min-h-[160px] md:min-h-0 md:h-full flex flex-col">
+          <div className="col-span-1 md:col-span-2 lg:col-span-1 min-h-[160px] md:min-h-0 md:h-full flex flex-col">
             <ChartShell
               title="Occupancy & Utilization"
               tightLeft={!isSubmodule}

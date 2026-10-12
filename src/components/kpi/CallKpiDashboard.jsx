@@ -1170,7 +1170,7 @@ export default function CallKpiDashboard({
         className={`grid grid-cols-1 ${
           isSubmodule
             ? "lg:grid-cols-2"
-            : "md:grid-cols-3 md:grid-rows-1"
+            : "md:grid-cols-2 lg:grid-cols-3 md:grid-rows-1"
         } ${isSubmodule && showFilters ? "gap-2 sm:gap-2.5" : "gap-1.5 sm:gap-1.5"} w-full min-w-0 flex-1 min-h-0 transition-all duration-300 ease-in-out ${
           !isSubmodule && showFilters
             ? "min-h-[200px]"
@@ -1179,7 +1179,7 @@ export default function CallKpiDashboard({
             : ""
         }`}
       >
-        <div className={isSubmodule ? "col-span-1 lg:col-span-2" : "col-span-1 min-h-[160px] md:min-h-0 md:h-full flex flex-col"}>
+        <div className={isSubmodule ? "col-span-1 lg:col-span-2" : "col-span-1 md:col-span-2 lg:col-span-1 min-h-[160px] md:min-h-0 md:h-full flex flex-col"}>
           <ChartShell
             title="Calls"
             legendAlign={!isSubmodule ? "left" : "between"}
