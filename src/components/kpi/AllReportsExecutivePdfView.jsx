@@ -156,6 +156,7 @@ export default function AllReportsExecutivePdfView({
     return {
       label: lbl || item.label || `Week ${idx + 1}`,
       occupancyPct: Number(item.occupancyPct || 0),
+      utilizationPct: Number(item.utilizationPct || 0),
       actualHeadcount: Number(item.actualHeadcount || 0),
     };
   });
@@ -496,15 +497,25 @@ export default function AllReportsExecutivePdfView({
 
                   {occSeries.map((item, idx) => {
                     const occH = item.occupancyPct > 0 ? Math.min(100, Math.max(9, item.occupancyPct)) : 0;
+                    const utiH = item.utilizationPct > 0 ? Math.min(100, Math.max(9, item.utilizationPct)) : 0;
                     return (
                       <div key={idx} style={{ flex: 1, display: "flex", alignItems: "flex-end", justifyContent: "center", position: "relative", zIndex: 2 }}>
-                        {item.occupancyPct > 0 && (
-                          <div style={{ width: "42px", height: `${occH}%`, backgroundColor: blueDark, position: "relative", display: "flex", justifyContent: "center", borderRadius: "2px 2px 0 0" }}>
-                            <span style={{ position: "absolute", top: "4px", fontSize: "8.5px", fontWeight: "800", color: "#ffffff", whiteSpace: "nowrap" }}>
-                              {item.occupancyPct.toFixed(2)}%
-                            </span>
-                          </div>
-                        )}
+                        <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "center", gap: "6px", width: "100%", maxWidth: "90px", height: "100%" }}>
+                          {item.occupancyPct > 0 ? (
+                            <div style={{ flex: 1, maxWidth: "42px", height: `${occH}%`, backgroundColor: blueDark, position: "relative", display: "flex", justifyContent: "center", borderRadius: "2px 2px 0 0" }}>
+                              <span style={{ position: "absolute", top: "4px", fontSize: "8.5px", fontWeight: "800", color: "#ffffff", whiteSpace: "nowrap" }}>
+                                {item.occupancyPct.toFixed(2)}%
+                              </span>
+                            </div>
+                          ) : null}
+                          {item.utilizationPct > 0 ? (
+                            <div style={{ flex: 1, maxWidth: "42px", height: `${utiH}%`, backgroundColor: "#557da4", position: "relative", display: "flex", justifyContent: "center", borderRadius: "2px 2px 0 0" }}>
+                              <span style={{ position: "absolute", top: "4px", fontSize: "8.5px", fontWeight: "800", color: "#ffffff", whiteSpace: "nowrap" }}>
+                                {item.utilizationPct.toFixed(2)}%
+                              </span>
+                            </div>
+                          ) : null}
+                        </div>
                       </div>
                     );
                   })}
@@ -1553,15 +1564,25 @@ export default function AllReportsExecutivePdfView({
 
                     {occSeries.map((item, idx) => {
                       const occH = item.occupancyPct > 0 ? Math.min(100, Math.max(9, item.occupancyPct)) : 0;
+                      const utiH = item.utilizationPct > 0 ? Math.min(100, Math.max(9, item.utilizationPct)) : 0;
                       return (
                         <div key={idx} style={{ flex: 1, display: "flex", alignItems: "flex-end", justifyContent: "center", position: "relative", zIndex: 2 }}>
-                          {item.occupancyPct > 0 && (
-                            <div style={{ width: isSingleSection ? "36px" : "30px", height: `${occH}%`, backgroundColor: blueDark, position: "relative", display: "flex", justifyContent: "center", borderRadius: "2px 2px 0 0" }}>
-                              <span style={{ position: "absolute", top: "3px", fontSize: isSingleSection ? "8px" : "7px", fontWeight: "800", color: "#ffffff", whiteSpace: "nowrap", letterSpacing: "-0.03em" }}>
-                                {item.occupancyPct.toFixed(2)}%
-                              </span>
-                            </div>
-                          )}
+                          <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "center", gap: "3px", width: "100%", maxWidth: isSingleSection ? "70px" : "56px", height: "100%" }}>
+                            {item.occupancyPct > 0 ? (
+                              <div style={{ flex: 1, maxWidth: isSingleSection ? "32px" : "26px", height: `${occH}%`, backgroundColor: blueDark, position: "relative", display: "flex", justifyContent: "center", borderRadius: "2px 2px 0 0" }}>
+                                <span style={{ position: "absolute", top: "3px", fontSize: isSingleSection ? "7.5px" : "6.5px", fontWeight: "800", color: "#ffffff", whiteSpace: "nowrap", letterSpacing: "-0.03em" }}>
+                                  {item.occupancyPct.toFixed(1)}%
+                                </span>
+                              </div>
+                            ) : null}
+                            {item.utilizationPct > 0 ? (
+                              <div style={{ flex: 1, maxWidth: isSingleSection ? "32px" : "26px", height: `${utiH}%`, backgroundColor: "#557da4", position: "relative", display: "flex", justifyContent: "center", borderRadius: "2px 2px 0 0" }}>
+                                <span style={{ position: "absolute", top: "3px", fontSize: isSingleSection ? "7.5px" : "6.5px", fontWeight: "800", color: "#ffffff", whiteSpace: "nowrap", letterSpacing: "-0.03em" }}>
+                                  {item.utilizationPct.toFixed(1)}%
+                                </span>
+                              </div>
+                            ) : null}
+                          </div>
                         </div>
                       );
                     })}

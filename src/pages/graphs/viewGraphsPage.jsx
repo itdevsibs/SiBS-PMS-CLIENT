@@ -934,11 +934,9 @@ export default function ViewGraphsPage() {
       <main className="min-w-0 flex-1 flex flex-col h-full overflow-hidden">
         <div
           className={`sibs-scrollbar flex-1 ${
-            !currentSection
-              ? showFilters
-                ? "overflow-y-auto overflow-x-hidden p-1.5 sm:p-2 pb-6"
-                : "h-full overflow-hidden p-1 flex flex-col"
-              : "overflow-y-auto overflow-x-hidden p-1.5 sm:p-2 pb-1 sm:pb-1.5"
+            showFilters
+              ? "overflow-y-auto overflow-x-hidden p-1.5 sm:p-2 pb-6"
+              : "h-full overflow-hidden p-1 flex flex-col"
           }`}
         >
           {!canViewGraphs ? (
@@ -958,7 +956,7 @@ export default function ViewGraphsPage() {
               </p>
             </div>
           ) : (
-            <div className={!currentSection ? (!showFilters ? "h-full min-h-0 flex flex-col gap-1 overflow-hidden" : "space-y-3") : "space-y-1.5"}>
+            <div className={!showFilters ? "h-full min-h-0 flex flex-col gap-1 overflow-hidden" : (!currentSection ? "space-y-3" : "space-y-1.5")}>
               <section className="sibs-card relative z-40 overflow-visible shadow-xs shrink-0">
                 <div
                   className={`flex flex-col xl:flex-row xl:items-center justify-between gap-1.5 bg-sibs-primary-3/30 px-2.5 sm:px-3 ${
@@ -1222,7 +1220,7 @@ export default function ViewGraphsPage() {
                   </div>
                 </div>
               ) : (
-                <div className={`relative z-0 min-w-0 w-full ${!currentSection ? (!showFilters ? "flex-1 min-h-0 grid grid-rows-4 gap-1 overflow-visible" : "space-y-2.5 pb-6") : ""}`}>
+                <div className={`relative z-0 min-w-0 w-full ${!showFilters ? "flex-1 min-h-0 flex flex-col gap-1 overflow-hidden" : (!currentSection ? "space-y-2.5 pb-6" : "")}`}>
                   {emptyDataMessage && !error ? (
                     <div className="sibs-card mb-4 p-4 text-sm font-semibold text-sibs-tertiary-5">
                       {emptyDataMessage}
@@ -1230,7 +1228,7 @@ export default function ViewGraphsPage() {
                   ) : null}
 
                   {showCalls && (
-                    <div id="calls-section" className={!currentSection ? (!showFilters ? "h-full min-h-0 flex flex-col gap-0.5 overflow-visible" : "space-y-1 sm:space-y-1.5") : "space-y-1 sm:space-y-1.5"}>
+                    <div id="calls-section" className={!showFilters ? "h-full min-h-0 flex-1 flex flex-col gap-0.5 overflow-hidden" : "space-y-1 sm:space-y-1.5"}>
                       <CallKpiDashboard
                         data={dashboardData || {}}
                         period={filters.period}
@@ -1261,7 +1259,7 @@ export default function ViewGraphsPage() {
                   )}
 
                   {showEmails && (
-                    <div id="emails-section" className={!currentSection ? (!showFilters ? "h-full min-h-0 flex flex-col gap-0.5 overflow-visible" : "space-y-1 sm:space-y-1.5") : "space-y-1 sm:space-y-1.5"}>
+                    <div id="emails-section" className={!showFilters ? "h-full min-h-0 flex-1 flex flex-col gap-0.5 overflow-hidden" : "space-y-1 sm:space-y-1.5"}>
                       {!currentSection && (
                         <div
                           onClick={() => handleNavigateToSection("emails")}
@@ -1298,7 +1296,7 @@ export default function ViewGraphsPage() {
                   )}
 
                   {showQa && (
-                    <div id="qa-section" className={!currentSection ? (!showFilters ? "h-full min-h-0 flex flex-col gap-0.5 overflow-visible" : "space-y-1 sm:space-y-1.5") : "space-y-1 sm:space-y-1.5"}>
+                    <div id="qa-section" className={!showFilters ? "h-full min-h-0 flex-1 flex flex-col gap-0.5 overflow-hidden" : "space-y-1 sm:space-y-1.5"}>
                       {!currentSection && (
                         <div
                           onClick={() => handleNavigateToSection("qa")}
@@ -1335,7 +1333,7 @@ export default function ViewGraphsPage() {
                   )}
 
                   {showOccupancy && (
-                    <div id="occupancy-section" className={!currentSection ? (!showFilters ? "h-full min-h-0 flex flex-col gap-0.5 overflow-visible" : "space-y-1 sm:space-y-1.5") : "space-y-1 sm:space-y-1.5"}>
+                    <div id="occupancy-section" className={!showFilters ? "h-full min-h-0 flex-1 flex flex-col gap-0.5 overflow-hidden" : "space-y-1 sm:space-y-1.5"}>
                       {!currentSection && (
                         <div
                           onClick={() => handleNavigateToSection("occupancy")}
