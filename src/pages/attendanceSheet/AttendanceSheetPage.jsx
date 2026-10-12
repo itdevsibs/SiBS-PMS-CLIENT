@@ -5,6 +5,7 @@ import {
   Check,
   CheckCircle2,
   ChevronDown,
+  Clock,
   Clock3,
   Database,
   Filter,
@@ -63,7 +64,27 @@ function normalizeEmployeeCode(value) {
 function formatDateTime(value) {
   if (!value) return "—";
   const raw = String(value).trim();
-  if (!raw || raw.startsWith("0000-00-00") || raw.startsWith("1970-01-01 00:00:00")) return "—";
+  if (
+    !raw ||
+    raw === "—" ||
+    raw.startsWith("0000-00-00") ||
+    raw.startsWith("1970-01-01 00:00:00") ||
+    raw === "00:00:00"
+  ) {
+    return "—";
+  }
+
+  if (raw === "Rest Day") return "Rest Day";
+
+  // Match pure time like "14:00:00" or "14:00"
+  const timeOnlyMatch = raw.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+  if (timeOnlyMatch) {
+    const hours = Number(timeOnlyMatch[1]);
+    const minutes = timeOnlyMatch[2];
+    const ampm = hours >= 12 ? "PM" : "AM";
+    const formattedHour = hours % 12 || 12;
+    return `${formattedHour}:${minutes} ${ampm}`;
+  }
 
   const sqlMatch = raw.match(/^(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2})(?::(\d{2}))?/);
   if (sqlMatch) {
@@ -72,7 +93,7 @@ function formatDateTime(value) {
   }
 
   const parsed = new Date(raw);
-  if (Number.isNaN(parsed.getTime())) return "—";
+  if (Number.isNaN(parsed.getTime())) return raw;
 
   return parsed.toLocaleString("en-PH", {
     year: "numeric",
@@ -235,6 +256,110 @@ function getAttendanceLogout(row, responseMeta) {
       "clockout",
     ])
   );
+}
+
+function getAttendanceScheduleIn(row, responseMeta) {
+  const configuredField = responseMeta?.fieldConfiguration?.scheduleIn;
+  return (
+    getValueByPath(row, configuredField) ??
+    row?.scheduleIn ??
+    findRowValue(row, [
+      "gy_sched_login",
+      "sched_login",
+      "schedule_in",
+      "schedule_login",
+      "sched_in",
+      "shift_start",
+    ])
+  );
+}
+
+function getAttendanceScheduleOut(row, responseMeta) {
+  const configuredField = responseMeta?.fieldConfiguration?.scheduleOut;
+  return (
+    getValueByPath(row, configuredField) ??
+    row?.scheduleOut ??
+    findRowValue(row, [
+      "gy_sched_logout",
+      "sched_logout",
+      "schedule_out",
+      "schedule_logoff",
+      "sched_out",
+      "shift_end",
+    ])
+  );
+}
+
+function getAttendanceOtHours(row, responseMeta) {
+  const configuredField = responseMeta?.fieldConfiguration?.otHours;
+  const val =
+    getValueByPath(row, configuredField) ??
+    row?.otHours ??
+    findRowValue(row, [
+      "gy_tracker_ot",
+      "tracker_ot",
+      "ot_hours",
+      "ot_hrs",
+      "overtime",
+      "ot",
+    ]);
+  return val != null ? Number(val) : null;
+}
+
+function getAttendanceTotalHours(row, responseMeta) {
+  const configuredField = responseMeta?.fieldConfiguration?.totalHours;
+  const val =
+    getValueByPath(row, configuredField) ??
+    row?.totalHours ??
+    findRowValue(row, [
+      "gy_tracker_wh",
+      "tracker_wh",
+      "gy_tracker_ath",
+      "tracker_ath",
+      "total_hours",
+      "work_hours",
+      "work_hrs",
+      "wh",
+    ]);
+  return val != null ? Number(val) : null;
+}
+
+function getAttendanceStatus(row, responseMeta) {
+  const configuredField = responseMeta?.fieldConfiguration?.status;
+  const login = getAttendanceLogin(row, responseMeta);
+  const logout = getAttendanceLogout(row, responseMeta);
+
+  const rawVal =
+    getValueByPath(row, configuredField) ??
+    row?.status ??
+    row?.shiftStatus ??
+    findRowValue(row, [
+      "gy_tracker_status",
+      "tracker_status",
+      "attendance_status",
+      "shift_status",
+      "status",
+      "gy_sched_mode",
+    ]);
+
+  // If no login was recorded at all for this employee record
+  if (!login && !logout) {
+    if (rawVal === 0 || rawVal === "0" || String(rawVal).toLowerCase().includes("rest")) {
+      return "Rest Day";
+    }
+    return "Absent";
+  }
+
+  if (rawVal === "MISSING_BOTH_BOUNDARIES" || rawVal === "ABSENT" || String(rawVal).toLowerCase() === "absent") {
+    return "Absent";
+  }
+  if (rawVal === 0 || rawVal === "0") return "Rest Day";
+  if (rawVal === 1 || rawVal === "1") return "Present";
+  if (rawVal === "COMPLETE") return "Present";
+  if (rawVal === "MISSING_LAST_LOGOFF") return "On Shift / Active";
+  if (rawVal === "MISSING_FIRST_LOGIN") return "Missing In";
+
+  return rawVal || (login ? "Present" : "Absent");
 }
 
 function getErrorDetails(error, fallbackMessage) {
@@ -577,7 +702,7 @@ export default function AttendanceSheetPage() {
     setPageSize(25);
   };
 
-  const tableMinWidth = 760;
+  const tableMinWidth = 1100;
 
   return (
     <section className="font-jakarta flex h-screen max-h-[100dvh] min-h-screen overflow-hidden bg-[#eef3f7] text-sibs-primary-1">
@@ -755,6 +880,30 @@ export default function AttendanceSheetPage() {
                 />
               </div>
 
+              {/* 5. Latest Date Button */}
+              <div className="flex flex-col justify-end w-full sm:w-auto sm:flex-1 sm:min-w-[110px] sm:max-w-[130px]">
+                <span
+                  className="mb-0.5 block text-[9.5px] font-extrabold uppercase select-none text-transparent hidden sm:block"
+                  aria-hidden="true"
+                >
+                  &nbsp;
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEmployeeSearch("");
+                    setAccountSearchTerm("");
+                    setSelectedDate(formatManilaDate());
+                  }}
+                  disabled={isLoadingData}
+                  title="Use the latest date and clear search."
+                  className="inline-flex h-8 w-full cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-xs font-bold text-sibs-primary-1 shadow-xs transition hover:border-sibs-primary-1 hover:bg-sibs-primary-1 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  <Clock size={12} className="shrink-0" />
+                  <span>Latest</span>
+                </button>
+              </div>
+
               {/* Status Indicator */}
               {isLoadingData && (
                 <div className="flex items-center gap-1.5 h-8 px-2.5 rounded-lg bg-sky-50 text-[11px] font-semibold text-sibs-primary-1 border border-sky-100 animate-pulse ml-auto sm:ml-0">
@@ -785,7 +934,18 @@ export default function AttendanceSheetPage() {
               >
                 <thead className="sticky top-0 z-10 border-b border-slate-200 bg-slate-100/90 backdrop-blur-xs shadow-2xs">
                   <tr>
-                    {["Employee ID", "Name", "Account Name", "Login", "Logout"].map((label) => (
+                    {[
+                      "Employee ID",
+                      "Name",
+                      "Account Name",
+                      "Schedule In",
+                      "Schedule Out",
+                      "Login",
+                      "Logout",
+                      "OT Hours",
+                      "Total Hours",
+                      "Status",
+                    ].map((label) => (
                       <th
                         key={label}
                         className="whitespace-nowrap px-4 py-3 text-[11px] font-extrabold uppercase tracking-wider text-slate-700"
@@ -806,6 +966,12 @@ export default function AttendanceSheetPage() {
                       const formattedLogin = formatDateTime(login);
                       const formattedLogout = formatDateTime(logout);
 
+                      const scheduleIn = getAttendanceScheduleIn(row, responseMeta);
+                      const scheduleOut = getAttendanceScheduleOut(row, responseMeta);
+                      const otHours = getAttendanceOtHours(row, responseMeta);
+                      const totalHours = getAttendanceTotalHours(row, responseMeta);
+                      const attendanceStatus = getAttendanceStatus(row, responseMeta);
+
                       return (
                         <tr
                           key={row?.gy_tracker_id || row?.id || `${employeeId}-${rowIndex}`}
@@ -824,6 +990,14 @@ export default function AttendanceSheetPage() {
                               {accountName || "—"}
                             </span>
                           </td>
+                          {/* Schedule In */}
+                          <td className="whitespace-nowrap px-4 py-3 font-mono text-[12px] text-slate-700">
+                            {scheduleIn ? formatDateTime(scheduleIn) : <span className="text-slate-400 font-sans">—</span>}
+                          </td>
+                          {/* Schedule Out */}
+                          <td className="whitespace-nowrap px-4 py-3 font-mono text-[12px] text-slate-700">
+                            {scheduleOut ? formatDateTime(scheduleOut) : <span className="text-slate-400 font-sans">—</span>}
+                          </td>
                           <td className="whitespace-nowrap px-4 py-3 font-mono text-[12px] text-slate-700">
                             {formattedLogin === "—" ? (
                               <span className="text-slate-400 font-sans">—</span>
@@ -836,6 +1010,34 @@ export default function AttendanceSheetPage() {
                               <span className="text-slate-400 font-sans">—</span>
                             ) : (
                               formattedLogout
+                            )}
+                          </td>
+                          {/* OT Hours */}
+                          <td className="whitespace-nowrap px-4 py-3 font-mono text-[12px] text-slate-700">
+                            {otHours != null ? `${Number(otHours).toFixed(2)} hrs` : <span className="text-slate-400 font-sans">—</span>}
+                          </td>
+                          {/* Total Hours */}
+                          <td className="whitespace-nowrap px-4 py-3 font-mono text-[12px] text-slate-700">
+                            {totalHours != null ? `${Number(totalHours).toFixed(2)} hrs` : <span className="text-slate-400 font-sans">—</span>}
+                          </td>
+                          {/* Status */}
+                          <td className="whitespace-nowrap px-4 py-3 text-[12px] font-semibold">
+                            {attendanceStatus ? (
+                              <span
+                                className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10.5px] font-bold ${
+                                  attendanceStatus === "Present" || attendanceStatus === "Complete"
+                                    ? "bg-green-100 text-green-700 border border-green-200"
+                                    : attendanceStatus === "Absent"
+                                    ? "bg-rose-100 text-rose-700 border border-rose-200"
+                                    : attendanceStatus === "Rest Day"
+                                    ? "bg-slate-100 text-slate-600 border border-slate-200"
+                                    : "bg-amber-100 text-amber-700 border border-amber-200"
+                                }`}
+                              >
+                                {attendanceStatus}
+                              </span>
+                            ) : (
+                              <span className="text-slate-400 font-sans">—</span>
                             )}
                           </td>
                         </tr>
@@ -854,16 +1056,31 @@ export default function AttendanceSheetPage() {
                             <div className="h-4 w-12 bg-slate-200 rounded-md" />
                           </td>
                           <td className="px-3 py-2.5">
+                            <div className="h-4 w-20 bg-slate-200 rounded-md" />
+                          </td>
+                          <td className="px-3 py-2.5">
+                            <div className="h-4 w-20 bg-slate-200 rounded-md" />
+                          </td>
+                          <td className="px-3 py-2.5">
                             <div className="h-4 w-28 bg-slate-200 rounded-md" />
                           </td>
                           <td className="px-3 py-2.5">
                             <div className="h-4 w-28 bg-slate-200 rounded-md" />
                           </td>
+                          <td className="px-3 py-2.5">
+                            <div className="h-4 w-16 bg-slate-200 rounded-md" />
+                          </td>
+                          <td className="px-3 py-2.5">
+                            <div className="h-4 w-16 bg-slate-200 rounded-md" />
+                          </td>
+                          <td className="px-3 py-2.5">
+                            <div className="h-4 w-20 bg-slate-200 rounded-md" />
+                          </td>
                         </tr>
                       ))
                     ) : (
                       <tr>
-                        <td colSpan={5} className="py-20 text-center text-slate-400">
+                        <td colSpan={10} className="py-20 text-center text-slate-400">
                           {hasLoadedData
                             ? "No attendance records found for the selected filters."
                             : "Select an account to view attendance records."}
