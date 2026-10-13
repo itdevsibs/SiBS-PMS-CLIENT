@@ -158,6 +158,8 @@ export default function AllReportsExecutivePdfView({
       occupancyPct: Number(item.occupancyPct || 0),
       utilizationPct: Number(item.utilizationPct || 0),
       actualHeadcount: Number(item.actualHeadcount || 0),
+      absenteeismPct:
+        item.absenteeismPct == null ? null : Number(item.absenteeismPct),
     };
   });
 
@@ -165,6 +167,19 @@ export default function AllReportsExecutivePdfView({
   const maxHc = Math.max(10, ...occSeries.map((d) => d.actualHeadcount));
   const hcTicks = getCallAxisTicks(maxHc, 4);
   const hcAxisMax = Math.max(10, hcTicks[0] || maxHc);
+
+  const maxPeopleMetric = Math.max(
+    20,
+    ...occSeries.map((item) => Number(item.absenteeismPct || 0)),
+  );
+  const peopleMetricTicks =
+    maxPeopleMetric > 20
+      ? getCallAxisTicks(maxPeopleMetric, 4)
+      : [20, 15, 10, 5, 0];
+  const peopleMetricAxisMax = Math.max(
+    20,
+    Number(peopleMetricTicks[0] || 20),
+  );
 
   // Color Palette
   const navyDark = "#002b49"; // Header banner
@@ -668,18 +683,37 @@ export default function AllReportsExecutivePdfView({
 
               <div style={{ display: "flex", height: "365px" }}>
                 <div style={{ width: "40px", height: "325px", position: "relative", borderRight: "1.5px solid #cbd5e1", fontSize: "10px", color: "#475569", fontWeight: "700" }}>
-                  {["20%", "15%", "10%", "5%", "0%"].map((pct, idx) => (
-                    <span key={idx} style={{ position: "absolute", top: `${idx * 25}%`, transform: "translateY(-50%)", right: "5px" }}>
-                      {pct}
+                  {peopleMetricTicks.map((value, idx) => (
+                    <span key={idx} style={{ position: "absolute", top: `${(idx / Math.max(peopleMetricTicks.length - 1, 1)) * 100}%`, transform: "translateY(-50%)", right: "5px" }}>
+                      {value}%
                     </span>
                   ))}
                 </div>
 
                 <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
                   <div style={{ height: "325px", position: "relative", borderBottom: "1.5px solid #cbd5e1", display: "flex", padding: "0 8px" }}>
-                    {[0, 25, 50, 75, 100].map((val, idx) => (
-                      <div key={idx} style={{ position: "absolute", left: 0, right: 0, top: `${val}%`, borderTop: "1px solid #f1f5f9" }} />
+                    {peopleMetricTicks.map((_, idx) => (
+                      <div key={idx} style={{ position: "absolute", left: 0, right: 0, top: `${(idx / Math.max(peopleMetricTicks.length - 1, 1)) * 100}%`, borderTop: "1px solid #f1f5f9" }} />
                     ))}
+
+                    {occSeries.map((item, idx) => {
+                      const value = item.absenteeismPct;
+                      const h =
+                        value != null && peopleMetricAxisMax > 0
+                          ? Math.min(100, Math.max(0, (value / peopleMetricAxisMax) * 100))
+                          : 0;
+                      return (
+                        <div key={idx} style={{ flex: 1, display: "flex", alignItems: "flex-end", justifyContent: "center", position: "relative", zIndex: 1 }}>
+                          {value != null && (
+                            <div style={{ width: "38px", height: `${h}%`, backgroundColor: blueDark, position: "relative", display: "flex", justifyContent: "center", borderRadius: "2px 2px 0 0" }}>
+                              <span style={{ position: "absolute", top: h > 10 ? "4px" : "-13px", color: h > 10 ? "#ffffff" : blueDark, fontSize: "8.5px", fontWeight: "800", whiteSpace: "nowrap" }}>
+                                {value.toFixed(2)}%
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
 
                   <div style={{ height: "26px", display: "flex", padding: "0 8px" }}>

@@ -1,7 +1,7 @@
 import {
   Users,
   TrendingUp,
-  UserCheck,
+  UserMinus,
   Gauge,
   BarChart3,
 } from "lucide-react";
@@ -62,24 +62,24 @@ export function OccupancySummaryCards({
       },
     },
     {
-      label: "Active Headcount",
-      value: summary?.actualHeadcount != null ? formatNumber(summary.actualHeadcount, 0) : "0",
-      hint: "Rostered / Scheduled",
+      label: "Actual Headcount",
+      value: summary?.actualHeadcount != null ? formatNumber(summary.actualHeadcount, 0) : "—",
+      hint: "Present agents from Kronos attendance",
       icon: Users,
       status: {
-        label: "Rostered",
+        label: "Present",
         className: "bg-slate-100 text-slate-700",
       },
     },
     {
-      label: "Adherence / Shrinkage",
-      value: summary?.adherencePct != null ? `${formatNumber(summary.adherencePct, 2)}%` : "0%",
-      hint: "Schedule adherence tracking",
-      icon: UserCheck,
-      status: {
-        label: "Target met",
-        className: "bg-green-100 text-green-700",
-      },
+      label: "Absenteeism Rate",
+      value:
+        summary?.absenteeismPct != null
+          ? `${formatNumber(summary.absenteeismPct, 2)}%`
+          : "—",
+      hint: "Absent HC ÷ Actual HC",
+      icon: UserMinus,
+      status: null,
     },
   ];
 
@@ -459,6 +459,28 @@ export default function OccupancyKpiDashboard({
     ? Math.max(1, Number(hcTicks[0]))
     : 100;
 
+  const maxPeopleMetric = Math.max(
+    0,
+    ...series.flatMap((item) => [
+      Number(item?.absenteeismPct || 0),
+      Number(item?.attritionPct || 0),
+    ]),
+  );
+
+  // People Metrics uses a dynamic percentage ceiling instead of a fixed 20%.
+  // Round the highest value up to the next 5% boundary so the tallest bar has
+  // enough visual room while keeping the axis compact (e.g. 7.89% -> 10%).
+  const peopleMetricMax =
+    maxPeopleMetric > 0
+      ? Math.max(5, Math.ceil(maxPeopleMetric / 5) * 5)
+      : 5;
+  const peopleMetricStep = peopleMetricMax / 5;
+  const peopleMetricTicks = Array.from(
+    { length: 6 },
+    (_, index) => peopleMetricMax - peopleMetricStep * index,
+  );
+  const peopleMetricLabels = peopleMetricTicks.map((value) => `${value}%`);
+
   return (
     <div className={isSubmodule ? (showFilters ? "space-y-1.5 sm:space-y-2" : "space-y-2.5") : "flex-1 min-h-0 flex flex-col"}>
       {/* 1. Summary Cards */}
@@ -561,35 +583,40 @@ export default function OccupancyKpiDashboard({
             </ChartShell>
           </div>
 
-          {/* Bottom Right: People Metrics */}
-          <div className="col-span-1">
-            <ChartShell
-              title="People Metrics"
-              legend={
-                <>
-                  <span className="inline-flex items-center gap-1 font-bold text-[#0b3b68]">
-                    <i className="h-2 w-2 rounded-full bg-[#0b3b68]" />
-                    Absenteeism %
-                  </span>
-                  <span className="inline-flex items-center gap-1 font-bold text-[#2f6f9f]">
-                    <i className="h-2 w-2 rounded-full bg-[#2f6f9f]" />
-                    Attrition %
-                  </span>
-                </>
-              }
-            >
-              <ChartCanvasGrid
-                yAxisLabels={["20%", "15%", "10%", "5%", "0%"]}
-                xAxisLabels={xAxisLabels}
-                footerNotes={[]}
-                isSubmodule={isSubmodule}
-                showFilters={showFilters}
-                series={series}
-                barKey={null}
-              />
-            </ChartShell>
+            {/* Right: People Metrics */}
+            <div className="col-span-1">
+              <ChartShell
+                title="People Metrics"
+                legend={
+                  <>
+                    <span className="inline-flex items-center gap-1 font-bold text-[#0b3b68]">
+                      <i className="h-2 w-2 rounded-full bg-[#0b3b68]" />
+                      Absenteeism %
+                    </span>
+                    <span className="inline-flex items-center gap-1 font-bold text-[#2f6f9f]">
+                      <i className="h-2 w-2 rounded-full bg-[#2f6f9f]" />
+                      Attrition %
+                    </span>
+                  </>
+                }
+              >
+                <ChartCanvasGrid
+                  yAxisLabels={peopleMetricLabels}
+                  xAxisLabels={xAxisLabels}
+                  footerNotes={[]}
+                  isSubmodule={isSubmodule}
+                  showFilters={showFilters}
+                  series={series}
+                  barKey="absenteeismPct"
+                  barColor="bg-[#0b3b68]"
+                  maxAxisValue={peopleMetricMax}
+                  formatValue={(val) => `${formatNumber(val, 2)}%`}
+                  tooltipLabel="Absenteeism"
+                />
+              </ChartShell>
+            </div>
           </div>
-        </div>
+        </>
       ) : (
         /* Unified 3-column row for Wow Report (All 4 Modules view) */
         <div
@@ -696,13 +723,17 @@ export default function OccupancyKpiDashboard({
               }
             >
               <ChartCanvasGrid
-                yAxisLabels={["20%", "15%", "10%", "5%", "0%"]}
+                yAxisLabels={peopleMetricLabels}
                 xAxisLabels={xAxisLabels}
                 footerNotes={[]}
                 isSubmodule={false}
                 showFilters={showFilters}
                 series={series}
-                barKey={null}
+                barKey="absenteeismPct"
+                barColor="bg-[#0b3b68]"
+                maxAxisValue={peopleMetricMax}
+                formatValue={(val) => `${formatNumber(val, 2)}%`}
+                tooltipLabel="Absenteeism"
               />
             </ChartShell>
           </div>
