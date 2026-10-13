@@ -616,7 +616,6 @@ export default function OccupancyKpiDashboard({
               </ChartShell>
             </div>
           </div>
-        </>
       ) : (
         /* Unified 3-column row for Wow Report (All 4 Modules view) */
         <div
