@@ -49,6 +49,7 @@ import {
   getWfmQualityAuditKpis,
   getWfmOccupancyKpis,
   getWfmUtilizationKpis,
+  getWfmAbsenteeismKpis,
 } from "@/lib/axios/wfm-kpis";
 import {
   PERIOD_OPTIONS,
@@ -225,21 +226,61 @@ function buildEmailRequestParams(filters) {
   return params;
 }
 
-function mergeOccupancyAndUtilization(occupancyData = {}, utilizationData = {}) {
-  const occupancySeries = Array.isArray(occupancyData?.series) ? occupancyData.series : [];
-  const utilizationSeries = Array.isArray(utilizationData?.series) ? utilizationData.series : [];
+function mergeOccupancyMetrics(
+  occupancyData = {},
+  utilizationData = {},
+  absenteeismData = {},
+) {
+  const occupancySeries = Array.isArray(occupancyData?.series)
+    ? occupancyData.series
+    : [];
+  const utilizationSeries = Array.isArray(utilizationData?.series)
+    ? utilizationData.series
+    : [];
+  const absenteeismSeries = Array.isArray(absenteeismData?.series)
+    ? absenteeismData.series
+    : [];
+
   const utilizationByKey = new Map(
     utilizationSeries.map((item) => [item?.key, item]),
   );
-  const occupancyKeys = new Set(occupancySeries.map((item) => item?.key));
+  const absenteeismByKey = new Map(
+    absenteeismSeries.map((item) => [item?.key, item]),
+  );
+  const mergedKeys = new Set();
 
-  const mergedSeries = occupancySeries.map((item) => ({
-    ...item,
-    ...(utilizationByKey.get(item?.key) || {}),
-  }));
+  const mergedSeries = occupancySeries.map((item) => {
+    mergedKeys.add(item?.key);
+    const absenteeismItem = absenteeismByKey.get(item?.key) || null;
+
+    return {
+      ...item,
+      ...(utilizationByKey.get(item?.key) || {}),
+      ...(absenteeismItem || {}),
+      // Actual HC must never fall back to Occupancy source activity. Until
+      // Kronos attendance is available, keep it unavailable instead of showing
+      // the count of agents who handled calls/chats/email.
+      actualHeadcount: absenteeismItem?.actualHeadcount ?? null,
+    };
+  });
 
   for (const item of utilizationSeries) {
-    if (!occupancyKeys.has(item?.key)) mergedSeries.push(item);
+    if (!mergedKeys.has(item?.key)) {
+      mergedKeys.add(item?.key);
+      const absenteeismItem = absenteeismByKey.get(item?.key) || null;
+      mergedSeries.push({
+        ...item,
+        ...(absenteeismItem || {}),
+        actualHeadcount: absenteeismItem?.actualHeadcount ?? null,
+      });
+    }
+  }
+
+  for (const item of absenteeismSeries) {
+    if (!mergedKeys.has(item?.key)) {
+      mergedKeys.add(item?.key);
+      mergedSeries.push(item);
+    }
   }
 
   return {
@@ -247,9 +288,13 @@ function mergeOccupancyAndUtilization(occupancyData = {}, utilizationData = {}) 
     summary: {
       ...(occupancyData?.summary || {}),
       ...(utilizationData?.summary || {}),
+      ...(absenteeismData?.summary || {}),
+      // Headcount is an attendance metric, not an Occupancy-source metric.
+      actualHeadcount: absenteeismData?.summary?.actualHeadcount ?? null,
     },
     series: mergedSeries,
     utilization: utilizationData?.utilization || occupancyData?.utilization || null,
+    absenteeism: absenteeismData?.absenteeism || occupancyData?.absenteeism || null,
   };
 }
 
@@ -313,13 +358,16 @@ export default function ViewGraphsPage() {
   const [qualityAuditKpiResponse, setQualityAuditKpiResponse] = useState(null);
   const [occupancyKpiResponse, setOccupancyKpiResponse] = useState(null);
   const [utilizationKpiResponse, setUtilizationKpiResponse] = useState(null);
+  const [absenteeismKpiResponse, setAbsenteeismKpiResponse] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isUtilizationLoading, setIsUtilizationLoading] = useState(false);
+  const [isAbsenteeismLoading, setIsAbsenteeismLoading] = useState(false);
   const [error, setError] = useState("");
   const [emailError, setEmailError] = useState("");
   const [qualityAuditError, setQualityAuditError] = useState("");
   const [occupancyError, setOccupancyError] = useState("");
   const [utilizationError, setUtilizationError] = useState("");
+  const [absenteeismError, setAbsenteeismError] = useState("");
   const [skillsByCountryState, setSkillsByCountryState] = useState(SKILLS_BY_COUNTRY);
   const [showFilters, setShowFilters] = useState(true);
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
@@ -327,6 +375,7 @@ export default function ViewGraphsPage() {
   const [exportingSections, setExportingSections] = useState([]);
   const skipNextFetchRef = useRef(false);
   const utilizationRequestRef = useRef(0);
+  const absenteeismRequestRef = useRef(0);
 
   const handleExecutePdfDownload = async (selectedReportIds = []) => {
     if (isDownloadingPdf || !selectedReportIds.length) return;
@@ -366,6 +415,11 @@ export default function ViewGraphsPage() {
       if ((isAllReports || selectedReportIds.includes("occupancy")) && !utilizationKpiResponse) {
         fetches.push(
           getWfmUtilizationKpis(buildEmailRequestParams(filters)).then((res) => setUtilizationKpiResponse(res)),
+        );
+      }
+      if ((isAllReports || selectedReportIds.includes("occupancy")) && !absenteeismKpiResponse) {
+        fetches.push(
+          getWfmAbsenteeismKpis(buildEmailRequestParams(filters)).then((res) => setAbsenteeismKpiResponse(res)),
         );
       }
 
@@ -510,6 +564,7 @@ export default function ViewGraphsPage() {
     setQualityAuditError("");
     setOccupancyError("");
     setUtilizationError("");
+    setAbsenteeismError("");
 
     try {
       const promises = [];
@@ -573,6 +628,7 @@ export default function ViewGraphsPage() {
       if (showOccupancy) {
         const occupancyParams = buildEmailRequestParams(filters);
         const utilizationRequestId = ++utilizationRequestRef.current;
+        const absenteeismRequestId = ++absenteeismRequestRef.current;
 
         // Occupancy remains a fast PMS-only request and controls the main page loader.
         promises.push(
@@ -614,11 +670,38 @@ export default function ViewGraphsPage() {
               setIsUtilizationLoading(false);
             }
           });
+
+        // Absenteeism uses live Kronos schedule/attendance data and is also
+        // non-blocking so the existing Occupancy graph remains fast.
+        setIsAbsenteeismLoading(true);
+        setAbsenteeismKpiResponse(null);
+        getWfmAbsenteeismKpis(occupancyParams)
+          .then((res) => {
+            if (absenteeismRequestId !== absenteeismRequestRef.current) return;
+            setAbsenteeismKpiResponse(res);
+          })
+          .catch((err) => {
+            if (absenteeismRequestId !== absenteeismRequestRef.current) return;
+            const absenteeismMessage =
+              err?.response?.data?.message ||
+              err?.message ||
+              "Unable to load Absenteeism KPI data.";
+            setAbsenteeismError(absenteeismMessage);
+            setAbsenteeismKpiResponse(null);
+          })
+          .finally(() => {
+            if (absenteeismRequestId === absenteeismRequestRef.current) {
+              setIsAbsenteeismLoading(false);
+            }
+          });
       } else {
         utilizationRequestRef.current += 1;
+        absenteeismRequestRef.current += 1;
         setOccupancyKpiResponse(null);
         setUtilizationKpiResponse(null);
+        setAbsenteeismKpiResponse(null);
         setIsUtilizationLoading(false);
+        setIsAbsenteeismLoading(false);
       }
 
       await Promise.allSettled(promises);
@@ -834,9 +917,13 @@ export default function ViewGraphsPage() {
   const utilizationDashboardData =
     utilizationKpiResponse?.data?.data || {};
 
-  const occupancyDashboardData = mergeOccupancyAndUtilization(
+  const absenteeismDashboardData =
+    absenteeismKpiResponse?.data?.data || {};
+
+  const occupancyDashboardData = mergeOccupancyMetrics(
     occupancyKpiResponse?.data?.data || {},
     utilizationDashboardData,
+    absenteeismDashboardData,
   );
 
   const availableGrains =
@@ -1358,15 +1445,15 @@ export default function ViewGraphsPage() {
                           <span>{occupancyError}</span>
                         </div>
                       ) : null}
-                      {!occupancyError && isUtilizationLoading ? (
+                      {!occupancyError && (isUtilizationLoading || isAbsenteeismLoading) ? (
                         <div className="mb-1 flex items-center gap-1.5 px-1 text-[10px] font-semibold text-sibs-tertiary-5">
                           <RefreshCw size={11} className="animate-spin text-sibs-primary-1" />
-                          <span>Occupancy loaded. Fetching targeted Utilization attendance in the background...</span>
+                          <span>Occupancy loaded. Fetching live Utilization and Absenteeism data in the background...</span>
                         </div>
-                      ) : utilizationError ? (
+                      ) : utilizationError || absenteeismError ? (
                         <div className="mb-1 flex items-center gap-1.5 px-1 text-[10px] font-semibold text-amber-700">
                           <AlertCircle size={11} />
-                          <span>{utilizationError}</span>
+                          <span>{utilizationError || absenteeismError}</span>
                         </div>
                       ) : null}
                       <OccupancyKpiDashboard
