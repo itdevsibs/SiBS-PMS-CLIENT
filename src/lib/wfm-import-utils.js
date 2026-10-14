@@ -85,9 +85,12 @@ export function getApiErrorMessage(error, card) {
     return "The selected file could not be read as an Excel workbook. Please select a valid .xlsx file and try again.";
   }
 
+  if (backendCode === "INVALID_CSV_FILE") {
+    return "The selected file could not be read as a valid CSV file. Please re-export the report as .csv and try again.";
+  }
+
   if (backendCode === "INVALID_FILE_TYPE") {
-    const extension = card?.fileExtension || ".xlsx";
-    return `Only ${extension} files are supported for this import.`;
+    return "Only Excel (.xlsx) and CSV (.csv) files are supported for this import.";
   }
 
   if (backendCode === "FILE_TOO_LARGE") {
@@ -103,7 +106,7 @@ export function getApiErrorMessage(error, card) {
     backendCode === "EMAIL_HEADER_STRUCTURE_MISMATCH"
   ) {
     const profileLabel = card?.title || "valid";
-    const extension = card?.fileExtension || ".xlsx";
+    const formatLabel = "Excel (.xlsx) or CSV (.csv)";
     const reportTypeLabel = /quality/i.test(profileLabel)
       ? "Quality Audit"
       : /email/i.test(profileLabel)
@@ -115,15 +118,15 @@ export function getApiErrorMessage(error, card) {
           : "Skill Statistics";
 
     if (/hero/i.test(profileLabel || card?.id || "")) {
-      return `Only HeroDash ${reportTypeLabel} (${extension}) files are allowed for this card. The uploaded file is missing required HeroDash ${reportTypeLabel} sheets or headers.`;
+      return `Only HeroDash ${reportTypeLabel} (${formatLabel}) files are allowed for this card. The uploaded file is missing required HeroDash ${reportTypeLabel} sheets or headers.`;
     }
     if (/fusenet/i.test(profileLabel || card?.id || "")) {
-      return `Only FuseNet ${reportTypeLabel} (${extension}) files are allowed for this card. The uploaded file is missing required FuseNet ${reportTypeLabel} sheets or headers.`;
+      return `Only FuseNet ${reportTypeLabel} (${formatLabel}) files are allowed for this card. The uploaded file is missing required FuseNet ${reportTypeLabel} sheets or headers.`;
     }
     if (/fuse/i.test(profileLabel || card?.id || "")) {
-      return `Only Fusecom ${reportTypeLabel} (${extension}) files are allowed for this card. The uploaded file is missing required Fusecom ${reportTypeLabel} sheets or headers.`;
+      return `Only Fusecom ${reportTypeLabel} (${formatLabel}) files are allowed for this card. The uploaded file is missing required Fusecom ${reportTypeLabel} sheets or headers.`;
     }
-    return `Only ${profileLabel} (${extension}) reports are allowed for this card. The uploaded file does not match the required format.`;
+    return `Only ${profileLabel} (${formatLabel}) reports are allowed for this card. The uploaded file does not match the required format.`;
   }
 }
 
@@ -641,7 +644,7 @@ export async function executeCardImport({
         onStageChange?.("uploading");
         onProgress?.(Math.round(percent * 0.2));
         onProgressDetail?.({
-          message: "Uploading workbook to the ingestion service.",
+          message: "Uploading file to the ingestion service.",
           processedRows: null,
           totalRows: null,
         });

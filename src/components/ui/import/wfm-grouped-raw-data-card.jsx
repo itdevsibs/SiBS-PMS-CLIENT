@@ -265,7 +265,7 @@ export default function WfmGroupedRawDataCard({
           <span>Import</span>
           <input
             type="file"
-            accept={activeCard.account === "US VISA" ? (activeCard.fileExtension || ".xlsx") : ".xlsx,.xls,.csv"}
+            accept={activeCard.acceptedFileTypes || ".xlsx,.csv"}
             disabled={isUploading}
             onChange={(event) => onFileSelect(activeCard, event)}
             className="hidden"

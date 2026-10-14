@@ -179,6 +179,8 @@ export function getRawDataCards(account) {
       typeof card === "string" ? null : card.importProfileCode || null,
     fileExtension:
       typeof card === "string" ? null : card.fileExtension || (account === "US VISA" ? ".xlsx" : null),
+    acceptedFileTypes:
+      account === "US VISA" ? ".xlsx,.csv" : ".xlsx,.xls,.csv",
     requiresTaskOrderSelection:
       typeof card === "string" ? false : Boolean(card.requiresTaskOrderSelection),
     requiresReportingPeriod:
