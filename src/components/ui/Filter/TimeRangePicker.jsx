@@ -167,10 +167,10 @@ export default function TimeRangePicker({
   options = DEFAULT_TIME_OPTIONS,
   disabled = false,
   className = "",
-  buttonClassName = "h-9.5 w-full sm:min-w-[120px]",
+  buttonClassName = "h-9.5 w-full sm:min-w-[90px]",
 }) {
   return (
-    <div className={`w-full sm:w-auto min-w-0 sm:min-w-[260px] ${className}`}>
+    <div className={`w-full sm:w-auto min-w-0 sm:min-w-[200px] ${className}`}>
       {label && <label className={labelClassName}>{label}</label>}
 
       <div className="flex items-center gap-1.5 sm:gap-2 w-full">

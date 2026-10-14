@@ -558,6 +558,7 @@ export default function QualityAuditKpiDashboard({
   isSubmodule = false,
   showFilters = true,
   onSectionClick = null,
+  isLoading = false,
 }) {
   const series = Array.isArray(data.series) ? data.series : [];
   const currentPeriod = period || data.filters?.period || data.data?.filters?.period;
@@ -591,6 +592,10 @@ export default function QualityAuditKpiDashboard({
             title="QA Transactions"
             tightLeft={!isSubmodule}
             onClick={!isSubmodule ? onSectionClick : undefined}
+            isLoading={isLoading}
+            isSubmodule={isSubmodule}
+            showFilters={showFilters}
+            series={series.length ? series : data?.data?.series}
             legend={
               <span className="inline-flex items-center gap-1 font-bold text-[#174f7f]">
                 <i className="h-2 w-2 rounded-full bg-[#174f7f]" />
@@ -612,6 +617,11 @@ export default function QualityAuditKpiDashboard({
             title="QA Score"
             tightLeft={!isSubmodule}
             onClick={!isSubmodule ? onSectionClick : undefined}
+            isLoading={isLoading}
+            isSubmodule={isSubmodule}
+            showFilters={showFilters}
+            series={series.length ? series : data?.data?.series}
+            isHorizontal={true}
             legend={
               <span className="inline-flex items-center gap-1 font-bold text-[#557da4]">
                 <i className="h-2 w-2 rounded-full bg-[#557da4]" />

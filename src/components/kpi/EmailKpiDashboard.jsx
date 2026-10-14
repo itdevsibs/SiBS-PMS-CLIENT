@@ -560,6 +560,7 @@ export default function EmailKpiDashboard({
   isSubmodule = false,
   showFilters = true,
   onSectionClick = null,
+  isLoading = false,
 }) {
   const series = Array.isArray(data.series) ? data.series : [];
   const currentPeriod = period || data.filters?.period || data.data?.filters?.period;
@@ -598,6 +599,10 @@ export default function EmailKpiDashboard({
             title="Emails"
             tightLeft={!isSubmodule}
             onClick={!isSubmodule ? onSectionClick : undefined}
+            isLoading={isLoading}
+            isSubmodule={isSubmodule}
+            showFilters={showFilters}
+            series={series.length ? series : data?.data?.series}
             legend={
               <>
                 <span className="inline-flex items-center gap-1 font-bold text-[#0b3b68]">
@@ -631,6 +636,10 @@ export default function EmailKpiDashboard({
             title="Email Response & Service Level"
             tightLeft={!isSubmodule}
             onClick={!isSubmodule ? onSectionClick : undefined}
+            isLoading={isLoading}
+            isSubmodule={isSubmodule}
+            showFilters={showFilters}
+            series={series.length ? series : data?.data?.series}
             legend={
               <>
                 <span className="inline-flex items-center gap-1 font-bold text-[#245d8f]">

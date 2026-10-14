@@ -34,7 +34,7 @@ const REPORT_OPTIONS = [
   {
     id: "occupancy",
     label: "Occupancy",
-    description: "Occupancy and headcount performance metrics",
+    description: "Occupancy, headcount, and people performance metrics",
     icon: Users,
   },
 ];

@@ -1393,10 +1393,10 @@ export default function AllReportsExecutivePdfView({
       )}
 
       {/* ========================================================================= */}
-      {/* SECTION 3: QUALITY AUDIT  &  HEADCOUNT VS PEOPLE METRICS                */}
+      {/* SECTION 3: QUALITY AUDIT  &  OCCUPANCY / HEADCOUNT / PEOPLE METRICS      */}
       {/* ========================================================================= */}
       {showSection3 && (
-      <div style={{ display: "grid", gridTemplateColumns: showQa && showOccupancy ? "1fr 1.05fr" : "1fr", gap: "10px", flex: 1 }}>
+      <div style={{ display: "grid", gridTemplateColumns: showQa && showOccupancy ? "0.8fr 1.2fr" : "1fr", gap: "10px", flex: 1 }}>
         {/* 3A: QUALITY AUDIT */}
         {showQa && (
         <div style={{ border: `2px solid ${navyDark}`, borderRadius: "6px", overflow: "hidden", display: "flex", flexDirection: "column", flex: 1 }}>
@@ -1417,18 +1417,18 @@ export default function AllReportsExecutivePdfView({
           </div>
 
           {/* Sub-grid: QA TRANSACTIONS & QA SCORE */}
-          <div style={{ display: "grid", gridTemplateColumns: "1.08fr 1.12fr", backgroundColor: "#ffffff", padding: "6px 10px 5px 10px", gap: "12px", flex: 1 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1.1fr", backgroundColor: "#ffffff", padding: "6px 8px 5px 8px", gap: "10px", flex: 1 }}>
             {/* QA Transactions */}
-            <div style={{ display: "flex", flexDirection: "column", borderRight: "1.5px solid #e2e8f0", paddingRight: "10px" }}>
-              <div style={{ fontSize: "13px", fontWeight: "900", color: "#0c3b64", textTransform: "uppercase", marginBottom: "4px" }}>
+            <div style={{ display: "flex", flexDirection: "column", borderRight: "1.5px solid #e2e8f0", paddingRight: "8px" }}>
+              <div style={{ fontSize: "12px", fontWeight: "900", color: "#0c3b64", textTransform: "uppercase", marginBottom: "4px" }}>
                 QA TRANSACTIONS
               </div>
 
               <div style={{ display: "flex", height: qaChartHeight }}>
                 {/* Y Axis - Clean whole numbers */}
-                <div style={{ width: "36px", height: qaAxisHeight, position: "relative", borderRight: "1.5px solid #cbd5e1", fontSize: "10.5px", color: "#475569", fontWeight: "700" }}>
+                <div style={{ width: "30px", height: qaAxisHeight, position: "relative", borderRight: "1.5px solid #cbd5e1", fontSize: "9.5px", color: "#475569", fontWeight: "700" }}>
                   {qaTxTicks.map((val, idx) => (
-                    <span key={idx} style={{ position: "absolute", top: `${(idx / (qaTxTicks.length - 1)) * 100}%`, transform: "translateY(-50%)", right: "4px" }}>
+                    <span key={idx} style={{ position: "absolute", top: `${(idx / (qaTxTicks.length - 1)) * 100}%`, transform: "translateY(-50%)", right: "3px" }}>
                       {Math.round(val)}
                     </span>
                   ))}
@@ -1445,8 +1445,8 @@ export default function AllReportsExecutivePdfView({
                       return (
                         <div key={idx} style={{ flex: 1, display: "flex", alignItems: "flex-end", justifyContent: "center", position: "relative", zIndex: 1 }}>
                           {item.transactions > 0 && (
-                            <div style={{ width: "32px", height: `${h}%`, backgroundColor: blueDark, position: "relative", display: "flex", justifyContent: "center" }}>
-                              <span style={{ position: "absolute", top: "3px", color: "#ffffff", fontSize: isSingleSection ? "8px" : "7px", fontWeight: "800", letterSpacing: "-0.03em" }}>
+                            <div style={{ width: isSingleSection ? "32px" : "26px", height: `${h}%`, backgroundColor: blueDark, position: "relative", display: "flex", justifyContent: "center" }}>
+                              <span style={{ position: "absolute", top: "3px", color: "#ffffff", fontSize: isSingleSection ? "8px" : "6.5px", fontWeight: "800", letterSpacing: "-0.03em" }}>
                                 {item.transactions}
                               </span>
                             </div>
@@ -1457,9 +1457,9 @@ export default function AllReportsExecutivePdfView({
                   </div>
 
                   {/* X Labels */}
-                  <div style={{ height: "26px", display: "flex", padding: "0 6px" }}>
+                  <div style={{ height: "26px", display: "flex", padding: "0 4px" }}>
                     {qaSeries.map((item, idx) => (
-                      <div key={idx} style={{ flex: 1, textAlign: "center", fontSize: item.label && item.label.length > 8 ? "9px" : "11px", fontWeight: "800", color: "#0c3b64", paddingTop: "5px", whiteSpace: "nowrap" }}>
+                      <div key={idx} style={{ flex: 1, textAlign: "center", fontSize: item.label && item.label.length > 8 ? "8.5px" : "10px", fontWeight: "800", color: "#0c3b64", paddingTop: "5px", whiteSpace: "nowrap" }}>
                         {item.label}
                       </div>
                     ))}
@@ -1468,14 +1468,14 @@ export default function AllReportsExecutivePdfView({
               </div>
 
               {/* Red Subtitle */}
-              <div style={{ textAlign: "center", color: redAlert, fontSize: "10.5px", fontWeight: "800", marginTop: "3px" }}>
+              <div style={{ textAlign: "center", color: redAlert, fontSize: "9.5px", fontWeight: "800", marginTop: "3px" }}>
                 QA TRANSACTION : QA TRANSACTIONS
               </div>
             </div>
 
             {/* QA Score (Horizontal Bar Chart) */}
             <div style={{ display: "flex", flexDirection: "column" }}>
-              <div style={{ fontSize: "13px", fontWeight: "900", color: "#0c3b64", textTransform: "uppercase", marginBottom: "4px" }}>
+              <div style={{ fontSize: "12px", fontWeight: "900", color: "#0c3b64", textTransform: "uppercase", marginBottom: "4px" }}>
                 QA SCORE
               </div>
 
@@ -1486,11 +1486,11 @@ export default function AllReportsExecutivePdfView({
                     const widthPct = item.score > 0 ? Math.min(100, item.score) : 0;
 
                     return (
-                      <div key={idx} style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                        <span style={{ width: "76px", fontSize: item.label && item.label.length > 8 ? "9px" : "10.5px", fontWeight: "800", color: "#0c3b64", textAlign: "right", whiteSpace: "nowrap" }}>
+                      <div key={idx} style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                        <span style={{ width: "66px", fontSize: item.label && item.label.length > 8 ? "8.5px" : "10px", fontWeight: "800", color: "#0c3b64", textAlign: "right", whiteSpace: "nowrap" }}>
                           {item.label}
                         </span>
-                        <div style={{ flex: 1, height: "20px", backgroundColor: "#f1f5f9", position: "relative", borderRadius: "4px", overflow: "hidden" }}>
+                        <div style={{ flex: 1, height: "19px", backgroundColor: "#f1f5f9", position: "relative", borderRadius: "4px", overflow: "hidden" }}>
                           {item.score > 0 && (
                             <div
                               style={{
@@ -1501,10 +1501,10 @@ export default function AllReportsExecutivePdfView({
                                 display: "flex",
                                 alignItems: "center",
                                 justifyContent: "flex-end",
-                                paddingRight: "8px",
+                                paddingRight: "6px",
                               }}
                             >
-                              <span style={{ color: "#ffffff", fontSize: "8.5px", fontWeight: "800", letterSpacing: "-0.03em" }}>
+                              <span style={{ color: "#ffffff", fontSize: "8px", fontWeight: "800", letterSpacing: "-0.03em" }}>
                                 {item.score.toFixed(2)}%
                               </span>
                             </div>
@@ -1516,7 +1516,7 @@ export default function AllReportsExecutivePdfView({
                 </div>
 
                 {/* X Axis at bottom: 0%, 20%, 40%, 60%, 80%, 100% */}
-                <div style={{ display: "flex", paddingLeft: "84px", borderTop: "1.5px solid #cbd5e1", paddingTop: "3px", justifyContent: "space-between", fontSize: "9.5px", color: "#475569", fontWeight: "700" }}>
+                <div style={{ display: "flex", paddingLeft: "72px", borderTop: "1.5px solid #cbd5e1", paddingTop: "3px", justifyContent: "space-between", fontSize: "8.5px", color: "#475569", fontWeight: "700" }}>
                   <span>0%</span>
                   <span>20.00%</span>
                   <span>40.00%</span>
@@ -1527,7 +1527,7 @@ export default function AllReportsExecutivePdfView({
               </div>
 
               {/* Red Subtitle */}
-              <div style={{ textAlign: "center", color: redAlert, fontSize: "10.5px", fontWeight: "800", marginTop: "3px" }}>
+              <div style={{ textAlign: "center", color: redAlert, fontSize: "9.5px", fontWeight: "800", marginTop: "3px" }}>
                 QA SCORE : AVERAGE OF TOTAL QA SCORE %
               </div>
             </div>
@@ -1535,7 +1535,7 @@ export default function AllReportsExecutivePdfView({
         </div>
         )}
 
-        {/* 3B: OCCUPANCY & HEADCOUNT */}
+        {/* 3B: OCCUPANCY & HEADCOUNT (with People Metrics) */}
         {showOccupancy && (
         <div style={{ border: `2px solid ${navyDark}`, borderRadius: "3px", overflow: "hidden", display: "flex", flexDirection: "column", minHeight: isSingleSection ? "380px" : "auto" }}>
           {/* Banner */}
@@ -1554,25 +1554,25 @@ export default function AllReportsExecutivePdfView({
             O C C U P A N C Y &nbsp; & &nbsp; H E A D C O U N T
           </div>
 
-          {/* Sub-grid: Occupancy & Utilization (Left) & Headcount Metrics (Right) */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", backgroundColor: "#ffffff", padding: "6px 12px 6px 12px", gap: "14px", flex: 1 }}>
-            {/* Left: Occupancy & Utilization */}
-            <div style={{ display: "flex", flexDirection: "column", borderRight: "1.5px solid #e2e8f0", paddingRight: "12px" }}>
+          {/* Sub-grid: Occupancy & Utilization (Col 1) | Headcount Metrics (Col 2) | People Metrics (Col 3) */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", backgroundColor: "#ffffff", padding: "6px 8px 5px 8px", gap: "8px", flex: 1 }}>
+            {/* Col 1: Occupancy & Utilization */}
+            <div style={{ display: "flex", flexDirection: "column", borderRight: "1.5px solid #e2e8f0", paddingRight: "8px" }}>
               {/* Title & Legend Stacked */}
-              <div style={{ fontSize: "12px", fontWeight: "900", color: "#0c3b64", textTransform: "uppercase", textAlign: "center", letterSpacing: "0.03em" }}>
+              <div style={{ fontSize: "11px", fontWeight: "900", color: "#0c3b64", textTransform: "uppercase", textAlign: "center", letterSpacing: "0.02em" }}>
                 OCCUPANCY &amp; UTILIZATION
               </div>
-              <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: "12px", fontSize: "10px", fontWeight: "700", marginTop: "1px", marginBottom: "4px" }}>
-                <span style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-                  <span style={{ width: "8px", height: "8px", borderRadius: "50%", backgroundColor: blueDark, display: "inline-block" }} />
+              <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: "8px", fontSize: "9px", fontWeight: "700", marginTop: "1px", marginBottom: "4px" }}>
+                <span style={{ display: "flex", alignItems: "center", gap: "3px" }}>
+                  <span style={{ width: "7px", height: "7px", borderRadius: "50%", backgroundColor: blueDark, display: "inline-block" }} />
                   Occupancy
                 </span>
-                <span style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-                  <span style={{ width: "8px", height: "8px", borderRadius: "50%", backgroundColor: blueMid, display: "inline-block" }} />
+                <span style={{ display: "flex", alignItems: "center", gap: "3px" }}>
+                  <span style={{ width: "7px", height: "7px", borderRadius: "50%", backgroundColor: blueMid, display: "inline-block" }} />
                   Utilization
                 </span>
-                <span style={{ display: "flex", alignItems: "center", gap: "4px", color: redAlert, fontWeight: "800" }}>
-                  <span style={{ width: "12px", borderTop: `1.5px dashed ${redAlert}`, display: "inline-block" }} />
+                <span style={{ display: "flex", alignItems: "center", gap: "3px", color: redAlert, fontWeight: "800" }}>
+                  <span style={{ width: "10px", borderTop: `1.5px dashed ${redAlert}`, display: "inline-block" }} />
                   Target (70%)
                 </span>
               </div>
@@ -1580,16 +1580,16 @@ export default function AllReportsExecutivePdfView({
               {/* Chart Area */}
               <div style={{ display: "flex", height: occChartHeight }}>
                 {/* Y Axis 0-100% */}
-                <div style={{ width: "32px", height: occAxisHeight, position: "relative", borderRight: "1.5px solid #cbd5e1", fontSize: "9px", color: "#475569", fontWeight: "700" }}>
+                <div style={{ width: "28px", height: occAxisHeight, position: "relative", borderRight: "1.5px solid #cbd5e1", fontSize: "8.5px", color: "#475569", fontWeight: "700" }}>
                   {["100%", "80%", "60%", "40%", "20%", "0%"].map((pct, idx) => (
-                    <span key={idx} style={{ position: "absolute", top: `${idx * 20}%`, transform: "translateY(-50%)", right: "3px" }}>
+                    <span key={idx} style={{ position: "absolute", top: `${idx * 20}%`, transform: "translateY(-50%)", right: "2px" }}>
                       {pct}
                     </span>
                   ))}
                 </div>
 
                 <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-                  <div style={{ height: occAxisHeight, position: "relative", borderBottom: "1.5px solid #cbd5e1", display: "flex", padding: "0 6px" }}>
+                  <div style={{ height: occAxisHeight, position: "relative", borderBottom: "1.5px solid #cbd5e1", display: "flex", padding: "0 4px" }}>
                     {[0, 20, 40, 60, 80, 100].map((val, idx) => (
                       <div key={idx} style={{ position: "absolute", left: 0, right: 0, top: `${val}%`, borderTop: "1px solid #f1f5f9" }} />
                     ))}
@@ -1601,17 +1601,17 @@ export default function AllReportsExecutivePdfView({
                       const utiH = item.utilizationPct > 0 ? Math.min(100, Math.max(9, item.utilizationPct)) : 0;
                       return (
                         <div key={idx} style={{ flex: 1, display: "flex", alignItems: "flex-end", justifyContent: "center", position: "relative", zIndex: 2 }}>
-                          <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "center", gap: "3px", width: "100%", maxWidth: isSingleSection ? "70px" : "56px", height: "100%" }}>
+                          <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "center", gap: "2px", width: "100%", maxWidth: isSingleSection ? "70px" : "44px", height: "100%" }}>
                             {item.occupancyPct > 0 ? (
-                              <div style={{ flex: 1, maxWidth: isSingleSection ? "32px" : "26px", height: `${occH}%`, backgroundColor: blueDark, position: "relative", display: "flex", justifyContent: "center", borderRadius: "2px 2px 0 0" }}>
-                                <span style={{ position: "absolute", top: "3px", fontSize: isSingleSection ? "7.5px" : "6.5px", fontWeight: "800", color: "#ffffff", whiteSpace: "nowrap", letterSpacing: "-0.03em" }}>
+                              <div style={{ flex: 1, maxWidth: isSingleSection ? "32px" : "20px", height: `${occH}%`, backgroundColor: blueDark, position: "relative", display: "flex", justifyContent: "center", borderRadius: "2px 2px 0 0" }}>
+                                <span style={{ position: "absolute", top: "3px", fontSize: isSingleSection ? "7.5px" : "6px", fontWeight: "800", color: "#ffffff", whiteSpace: "nowrap", letterSpacing: "-0.03em" }}>
                                   {item.occupancyPct.toFixed(1)}%
                                 </span>
                               </div>
                             ) : null}
                             {item.utilizationPct > 0 ? (
-                              <div style={{ flex: 1, maxWidth: isSingleSection ? "32px" : "26px", height: `${utiH}%`, backgroundColor: "#557da4", position: "relative", display: "flex", justifyContent: "center", borderRadius: "2px 2px 0 0" }}>
-                                <span style={{ position: "absolute", top: "3px", fontSize: isSingleSection ? "7.5px" : "6.5px", fontWeight: "800", color: "#ffffff", whiteSpace: "nowrap", letterSpacing: "-0.03em" }}>
+                              <div style={{ flex: 1, maxWidth: isSingleSection ? "32px" : "20px", height: `${utiH}%`, backgroundColor: "#557da4", position: "relative", display: "flex", justifyContent: "center", borderRadius: "2px 2px 0 0" }}>
+                                <span style={{ position: "absolute", top: "3px", fontSize: isSingleSection ? "7.5px" : "6px", fontWeight: "800", color: "#ffffff", whiteSpace: "nowrap", letterSpacing: "-0.03em" }}>
                                   {item.utilizationPct.toFixed(1)}%
                                 </span>
                               </div>
@@ -1623,9 +1623,9 @@ export default function AllReportsExecutivePdfView({
                   </div>
 
                   {/* X Labels */}
-                  <div style={{ height: "26px", display: "flex", padding: "0 4px" }}>
+                  <div style={{ height: "26px", display: "flex", padding: "0 2px" }}>
                     {occSeries.map((item, idx) => (
-                      <div key={idx} style={{ flex: 1, textAlign: "center", fontSize: "9px", fontWeight: "800", color: "#0c3b64", paddingTop: "5px", whiteSpace: "nowrap", letterSpacing: "-0.03em", overflow: "visible" }}>
+                      <div key={idx} style={{ flex: 1, textAlign: "center", fontSize: "8.5px", fontWeight: "800", color: "#0c3b64", paddingTop: "5px", whiteSpace: "nowrap", letterSpacing: "-0.03em", overflow: "visible" }}>
                         {item.label}
                       </div>
                     ))}
@@ -1634,32 +1634,32 @@ export default function AllReportsExecutivePdfView({
               </div>
 
               {/* Red Formula Subtitle */}
-              <div style={{ textAlign: "center", color: redAlert, fontSize: "9px", fontWeight: "800", marginTop: "3px", whiteSpace: "nowrap" }}>
+              <div style={{ textAlign: "center", color: redAlert, fontSize: "8px", fontWeight: "800", marginTop: "3px", whiteSpace: "nowrap" }}>
                 OCCUPANCY % : TOTAL WORK TIME / PRODUCTIVE TIME
               </div>
             </div>
 
-            {/* Right: Headcount Metrics */}
-            <div style={{ display: "flex", flexDirection: "column" }}>
+            {/* Col 2: Headcount Metrics */}
+            <div style={{ display: "flex", flexDirection: "column", borderRight: "1.5px solid #e2e8f0", paddingRight: "8px" }}>
               {/* Title & Legend Stacked */}
-              <div style={{ fontSize: "12px", fontWeight: "900", color: "#0c3b64", textTransform: "uppercase", textAlign: "center", letterSpacing: "0.03em" }}>
+              <div style={{ fontSize: "11px", fontWeight: "900", color: "#0c3b64", textTransform: "uppercase", textAlign: "center", letterSpacing: "0.02em" }}>
                 HEADCOUNT METRICS
               </div>
-              <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: "10px", fontSize: "10px", fontWeight: "700", marginTop: "1px", marginBottom: "4px" }}>
-                <span style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-                  <span style={{ width: "8px", height: "8px", borderRadius: "50%", backgroundColor: blueDark, display: "inline-block" }} />
+              <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: "6px", fontSize: "8.5px", fontWeight: "700", marginTop: "1px", marginBottom: "4px" }}>
+                <span style={{ display: "flex", alignItems: "center", gap: "3px" }}>
+                  <span style={{ width: "7px", height: "7px", borderRadius: "50%", backgroundColor: blueDark, display: "inline-block" }} />
                   Req FTE
                 </span>
-                <span style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-                  <span style={{ width: "8px", height: "8px", borderRadius: "50%", backgroundColor: blueMid, display: "inline-block" }} />
+                <span style={{ display: "flex", alignItems: "center", gap: "3px" }}>
+                  <span style={{ width: "7px", height: "7px", borderRadius: "50%", backgroundColor: blueMid, display: "inline-block" }} />
                   Actual HC
                 </span>
-                <span style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-                  <span style={{ width: "8px", height: "8px", borderRadius: "50%", backgroundColor: "#7b9ebc", display: "inline-block" }} />
+                <span style={{ display: "flex", alignItems: "center", gap: "3px" }}>
+                  <span style={{ width: "7px", height: "7px", borderRadius: "50%", backgroundColor: "#7b9ebc", display: "inline-block" }} />
                   Buffer
                 </span>
-                <span style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-                  <span style={{ width: "8px", height: "8px", borderRadius: "50%", backgroundColor: "#b0c4de", display: "inline-block" }} />
+                <span style={{ display: "flex", alignItems: "center", gap: "3px" }}>
+                  <span style={{ width: "7px", height: "7px", borderRadius: "50%", backgroundColor: "#b0c4de", display: "inline-block" }} />
                   Attrited
                 </span>
               </div>
@@ -1667,16 +1667,16 @@ export default function AllReportsExecutivePdfView({
               {/* Chart Area */}
               <div style={{ display: "flex", height: occChartHeight }}>
                 {/* Y Axis */}
-                <div style={{ width: "32px", height: occAxisHeight, position: "relative", borderRight: "1.5px solid #cbd5e1", fontSize: "9.5px", color: "#475569", fontWeight: "700" }}>
+                <div style={{ width: "28px", height: occAxisHeight, position: "relative", borderRight: "1.5px solid #cbd5e1", fontSize: "8.5px", color: "#475569", fontWeight: "700" }}>
                   {hcTicks.map((val, idx) => (
-                    <span key={idx} style={{ position: "absolute", top: `${(idx / (hcTicks.length - 1)) * 100}%`, transform: "translateY(-50%)", right: "3px" }}>
+                    <span key={idx} style={{ position: "absolute", top: `${(idx / (hcTicks.length - 1)) * 100}%`, transform: "translateY(-50%)", right: "2px" }}>
                       {Math.round(val)}
                     </span>
                   ))}
                 </div>
 
                 <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-                  <div style={{ height: occAxisHeight, position: "relative", borderBottom: "1.5px solid #cbd5e1", display: "flex", padding: "0 6px" }}>
+                  <div style={{ height: occAxisHeight, position: "relative", borderBottom: "1.5px solid #cbd5e1", display: "flex", padding: "0 4px" }}>
                     {hcTicks.map((_, idx) => (
                       <div key={idx} style={{ position: "absolute", left: 0, right: 0, top: `${(idx / (hcTicks.length - 1)) * 100}%`, borderTop: "1px solid #f1f5f9" }} />
                     ))}
@@ -1686,8 +1686,8 @@ export default function AllReportsExecutivePdfView({
                       return (
                         <div key={idx} style={{ flex: 1, display: "flex", alignItems: "flex-end", justifyContent: "center", position: "relative", zIndex: 1 }}>
                           {item.actualHeadcount > 0 && (
-                            <div style={{ width: isSingleSection ? "36px" : "30px", height: `${h}%`, backgroundColor: blueMid, position: "relative", display: "flex", justifyContent: "center", borderRadius: "2px 2px 0 0" }}>
-                              <span style={{ position: "absolute", top: "3px", color: "#ffffff", fontSize: isSingleSection ? "8px" : "7px", fontWeight: "800", letterSpacing: "-0.03em" }}>
+                            <div style={{ width: isSingleSection ? "36px" : "24px", height: `${h}%`, backgroundColor: blueMid, position: "relative", display: "flex", justifyContent: "center", borderRadius: "2px 2px 0 0" }}>
+                              <span style={{ position: "absolute", top: "3px", color: "#ffffff", fontSize: isSingleSection ? "8px" : "6.5px", fontWeight: "800", letterSpacing: "-0.03em" }}>
                                 {item.actualHeadcount}
                               </span>
                             </div>
@@ -1698,9 +1698,9 @@ export default function AllReportsExecutivePdfView({
                   </div>
 
                   {/* X Labels */}
-                  <div style={{ height: "26px", display: "flex", padding: "0 4px" }}>
+                  <div style={{ height: "26px", display: "flex", padding: "0 2px" }}>
                     {occSeries.map((item, idx) => (
-                      <div key={idx} style={{ flex: 1, textAlign: "center", fontSize: "9px", fontWeight: "800", color: "#0c3b64", paddingTop: "5px", whiteSpace: "nowrap", letterSpacing: "-0.03em", overflow: "visible" }}>
+                      <div key={idx} style={{ flex: 1, textAlign: "center", fontSize: "8.5px", fontWeight: "800", color: "#0c3b64", paddingTop: "5px", whiteSpace: "nowrap", letterSpacing: "-0.03em", overflow: "visible" }}>
                         {item.label}
                       </div>
                     ))}
@@ -1709,8 +1709,79 @@ export default function AllReportsExecutivePdfView({
               </div>
 
               {/* Subtitle to match baseline with left card */}
-              <div style={{ textAlign: "center", color: redAlert, fontSize: "9px", fontWeight: "800", marginTop: "3px", whiteSpace: "nowrap" }}>
+              <div style={{ textAlign: "center", color: redAlert, fontSize: "8px", fontWeight: "800", marginTop: "3px", whiteSpace: "nowrap" }}>
                 HEADCOUNT : ACTUAL ACTIVE EMPLOYEES
+              </div>
+            </div>
+
+            {/* Col 3: People Metrics */}
+            <div style={{ display: "flex", flexDirection: "column" }}>
+              {/* Title & Legend Stacked */}
+              <div style={{ fontSize: "11px", fontWeight: "900", color: "#0c3b64", textTransform: "uppercase", textAlign: "center", letterSpacing: "0.02em" }}>
+                PEOPLE METRICS
+              </div>
+              <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: "8px", fontSize: "8.5px", fontWeight: "700", marginTop: "1px", marginBottom: "4px" }}>
+                <span style={{ display: "flex", alignItems: "center", gap: "3px" }}>
+                  <span style={{ width: "7px", height: "7px", borderRadius: "50%", backgroundColor: blueDark, display: "inline-block" }} />
+                  Absenteeism %
+                </span>
+                <span style={{ display: "flex", alignItems: "center", gap: "3px" }}>
+                  <span style={{ width: "7px", height: "7px", borderRadius: "50%", backgroundColor: blueMid, display: "inline-block" }} />
+                  Attrition %
+                </span>
+              </div>
+
+              {/* Chart Area */}
+              <div style={{ display: "flex", height: occChartHeight }}>
+                {/* Y Axis */}
+                <div style={{ width: "28px", height: occAxisHeight, position: "relative", borderRight: "1.5px solid #cbd5e1", fontSize: "8.5px", color: "#475569", fontWeight: "700" }}>
+                  {peopleMetricTicks.map((val, idx) => (
+                    <span key={idx} style={{ position: "absolute", top: `${(idx / Math.max(peopleMetricTicks.length - 1, 1)) * 100}%`, transform: "translateY(-50%)", right: "2px" }}>
+                      {val}%
+                    </span>
+                  ))}
+                </div>
+
+                <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+                  <div style={{ height: occAxisHeight, position: "relative", borderBottom: "1.5px solid #cbd5e1", display: "flex", padding: "0 4px" }}>
+                    {peopleMetricTicks.map((_, idx) => (
+                      <div key={idx} style={{ position: "absolute", left: 0, right: 0, top: `${(idx / Math.max(peopleMetricTicks.length - 1, 1)) * 100}%`, borderTop: "1px solid #f1f5f9" }} />
+                    ))}
+
+                    {occSeries.map((item, idx) => {
+                      const value = item.absenteeismPct;
+                      const h =
+                        value != null && peopleMetricAxisMax > 0
+                          ? Math.min(100, Math.max(0, (value / peopleMetricAxisMax) * 100))
+                          : 0;
+                      return (
+                        <div key={idx} style={{ flex: 1, display: "flex", alignItems: "flex-end", justifyContent: "center", position: "relative", zIndex: 1 }}>
+                          {value != null && (
+                            <div style={{ width: isSingleSection ? "36px" : "24px", height: `${h}%`, backgroundColor: blueDark, position: "relative", display: "flex", justifyContent: "center", borderRadius: "2px 2px 0 0" }}>
+                              <span style={{ position: "absolute", top: h > 15 ? "3px" : "-12px", color: h > 15 ? "#ffffff" : blueDark, fontSize: isSingleSection ? "8px" : "6.5px", fontWeight: "800", whiteSpace: "nowrap", letterSpacing: "-0.03em" }}>
+                                {value.toFixed(2)}%
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* X Labels */}
+                  <div style={{ height: "26px", display: "flex", padding: "0 2px" }}>
+                    {occSeries.map((item, idx) => (
+                      <div key={idx} style={{ flex: 1, textAlign: "center", fontSize: "8.5px", fontWeight: "800", color: "#0c3b64", paddingTop: "5px", whiteSpace: "nowrap", letterSpacing: "-0.03em", overflow: "visible" }}>
+                        {item.label}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Subtitle */}
+              <div style={{ textAlign: "center", color: redAlert, fontSize: "8px", fontWeight: "800", marginTop: "3px", whiteSpace: "nowrap" }}>
+                PEOPLE METRICS : ABSENTEEISM &amp; ATTRITION %
               </div>
             </div>
           </div>

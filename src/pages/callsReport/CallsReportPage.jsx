@@ -255,7 +255,7 @@ export default function CallsReportPage() {
           onLogoutClick={() => dashboard.setShowLogoutModal(true)}
         />
 
-        <main className="flex min-h-0 flex-1 flex-col gap-2.5 overflow-y-auto lg:overflow-hidden px-2 pb-6 pt-2 sm:gap-3 sm:px-4 sm:pt-3 lg:px-5 sibs-scrollbar">
+        <main className="flex min-h-0 flex-1 flex-col gap-2.5 overflow-hidden px-2.5 pb-2.5 pt-2.5 sm:gap-3 sm:px-4 sm:pt-3 lg:px-5">
           {/* Search & Filter Toolbar (Matching WOW Report Filter Design) */}
           <div className="sibs-card relative z-40 overflow-visible shadow-xs shrink-0 p-2 sm:p-2.5 bg-white">
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 gap-2 sm:gap-2.5 items-end">
@@ -702,15 +702,15 @@ export default function CallsReportPage() {
                 itemLabel="records"
                 className="shrink-0"
                 extraLeft={
-                  <div className="flex items-center gap-2">
-                    <span className="text-[11px] text-slate-500 font-medium">Rows per page:</span>
+                  <div className="flex items-center gap-1.5 ml-2">
+                    <span className="text-slate-500 font-normal">Rows per page:</span>
                     <select
                       value={pageSize}
                       onChange={(e) => {
                         setPageSize(Number(e.target.value));
                         setCurrentPage(1);
                       }}
-                      className="rounded border border-slate-200 bg-white px-2 py-0.5 text-xs font-semibold text-slate-700 outline-none focus:border-[#0b3b68] cursor-pointer"
+                      className="rounded border border-slate-300 bg-white px-2 py-0.5 text-xs font-medium text-slate-700 shadow-2xs outline-none focus:border-[#0b3b68] cursor-pointer"
                     >
                       <option value={10}>10</option>
                       <option value={25}>25</option>

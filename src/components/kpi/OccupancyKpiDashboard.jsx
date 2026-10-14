@@ -419,6 +419,9 @@ export default function OccupancyKpiDashboard({
   isSubmodule = false,
   showFilters = true,
   onSectionClick = null,
+  isLoading = false,
+  isUtilizationLoading = false,
+  isAbsenteeismLoading = false,
 } = {}) {
   const summary = data?.summary || {};
   const series = data?.series || [];
@@ -511,6 +514,9 @@ export default function OccupancyKpiDashboard({
             <ChartShell
               title="Occupancy & Utilization"
               legendAlign="between"
+              isLoading={isLoading}
+              isSubmodule={isSubmodule}
+              showFilters={showFilters}
               legend={
                 <>
                   <span className="inline-flex items-center gap-1 font-bold text-[#0b3b68]">
@@ -546,6 +552,10 @@ export default function OccupancyKpiDashboard({
           <div className="col-span-1">
             <ChartShell
               title="Headcount Metrics"
+              isLoading={isUtilizationLoading}
+              isSubmodule={isSubmodule}
+              showFilters={showFilters}
+              series={series}
               legend={
                 <>
                   <span className="inline-flex items-center gap-1 font-bold text-[#0b3b68]">
@@ -587,6 +597,10 @@ export default function OccupancyKpiDashboard({
             <div className="col-span-1">
               <ChartShell
                 title="People Metrics"
+                isLoading={isAbsenteeismLoading}
+                isSubmodule={isSubmodule}
+                showFilters={showFilters}
+                series={series}
                 legend={
                   <>
                     <span className="inline-flex items-center gap-1 font-bold text-[#0b3b68]">
@@ -633,6 +647,10 @@ export default function OccupancyKpiDashboard({
               title="Occupancy & Utilization"
               tightLeft={!isSubmodule}
               onClick={!isSubmodule ? onSectionClick : undefined}
+              isLoading={isLoading}
+              isSubmodule={isSubmodule}
+              showFilters={showFilters}
+              series={series}
               legend={
                 <>
                   <span className="inline-flex items-center gap-1 font-bold text-[#0b3b68]">
@@ -670,6 +688,10 @@ export default function OccupancyKpiDashboard({
               title="Headcount Metrics"
               tightLeft={!isSubmodule}
               onClick={!isSubmodule ? onSectionClick : undefined}
+              isLoading={isUtilizationLoading}
+              isSubmodule={isSubmodule}
+              showFilters={showFilters}
+              series={series}
               legend={
                 <>
                   <span className="inline-flex items-center gap-1 font-bold text-[#0b3b68]">
@@ -713,6 +735,10 @@ export default function OccupancyKpiDashboard({
               title="People Metrics"
               tightLeft={!isSubmodule}
               onClick={!isSubmodule ? onSectionClick : undefined}
+              isLoading={isAbsenteeismLoading}
+              isSubmodule={isSubmodule}
+              showFilters={showFilters}
+              series={series}
               legend={
                 <>
                   <span className="inline-flex items-center gap-1 font-bold text-[#0b3b68]">

@@ -1,4 +1,5 @@
-import { CheckCircle2, Clock3, Gauge, PhoneCall } from "lucide-react";
+import { CheckCircle2, Clock3, Gauge, Loader2, PhoneCall } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton.jsx";
 import {
   buildVolumeBarItems,
   convertDurationToSeconds,
@@ -88,6 +89,127 @@ function KpiCard({ icon: Icon, label, value, hint, status, title, onClick = null
   );
 }
 
+export function ChartSkeleton({
+  isSubmodule = false,
+  showFilters = true,
+  series = null,
+  barCount = null,
+  isHorizontal = false,
+}) {
+  const chartHeightStyle = isSubmodule
+    ? {
+        height: showFilters
+          ? "clamp(140px, calc(50vh - 225px), 220px)"
+          : "clamp(220px, calc(50vh - 150px), 320px)",
+      }
+    : !showFilters
+    ? undefined
+    : {
+        height: "clamp(55px, calc((100vh - 270px) / 5.2), 85px)",
+      };
+
+  const count =
+    Array.isArray(series) && series.length > 0
+      ? series.length
+      : typeof barCount === "number" && barCount > 0
+      ? barCount
+      : 6;
+
+  // Predictable organic patterns for varying bar counts
+  const heightsPattern = [45, 72, 86, 50, 78, 92, 60, 84, 48, 68, 88, 70];
+  const barItems = Array.from({ length: count }, (_, i) => ({
+    height: heightsPattern[i % heightsPattern.length],
+    label: Array.isArray(series) && series[i]?.label ? series[i].label : null,
+  }));
+
+  if (isHorizontal) {
+    return (
+      <div className="relative flex flex-col h-full flex-1 min-h-0 justify-between select-none py-1">
+        <div className="flex-1 flex flex-col justify-around gap-1.5 w-full">
+          {barItems.map((bar, i) => (
+            <div key={i} className="flex items-center gap-2 w-full">
+              <Skeleton className="h-2.5 w-12 sm:w-16 shrink-0" />
+              <div className="flex-1 flex items-center">
+                <Skeleton
+                  className="h-3 sm:h-4 rounded-r-sm"
+                  style={{ width: `${bar.height}%` }}
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="shrink-0 flex justify-between pl-14 sm:pl-18 pr-2 pt-1 border-t border-sibs-tertiary-8">
+          {[0, 25, 50, 75, 100].map((v) => (
+            <Skeleton key={v} className="h-1.5 w-5 sm:w-7" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className={`w-full min-w-0 select-none ${!isSubmodule ? "flex-1 min-h-0 flex flex-col justify-between" : "flex flex-col"}`}>
+      <div className={`flex w-full min-w-0 ${!isSubmodule ? "flex-1 min-h-0" : ""}`}>
+        {/* Skeleton Y-Axis */}
+        <div className={`flex flex-col shrink-0 ${!isSubmodule ? "h-full" : ""}`}>
+          <div
+            className={`relative w-8 sm:w-10 shrink-0 border-r border-sibs-tertiary-8 pr-1 flex flex-col justify-between py-0.5 ${!isSubmodule ? "flex-1 min-h-0" : ""}`}
+            style={chartHeightStyle}
+          >
+            <Skeleton className="h-2 w-5 self-end" />
+            <Skeleton className="h-2 w-4 self-end" />
+            <Skeleton className="h-2 w-5 self-end" />
+            <Skeleton className="h-2 w-3 self-end" />
+          </div>
+          {!isSubmodule && <div className="shrink-0 h-4 border-r border-sibs-tertiary-8" />}
+        </div>
+
+        {/* Skeleton Bars Grid */}
+        <div className={`relative min-w-0 flex-1 overflow-hidden ${!isSubmodule ? "h-full flex flex-col" : ""}`}>
+          <div
+            className={`relative flex min-w-0 items-end justify-between px-2 sm:px-4 gap-1.5 sm:gap-3 border-b border-sibs-tertiary-8 ${!isSubmodule ? "flex-1 min-h-0" : ""}`}
+            style={chartHeightStyle}
+          >
+            {/* Subtle grid lines */}
+            <div className="absolute inset-0 flex flex-col justify-between pointer-events-none opacity-40">
+              <div className="border-b border-dashed border-slate-200 w-full" />
+              <div className="border-b border-dashed border-slate-200 w-full" />
+              <div className="border-b border-dashed border-slate-200 w-full" />
+            </div>
+
+            {barItems.map((bar, i) => (
+              <div
+                key={i}
+                className="flex-1 flex items-end justify-center gap-1 h-full z-10"
+              >
+                <Skeleton
+                  className="w-full max-w-[34px] rounded-t-sm"
+                  style={{ height: `${bar.height}%` }}
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Skeleton X-Axis labels */}
+      <div className="shrink-0 flex w-full min-w-full pl-8 sm:pl-10 pr-2 pt-1 gap-1 select-none">
+        {barItems.map((bar, idx) => (
+          <div key={idx} className="flex-1 flex justify-center">
+            {bar.label ? (
+              <span className="text-[9px] font-bold text-sibs-tertiary-7/50 truncate max-w-full">
+                {bar.label}
+              </span>
+            ) : (
+              <Skeleton className="h-1.5 w-5 sm:w-8" />
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function ChartShell({
   title,
   subtitle,
@@ -97,6 +219,14 @@ function ChartShell({
   tightLeft = false,
   onClick = null,
   className = "",
+  isLoading = false,
+  isActivelyFetching = false,
+  loadingText = "Loading live data...",
+  isSubmodule = false,
+  showFilters = true,
+  series = null,
+  barCount = null,
+  isHorizontal = false,
 }) {
   return (
     <article
@@ -113,12 +243,14 @@ function ChartShell({
               : "justify-between gap-x-1.5"
           } gap-y-0.5`}
         >
-          <h3 className="m-0 text-[10px] sm:text-[10.5px] font-extrabold uppercase tracking-[0.08em] text-sibs-primary-1 truncate shrink-0">
-            {title}
-          </h3>
+          <div className="flex items-center gap-1.5 truncate shrink-0">
+            <h3 className="m-0 text-[10px] sm:text-[10.5px] font-extrabold uppercase tracking-[0.08em] text-sibs-primary-1 truncate shrink-0">
+              {title}
+            </h3>
+          </div>
 
           {legend ? (
-            <div className="inline-flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[8.5px]">
+            <div className={`inline-flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[8.5px] ${isLoading ? "opacity-40" : ""}`}>
               {legend}
             </div>
           ) : null}
@@ -136,7 +268,17 @@ function ChartShell({
           tightLeft ? "pl-1.5 pr-1 py-1 pb-0.5" : "p-1 pb-0.5"
         } flex-1 min-h-0 flex flex-col min-w-0 relative z-20`}
       >
-        {children}
+        {isLoading ? (
+          <ChartSkeleton
+            isSubmodule={isSubmodule}
+            showFilters={showFilters}
+            series={series}
+            barCount={barCount}
+            isHorizontal={isHorizontal}
+          />
+        ) : (
+          children
+        )}
       </div>
     </article>
   );
@@ -971,6 +1113,7 @@ export default function CallKpiDashboard({
   isSubmodule = false,
   showFilters = true,
   onSectionClick = null,
+  isLoading = false,
 }) {
   const isFiltersVisible = showFilters !== undefined ? showFilters : showSummaryCards;
   const summary = data?.summary || {};
@@ -1184,6 +1327,10 @@ export default function CallKpiDashboard({
             title="Calls"
             legendAlign={!isSubmodule ? "left" : "between"}
             tightLeft={!isSubmodule}
+            isLoading={isLoading}
+            isSubmodule={isSubmodule}
+            showFilters={isFiltersVisible}
+            series={series.length ? series : data?.data?.series}
             {...cardClickProps}
             legend={
               <>
@@ -1221,6 +1368,10 @@ export default function CallKpiDashboard({
           <ChartShell
             title="Answer Rate & Service Level"
             tightLeft={!isSubmodule}
+            isLoading={isLoading}
+            isSubmodule={isSubmodule}
+            showFilters={isFiltersVisible}
+            series={series.length ? series : data?.data?.series}
             {...cardClickProps}
             legend={
               <>
@@ -1262,6 +1413,10 @@ export default function CallKpiDashboard({
           <ChartShell
             title="Average Handling Time"
             tightLeft={!isSubmodule}
+            isLoading={isLoading}
+            isSubmodule={isSubmodule}
+            showFilters={isFiltersVisible}
+            series={series.length ? series : data?.data?.series}
             {...cardClickProps}
             legend={
               <>
