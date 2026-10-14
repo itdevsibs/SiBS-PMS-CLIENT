@@ -68,8 +68,7 @@ function formatDateTime(value) {
     !raw ||
     raw === "—" ||
     raw.startsWith("0000-00-00") ||
-    raw.startsWith("1970-01-01 00:00:00") ||
-    raw === "00:00:00"
+    raw.startsWith("1970-01-01 00:00:00")
   ) {
     return "—";
   }
@@ -261,8 +260,8 @@ function getAttendanceLogout(row, responseMeta) {
 function getAttendanceScheduleIn(row, responseMeta) {
   const configuredField = responseMeta?.fieldConfiguration?.scheduleIn;
   return (
-    getValueByPath(row, configuredField) ??
     row?.scheduleIn ??
+    getValueByPath(row, configuredField) ??
     findRowValue(row, [
       "gy_sched_login",
       "sched_login",
@@ -277,8 +276,8 @@ function getAttendanceScheduleIn(row, responseMeta) {
 function getAttendanceScheduleOut(row, responseMeta) {
   const configuredField = responseMeta?.fieldConfiguration?.scheduleOut;
   return (
-    getValueByPath(row, configuredField) ??
     row?.scheduleOut ??
+    getValueByPath(row, configuredField) ??
     findRowValue(row, [
       "gy_sched_logout",
       "sched_logout",
@@ -986,9 +985,16 @@ export default function AttendanceSheetPage() {
                             {employeeName || "—"}
                           </td>
                           <td className="whitespace-nowrap px-4 py-3">
-                            <span className="inline-flex items-center rounded-md bg-sky-50 px-2 py-0.5 text-[11px] font-bold text-[#0b3b68] border border-sky-200/80 shadow-2xs">
-                              {accountName || "—"}
-                            </span>
+                            <div className="flex items-center gap-1.5 whitespace-nowrap">
+                              <span className="inline-flex items-center rounded-md bg-sky-50 px-2 py-0.5 text-[11px] font-bold text-[#0b3b68] border border-sky-200/80 shadow-2xs">
+                                {accountName || "—"}
+                              </span>
+                              {row?.employeeRole === "TEAM_LEADER" && (
+                                <span className="inline-flex items-center rounded-md border border-violet-200 bg-violet-50 px-2 py-0.5 text-[11px] font-bold text-violet-700 shadow-2xs">
+                                  Team Leaders
+                                </span>
+                              )}
+                            </div>
                           </td>
                           {/* Schedule In */}
                           <td className="whitespace-nowrap px-4 py-3 font-mono text-[12px] text-slate-700">
