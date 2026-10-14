@@ -360,6 +360,10 @@ export default function ViewGraphsPage() {
   const [utilizationKpiResponse, setUtilizationKpiResponse] = useState(null);
   const [absenteeismKpiResponse, setAbsenteeismKpiResponse] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isCallsLoading, setIsCallsLoading] = useState(false);
+  const [isEmailsLoading, setIsEmailsLoading] = useState(false);
+  const [isQaLoading, setIsQaLoading] = useState(false);
+  const [isOccupancyLoading, setIsOccupancyLoading] = useState(false);
   const [isUtilizationLoading, setIsUtilizationLoading] = useState(false);
   const [isAbsenteeismLoading, setIsAbsenteeismLoading] = useState(false);
   const [error, setError] = useState("");
@@ -559,6 +563,10 @@ export default function ViewGraphsPage() {
     }
 
     setIsLoading(true);
+    setIsCallsLoading(showCalls);
+    setIsEmailsLoading(showEmails);
+    setIsQaLoading(showQa);
+    setIsOccupancyLoading(showOccupancy);
     setError("");
     setEmailError("");
     setQualityAuditError("");
@@ -579,10 +587,14 @@ export default function ViewGraphsPage() {
             .catch((err) => {
               setError(getErrorMessage(err));
               setKpiResponse(null);
+            })
+            .finally(() => {
+              setIsCallsLoading(false);
             }),
         );
       } else {
         setKpiResponse(null);
+        setIsCallsLoading(false);
       }
 
       if (showEmails) {
@@ -599,10 +611,14 @@ export default function ViewGraphsPage() {
                 "Unable to load Email KPI data.";
               setEmailError(emailMessage);
               setEmailKpiResponse(null);
+            })
+            .finally(() => {
+              setIsEmailsLoading(false);
             }),
         );
       } else {
         setEmailKpiResponse(null);
+        setIsEmailsLoading(false);
       }
 
       if (showQa) {
@@ -619,10 +635,14 @@ export default function ViewGraphsPage() {
                 "Unable to load Quality Audit KPI data.";
               setQualityAuditError(qualityMessage);
               setQualityAuditKpiResponse(null);
+            })
+            .finally(() => {
+              setIsQaLoading(false);
             }),
         );
       } else {
         setQualityAuditKpiResponse(null);
+        setIsQaLoading(false);
       }
 
       if (showOccupancy) {
@@ -643,63 +663,67 @@ export default function ViewGraphsPage() {
                 "Unable to load Occupancy & Headcount KPI data.";
               setOccupancyError(occMessage);
               setOccupancyKpiResponse(null);
+            })
+            .finally(() => {
+              setIsOccupancyLoading(false);
             }),
         );
 
-        // Utilization is intentionally loaded in parallel but is NOT added to the
-        // main blocking promise list. The Occupancy graph can render immediately
-        // while the smaller targeted Kronos request finishes in the background.
+        // Utilization and Absenteeism promises are tracked so all graphs synchronize
         setIsUtilizationLoading(true);
         setUtilizationKpiResponse(null);
-        getWfmUtilizationKpis(occupancyParams)
-          .then((res) => {
-            if (utilizationRequestId !== utilizationRequestRef.current) return;
-            setUtilizationKpiResponse(res);
-          })
-          .catch((err) => {
-            if (utilizationRequestId !== utilizationRequestRef.current) return;
-            const utilizationMessage =
-              err?.response?.data?.message ||
-              err?.message ||
-              "Unable to load Utilization KPI data.";
-            setUtilizationError(utilizationMessage);
-            setUtilizationKpiResponse(null);
-          })
-          .finally(() => {
-            if (utilizationRequestId === utilizationRequestRef.current) {
-              setIsUtilizationLoading(false);
-            }
-          });
+        promises.push(
+          getWfmUtilizationKpis(occupancyParams)
+            .then((res) => {
+              if (utilizationRequestId !== utilizationRequestRef.current) return;
+              setUtilizationKpiResponse(res);
+            })
+            .catch((err) => {
+              if (utilizationRequestId !== utilizationRequestRef.current) return;
+              const utilizationMessage =
+                err?.response?.data?.message ||
+                err?.message ||
+                "Unable to load Utilization KPI data.";
+              setUtilizationError(utilizationMessage);
+              setUtilizationKpiResponse(null);
+            })
+            .finally(() => {
+              if (utilizationRequestId === utilizationRequestRef.current) {
+                setIsUtilizationLoading(false);
+              }
+            }),
+        );
 
-        // Absenteeism uses live Kronos schedule/attendance data and is also
-        // non-blocking so the existing Occupancy graph remains fast.
         setIsAbsenteeismLoading(true);
         setAbsenteeismKpiResponse(null);
-        getWfmAbsenteeismKpis(occupancyParams)
-          .then((res) => {
-            if (absenteeismRequestId !== absenteeismRequestRef.current) return;
-            setAbsenteeismKpiResponse(res);
-          })
-          .catch((err) => {
-            if (absenteeismRequestId !== absenteeismRequestRef.current) return;
-            const absenteeismMessage =
-              err?.response?.data?.message ||
-              err?.message ||
-              "Unable to load Absenteeism KPI data.";
-            setAbsenteeismError(absenteeismMessage);
-            setAbsenteeismKpiResponse(null);
-          })
-          .finally(() => {
-            if (absenteeismRequestId === absenteeismRequestRef.current) {
-              setIsAbsenteeismLoading(false);
-            }
-          });
+        promises.push(
+          getWfmAbsenteeismKpis(occupancyParams)
+            .then((res) => {
+              if (absenteeismRequestId !== absenteeismRequestRef.current) return;
+              setAbsenteeismKpiResponse(res);
+            })
+            .catch((err) => {
+              if (absenteeismRequestId !== absenteeismRequestRef.current) return;
+              const absenteeismMessage =
+                err?.response?.data?.message ||
+                err?.message ||
+                "Unable to load Absenteeism KPI data.";
+              setAbsenteeismError(absenteeismMessage);
+              setAbsenteeismKpiResponse(null);
+            })
+            .finally(() => {
+              if (absenteeismRequestId === absenteeismRequestRef.current) {
+                setIsAbsenteeismLoading(false);
+              }
+            }),
+        );
       } else {
         utilizationRequestRef.current += 1;
         absenteeismRequestRef.current += 1;
         setOccupancyKpiResponse(null);
         setUtilizationKpiResponse(null);
         setAbsenteeismKpiResponse(null);
+        setIsOccupancyLoading(false);
         setIsUtilizationLoading(false);
         setIsAbsenteeismLoading(false);
       }
@@ -1022,8 +1046,8 @@ export default function ViewGraphsPage() {
         <div
           className={`sibs-scrollbar flex-1 ${
             showFilters
-              ? "overflow-y-auto overflow-x-hidden p-1.5 sm:p-2 pb-6"
-              : "h-full overflow-hidden p-1 flex flex-col"
+              ? "overflow-y-auto overflow-x-hidden p-1.5 sm:p-2 pb-8"
+              : "overflow-y-auto xl:overflow-hidden p-1 sm:p-1.5 pb-8 xl:pb-1 flex flex-col h-full"
           }`}
         >
           {!canViewGraphs ? (
@@ -1043,7 +1067,7 @@ export default function ViewGraphsPage() {
               </p>
             </div>
           ) : (
-            <div className={!showFilters ? "h-full min-h-0 flex flex-col gap-1 overflow-hidden" : (!currentSection ? "space-y-3" : "space-y-1.5")}>
+            <div className={!showFilters ? "flex flex-col gap-1.5 xl:h-full xl:min-h-0 xl:overflow-hidden" : (!currentSection ? "space-y-3" : "space-y-1.5")}>
               <section className="sibs-card relative z-40 overflow-visible shadow-xs shrink-0">
                 <div
                   className={`flex flex-col xl:flex-row xl:items-center justify-between gap-1.5 bg-sibs-primary-3/30 px-2.5 sm:px-3 ${
@@ -1127,7 +1151,7 @@ export default function ViewGraphsPage() {
                   }`}
                 >
                   <div className={`min-h-0 ${showFilters ? "overflow-visible" : "overflow-hidden"}`}>
-                    <div className={`grid grid-cols-1 gap-2 p-2.5 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 ${isCustomPeriod ? "xl:grid-cols-8" : "xl:grid-cols-7"} items-end`}>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 2xl:grid-cols-8 gap-2 p-2 sm:p-2.5 items-end">
                       {/* 1. Account / Source (Hidden in QA) */}
                       {!isQaOnly && (
                         <MultiSelectDropdown
@@ -1226,7 +1250,7 @@ export default function ViewGraphsPage() {
                           {/* 7. Latest button */}
                           <div className="flex flex-col justify-end">
                             <span
-                              className="mb-0.5 block text-[9.5px] font-extrabold uppercase select-none text-transparent"
+                              className="mb-0.5 block text-[9.5px] font-extrabold uppercase select-none text-transparent hidden sm:block"
                               aria-hidden="true"
                             >
                               &nbsp;
@@ -1280,194 +1304,181 @@ export default function ViewGraphsPage() {
                 </div>
               ) : null}
 
-              {isLoading ? (
-                <div className="sibs-card relative z-0 flex min-h-72 flex-col items-center justify-center gap-3 p-6 text-center">
-                  <RefreshCw
-                    size={30}
-                    className="animate-spin text-sibs-primary-1"
-                  />
+              {(() => {
+                const isUnifiedLoading = Boolean(
+                  isCallsLoading ||
+                  isEmailsLoading ||
+                  isQaLoading ||
+                  isOccupancyLoading ||
+                  isUtilizationLoading ||
+                  isAbsenteeismLoading ||
+                  isLoading
+                );
 
-                  <div>
-                    <p className="m-0 font-bold text-sibs-primary-1">
-                      {isCallsOnly
-                        ? "Loading Calls KPI data"
-                        : isEmailsOnly
-                        ? "Loading Email KPI data"
-                        : isQaOnly
-                        ? "Loading Quality KPI data"
-                        : isOccupancyOnly
-                        ? "Loading Occupancy & Headcount KPI data"
-                        : "Loading Performance KPI data"}
-                    </p>
+                return (
+                  <div className={`relative z-0 min-w-0 w-full ${!showFilters ? "flex-1 min-h-0 flex flex-col gap-3 xl:gap-1 xl:overflow-hidden" : (!currentSection ? "space-y-2.5 pb-6" : "")}`}>
+                    {emptyDataMessage && !error && !isUnifiedLoading ? (
+                      <div className="sibs-card mb-4 p-4 text-sm font-semibold text-sibs-tertiary-5">
+                        {emptyDataMessage}
+                      </div>
+                    ) : null}
 
-                    <p className="mt-1 mb-0 text-sm text-sibs-tertiary-5">
-                      Aggregating validated records from
-                      the PMS database.
-                    </p>
-                  </div>
-                </div>
-              ) : (
-                <div className={`relative z-0 min-w-0 w-full ${!showFilters ? "flex-1 min-h-0 flex flex-col gap-1 overflow-hidden" : (!currentSection ? "space-y-2.5 pb-6" : "")}`}>
-                  {emptyDataMessage && !error ? (
-                    <div className="sibs-card mb-4 p-4 text-sm font-semibold text-sibs-tertiary-5">
-                      {emptyDataMessage}
-                    </div>
-                  ) : null}
+                    {showCalls && (
+                      <div id="calls-section" className={!showFilters ? "min-h-[240px] xl:min-h-0 xl:h-full xl:flex-1 flex flex-col gap-0.5" : "space-y-1 sm:space-y-1.5"}>
+                        <CallKpiDashboard
+                          data={dashboardData || {}}
+                          period={filters.period}
+                          showSummaryCards={showFilters}
+                          isSubmodule={isCallsOnly}
+                          showFilters={showFilters}
+                          isLoading={isCallsOnly ? isCallsLoading : isUnifiedLoading}
+                          onSectionClick={!currentSection ? () => handleNavigateToSection("calls") : null}
+                          afterCards={
+                            !currentSection ? (
+                              <div className="space-y-1.5 sm:space-y-2">
+                                <EmailSummaryCards
+                                  summary={emailDashboardData?.summary || {}}
+                                  onCardClick={() => handleNavigateToSection("emails")}
+                                />
+                                <QualityAuditSummaryCards
+                                  summary={qualityAuditDashboardData?.summary || {}}
+                                  onCardClick={() => handleNavigateToSection("qa")}
+                                />
+                                <OccupancySummaryCards
+                                  summary={occupancyDashboardData?.summary || {}}
+                                  onCardClick={() => handleNavigateToSection("occupancy")}
+                                />
+                              </div>
+                            ) : null
+                          }
+                        />
+                      </div>
+                    )}
 
-                  {showCalls && (
-                    <div id="calls-section" className={!showFilters ? "h-full min-h-0 flex-1 flex flex-col gap-0.5 overflow-hidden" : "space-y-1 sm:space-y-1.5"}>
-                      <CallKpiDashboard
-                        data={dashboardData || {}}
-                        period={filters.period}
-                        showSummaryCards={showFilters}
-                        isSubmodule={isCallsOnly}
-                        showFilters={showFilters}
-                        onSectionClick={!currentSection ? () => handleNavigateToSection("calls") : null}
-                        afterCards={
-                          !currentSection ? (
-                            <div className="space-y-1.5 sm:space-y-2">
-                              <EmailSummaryCards
-                                summary={emailDashboardData?.summary || {}}
-                                onCardClick={() => handleNavigateToSection("emails")}
-                              />
-                              <QualityAuditSummaryCards
-                                summary={qualityAuditDashboardData?.summary || {}}
-                                onCardClick={() => handleNavigateToSection("qa")}
-                              />
-                              <OccupancySummaryCards
-                                summary={occupancyDashboardData?.summary || {}}
-                                onCardClick={() => handleNavigateToSection("occupancy")}
-                              />
+                    {showEmails && (
+                      <div id="emails-section" className={!showFilters ? "min-h-[240px] xl:min-h-0 xl:h-full xl:flex-1 flex flex-col gap-0.5" : "space-y-1 sm:space-y-1.5"}>
+                        {!currentSection && (
+                          <div
+                            onClick={() => handleNavigateToSection("emails")}
+                            className="shrink-0 flex items-center justify-between rounded-md border border-sibs-tertiary-9/80 bg-gradient-to-r from-[#174f7f]/10 via-[#174f7f]/5 to-transparent px-2.5 py-0.5 shadow-2xs cursor-pointer"
+                          >
+                            <div className="flex items-center gap-1.5">
+                              <span className="flex h-4 w-4 items-center justify-center rounded bg-[#174f7f] text-white shadow-xs">
+                                <Mail size={10} />
+                              </span>
+                              <span className="text-[11px] font-black uppercase tracking-wider text-[#174f7f]">
+                                2. Emails Performance
+                              </span>
                             </div>
-                          ) : null
-                        }
-                      />
-                    </div>
-                  )}
-
-                  {showEmails && (
-                    <div id="emails-section" className={!showFilters ? "h-full min-h-0 flex-1 flex flex-col gap-0.5 overflow-hidden" : "space-y-1 sm:space-y-1.5"}>
-                      {!currentSection && (
-                        <div
-                          onClick={() => handleNavigateToSection("emails")}
-                          className="shrink-0 flex items-center justify-between rounded-md border border-sibs-tertiary-9/80 bg-gradient-to-r from-[#174f7f]/10 via-[#174f7f]/5 to-transparent px-2.5 py-0.5 shadow-2xs cursor-pointer"
-                        >
-                          <div className="flex items-center gap-1.5">
-                            <span className="flex h-4 w-4 items-center justify-center rounded bg-[#174f7f] text-white shadow-xs">
-                              <Mail size={10} />
-                            </span>
-                            <span className="text-[11px] font-black uppercase tracking-wider text-[#174f7f]">
-                              2. Emails Performance
+                            <span className="text-[10px] font-bold text-sibs-tertiary-5 hidden sm:inline">
+                              Volume &bull; Resolved &bull; Resolved w/ SLA &bull; ERR % &bull; Service Level %
                             </span>
                           </div>
-                          <span className="text-[10px] font-bold text-sibs-tertiary-5 hidden sm:inline">
-                            Volume &bull; Resolved &bull; Resolved w/ SLA &bull; ERR % &bull; Service Level %
-                          </span>
-                        </div>
-                      )}
-                      {emailError ? (
-                        <div className="sibs-card mb-1 flex items-start gap-2 border border-amber-200 bg-amber-50/70 p-2 text-xs font-semibold text-amber-800">
-                          <AlertCircle size={14} className="mt-0.5 shrink-0" />
-                          <span>{emailError}</span>
-                        </div>
-                      ) : null}
-                      <EmailKpiDashboard
-                        data={emailDashboardData || {}}
-                        period={filters.period}
-                        showSummaryCards={isEmailsOnly ? showFilters : false}
-                        isSubmodule={isEmailsOnly}
-                        showFilters={showFilters}
-                        onSectionClick={!currentSection ? () => handleNavigateToSection("emails") : null}
-                      />
-                    </div>
-                  )}
+                        )}
+                        {emailError ? (
+                          <div className="sibs-card mb-1 flex items-start gap-2 border border-amber-200 bg-amber-50/70 p-2 text-xs font-semibold text-amber-800">
+                            <AlertCircle size={14} className="mt-0.5 shrink-0" />
+                            <span>{emailError}</span>
+                          </div>
+                        ) : null}
+                        <EmailKpiDashboard
+                          data={emailDashboardData || {}}
+                          period={filters.period}
+                          showSummaryCards={isEmailsOnly ? showFilters : false}
+                          isSubmodule={isEmailsOnly}
+                          showFilters={showFilters}
+                          isLoading={isEmailsOnly ? isEmailsLoading : isUnifiedLoading}
+                          onSectionClick={!currentSection ? () => handleNavigateToSection("emails") : null}
+                        />
+                      </div>
+                    )}
 
-                  {showQa && (
-                    <div id="qa-section" className={!showFilters ? "h-full min-h-0 flex-1 flex flex-col gap-0.5 overflow-hidden" : "space-y-1 sm:space-y-1.5"}>
-                      {!currentSection && (
-                        <div
-                          onClick={() => handleNavigateToSection("qa")}
-                          className="shrink-0 flex items-center justify-between rounded-md border border-sibs-tertiary-9/80 bg-gradient-to-r from-[#2b6598]/10 via-[#2b6598]/5 to-transparent px-2.5 py-0.5 shadow-2xs cursor-pointer"
-                        >
-                          <div className="flex items-center gap-1.5">
-                            <span className="flex h-4 w-4 items-center justify-center rounded bg-[#2b6598] text-white shadow-xs">
-                              <ClipboardCheck size={10} />
-                            </span>
-                            <span className="text-[11px] font-black uppercase tracking-wider text-[#2b6598]">
-                              3. Quality Audit Performance
+                    {showQa && (
+                      <div id="qa-section" className={!showFilters ? "min-h-[220px] xl:min-h-0 xl:h-full xl:flex-1 flex flex-col gap-0.5" : "space-y-1 sm:space-y-1.5"}>
+                        {!currentSection && (
+                          <div
+                            onClick={() => handleNavigateToSection("qa")}
+                            className="shrink-0 flex items-center justify-between rounded-md border border-sibs-tertiary-9/80 bg-gradient-to-r from-[#2b6598]/10 via-[#2b6598]/5 to-transparent px-2.5 py-0.5 shadow-2xs cursor-pointer"
+                          >
+                            <div className="flex items-center gap-1.5">
+                              <span className="flex h-4 w-4 items-center justify-center rounded bg-[#2b6598] text-white shadow-xs">
+                                <ClipboardCheck size={10} />
+                              </span>
+                              <span className="text-[11px] font-black uppercase tracking-wider text-[#2b6598]">
+                                3. Quality Audit Performance
+                              </span>
+                            </div>
+                            <span className="text-[10px] font-bold text-sibs-tertiary-5 hidden sm:inline">
+                              Total Audits &bull; Call Audits &bull; Case Audits &bull; QA Score %
                             </span>
                           </div>
-                          <span className="text-[10px] font-bold text-sibs-tertiary-5 hidden sm:inline">
-                            Total Audits &bull; Call Audits &bull; Case Audits &bull; QA Score %
-                          </span>
-                        </div>
-                      )}
-                      {qualityAuditError ? (
-                        <div className="sibs-card mb-1 flex items-start gap-2 border border-amber-200 bg-amber-50/70 p-2 text-xs font-semibold text-amber-800">
-                          <AlertCircle size={14} className="mt-0.5 shrink-0" />
-                          <span>{qualityAuditError}</span>
-                        </div>
-                      ) : null}
-                      <QualityAuditKpiDashboard
-                        data={qualityAuditDashboardData || {}}
-                        showSummaryCards={isQaOnly ? showFilters : false}
-                        period={filters.period}
-                        isSubmodule={isQaOnly}
-                        showFilters={showFilters}
-                        onSectionClick={!currentSection ? () => handleNavigateToSection("qa") : null}
-                      />
-                    </div>
-                  )}
+                        )}
+                        {qualityAuditError ? (
+                          <div className="sibs-card mb-1 flex items-start gap-2 border border-amber-200 bg-amber-50/70 p-2 text-xs font-semibold text-amber-800">
+                            <AlertCircle size={14} className="mt-0.5 shrink-0" />
+                            <span>{qualityAuditError}</span>
+                          </div>
+                        ) : null}
+                        <QualityAuditKpiDashboard
+                          data={qualityAuditDashboardData || {}}
+                          showSummaryCards={isQaOnly ? showFilters : false}
+                          period={filters.period}
+                          isSubmodule={isQaOnly}
+                          showFilters={showFilters}
+                          isLoading={isQaOnly ? isQaLoading : isUnifiedLoading}
+                          onSectionClick={!currentSection ? () => handleNavigateToSection("qa") : null}
+                        />
+                      </div>
+                    )}
 
-                  {showOccupancy && (
-                    <div id="occupancy-section" className={!showFilters ? "h-full min-h-0 flex-1 flex flex-col gap-0.5 overflow-hidden" : "space-y-1 sm:space-y-1.5"}>
-                      {!currentSection && (
-                        <div
-                          onClick={() => handleNavigateToSection("occupancy")}
-                          className="shrink-0 flex items-center justify-between rounded-md border border-sibs-tertiary-9/80 bg-gradient-to-r from-[#3f7fb5]/10 via-[#3f7fb5]/5 to-transparent px-2.5 py-0.5 shadow-2xs cursor-pointer"
-                        >
-                          <div className="flex items-center gap-1.5">
-                            <span className="flex h-4 w-4 items-center justify-center rounded bg-[#3f7fb5] text-white shadow-xs">
-                              <Users size={10} />
-                            </span>
-                            <span className="text-[11px] font-black uppercase tracking-wider text-[#3f7fb5]">
-                              4. Occupancy & Headcount Performance
+                    {showOccupancy && (
+                      <div id="occupancy-section" className={!showFilters ? "min-h-[240px] xl:min-h-0 xl:h-full xl:flex-1 flex flex-col gap-0.5" : "space-y-1 sm:space-y-1.5"}>
+                        {!currentSection && (
+                          <div
+                            onClick={() => handleNavigateToSection("occupancy")}
+                            className="shrink-0 flex items-center justify-between rounded-md border border-sibs-tertiary-9/80 bg-gradient-to-r from-[#3f7fb5]/10 via-[#3f7fb5]/5 to-transparent px-2.5 py-0.5 shadow-2xs cursor-pointer"
+                          >
+                            <div className="flex items-center gap-1.5">
+                              <span className="flex h-4 w-4 items-center justify-center rounded bg-[#3f7fb5] text-white shadow-xs">
+                                <Users size={10} />
+                              </span>
+                              <span className="text-[11px] font-black uppercase tracking-wider text-[#3f7fb5]">
+                                4. Occupancy & Headcount Performance
+                              </span>
+                            </div>
+                            <span className="text-[10px] font-bold text-sibs-tertiary-5 hidden sm:inline">
+                              Occupancy % &bull; Utilization % &bull; Headcount &bull; People Metrics
                             </span>
                           </div>
-                          <span className="text-[10px] font-bold text-sibs-tertiary-5 hidden sm:inline">
-                            Occupancy % &bull; Utilization % &bull; Headcount &bull; People Metrics
-                          </span>
-                        </div>
-                      )}
-                      {occupancyError ? (
-                        <div className="sibs-card mb-1 flex items-start gap-2 border border-amber-200 bg-amber-50/70 p-2 text-xs font-semibold text-amber-800">
-                          <AlertCircle size={14} className="mt-0.5 shrink-0" />
-                          <span>{occupancyError}</span>
-                        </div>
-                      ) : null}
-                      {!occupancyError && (isUtilizationLoading || isAbsenteeismLoading) ? (
-                        <div className="mb-1 flex items-center gap-1.5 px-1 text-[10px] font-semibold text-sibs-tertiary-5">
-                          <RefreshCw size={11} className="animate-spin text-sibs-primary-1" />
-                          <span>Occupancy loaded. Fetching live Utilization and Absenteeism data in the background...</span>
-                        </div>
-                      ) : utilizationError || absenteeismError ? (
-                        <div className="mb-1 flex items-center gap-1.5 px-1 text-[10px] font-semibold text-amber-700">
-                          <AlertCircle size={11} />
-                          <span>{utilizationError || absenteeismError}</span>
-                        </div>
-                      ) : null}
-                      <OccupancyKpiDashboard
-                        data={occupancyDashboardData || {}}
-                        showSummaryCards={isOccupancyOnly ? showFilters : false}
-                        period={filters.period}
-                        isSubmodule={isOccupancyOnly}
-                        showFilters={showFilters}
-                        onSectionClick={!currentSection ? () => handleNavigateToSection("occupancy") : null}
-                      />
-                    </div>
-                  )}
-                </div>
-              )}
+                        )}
+                        {occupancyError ? (
+                          <div className="sibs-card mb-1 flex items-start gap-2 border border-amber-200 bg-amber-50/70 p-2 text-xs font-semibold text-amber-800">
+                            <AlertCircle size={14} className="mt-0.5 shrink-0" />
+                            <span>{occupancyError}</span>
+                          </div>
+                        ) : null}
+                        {utilizationError || absenteeismError ? (
+                          <div className="mb-1 flex items-center gap-1.5 px-1 text-[10px] font-semibold text-amber-700">
+                            <AlertCircle size={11} />
+                            <span>{utilizationError || absenteeismError}</span>
+                          </div>
+                        ) : null}
+                        <OccupancyKpiDashboard
+                          data={occupancyDashboardData || {}}
+                          showSummaryCards={isOccupancyOnly ? showFilters : false}
+                          period={filters.period}
+                          isSubmodule={isOccupancyOnly}
+                          showFilters={showFilters}
+                          isLoading={isOccupancyOnly ? isOccupancyLoading : isUnifiedLoading}
+                          isUtilizationLoading={isOccupancyOnly ? isUtilizationLoading : isUnifiedLoading}
+                          isAbsenteeismLoading={isOccupancyOnly ? isAbsenteeismLoading : isUnifiedLoading}
+                          onSectionClick={!currentSection ? () => handleNavigateToSection("occupancy") : null}
+                        />
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
           )}
         </div>

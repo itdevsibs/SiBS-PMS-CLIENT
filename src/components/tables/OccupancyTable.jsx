@@ -21,8 +21,8 @@ export const OCCUPANCY_COLUMNS = [
     labelLines: ["Name"],
     category: "general",
     align: "text-left",
-    minWidth: 160,
-    widthPct: "11.5%",
+    minWidth: 110,
+    widthPct: "10%",
   },
   {
     key: "interval",
@@ -30,8 +30,8 @@ export const OCCUPANCY_COLUMNS = [
     labelLines: ["Interval"],
     category: "general",
     align: "text-center",
-    minWidth: 95,
-    widthPct: "6%",
+    minWidth: 60,
+    widthPct: "5.5%",
   },
   {
     key: "expectedHoursSec",
@@ -39,8 +39,8 @@ export const OCCUPANCY_COLUMNS = [
     labelLines: ["Expected Hours", "(sec)"],
     category: "phone",
     align: "text-center",
-    minWidth: 125,
-    widthPct: "6.5%",
+    minWidth: 80,
+    widthPct: "7.5%",
   },
   {
     key: "actualLoggedTime",
@@ -48,8 +48,8 @@ export const OCCUPANCY_COLUMNS = [
     labelLines: ["Actual Logged", "Time"],
     category: "phone",
     align: "text-center",
-    minWidth: 125,
-    widthPct: "6.5%",
+    minWidth: 80,
+    widthPct: "7.5%",
   },
   {
     key: "handledCalls",
@@ -57,7 +57,7 @@ export const OCCUPANCY_COLUMNS = [
     labelLines: ["Handled", "Calls"],
     category: "phone",
     align: "text-center",
-    minWidth: 100,
+    minWidth: 60,
     widthPct: "6%",
   },
   {
@@ -66,7 +66,7 @@ export const OCCUPANCY_COLUMNS = [
     labelLines: ["AVG Talk", "Time"],
     category: "phone",
     align: "text-center",
-    minWidth: 110,
+    minWidth: 65,
     widthPct: "6.5%",
   },
   {
@@ -75,8 +75,8 @@ export const OCCUPANCY_COLUMNS = [
     labelLines: ["AVG Hold", "Time"],
     category: "phone",
     align: "text-center",
-    minWidth: 110,
-    widthPct: "6%",
+    minWidth: 65,
+    widthPct: "6.5%",
   },
   {
     key: "availTime",
@@ -84,8 +84,8 @@ export const OCCUPANCY_COLUMNS = [
     labelLines: ["Avail", "Time"],
     category: "phone",
     align: "text-center",
-    minWidth: 100,
-    widthPct: "6.5%",
+    minWidth: 60,
+    widthPct: "6%",
   },
   {
     key: "phoneOccupancy",
@@ -93,7 +93,7 @@ export const OCCUPANCY_COLUMNS = [
     labelLines: ["Phone", "Occupancy"],
     category: "phone",
     align: "text-center",
-    minWidth: 120,
+    minWidth: 75,
     widthPct: "7.5%",
   },
   {
@@ -102,7 +102,7 @@ export const OCCUPANCY_COLUMNS = [
     labelLines: ["Avail Email", "Capacity"],
     category: "email",
     align: "text-center",
-    minWidth: 130,
+    minWidth: 75,
     widthPct: "7.5%",
   },
   {
@@ -111,7 +111,7 @@ export const OCCUPANCY_COLUMNS = [
     labelLines: ["Target # of", "Emails"],
     category: "email",
     align: "text-center",
-    minWidth: 115,
+    minWidth: 75,
     widthPct: "7%",
   },
   {
@@ -120,8 +120,8 @@ export const OCCUPANCY_COLUMNS = [
     labelLines: ["Actual #", "Emails"],
     category: "email",
     align: "text-center",
-    minWidth: 110,
-    widthPct: "7%",
+    minWidth: 70,
+    widthPct: "6.5%",
   },
   {
     key: "utilizationEmail",
@@ -129,7 +129,7 @@ export const OCCUPANCY_COLUMNS = [
     labelLines: ["Utilization", "(Email)"],
     category: "email",
     align: "text-center",
-    minWidth: 120,
+    minWidth: 80,
     widthPct: "7.5%",
   },
   {
@@ -138,8 +138,8 @@ export const OCCUPANCY_COLUMNS = [
     labelLines: ["Actual", "Efficiency"],
     category: "efficiency",
     align: "text-center",
-    minWidth: 120,
-    widthPct: "8%",
+    minWidth: 85,
+    widthPct: "8.5%",
   },
 ];
 
@@ -874,6 +874,7 @@ export default function OccupancyTable({
   isLoading = false,
   onRefresh,
   onFilteredDataChange,
+  summaryCards = null,
 }) {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedEmployees, setSelectedEmployees] = useState([]);
@@ -1082,155 +1083,170 @@ export default function OccupancyTable({
   return (
     <div className="flex-1 min-h-0 flex flex-col gap-2.5 sm:gap-3">
       {/* Search and filter toolbar matching reference bar */}
-      <div className="shrink-0 flex flex-col lg:flex-row lg:items-end justify-between gap-3 sm:gap-3.5 rounded-xl border border-slate-200 bg-white p-3 sm:p-4 shadow-xs">
-        <div className="flex flex-wrap items-end gap-3 sm:gap-3.5 flex-1 min-w-0 w-full">
-          {/* 1. Search */}
-          <div className="w-full sm:w-auto sm:flex-1 sm:min-w-[190px] lg:max-w-xs">
-            <label className="text-xs font-bold text-slate-800 block mb-1.5">
-              Search
-            </label>
-            <div className="relative flex h-9.5 items-center rounded-lg border border-slate-200 bg-white px-3 hover:border-slate-300 transition-colors">
-              <Search className="h-4 w-4 text-slate-400 shrink-0 mr-2" />
-              <input
-                type="text"
-                placeholder="Search name, email, position, team..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full bg-transparent text-xs sm:text-[13px] font-medium text-slate-800 placeholder:text-slate-400 outline-none"
+      <div className="sibs-card relative z-40 overflow-visible shadow-xs shrink-0 p-2.5 sm:p-3 bg-white">
+        <div className="flex flex-wrap items-end justify-between gap-2.5 sm:gap-3 w-full">
+          {/* Main Filters: Search, Employee, Date, Time Range, Interval */}
+          <div className="flex flex-wrap items-end gap-2.5 sm:gap-3 flex-1 min-w-0">
+            {/* 1. Search */}
+            <div className="w-full sm:w-auto sm:flex-1 sm:min-w-[170px] sm:max-w-[220px]">
+              <span className="mb-0.5 block text-[9.5px] font-extrabold uppercase text-sibs-tertiary-5">
+                Search Employee
+              </span>
+              <div className="relative flex h-8 items-center rounded-lg border border-sibs-tertiary-8 bg-white px-2.5 hover:border-sibs-primary-1 transition-colors focus-within:border-sibs-primary-1 focus-within:ring-1 focus-within:ring-sibs-primary-1/20">
+                <Search size={12} className="text-slate-400 shrink-0 mr-1.5" />
+                <input
+                  type="text"
+                  placeholder="Search by name or SIBS ID..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full bg-transparent text-xs font-semibold text-slate-800 placeholder:text-slate-400 outline-none"
+                />
+                {searchTerm && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchTerm("")}
+                    className="ml-1 text-slate-400 hover:text-slate-600 cursor-pointer"
+                  >
+                    <X size={12} />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* 2. Employee */}
+            <div className="w-full sm:w-auto sm:flex-1 sm:min-w-[160px] sm:max-w-[210px]">
+              <span className="mb-0.5 block text-[9.5px] font-extrabold uppercase text-sibs-tertiary-5">
+                Employee
+              </span>
+              <EmployeeSelect
+                value={selectedEmployees}
+                onChange={setSelectedEmployees}
+                options={employeeOptions}
+                placeholder="All Employees"
+                buttonClassName="h-8 !px-2.5 text-xs font-semibold"
               />
             </div>
-          </div>
 
-          {/* 2. Employee */}
-          <div className="w-full sm:w-auto sm:flex-1 sm:min-w-[190px] lg:max-w-xs">
-            <label className="text-xs font-bold text-slate-800 block mb-1.5">
-              Employee
-            </label>
-            <EmployeeSelect
-              value={selectedEmployees}
-              onChange={setSelectedEmployees}
-              options={employeeOptions}
-              placeholder="All Matched Employees"
-            />
-          </div>
+            {/* 3. Date */}
+            <div className="w-full sm:w-auto sm:flex-1 sm:min-w-[150px] sm:max-w-[190px]">
+              <DatePicker
+                label="Select Date"
+                labelClassName="mb-0.5 block text-[9.5px] font-extrabold uppercase text-sibs-tertiary-5"
+                buttonClassName="h-8"
+                value={selectedDate}
+                onChange={(val) => setSelectedDate(val || "")}
+              />
+            </div>
 
-          {/* 3. Date */}
-          <div className="w-full sm:w-auto min-w-0 sm:min-w-[145px]">
-            <DatePicker
-              label="Date"
-              labelClassName="text-xs font-bold text-slate-800 block mb-1.5"
-              buttonClassName="h-9.5 w-full sm:w-auto"
-              value={selectedDate}
-              onChange={(val) => setSelectedDate(val || "")}
-            />
-          </div>
+            {/* 4. Time Range */}
+            <div className="w-full sm:w-auto sm:flex-1 sm:min-w-[210px] sm:max-w-[260px]">
+              <TimeRangePicker
+                label="Time Range"
+                labelClassName="mb-0.5 block text-[9.5px] font-extrabold uppercase text-sibs-tertiary-5"
+                fromTime={startTime}
+                toTime={endTime}
+                onFromChange={setStartTime}
+                onToChange={setEndTime}
+                fromPlaceholder="From..."
+                toPlaceholder="To..."
+                buttonClassName="h-8 !px-2.5 text-xs font-semibold"
+              />
+            </div>
 
-          {/* 4. Time Range */}
-          <div className="w-full sm:w-auto min-w-0 sm:min-w-[240px]">
-            <TimeRangePicker
-              label="Time Range"
-              labelClassName="text-xs font-bold text-slate-800 block mb-1.5"
-              fromTime={startTime}
-              toTime={endTime}
-              onFromChange={setStartTime}
-              onToChange={setEndTime}
-              fromPlaceholder="From time..."
-              toPlaceholder="To time..."
-              buttonClassName="h-9.5"
-            />
-          </div>
-
-          {/* 5. Interval */}
-          <div className="w-full sm:w-auto">
-            <label className="text-xs font-bold text-slate-800 block mb-1.5">
-              Interval
-            </label>
-            <div className="inline-flex h-9.5 w-full sm:w-auto items-center justify-center rounded-lg border border-slate-200 bg-slate-50/60 p-0.5">
-              <button
-                type="button"
-                onClick={() => setIntervalType("Daily")}
-                className={`flex-1 sm:flex-initial rounded-md px-3.5 py-1.5 text-xs sm:text-[13px] font-bold transition-all ${
-                  intervalType === "Daily"
-                    ? "bg-[#18466b] text-white shadow-xs"
-                    : "text-slate-600 hover:text-slate-900"
-                }`}
-              >
-                Daily
-              </button>
-              <button
-                type="button"
-                onClick={() => setIntervalType("Hourly")}
-                className={`flex-1 sm:flex-initial rounded-md px-3.5 py-1.5 text-xs sm:text-[13px] font-bold transition-all ${
-                  intervalType === "Hourly"
-                    ? "bg-[#18466b] text-white shadow-xs"
-                    : "text-slate-600 hover:text-slate-900"
-                }`}
-              >
-                Hourly
-              </button>
+            {/* 5. Interval */}
+            <div className="shrink-0">
+              <span className="mb-0.5 block text-[9.5px] font-extrabold uppercase text-sibs-tertiary-5">
+                Interval
+              </span>
+              <div className="inline-flex h-8 items-center justify-center rounded-lg border border-sibs-tertiary-8 bg-slate-50/60 p-0.5">
+                <button
+                  type="button"
+                  onClick={() => setIntervalType("Daily")}
+                  className={`rounded-md px-3 py-1 text-xs font-bold transition-all ${
+                    intervalType === "Daily"
+                      ? "bg-[#18466b] text-white shadow-xs"
+                      : "text-slate-600 hover:text-slate-900 cursor-pointer"
+                  }`}
+                >
+                  Daily
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIntervalType("Hourly")}
+                  className={`rounded-md px-3 py-1 text-xs font-bold transition-all ${
+                    intervalType === "Hourly"
+                      ? "bg-[#18466b] text-white shadow-xs"
+                      : "text-slate-600 hover:text-slate-900 cursor-pointer"
+                  }`}
+                >
+                  Hourly
+                </button>
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Action buttons on right */}
-        <div className="flex flex-wrap items-center gap-2 self-end w-full lg:w-auto lg:ml-auto justify-end pt-1 lg:pt-0">
-          {(!data || data.length === 0) && (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setShowSampleData((prev) => !prev)}
-              className="h-9.5 flex-1 sm:flex-initial gap-2 px-3.5 text-xs sm:text-sm font-medium border-slate-300 bg-white text-slate-700 hover:bg-slate-100 hover:text-slate-900 hover:border-slate-400 transition-colors"
-            >
-              {showSampleData ? (
-                <>
-                  <EyeOff className="h-4 w-4 text-slate-600 transition-colors group-hover/button:text-slate-900" />
-                  <span>Hide Sample Data</span>
-                </>
-              ) : (
-                <>
-                  <Eye className="h-4 w-4 text-slate-600 transition-colors group-hover/button:text-slate-900" />
-                  <span>Preview Sample Data</span>
-                </>
-              )}
-            </Button>
-          )}
+          {/* Action buttons */}
+          <div className="flex items-center gap-2 shrink-0 self-end pt-1 lg:pt-0">
+            {(!data || data.length === 0) && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setShowSampleData((prev) => !prev)}
+                className="h-8 gap-1.5 px-3 text-xs font-bold border-slate-200 bg-white text-sibs-primary-1 hover:bg-sibs-primary-1 hover:text-white hover:border-sibs-primary-1 shadow-xs transition-colors"
+              >
+                {showSampleData ? (
+                  <>
+                    <EyeOff size={13} />
+                    <span>Hide Sample</span>
+                  </>
+                ) : (
+                  <>
+                    <Eye size={13} />
+                    <span>Preview Sample</span>
+                  </>
+                )}
+              </Button>
+            )}
 
-          {onRefresh && (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={onRefresh}
-              className="h-9.5 flex-1 sm:flex-initial gap-2 px-3.5 text-xs sm:text-sm font-medium border-slate-300 bg-white text-slate-700 hover:bg-slate-100 hover:text-slate-900 hover:border-slate-400 transition-colors"
-            >
-              <RefreshCw className="h-4 w-4 text-slate-600 transition-colors group-hover/button:text-slate-900" />
-              <span>Refresh</span>
-            </Button>
-          )}
+            {onRefresh && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={onRefresh}
+                className="h-8 gap-1.5 px-3 text-xs font-bold border-slate-200 bg-white text-sibs-primary-1 hover:bg-sibs-primary-1 hover:text-white hover:border-sibs-primary-1 shadow-xs transition-colors"
+              >
+                <RefreshCw size={13} />
+                <span>Refresh</span>
+              </Button>
+            )}
+          </div>
         </div>
       </div>
 
+      {/* Render Summary KPI cards directly below the filter toolbar */}
+      {summaryCards && (
+        <div className="shrink-0">{summaryCards}</div>
+      )}
+
       {/* Structured, Well-Organized Data Grid */}
-      <div className="flex-1 min-h-[480px] lg:min-h-0 flex flex-col rounded-xl border border-slate-200 bg-white shadow-xs overflow-hidden">
+      <div className="flex-1 min-h-[440px] lg:min-h-0 flex flex-col rounded-xl border border-slate-200 bg-white shadow-xs overflow-hidden">
         <div
           ref={tableContainerRef}
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
           onPointerCancel={handlePointerUp}
-          className="flex-1 min-h-0 w-full overflow-x-auto overflow-y-auto sibs-scrollbar cursor-grab active:cursor-grabbing touch-pan-x touch-pan-y"
-          style={{
-            WebkitOverflowScrolling: "touch",
-          }}
+          className="flex-1 min-h-0 w-full overflow-y-auto overflow-x-auto sibs-scrollbar"
         >
-          <table className="w-full min-w-[1640px] table-fixed border-collapse text-left">
+          <table className="w-full table-fixed border-collapse text-left">
             <colgroup>
               {OCCUPANCY_COLUMNS.map((col) => (
                 <col
                   key={`col-${col.key}`}
                   style={{
-                    width: `${col.minWidth}px`,
+                    width: col.widthPct,
                   }}
                 />
               ))}
@@ -1238,60 +1254,60 @@ export default function OccupancyTable({
 
             {/* Category Groups Header */}
             <thead className="sticky top-0 z-20 bg-slate-100 shadow-xs">
-              <tr className="border-b border-slate-200 bg-slate-100/95 text-[11px] font-bold uppercase tracking-wider text-slate-600">
+              <tr className="border-b border-slate-200 bg-slate-100/95 text-[10.5px] font-bold uppercase tracking-wider text-slate-700">
                 <th
                   colSpan={2}
-                  className="px-2.5 py-2.5 border-r border-slate-200 text-center font-extrabold tracking-wide whitespace-nowrap"
+                  className="px-2 py-2 border-r border-slate-200 text-center font-extrabold tracking-wide whitespace-nowrap"
                 >
                   Agent Information
                 </th>
                 <th
                   colSpan={7}
-                  className="px-2.5 py-2.5 border-r border-slate-200 text-center font-extrabold tracking-wide whitespace-nowrap"
+                  className="px-2 py-2 border-r border-slate-200 text-center font-extrabold tracking-wide whitespace-nowrap"
                 >
                   Phone & Calls Metrics
                 </th>
                 <th
                   colSpan={4}
-                  className="px-2.5 py-2.5 border-r border-slate-200 text-center font-extrabold tracking-wide whitespace-nowrap"
+                  className="px-2 py-2 border-r border-slate-200 text-center font-extrabold tracking-wide whitespace-nowrap"
                 >
                   Email Metrics
                 </th>
                 <th
                   colSpan={1}
-                  className="px-2.5 py-2.5 text-center font-extrabold tracking-wide whitespace-nowrap"
+                  className="px-2 py-2 text-center font-extrabold tracking-wide whitespace-nowrap"
                 >
                   Efficiency
                 </th>
               </tr>
 
               {/* Sub-Column Header */}
-              <tr className="border-b border-slate-200 bg-slate-50 text-[11px] font-bold uppercase tracking-wide text-slate-700">
+              <tr className="border-b border-slate-200 bg-slate-50 text-[10px] font-bold uppercase tracking-tight text-slate-800">
                 {OCCUPANCY_COLUMNS.map((col) => (
                   <th
                     key={`th-${col.key}`}
-                    className={`px-2 py-2.5 border-r border-slate-200 last:border-r-0 align-middle ${col.align}`}
+                    className={`px-1.5 py-2 border-r border-slate-200 last:border-r-0 align-middle ${col.align}`}
                   >
                     <div
-                      className={`flex flex-col justify-center min-h-[38px] leading-tight ${
+                      className={`flex flex-col justify-center min-h-[35px] leading-tight ${
                         col.align === "text-left"
-                          ? "items-start pl-1 lg:pl-2 text-left"
+                          ? "items-start pl-1 text-left"
                           : col.align === "text-center"
                           ? "items-center text-center"
-                          : "items-end pr-1 lg:pr-2 text-right"
+                          : "items-end pr-1 text-right"
                       }`}
                     >
                       {col.labelLines ? (
                         col.labelLines.map((line, lIdx) => (
                           <span
                             key={lIdx}
-                            className="whitespace-nowrap font-bold text-[10px] xl:text-[10.5px] tracking-tight"
+                            className="whitespace-nowrap font-bold text-[9.5px] xl:text-[10px] tracking-tight"
                           >
                             {line}
                           </span>
                         ))
                       ) : (
-                        <span className="whitespace-nowrap font-bold text-[10px] xl:text-[10.5px] tracking-tight">
+                        <span className="whitespace-nowrap font-bold text-[9.5px] xl:text-[10px] tracking-tight">
                           {col.label}
                         </span>
                       )}
@@ -1387,8 +1403,8 @@ export default function OccupancyTable({
                       return (
                         <td
                           key={`cell-${col.key}-${idx}`}
-                          className={`px-2 xl:px-2.5 py-3 text-xs xl:text-[13px] border-r border-slate-100 last:border-r-0 tabular-nums truncate ${col.align} ${
-                            isName ? "text-slate-900 font-bold pl-2.5 lg:pl-3" : "text-slate-700"
+                          className={`px-1.5 py-2.5 text-xs xl:text-[12.5px] border-r border-slate-100 last:border-r-0 tabular-nums truncate ${col.align} ${
+                            isName ? "text-slate-900 font-bold pl-2" : "text-slate-700"
                           }`}
                           title={String(value)}
                         >

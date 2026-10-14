@@ -419,6 +419,9 @@ export default function OccupancyKpiDashboard({
   isSubmodule = false,
   showFilters = true,
   onSectionClick = null,
+  isLoading = false,
+  isUtilizationLoading = false,
+  isAbsenteeismLoading = false,
 } = {}) {
   const summary = data?.summary || {};
   const series = data?.series || [];
@@ -511,6 +514,9 @@ export default function OccupancyKpiDashboard({
             <ChartShell
               title="Occupancy & Utilization"
               legendAlign="between"
+              isLoading={isLoading}
+              isSubmodule={isSubmodule}
+              showFilters={showFilters}
               legend={
                 <>
                   <span className="inline-flex items-center gap-1 font-bold text-[#0b3b68]">
@@ -546,6 +552,10 @@ export default function OccupancyKpiDashboard({
           <div className="col-span-1">
             <ChartShell
               title="Headcount Metrics"
+              isLoading={isUtilizationLoading}
+              isSubmodule={isSubmodule}
+              showFilters={showFilters}
+              series={series}
               legend={
                 <>
                   <span className="inline-flex items-center gap-1 font-bold text-[#0b3b68]">
@@ -587,6 +597,10 @@ export default function OccupancyKpiDashboard({
             <div className="col-span-1">
               <ChartShell
                 title="People Metrics"
+                isLoading={isAbsenteeismLoading}
+                isSubmodule={isSubmodule}
+                showFilters={showFilters}
+                series={series}
                 legend={
                   <>
                     <span className="inline-flex items-center gap-1 font-bold text-[#0b3b68]">
@@ -619,15 +633,24 @@ export default function OccupancyKpiDashboard({
       ) : (
         /* Unified 3-column row for Wow Report (All 4 Modules view) */
         <div
-          style={!isSubmodule && showFilters ? { height: "200px", minHeight: "200px" } : undefined}
-          className="grid grid-cols-1 md:grid-cols-3 grid-rows-1 gap-1 sm:gap-1.5 w-full min-w-0 flex-1 min-h-0 transition-all duration-300 ease-in-out"
+          className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 md:grid-rows-1 gap-1.5 sm:gap-1.5 w-full min-w-0 flex-1 min-h-0 transition-all duration-300 ease-in-out ${
+            !isSubmodule && showFilters
+              ? "min-h-[200px]"
+              : !isSubmodule
+              ? "min-h-[170px]"
+              : ""
+          }`}
         >
           {/* Chart 1: Occupancy & Utilization */}
-          <div className="col-span-1 h-full min-h-0 flex flex-col">
+          <div className="col-span-1 md:col-span-2 lg:col-span-1 min-h-[160px] md:min-h-0 md:h-full flex flex-col">
             <ChartShell
               title="Occupancy & Utilization"
               tightLeft={!isSubmodule}
               onClick={!isSubmodule ? onSectionClick : undefined}
+              isLoading={isLoading}
+              isSubmodule={isSubmodule}
+              showFilters={showFilters}
+              series={series}
               legend={
                 <>
                   <span className="inline-flex items-center gap-1 font-bold text-[#0b3b68]">
@@ -660,11 +683,15 @@ export default function OccupancyKpiDashboard({
           </div>
 
           {/* Chart 2: Headcount Metrics */}
-          <div className="col-span-1 h-full min-h-0 flex flex-col">
+          <div className="col-span-1 min-h-[160px] md:min-h-0 md:h-full flex flex-col">
             <ChartShell
               title="Headcount Metrics"
               tightLeft={!isSubmodule}
               onClick={!isSubmodule ? onSectionClick : undefined}
+              isLoading={isUtilizationLoading}
+              isSubmodule={isSubmodule}
+              showFilters={showFilters}
+              series={series}
               legend={
                 <>
                   <span className="inline-flex items-center gap-1 font-bold text-[#0b3b68]">
@@ -703,11 +730,15 @@ export default function OccupancyKpiDashboard({
           </div>
 
           {/* Chart 3: People Metrics */}
-          <div className="col-span-1 h-full min-h-0 flex flex-col">
+          <div className="col-span-1 min-h-[160px] md:min-h-0 md:h-full flex flex-col">
             <ChartShell
               title="People Metrics"
               tightLeft={!isSubmodule}
               onClick={!isSubmodule ? onSectionClick : undefined}
+              isLoading={isAbsenteeismLoading}
+              isSubmodule={isSubmodule}
+              showFilters={showFilters}
+              series={series}
               legend={
                 <>
                   <span className="inline-flex items-center gap-1 font-bold text-[#0b3b68]">

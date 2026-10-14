@@ -147,126 +147,109 @@ export default function OccupancyPage() {
             </div>
           ) : (
             <>
-              {/* Header Title Banner */}
-              <div className="shrink-0 flex items-center justify-between rounded-xl border border-slate-200 bg-white px-3 py-2 sm:px-4 sm:py-2.5 shadow-xs">
-                <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-                  <div className="flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-700">
-                    <Users className="h-4.5 w-4.5 sm:h-5 sm:w-5" />
-                  </div>
-                  <div className="min-w-0">
-                    <h1 className="m-0 text-sm sm:text-base font-bold text-slate-900 truncate">
-                      Occupancy & Efficiency Overview
-                    </h1>
-                    <p className="m-0 text-[10.5px] sm:text-[11.5px] text-slate-500 truncate">
-                      Phone and email metrics, intervals, and agent actual efficiency
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* High-level KPI summary cards - Compact corporate sizing */}
-              <div className="shrink-0 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
-                {/* 1. Total Employees */}
-                <div className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 sm:px-3 sm:py-2 shadow-2xs transition-all hover:border-slate-300">
-                  <div className="flex items-center justify-between gap-1.5">
-                    <span
-                      className="text-[10px] font-bold uppercase tracking-wider text-slate-500 truncate"
-                      title="Total Employees"
-                    >
-                      Total Employees
-                    </span>
-                    <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-slate-100 text-slate-600">
-                      <Users size={11} />
-                    </div>
-                  </div>
-                  <div className="mt-0.5 text-base sm:text-lg font-bold text-slate-900 leading-snug">
-                    {summaryStats.totalEmployees}
-                  </div>
-                </div>
-
-                {/* 2. Actual Efficiency */}
-                <div className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 sm:px-3 sm:py-2 shadow-2xs transition-all hover:border-slate-300">
-                  <div className="flex items-center justify-between gap-1.5">
-                    <span
-                      className="text-[10px] font-bold uppercase tracking-wider text-slate-500 truncate"
-                      title="Actual Efficiency"
-                    >
-                      Actual Efficiency
-                    </span>
-                    <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-slate-100 text-slate-600">
-                      <TrendingUp size={11} />
-                    </div>
-                  </div>
-                  <div className="mt-0.5 text-base sm:text-lg font-bold text-slate-900 leading-snug">
-                    {summaryStats.actualEfficiency}
-                  </div>
-                </div>
-
-                {/* 3. Phone Occupancy */}
-                <div className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 sm:px-3 sm:py-2 shadow-2xs transition-all hover:border-slate-300">
-                  <div className="flex items-center justify-between gap-1.5">
-                    <span
-                      className="text-[10px] font-bold uppercase tracking-wider text-slate-500 truncate"
-                      title="Phone Occupancy"
-                    >
-                      Phone Occupancy
-                    </span>
-                    <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-slate-100 text-slate-600">
-                      <Headphones size={11} />
-                    </div>
-                  </div>
-                  <div className="mt-0.5 text-base sm:text-lg font-bold text-slate-900 leading-snug">
-                    {summaryStats.phoneOccupancy}
-                  </div>
-                </div>
-
-                {/* 4. Handled Calls */}
-                <div className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 sm:px-3 sm:py-2 shadow-2xs transition-all hover:border-slate-300">
-                  <div className="flex items-center justify-between gap-1.5">
-                    <span
-                      className="text-[10px] font-bold uppercase tracking-wider text-slate-500 truncate"
-                      title="Handled Calls"
-                    >
-                      Handled Calls
-                    </span>
-                    <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-slate-100 text-slate-600">
-                      <PhoneCall size={11} />
-                    </div>
-                  </div>
-                  <div className="mt-0.5 text-base sm:text-lg font-bold text-slate-900 leading-snug">
-                    {summaryStats.handledCalls}
-                  </div>
-                </div>
-
-                {/* 5. Actual # of Emails (Email/Hour) */}
-                <div className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 sm:px-3 sm:py-2 shadow-2xs col-span-2 sm:col-span-1 transition-all hover:border-slate-300">
-                  <div className="flex items-center justify-between gap-1.5">
-                    <span
-                      className="text-[10px] font-bold uppercase tracking-wider text-slate-500 truncate"
-                      title="Actual # of Emails (Email/Hour)"
-                    >
-                      Actual # of Emails
-                    </span>
-                    <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-slate-100 text-slate-600">
-                      <Mail size={11} />
-                    </div>
-                  </div>
-                  <div className="mt-0.5 flex items-baseline gap-1">
-                    <span className="text-base sm:text-lg font-bold text-slate-900 leading-snug">
-                      {summaryStats.actualEmails}
-                    </span>
-                    <span className="text-[9.5px] font-medium text-slate-400">
-                      email/hr
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Occupancy Data Grid Component */}
+              {/* Occupancy Data Grid Component with Filter Toolbar on Top and Summary Cards below it */}
               <OccupancyTable
                 data={occupancyData}
                 isLoading={isLoading}
                 onFilteredDataChange={setActiveRecords}
+                summaryCards={
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-5">
+                    {/* 1. Total Employees */}
+                    <div className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 sm:px-3 sm:py-2 shadow-2xs transition-all hover:border-slate-300">
+                      <div className="flex items-center justify-between gap-1">
+                        <span
+                          className="text-[9.5px] sm:text-[10px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap"
+                          title="Total Employees"
+                        >
+                          Total Employees
+                        </span>
+                        <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-slate-100 text-slate-600">
+                          <Users size={11} />
+                        </div>
+                      </div>
+                      <div className="mt-0.5 text-base sm:text-lg font-bold text-slate-900 leading-snug">
+                        {summaryStats.totalEmployees}
+                      </div>
+                    </div>
+
+                    {/* 2. Actual Efficiency */}
+                    <div className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 sm:px-3 sm:py-2 shadow-2xs transition-all hover:border-slate-300">
+                      <div className="flex items-center justify-between gap-1">
+                        <span
+                          className="text-[9.5px] sm:text-[10px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap"
+                          title="Actual Efficiency"
+                        >
+                          Actual Efficiency
+                        </span>
+                        <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-slate-100 text-slate-600">
+                          <TrendingUp size={11} />
+                        </div>
+                      </div>
+                      <div className="mt-0.5 text-base sm:text-lg font-bold text-slate-900 leading-snug">
+                        {summaryStats.actualEfficiency}
+                      </div>
+                    </div>
+
+                    {/* 3. Phone Occupancy */}
+                    <div className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 sm:px-3 sm:py-2 shadow-2xs transition-all hover:border-slate-300">
+                      <div className="flex items-center justify-between gap-1">
+                        <span
+                          className="text-[9.5px] sm:text-[10px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap"
+                          title="Phone Occupancy"
+                        >
+                          Phone Occupancy
+                        </span>
+                        <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-slate-100 text-slate-600">
+                          <Headphones size={11} />
+                        </div>
+                      </div>
+                      <div className="mt-0.5 text-base sm:text-lg font-bold text-slate-900 leading-snug">
+                        {summaryStats.phoneOccupancy}
+                      </div>
+                    </div>
+
+                    {/* 4. Handled Calls */}
+                    <div className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 sm:px-3 sm:py-2 shadow-2xs transition-all hover:border-slate-300">
+                      <div className="flex items-center justify-between gap-1">
+                        <span
+                          className="text-[9.5px] sm:text-[10px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap"
+                          title="Handled Calls"
+                        >
+                          Handled Calls
+                        </span>
+                        <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-slate-100 text-slate-600">
+                          <PhoneCall size={11} />
+                        </div>
+                      </div>
+                      <div className="mt-0.5 text-base sm:text-lg font-bold text-slate-900 leading-snug">
+                        {summaryStats.handledCalls}
+                      </div>
+                    </div>
+
+                    {/* 5. Actual # of Emails (Email/Hour) */}
+                    <div className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 sm:px-3 sm:py-2 shadow-2xs col-span-2 sm:col-span-1 transition-all hover:border-slate-300">
+                      <div className="flex items-center justify-between gap-1">
+                        <span
+                          className="text-[9.5px] sm:text-[10px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap"
+                          title="Actual # of Emails (Email/Hour)"
+                        >
+                          Actual # of Emails
+                        </span>
+                        <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-slate-100 text-slate-600">
+                          <Mail size={11} />
+                        </div>
+                      </div>
+                      <div className="mt-0.5 flex items-baseline gap-1">
+                        <span className="text-base sm:text-lg font-bold text-slate-900 leading-snug">
+                          {summaryStats.actualEmails}
+                        </span>
+                        <span className="text-[9.5px] font-medium text-slate-400">
+                          email/hr
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                }
               />
             </>
           )}

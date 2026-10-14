@@ -558,6 +558,7 @@ export default function QualityAuditKpiDashboard({
   isSubmodule = false,
   showFilters = true,
   onSectionClick = null,
+  isLoading = false,
 }) {
   const series = Array.isArray(data.series) ? data.series : [];
   const currentPeriod = period || data.filters?.period || data.data?.filters?.period;
@@ -578,14 +579,23 @@ export default function QualityAuditKpiDashboard({
       </div>
 
       <div
-        style={!isSubmodule && showFilters ? { height: "200px", minHeight: "200px" } : undefined}
-        className={`grid grid-cols-1 ${!isSubmodule ? "gap-1 sm:gap-1.5 grid-rows-1" : "gap-3.5"} md:grid-cols-2 flex-1 min-h-0 w-full`}
+        className={`grid grid-cols-1 ${!isSubmodule ? "gap-1.5 sm:gap-1.5 md:grid-rows-1" : "gap-3.5"} md:grid-cols-2 flex-1 min-h-0 w-full transition-all duration-300 ease-in-out ${
+          !isSubmodule && showFilters
+            ? "min-h-[200px]"
+            : !isSubmodule
+            ? "min-h-[170px]"
+            : ""
+        }`}
       >
-        <div className="col-span-1 h-full min-h-0 flex flex-col">
+        <div className="col-span-1 min-h-[160px] md:min-h-0 md:h-full flex flex-col">
           <ChartShell
             title="QA Transactions"
             tightLeft={!isSubmodule}
             onClick={!isSubmodule ? onSectionClick : undefined}
+            isLoading={isLoading}
+            isSubmodule={isSubmodule}
+            showFilters={showFilters}
+            series={series.length ? series : data?.data?.series}
             legend={
               <span className="inline-flex items-center gap-1 font-bold text-[#174f7f]">
                 <i className="h-2 w-2 rounded-full bg-[#174f7f]" />
@@ -602,11 +612,16 @@ export default function QualityAuditKpiDashboard({
             />
           </ChartShell>
         </div>
-        <div className="col-span-1 h-full min-h-0 flex flex-col">
+        <div className="col-span-1 min-h-[160px] md:min-h-0 md:h-full flex flex-col">
           <ChartShell
             title="QA Score"
             tightLeft={!isSubmodule}
             onClick={!isSubmodule ? onSectionClick : undefined}
+            isLoading={isLoading}
+            isSubmodule={isSubmodule}
+            showFilters={showFilters}
+            series={series.length ? series : data?.data?.series}
+            isHorizontal={true}
             legend={
               <span className="inline-flex items-center gap-1 font-bold text-[#557da4]">
                 <i className="h-2 w-2 rounded-full bg-[#557da4]" />

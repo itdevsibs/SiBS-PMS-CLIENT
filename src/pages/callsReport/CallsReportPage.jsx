@@ -255,12 +255,12 @@ export default function CallsReportPage() {
           onLogoutClick={() => dashboard.setShowLogoutModal(true)}
         />
 
-        <main className="flex min-h-0 flex-1 flex-col gap-2.5 overflow-hidden px-2.5 pb-2 pt-2.5 sm:gap-3 sm:px-4 sm:pt-3 lg:px-5">
+        <main className="flex min-h-0 flex-1 flex-col gap-2.5 overflow-hidden px-2.5 pb-2.5 pt-2.5 sm:gap-3 sm:px-4 sm:pt-3 lg:px-5">
           {/* Search & Filter Toolbar (Matching WOW Report Filter Design) */}
-          <div className="sibs-card relative z-40 overflow-visible shadow-xs shrink-0 p-2.5 sm:p-3 bg-white">
-            <div className="flex flex-wrap items-end gap-2.5 sm:gap-3">
+          <div className="sibs-card relative z-40 overflow-visible shadow-xs shrink-0 p-2 sm:p-2.5 bg-white">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 gap-2 sm:gap-2.5 items-end">
               {/* 1. Search */}
-              <div className="w-full sm:w-auto sm:flex-1 sm:min-w-[170px] sm:max-w-[220px]">
+              <div className="w-full">
                 <span className="mb-0.5 block text-[9.5px] font-extrabold uppercase text-sibs-tertiary-5">
                   Search
                 </span>
@@ -286,7 +286,7 @@ export default function CallsReportPage() {
               </div>
 
               {/* 2. Country (Multi-Select) */}
-              <div className="w-full sm:w-auto sm:flex-1 sm:min-w-[160px] sm:max-w-[210px]">
+              <div className="w-full">
                 <MultiSelectDropdown
                   label="Country"
                   value={selectedCountries}
@@ -300,7 +300,7 @@ export default function CallsReportPage() {
               </div>
 
               {/* 3. Language */}
-              <div className="w-full sm:w-auto sm:flex-1 sm:min-w-[140px] sm:max-w-[190px]">
+              <div className="w-full">
                 <SingleSelectDropdown
                   label="Language"
                   value={selectedLanguage}
@@ -311,7 +311,7 @@ export default function CallsReportPage() {
               </div>
 
               {/* 4. Skill */}
-              <div className="w-full sm:w-auto sm:flex-1 sm:min-w-[140px] sm:max-w-[190px]">
+              <div className="w-full">
                 <SingleSelectDropdown
                   label="Skill"
                   value={selectedSkill}
@@ -322,7 +322,7 @@ export default function CallsReportPage() {
               </div>
 
               {/* 5. Select Date */}
-              <div className="w-full sm:w-auto sm:flex-1 sm:min-w-[140px] sm:max-w-[180px]">
+              <div className="w-full">
                 <DatePicker
                   label="Select Date"
                   value={selectedDate}
@@ -333,7 +333,7 @@ export default function CallsReportPage() {
               </div>
 
               {/* 6. Reset & Refresh Actions */}
-              <div className="flex items-center gap-1.5 ml-auto sm:ml-0 mt-1 sm:mt-0">
+              <div className="flex items-center gap-1.5 w-full sm:col-span-2 md:col-span-3 lg:col-span-1 justify-end">
                 {(selectedDate || selectedCountries.length > 0 || selectedLanguage !== "all" || selectedSkill !== "all" || searchTerm) && (
                   <button
                     type="button"
@@ -371,7 +371,7 @@ export default function CallsReportPage() {
           </div>
 
           {/* High-level KPI summary cards - Compact corporate sizing matching Occupancy */}
-          <div className="shrink-0 grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-7">
+          <div className="shrink-0 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-7 gap-1.5 sm:gap-2">
             {/* 1. Date */}
             <div className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 sm:px-3 sm:py-2 shadow-2xs transition-all hover:border-slate-300">
               <div className="flex items-center justify-between gap-1.5">
@@ -509,7 +509,7 @@ export default function CallsReportPage() {
           )}
 
           {/* Table Container */}
-          <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs">
+          <div className="flex min-h-[360px] lg:min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs">
             <div className="min-h-0 flex-1 overflow-auto sibs-scrollbar">
               <table
                 className="w-full table-auto border-collapse text-left text-[12.5px]"
@@ -702,15 +702,15 @@ export default function CallsReportPage() {
                 itemLabel="records"
                 className="shrink-0"
                 extraLeft={
-                  <div className="flex items-center gap-2">
-                    <span className="text-[11px] text-slate-500 font-medium">Rows per page:</span>
+                  <div className="flex items-center gap-1.5 ml-2">
+                    <span className="text-slate-500 font-normal">Rows per page:</span>
                     <select
                       value={pageSize}
                       onChange={(e) => {
                         setPageSize(Number(e.target.value));
                         setCurrentPage(1);
                       }}
-                      className="rounded border border-slate-200 bg-white px-2 py-0.5 text-xs font-semibold text-slate-700 outline-none focus:border-[#0b3b68] cursor-pointer"
+                      className="rounded border border-slate-300 bg-white px-2 py-0.5 text-xs font-medium text-slate-700 shadow-2xs outline-none focus:border-[#0b3b68] cursor-pointer"
                     >
                       <option value={10}>10</option>
                       <option value={25}>25</option>

@@ -112,15 +112,15 @@ export default function EmployeeSelect({
   // Label to show on trigger button
   const triggerLabel = () => {
     if (isAllSelected) {
-      return placeholder;
+      return "All";
     }
     if (isNoneSelected) {
-      return "0 Employees Selected";
+      return "None";
     }
     if (selectedList.length === 1) {
       return selectedList[0];
     }
-    return `${selectedList.length} Employees Selected`;
+    return `${selectedList.length} Selected`;
   };
 
   return (
@@ -135,10 +135,10 @@ export default function EmployeeSelect({
             : "border-slate-200 hover:border-slate-300"
         }`}
       >
-        <div className="flex items-center gap-2 min-w-0 flex-1">
-          <Search className="h-4 w-4 text-slate-400 shrink-0" />
+        <div className="flex items-center gap-1.5 min-w-0 flex-1">
+          <Search className="h-3.5 w-3.5 text-slate-400 shrink-0" />
           <span
-            className={`truncate text-xs sm:text-[13px] ${
+            className={`truncate text-xs ${
               !isAllSelected ? "font-bold text-[#18466b]" : "font-medium text-slate-700"
             }`}
           >
@@ -147,7 +147,7 @@ export default function EmployeeSelect({
           {/* Reflect employee count badge */}
           {options.length > 0 && (
             <span
-              className={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-extrabold transition-colors ${
+              className={`shrink-0 rounded-full px-1.5 py-0.2 text-[9.5px] font-extrabold transition-colors ${
                 !isAllSelected
                   ? "bg-[#18466b] text-white"
                   : "bg-[#18466b]/10 text-[#18466b]"
