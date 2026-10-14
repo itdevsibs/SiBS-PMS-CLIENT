@@ -288,7 +288,7 @@ function WfmImportDataPage() {
     setUploadProgress(isUsVisa ? 0 : 15);
     setImportProgressDetail({
       message: isUsVisa
-        ? "Uploading workbook to the ingestion service."
+        ? "Uploading file to the ingestion service."
         : "Reading selected file.",
       processedRows: null,
       totalRows: null,

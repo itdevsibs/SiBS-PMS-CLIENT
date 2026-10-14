@@ -6,7 +6,7 @@ const STAGES = [
   {
     id: "uploading",
     label: "Uploading to Backend",
-    desc: "Transferring the workbook to the ingestion service",
+    desc: "Transferring the file to the ingestion service",
   },
   {
     id: "reading",
@@ -100,7 +100,7 @@ const ImportProgressModal = ({
               aria-hidden="true"
             />
             <span className="truncate max-w-[340px]" title={fileName}>
-              {fileName || "Workbook.xlsx"}
+              {fileName || "Upload.xlsx"}
             </span>
           </div>
         </div>
