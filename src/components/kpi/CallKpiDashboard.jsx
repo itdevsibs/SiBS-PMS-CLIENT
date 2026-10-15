@@ -94,19 +94,26 @@ export function ChartSkeleton({
   showFilters = true,
   series = null,
   barCount = null,
+  barsPerPeriod = 1,
   isHorizontal = false,
+  customChartHeightStyle = null,
 }) {
-  const chartHeightStyle = isSubmodule
-    ? {
-        height: showFilters
-          ? "clamp(140px, calc(50vh - 225px), 220px)"
-          : "clamp(220px, calc(50vh - 150px), 320px)",
-      }
+  const computedHeight = customChartHeightStyle?.height
+    ? customChartHeightStyle.height
+    : isSubmodule
+    ? showFilters
+      ? "clamp(180px, calc((100vh - 350px) / 2), 340px)"
+      : "clamp(240px, calc((100vh - 200px) / 2), 440px)"
     : !showFilters
     ? undefined
-    : {
-        height: "clamp(55px, calc((100vh - 270px) / 5.2), 85px)",
-      };
+    : "clamp(55px, calc((100vh - 270px) / 5.2), 85px)";
+
+  const chartHeightStyle = computedHeight
+    ? {
+        height: computedHeight,
+        minHeight: computedHeight,
+      }
+    : undefined;
 
   const count =
     Array.isArray(series) && series.length > 0
@@ -117,14 +124,26 @@ export function ChartSkeleton({
 
   // Predictable organic patterns for varying bar counts
   const heightsPattern = [45, 72, 86, 50, 78, 92, 60, 84, 48, 68, 88, 70];
-  const barItems = Array.from({ length: count }, (_, i) => ({
-    height: heightsPattern[i % heightsPattern.length],
-    label: Array.isArray(series) && series[i]?.label ? series[i].label : null,
-  }));
+  const barItems = Array.from({ length: count }, (_, i) => {
+    const baseHeight = heightsPattern[i % heightsPattern.length];
+    const subBars = Array.from({ length: Math.max(1, barsPerPeriod) }, (_, bIdx) => {
+      // Create organic tiered heights for clustered bars like Volume / Resolved / Resolved w/SLA
+      const factor = bIdx === 0 ? 1 : bIdx === 1 ? 0.65 : 0.45;
+      return Math.max(12, Math.round(baseHeight * factor));
+    });
+    return {
+      height: baseHeight,
+      subHeights: subBars,
+      label: Array.isArray(series) && series[i]?.label ? series[i].label : null,
+    };
+  });
 
   if (isHorizontal) {
     return (
-      <div className="relative flex flex-col h-full flex-1 min-h-0 justify-between select-none py-1">
+      <div
+        className="relative flex flex-col h-full flex-1 min-h-0 justify-between select-none py-1"
+        style={customChartHeightStyle || (isSubmodule ? chartHeightStyle : undefined)}
+      >
         <div className="flex-1 flex flex-col justify-around gap-1.5 w-full">
           {barItems.map((bar, i) => (
             <div key={i} className="flex items-center gap-2 w-full">
@@ -148,12 +167,15 @@ export function ChartSkeleton({
   }
 
   return (
-    <div className={`w-full min-w-0 select-none ${!isSubmodule ? "flex-1 min-h-0 flex flex-col justify-between" : "flex flex-col"}`}>
-      <div className={`flex w-full min-w-0 ${!isSubmodule ? "flex-1 min-h-0" : ""}`}>
+    <div
+      className="w-full min-w-0 flex-1 min-h-0 flex flex-col justify-between select-none h-full"
+      style={chartHeightStyle ? { minHeight: chartHeightStyle.minHeight } : undefined}
+    >
+      <div className="flex w-full min-w-0 flex-1 min-h-0">
         {/* Skeleton Y-Axis */}
-        <div className={`flex flex-col shrink-0 ${!isSubmodule ? "h-full" : ""}`}>
+        <div className="flex flex-col shrink-0 h-full">
           <div
-            className={`relative w-8 sm:w-10 shrink-0 border-r border-sibs-tertiary-8 pr-1 flex flex-col justify-between py-0.5 ${!isSubmodule ? "flex-1 min-h-0" : ""}`}
+            className="relative w-8 sm:w-10 shrink-0 border-r border-sibs-tertiary-8 pr-1 flex flex-col justify-between py-0.5 flex-1 min-h-0"
             style={chartHeightStyle}
           >
             <Skeleton className="h-2 w-5 self-end" />
@@ -161,13 +183,13 @@ export function ChartSkeleton({
             <Skeleton className="h-2 w-5 self-end" />
             <Skeleton className="h-2 w-3 self-end" />
           </div>
-          {!isSubmodule && <div className="shrink-0 h-4 border-r border-sibs-tertiary-8" />}
+          <div className="shrink-0 h-4 border-r border-sibs-tertiary-8" />
         </div>
 
         {/* Skeleton Bars Grid */}
-        <div className={`relative min-w-0 flex-1 overflow-hidden ${!isSubmodule ? "h-full flex flex-col" : ""}`}>
+        <div className="relative min-w-0 flex-1 overflow-hidden h-full flex flex-col">
           <div
-            className={`relative flex min-w-0 items-end justify-between px-2 sm:px-4 gap-1.5 sm:gap-3 border-b border-sibs-tertiary-8 ${!isSubmodule ? "flex-1 min-h-0" : ""}`}
+            className="relative flex min-w-0 items-end justify-between px-2 sm:px-4 gap-1.5 sm:gap-3 border-b border-sibs-tertiary-8 flex-1 min-h-0"
             style={chartHeightStyle}
           >
             {/* Subtle grid lines */}
@@ -180,12 +202,28 @@ export function ChartSkeleton({
             {barItems.map((bar, i) => (
               <div
                 key={i}
-                className="flex-1 flex items-end justify-center gap-1 h-full z-10"
+                className="flex-1 flex items-end justify-center px-0.5 sm:px-1 h-full z-10"
               >
-                <Skeleton
-                  className="w-full max-w-[34px] rounded-t-sm"
-                  style={{ height: `${bar.height}%` }}
-                />
+                {barsPerPeriod > 1 ? (
+                  <div className={`flex h-full w-full ${isSubmodule ? "max-w-[150px]" : "max-w-[120px]"} items-end justify-center gap-0.5 sm:gap-1`}>
+                    {bar.subHeights.map((h, bIdx) => (
+                      <div
+                        key={bIdx}
+                        className="flex-1 flex h-full items-end justify-center"
+                      >
+                        <Skeleton
+                          className={`w-full ${isSubmodule ? "max-w-[46px]" : "max-w-[42px]"} rounded-t-sm`}
+                          style={{ height: `${h}%` }}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <Skeleton
+                    className="w-full max-w-[34px] rounded-t-sm"
+                    style={{ height: `${bar.height}%` }}
+                  />
+                )}
               </div>
             ))}
           </div>
@@ -226,8 +264,18 @@ function ChartShell({
   showFilters = true,
   series = null,
   barCount = null,
+  barsPerPeriod = 1,
   isHorizontal = false,
+  customChartHeightStyle = null,
 }) {
+  const activeChartHeight = customChartHeightStyle?.height
+    ? customChartHeightStyle.height
+    : isSubmodule
+    ? showFilters
+      ? "clamp(180px, calc((100vh - 350px) / 2), 340px)"
+      : "clamp(240px, calc((100vh - 200px) / 2), 440px)"
+    : null;
+
   return (
     <article
       onClick={onClick || undefined}
@@ -267,6 +315,7 @@ function ChartShell({
         className={`${
           tightLeft ? "pl-1.5 pr-1 py-1 pb-0.5" : "p-1 pb-0.5"
         } flex-1 min-h-0 flex flex-col min-w-0 relative z-20`}
+        style={isLoading && activeChartHeight ? { minHeight: activeChartHeight } : undefined}
       >
         {isLoading ? (
           <ChartSkeleton
@@ -274,7 +323,9 @@ function ChartShell({
             showFilters={showFilters}
             series={series}
             barCount={barCount}
+            barsPerPeriod={barsPerPeriod}
             isHorizontal={isHorizontal}
+            customChartHeightStyle={customChartHeightStyle}
           />
         ) : (
           children
@@ -1325,11 +1376,11 @@ export default function CallKpiDashboard({
         <div className={isSubmodule ? "col-span-1 lg:col-span-2" : "col-span-1 md:col-span-2 lg:col-span-1 min-h-[160px] md:min-h-0 md:h-full flex flex-col"}>
           <ChartShell
             title="Calls"
-            legendAlign={!isSubmodule ? "left" : "between"}
             tightLeft={!isSubmodule}
             isLoading={isLoading}
             isSubmodule={isSubmodule}
             showFilters={isFiltersVisible}
+            barsPerPeriod={3}
             series={series.length ? series : data?.data?.series}
             {...cardClickProps}
             legend={

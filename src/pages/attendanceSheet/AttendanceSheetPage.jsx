@@ -406,59 +406,17 @@ export default function AttendanceSheetPage() {
   const [accountSearchTerm, setAccountSearchTerm] = useState("");
   const accountDropdownRef = useRef(null);
 
-  const [dataRows, setDataRows] = useState(() => {
-    try {
-      const cached = localStorage.getItem("sibs_attendance_cache");
-      if (cached) {
-        const parsed = JSON.parse(cached);
-        if (Array.isArray(parsed?.rows) && parsed.rows.length > 0) {
-          return parsed.rows;
-        }
-      }
-    } catch {
-      // ignore cache parsing error
-    }
-    return [];
+  const [dataRows, setDataRows] = useState([]);
+  const [responseMeta, setResponseMeta] = useState(null);
+  const [pagination, setPagination] = useState({
+    currentPage: 1,
+    totalPages: 1,
+    total: 0,
+    limit: 25,
   });
-  const [responseMeta, setResponseMeta] = useState(() => {
-    try {
-      const cached = localStorage.getItem("sibs_attendance_cache");
-      if (cached) {
-        const parsed = JSON.parse(cached);
-        return parsed?.meta || null;
-      }
-    } catch {
-      // ignore
-    }
-    return null;
-  });
-  const [pagination, setPagination] = useState(() => {
-    try {
-      const cached = localStorage.getItem("sibs_attendance_cache");
-      if (cached) {
-        const parsed = JSON.parse(cached);
-        if (parsed?.pagination) return parsed.pagination;
-      }
-    } catch {
-      // ignore
-    }
-    return {
-      currentPage: 1,
-      totalPages: 1,
-      total: 0,
-      limit: 25,
-    };
-  });
-  const [isLoadingData, setIsLoadingData] = useState(false);
+  const [isLoadingData, setIsLoadingData] = useState(true);
   const [dataError, setDataError] = useState(null);
-  const [hasLoadedData, setHasLoadedData] = useState(() => {
-    try {
-      const cached = localStorage.getItem("sibs_attendance_cache");
-      return Boolean(cached);
-    } catch {
-      return false;
-    }
-  });
+  const [hasLoadedData, setHasLoadedData] = useState(false);
 
   const mappedAccounts = useMemo(
     () => accounts.filter((account) => Number(account?.kronosMapping?.kronosAccountId) > 0),
@@ -902,14 +860,6 @@ export default function AttendanceSheetPage() {
                   <span>Latest</span>
                 </button>
               </div>
-
-              {/* Status Indicator */}
-              {isLoadingData && (
-                <div className="flex items-center gap-1.5 h-8 px-2.5 rounded-lg bg-sky-50 text-[11px] font-semibold text-sibs-primary-1 border border-sky-100 animate-pulse ml-auto sm:ml-0">
-                  <Loader2 className="h-3.5 w-3.5 animate-spin text-[#ff5c28]" />
-                  <span>Updating...</span>
-                </div>
-              )}
             </div>
           </div>
 
@@ -955,7 +905,42 @@ export default function AttendanceSheetPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-slate-800">
-                  {dataRows.length > 0 ? (
+                  {isLoadingData ? (
+                    Array.from({ length: 10 }).map((_, i) => (
+                      <tr key={`skeleton-${i}`} className="animate-pulse">
+                        <td className="px-4 py-3">
+                          <div className="h-4 w-16 bg-slate-200 rounded-md" />
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="h-4 w-36 bg-slate-200 rounded-md" />
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="h-5 w-24 bg-slate-200 rounded-md" />
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="h-4 w-28 bg-slate-200 rounded-md" />
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="h-4 w-28 bg-slate-200 rounded-md" />
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="h-4 w-24 bg-slate-200 rounded-md" />
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="h-4 w-24 bg-slate-200 rounded-md" />
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="h-4 w-16 bg-slate-200 rounded-md" />
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="h-4 w-16 bg-slate-200 rounded-md" />
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="h-5 w-20 bg-slate-200 rounded-full" />
+                        </td>
+                      </tr>
+                    ))
+                  ) : dataRows.length > 0 ? (
                     dataRows.map((row, rowIndex) => {
                       const employeeId = getAttendanceEmployeeId(row, responseMeta);
                       const employeeName = getAttendanceEmployeeName(row);
@@ -976,7 +961,7 @@ export default function AttendanceSheetPage() {
                           key={row?.gy_tracker_id || row?.id || `${employeeId}-${rowIndex}`}
                           className={`transition-colors hover:bg-sky-50/60 ${
                             rowIndex % 2 === 0 ? "bg-white" : "bg-slate-50/40"
-                          } ${isLoadingData ? "opacity-60" : ""}`}
+                          }`}
                         >
                           <td className="whitespace-nowrap px-4 py-3 font-bold text-slate-900">
                             {employeeId || "—"}
@@ -1049,42 +1034,7 @@ export default function AttendanceSheetPage() {
                         </tr>
                       );
                     })
-                    ) : isLoadingData ? (
-                      Array.from({ length: 8 }).map((_, i) => (
-                        <tr key={`skeleton-${i}`} className="animate-pulse">
-                          <td className="px-3 py-2.5">
-                            <div className="h-4 w-14 bg-slate-200 rounded-md" />
-                          </td>
-                          <td className="px-3 py-2.5">
-                            <div className="h-4 w-36 bg-slate-200 rounded-md" />
-                          </td>
-                          <td className="px-3 py-2.5">
-                            <div className="h-4 w-12 bg-slate-200 rounded-md" />
-                          </td>
-                          <td className="px-3 py-2.5">
-                            <div className="h-4 w-20 bg-slate-200 rounded-md" />
-                          </td>
-                          <td className="px-3 py-2.5">
-                            <div className="h-4 w-20 bg-slate-200 rounded-md" />
-                          </td>
-                          <td className="px-3 py-2.5">
-                            <div className="h-4 w-28 bg-slate-200 rounded-md" />
-                          </td>
-                          <td className="px-3 py-2.5">
-                            <div className="h-4 w-28 bg-slate-200 rounded-md" />
-                          </td>
-                          <td className="px-3 py-2.5">
-                            <div className="h-4 w-16 bg-slate-200 rounded-md" />
-                          </td>
-                          <td className="px-3 py-2.5">
-                            <div className="h-4 w-16 bg-slate-200 rounded-md" />
-                          </td>
-                          <td className="px-3 py-2.5">
-                            <div className="h-4 w-20 bg-slate-200 rounded-md" />
-                          </td>
-                        </tr>
-                      ))
-                    ) : (
+                  ) : (
                       <tr>
                         <td colSpan={10} className="py-20 text-center text-slate-400">
                           {hasLoadedData

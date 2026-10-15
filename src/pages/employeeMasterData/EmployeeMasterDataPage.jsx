@@ -125,7 +125,7 @@ export default function EmployeeMasterDataPage() {
   const [accountsList, setAccountsList]       = useState([]);
   const [ledgerList, setLedgerList]           = useState([]);
   const [totalCount, setTotalCount]           = useState(0);
-  const [isLoading, setIsLoading]             = useState(false);
+  const [isLoading, setIsLoading]             = useState(true);
   const [errorMsg, setErrorMsg]               = useState("");
   const [currentPage, setCurrentPage]         = useState(1);
   const [totalPages, setTotalPages]           = useState(1);
@@ -1298,14 +1298,93 @@ export default function EmployeeMasterDataPage() {
                   {/* ── Table body ──────────────────────────────────── */}
                   <tbody className="divide-y divide-slate-100">
                     {isLoading ? (
-                      <tr>
-                        <td colSpan={20} className="py-24 text-center">
-                          <Loader2 className="mx-auto mb-2.5 h-8 w-8 animate-spin text-slate-400" />
-                          <p className="text-xs font-medium text-slate-500">
-                            Loading employee records…
-                          </p>
-                        </td>
-                      </tr>
+                      Array.from({ length: 12 }).map((_, i) => (
+                        <tr key={`ledger-skeleton-${i}`} className="animate-pulse">
+                          {/* 1. SIBS ID # */}
+                          <td className="px-3.5 py-3.5">
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="h-4 w-14 rounded-md bg-slate-200" />
+                              <div className="h-5 w-5 rounded-md bg-slate-100" />
+                            </div>
+                          </td>
+                          {/* 2. Kronos Name */}
+                          <td className="px-4 py-3.5">
+                            <div className="h-4 w-32 rounded-md bg-slate-200" />
+                          </td>
+                          {/* 3. Call Novo email add */}
+                          <td className="px-4 py-3.5">
+                            <div className="h-4 w-40 rounded-md bg-slate-200" />
+                          </td>
+                          {/* 4. Agent Name */}
+                          <td className="px-4 py-3.5">
+                            <div className="h-4 w-36 rounded-md bg-slate-200" />
+                          </td>
+                          {/* 5. FuseCom Name */}
+                          <td className="px-4 py-3.5">
+                            <div className="h-4 w-32 rounded-md bg-slate-200" />
+                          </td>
+                          {/* 6. FuseNet Name */}
+                          <td className="px-4 py-3.5">
+                            <div className="h-4 w-28 rounded-md bg-slate-200" />
+                          </td>
+                          {/* 7. HeroDash Name */}
+                          <td className="px-4 py-3.5">
+                            <div className="h-4 w-32 rounded-md bg-slate-200" />
+                          </td>
+                          {/* 8. MSD Name */}
+                          <td className="px-4 py-3.5">
+                            <div className="h-4 w-32 rounded-md bg-slate-200" />
+                          </td>
+                          {/* 9. Site */}
+                          <td className="px-4 py-3.5">
+                            <div className="h-4 w-16 rounded-md bg-slate-200" />
+                          </td>
+                          {/* 10. Status */}
+                          <td className="px-4 py-3.5">
+                            <div className="h-4 w-20 rounded-md bg-slate-200" />
+                          </td>
+                          {/* 11. Phase */}
+                          <td className="px-4 py-3.5">
+                            <div className="h-4 w-16 rounded-md bg-slate-200" />
+                          </td>
+                          {/* 12. Task Order */}
+                          <td className="px-4 py-3.5">
+                            <div className="h-4 w-36 rounded-md bg-slate-200" />
+                          </td>
+                          {/* 13. Task Order Discription */}
+                          <td className="px-4 py-3.5">
+                            <div className="h-4 w-44 rounded-md bg-slate-200" />
+                          </td>
+                          {/* 14. US Visa Join Date */}
+                          <td className="px-4 py-3.5">
+                            <div className="h-4 w-24 rounded-md bg-slate-200" />
+                          </td>
+                          {/* 15. US Visa Departure Date */}
+                          <td className="px-4 py-3.5">
+                            <div className="h-4 w-24 rounded-md bg-slate-200" />
+                          </td>
+                          {/* 16. Team Leader */}
+                          <td className="px-4 py-3.5">
+                            <div className="h-4 w-32 rounded-md bg-slate-200" />
+                          </td>
+                          {/* 17. Manager */}
+                          <td className="px-4 py-3.5">
+                            <div className="h-4 w-32 rounded-md bg-slate-200" />
+                          </td>
+                          {/* 18. Senior Manager */}
+                          <td className="px-4 py-3.5">
+                            <div className="h-4 w-32 rounded-md bg-slate-200" />
+                          </td>
+                          {/* 19. Tenurity */}
+                          <td className="px-4 py-3.5">
+                            <div className="h-4 w-16 rounded-md bg-slate-200" />
+                          </td>
+                          {/* 20. Modality */}
+                          <td className="px-4 py-3.5">
+                            <div className="h-4 w-28 rounded-md bg-slate-200" />
+                          </td>
+                        </tr>
+                      ))
                     ) : ledgerList.length === 0 ? (
                       <tr>
                         <td colSpan={20} className="py-24 text-center">

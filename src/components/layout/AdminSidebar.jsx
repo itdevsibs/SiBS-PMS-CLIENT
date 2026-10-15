@@ -11,6 +11,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 
 const SIDEBAR_COLLAPSED_KEY = "pms-sidebar-collapsed";
+const SIDEBAR_EXPANDED_KEY = "pms-sidebar-expanded-modules";
 
 const AdminSidebar = ({
   isMobileOpen = false,
@@ -22,7 +23,50 @@ const AdminSidebar = ({
   const [isCollapsed, setIsCollapsed] = useState(
     () => localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "true",
   );
-  const [expandedModules, setExpandedModules] = useState([]);
+
+  // Persist expanded modules in localStorage so navigating to any module keeps all open dropdowns open
+  const [expandedModules, setExpandedModules] = useState(() => {
+    try {
+      const saved = localStorage.getItem(SIDEBAR_EXPANDED_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed;
+      }
+    } catch {
+      // fallback
+    }
+    // Default to keeping all module dropdowns open
+    if (Array.isArray(modules)) {
+      return modules
+        .filter((m) => Array.isArray(m.submodules) && m.submodules.length > 0)
+        .map((m) => m.name);
+    }
+    return [];
+  });
+
+  // Save expanded states whenever they change
+  useEffect(() => {
+    try {
+      localStorage.setItem(SIDEBAR_EXPANDED_KEY, JSON.stringify(expandedModules));
+    } catch {
+      // ignore
+    }
+  }, [expandedModules]);
+
+  // Ensure the active route's parent is always included without collapsing any others
+  useEffect(() => {
+    if (!Array.isArray(modules)) return;
+    const currentPath = location.pathname;
+    const matchingModule = modules.find((m) =>
+      Array.isArray(m.submodules) &&
+      m.submodules.some((s) => s.path.split("?")[0] === currentPath),
+    );
+    if (matchingModule) {
+      setExpandedModules((prev) =>
+        prev.includes(matchingModule.name) ? prev : [...prev, matchingModule.name],
+      );
+    }
+  }, [location.pathname, modules]);
 
   const toggleExpand = (moduleName) => {
     setExpandedModules((prev) =>
@@ -106,15 +150,23 @@ const AdminSidebar = ({
               const activePaths = [
                 item.path,
                 ...(Array.isArray(item.activePaths) ? item.activePaths : []),
+                ...(hasSubmodules ? item.submodules.map((s) => s.path.split("?")[0]) : []),
               ];
-              const isParentActive = activePaths.includes(location.pathname);
+              const isChildRouteActive = hasSubmodules && item.submodules.some((sub) => {
+                const subClean = sub.path.split("?")[0];
+                if (sub.path.includes("?section=")) {
+                  return location.pathname === subClean && location.search.includes(`section=${sub.key}`);
+                }
+                return location.pathname === subClean;
+              });
+              const isParentActive = isChildRouteActive || activePaths.includes(location.pathname);
 
               if (hasSubmodules) {
                 return (
                   <div key={item.name} className="flex flex-col">
                     <div
                       className={`group flex h-[38px] w-full items-center rounded-xl transition-all duration-150 ${
-                        isParentActive && !location.search
+                        isParentActive && (!hasSubmodules || item.path === "/view-graphs") && !location.search
                           ? "bg-[#ff5c28] text-white shadow-md shadow-orange-950/20"
                           : isParentActive
                             ? "bg-white/[0.12] text-white font-bold"
@@ -125,8 +177,13 @@ const AdminSidebar = ({
                         type="button"
                         title={item.name}
                         onClick={() => {
-                          navigate(item.path);
-                          if (mobile) onMobileClose?.();
+                          if (item.path && item.key === "wow-report") {
+                            navigate(item.path);
+                            if (mobile) onMobileClose?.();
+                            if (!isExpanded) toggleExpand(item.name);
+                          } else {
+                            toggleExpand(item.name);
+                          }
                         }}
                         className={`flex flex-1 min-w-0 cursor-pointer items-center gap-3 border-0 bg-transparent p-0 text-left font-semibold text-inherit outline-none ${
                           collapsed ? "h-[38px] w-[38px] justify-center" : ""
@@ -172,7 +229,7 @@ const AdminSidebar = ({
                       )}
                     </div>
 
-                    {/* Smooth Submodules Accordion (indented with vertical branch line) */}
+                    {/* Smooth Submodules Accordion (indented with vertical branch line matching reference) */}
                     {!collapsed && (
                       <div
                         className="grid transition-all duration-300 ease-in-out"
@@ -187,10 +244,9 @@ const AdminSidebar = ({
                           <div className="relative ml-5 flex flex-col gap-0.5 border-l-2 border-white/20 pl-2.5 py-0.5">
                             {item.submodules.map((sub) => {
                               const SubIcon = sub.icon;
-                              const isSubActive =
-                                location.pathname === item.path &&
-                                sub.key &&
-                                location.search.includes(`section=${sub.key}`);
+                              const isSubActive = sub.path.includes("?section=")
+                                ? location.pathname === sub.path.split("?")[0] && location.search.includes(`section=${sub.key}`)
+                                : location.pathname === sub.path.split("?")[0];
 
                               return (
                                 <button

@@ -561,14 +561,19 @@ export default function TaskOrderLedger() {
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-xs font-medium text-slate-700">
                   {isLoading ? (
-                    <tr>
-                      <td colSpan={3} className="py-20 text-center text-xs text-slate-400">
-                        <div className="flex items-center justify-center gap-2">
-                          <Loader2 className="h-4 w-4 animate-spin text-[#ff5c28]" />
-                          <span>Loading task order ledger records…</span>
-                        </div>
-                      </td>
-                    </tr>
+                    Array.from({ length: 12 }).map((_, i) => (
+                      <tr key={`task-order-skeleton-${i}`} className="animate-pulse">
+                        <td className="px-3.5 sm:px-6 py-3">
+                          <div className="h-4 w-28 sm:w-36 rounded-md bg-slate-200" />
+                        </td>
+                        <td className="px-3.5 sm:px-6 py-3">
+                          <div className="h-4 w-48 sm:w-64 rounded-md bg-slate-200" />
+                        </td>
+                        <td className="px-3.5 sm:px-6 py-3">
+                          <div className="h-5 w-36 sm:w-44 rounded-lg bg-slate-200" />
+                        </td>
+                      </tr>
+                    ))
                   ) : errorMsg ? (
                     <tr>
                       <td colSpan={3} className="py-16 text-center text-xs text-rose-500 font-semibold">

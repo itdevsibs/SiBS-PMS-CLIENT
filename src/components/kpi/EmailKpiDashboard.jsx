@@ -568,6 +568,14 @@ export default function EmailKpiDashboard({
 
   const registerScroll = useSyncedHorizontalScroll(isCustomPeriod);
 
+  const emailChartHeightStyle = isSubmodule
+    ? {
+        height: showFilters
+          ? "clamp(180px, calc((100vh - 350px) / 2), 340px)"
+          : "clamp(240px, calc((100vh - 200px) / 2), 440px)",
+      }
+    : undefined;
+
   return (
     <section className={isSubmodule ? "space-y-1.5 sm:space-y-2" : "flex-1 min-h-0 flex flex-col"}>
       <div
@@ -594,7 +602,7 @@ export default function EmailKpiDashboard({
             : ""
         }`}
       >
-        <div className={isSubmodule ? "col-span-1" : "col-span-1 min-h-[160px] md:min-h-0 md:h-full flex flex-col"}>
+        <div className={isSubmodule ? "col-span-1 flex flex-col flex-1 min-h-0 h-full" : "col-span-1 min-h-[160px] md:min-h-0 md:h-full flex flex-col"}>
           <ChartShell
             title="Emails"
             tightLeft={!isSubmodule}
@@ -602,7 +610,9 @@ export default function EmailKpiDashboard({
             isLoading={isLoading}
             isSubmodule={isSubmodule}
             showFilters={showFilters}
+            barsPerPeriod={3}
             series={series.length ? series : data?.data?.series}
+            customChartHeightStyle={emailChartHeightStyle}
             legend={
               <>
                 <span className="inline-flex items-center gap-1 font-bold text-[#0b3b68]">
@@ -631,7 +641,7 @@ export default function EmailKpiDashboard({
           </ChartShell>
         </div>
 
-        <div className={isSubmodule ? "col-span-1" : "col-span-1 min-h-[160px] md:min-h-0 md:h-full flex flex-col"}>
+        <div className={isSubmodule ? "col-span-1 flex flex-col flex-1 min-h-0 h-full" : "col-span-1 min-h-[160px] md:min-h-0 md:h-full flex flex-col"}>
           <ChartShell
             title="Email Response & Service Level"
             tightLeft={!isSubmodule}
@@ -639,7 +649,9 @@ export default function EmailKpiDashboard({
             isLoading={isLoading}
             isSubmodule={isSubmodule}
             showFilters={showFilters}
+            barsPerPeriod={2}
             series={series.length ? series : data?.data?.series}
+            customChartHeightStyle={emailChartHeightStyle}
             legend={
               <>
                 <span className="inline-flex items-center gap-1 font-bold text-[#245d8f]">

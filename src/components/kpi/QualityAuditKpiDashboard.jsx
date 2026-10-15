@@ -182,7 +182,10 @@ function QaTransactionsChart({
 
                       {/* Tooltip */}
                       <div
-                        className={`pointer-events-none absolute top-3 z-50 hidden w-44 rounded-xl border border-sibs-tertiary-10/80 bg-white/95 p-2.5 shadow-xl backdrop-blur-md group-hover/bar:block ${getTooltipPositionClass(index, series.length)}`}
+                        className={`pointer-events-none absolute z-50 hidden w-44 rounded-xl border border-sibs-tertiary-10/80 bg-white/95 p-2.5 shadow-xl backdrop-blur-md group-hover/bar:block ${getTooltipPositionClass(index, series.length)}`}
+                        style={{
+                          bottom: `min(calc(100% - 90px), calc(${height}% + 14px))`,
+                        }}
                       >
                         <div className="flex items-center justify-between gap-3 border-b border-slate-100 pb-1">
                           <span className="truncate text-xs font-black text-sibs-primary-1">{item.label}</span>
@@ -263,18 +266,14 @@ function QaScoreChart({
     const spaceAbove = rowRect.top - containerRect.top;
     const spaceBelow = containerRect.bottom - rowRect.bottom;
 
+    // Place tooltip on top of the hovered bar, or below if on the top-most row (like Week 42)
     let top;
-    // Prefer placing tooltip above if there is enough space
-    if (spaceAbove >= tooltipHeight + 6) {
-      top = spaceAbove - tooltipHeight - 4;
-    } 
-    // If not enough space above (e.g. top rows like Week 41, Week 40), place it below the hovered row!
-    else if (spaceBelow >= tooltipHeight + 6) {
-      top = (rowRect.bottom - containerRect.top) + 4;
-    } 
-    // Fallback: clamp safely within container boundaries
-    else {
-      top = Math.max(4, Math.min(spaceAbove, containerRect.height - tooltipHeight - 4));
+    if (spaceAbove < tooltipHeight + 8) {
+      // Near top of container: show tooltip neatly right below the row
+      top = rowRect.bottom - containerRect.top + 6;
+    } else {
+      // Show tooltip right above the row
+      top = spaceAbove - tooltipHeight - 6;
     }
 
     const left = Math.max(
@@ -563,6 +562,14 @@ export default function QualityAuditKpiDashboard({
   const series = Array.isArray(data.series) ? data.series : [];
   const currentPeriod = period || data.filters?.period || data.data?.filters?.period;
 
+  const qaChartHeightStyle = isSubmodule
+    ? {
+        height: showFilters
+          ? "clamp(340px, calc(100vh - 290px), 720px)"
+          : "clamp(440px, calc(100vh - 170px), 860px)",
+      }
+    : undefined;
+
   return (
     <section className={isSubmodule ? "space-y-1.5 sm:space-y-2" : "flex-1 min-h-0 flex flex-col"}>
       <div
@@ -596,6 +603,7 @@ export default function QualityAuditKpiDashboard({
             isSubmodule={isSubmodule}
             showFilters={showFilters}
             series={series.length ? series : data?.data?.series}
+            customChartHeightStyle={qaChartHeightStyle}
             legend={
               <span className="inline-flex items-center gap-1 font-bold text-[#174f7f]">
                 <i className="h-2 w-2 rounded-full bg-[#174f7f]" />
@@ -622,6 +630,7 @@ export default function QualityAuditKpiDashboard({
             showFilters={showFilters}
             series={series.length ? series : data?.data?.series}
             isHorizontal={true}
+            customChartHeightStyle={qaChartHeightStyle}
             legend={
               <span className="inline-flex items-center gap-1 font-bold text-[#557da4]">
                 <i className="h-2 w-2 rounded-full bg-[#557da4]" />
