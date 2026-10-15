@@ -122,6 +122,16 @@ const accountRawDataCards = {
       requiresTaskOrderSelection: false,
       requiresReportingPeriod: false,
     },
+    {
+      title: "FuseNet Skill Statistics",
+      sourceLabel: "FuseNet",
+      groupLabel: "SERVICE / QUEUE LEVEL",
+      taskOrders: [
+        { id: "TO18", label: "NEA" },
+        { id: "TO22", label: "SAMI" },
+      ],
+      importProfileCode: "FUSENET_SKILL_STATISTICS_INBOUND",
+    },
   ],
   "YOMDEL": [
     "Raw Data 1",
