@@ -57,8 +57,8 @@ export function OccupancySummaryCards({
           summary?.utilizationPct == null
             ? "bg-slate-100 text-slate-600"
             : Number(summary.utilizationPct) >= 80
-            ? "bg-green-100 text-green-700"
-            : "bg-amber-100 text-amber-700",
+              ? "bg-green-100 text-green-700"
+              : "bg-amber-100 text-amber-700",
       },
     },
     {
@@ -100,9 +100,8 @@ export function OccupancySummaryCards({
           <article
             key={label}
             onClick={onCardClick || undefined}
-            className={`sibs-card rounded-xl min-w-0 px-2.5 py-1.5 sm:px-3 sm:py-2 shadow-2xs flex flex-col justify-between gap-1 transition-all duration-150 hover:border-sibs-primary-1/30 ${
-              onCardClick ? "cursor-pointer" : ""
-            }`}
+            className={`sibs-card rounded-xl min-w-0 px-2.5 py-1.5 sm:px-3 sm:py-2 shadow-2xs flex flex-col justify-between gap-1 transition-all duration-150 hover:border-sibs-primary-1/30 ${onCardClick ? "cursor-pointer" : ""
+              }`}
           >
             {/* Header: Label + Icon */}
             <div className="flex items-center justify-between gap-1 min-w-0">
@@ -172,10 +171,10 @@ function ChartCanvasGrid({
 }) {
   const chartHeightStyle = isSubmodule
     ? {
-        height: showFilters
-          ? "clamp(180px, calc((100vh - 350px) / 2), 340px)"
-          : "clamp(240px, calc((100vh - 200px) / 2), 440px)",
-      }
+      height: showFilters
+        ? "clamp(180px, calc((100vh - 350px) / 2), 340px)"
+        : "clamp(240px, calc((100vh - 200px) / 2), 440px)",
+    }
     : undefined;
 
   const maxTickCharLength = Math.max(
@@ -200,13 +199,12 @@ function ChartCanvasGrid({
             {yAxisLabels.map((tick, index) => (
               <span
                 key={`${tick}-${index}`}
-                className={`absolute right-1 ${
-                  index === 0
+                className={`absolute right-1 ${index === 0
                     ? "translate-y-0"
                     : index === yAxisLabels.length - 1
-                    ? "-translate-y-full"
-                    : "-translate-y-1/2"
-                } whitespace-nowrap ${isSubmodule ? "text-xs font-bold" : "text-[8.5px] font-bold"} text-sibs-tertiary-5 leading-none`}
+                      ? "-translate-y-full"
+                      : "-translate-y-1/2"
+                  } whitespace-nowrap ${isSubmodule ? "text-xs font-bold" : "text-[8.5px] font-bold"} text-sibs-tertiary-5 leading-none`}
                 style={{
                   top: `${(index / Math.max(yAxisLabels.length - 1, 1)) * 100}%`,
                 }}
@@ -258,12 +256,12 @@ function ChartCanvasGrid({
                   },
                   ...(secondaryBarKey
                     ? [
-                        {
-                          key: secondaryBarKey,
-                          color: secondaryBarColor,
-                          label: secondaryTooltipLabel || "Value",
-                        },
-                      ]
+                      {
+                        key: secondaryBarKey,
+                        color: secondaryBarColor,
+                        label: secondaryTooltipLabel || "Value",
+                      },
+                    ]
                     : []),
                 ];
 
@@ -273,15 +271,14 @@ function ChartCanvasGrid({
                     className="group/period relative z-10 hover:z-50 flex h-full min-w-0 flex-1 items-end justify-center px-1"
                   >
                     <div
-                      className={`relative flex h-full w-full items-end justify-center ${
-                        barSpecs.length > 1
+                      className={`relative flex h-full w-full items-end justify-center ${barSpecs.length > 1
                           ? isSubmodule
                             ? "max-w-[100px] gap-1 sm:gap-1.5"
                             : "max-w-[68px] gap-0.5"
                           : isSubmodule
-                          ? "max-w-[64px]"
-                          : "max-w-[48px]"
-                      }`}
+                            ? "max-w-[64px]"
+                            : "max-w-[48px]"
+                        }`}
                     >
                       {barSpecs.map((spec, barIndex) => {
                         const rawVal = item[spec.key];
@@ -301,17 +298,15 @@ function ChartCanvasGrid({
                           >
                             {value != null ? (
                               <span
-                                className={`pointer-events-none absolute left-1/2 z-10 -translate-x-1/2 whitespace-nowrap ${
-                                  barSpecs.length > 1
+                                className={`pointer-events-none absolute left-1/2 z-10 -translate-x-1/2 whitespace-nowrap ${barSpecs.length > 1
                                     ? isSubmodule
                                       ? "text-[10px] sm:text-[11px] font-extrabold tracking-tight drop-shadow-xs"
                                       : "text-[6.5px] sm:text-[7px] font-bold tracking-tight"
                                     : isSubmodule
-                                    ? "text-[11px] sm:text-xs font-black tracking-tight drop-shadow-xs"
-                                    : "text-[7.5px] sm:text-[8px] font-bold tracking-tight"
-                                } transition-all group-hover/bar:-translate-y-0.5 sibs-graph-number-in ${
-                                  isInside ? "text-white" : "text-sibs-primary-1 font-black"
-                                }`}
+                                      ? "text-[11px] sm:text-xs font-black tracking-tight drop-shadow-xs"
+                                      : "text-[7.5px] sm:text-[8px] font-bold tracking-tight"
+                                  } transition-all group-hover/bar:-translate-y-0.5 sibs-graph-number-in ${isInside ? "text-white" : "text-sibs-primary-1 font-black"
+                                  }`}
                                 style={{
                                   bottom: isInside
                                     ? `calc(${height}% - ${isSubmodule ? 17 : 12}px)`
@@ -325,15 +320,14 @@ function ChartCanvasGrid({
 
                             {value != null ? (
                               <div
-                                className={`w-full ${
-                                  barSpecs.length > 1
+                                className={`w-full ${barSpecs.length > 1
                                     ? isSubmodule
                                       ? "max-w-[46px]"
                                       : "max-w-[30px]"
                                     : isSubmodule
-                                    ? "max-w-[56px]"
-                                    : "max-w-[42px]"
-                                } rounded-t-[4px] ${spec.color} transition-all duration-200 ease-out group-hover/bar:-translate-y-0.5 group-hover/bar:brightness-110 shadow-xs sibs-graph-bar-rise`}
+                                      ? "max-w-[56px]"
+                                      : "max-w-[42px]"
+                                  } rounded-t-[4px] ${spec.color} transition-all duration-200 ease-out group-hover/bar:-translate-y-0.5 group-hover/bar:brightness-110 shadow-xs sibs-graph-bar-rise`}
                                 style={{
                                   height: `${height}%`,
                                   animationDelay: `${Math.min(index * 60 + barIndex * 30, 500)}ms`,
@@ -343,13 +337,12 @@ function ChartCanvasGrid({
 
                             {value != null ? (
                               <div
-                                className={`pointer-events-none absolute top-2 z-50 hidden min-w-36 rounded-xl border border-sibs-tertiary-10/80 bg-white/95 p-2 shadow-xl backdrop-blur-md group-hover/bar:block ${
-                                  index <= 1
+                                className={`pointer-events-none absolute top-2 z-50 hidden min-w-36 rounded-xl border border-sibs-tertiary-10/80 bg-white/95 p-2 shadow-xl backdrop-blur-md group-hover/bar:block ${index <= 1
                                     ? "left-0"
                                     : index >= series.length - 2
-                                    ? "right-0"
-                                    : "left-1/2 -translate-x-1/2"
-                                }`}
+                                      ? "right-0"
+                                      : "left-1/2 -translate-x-1/2"
+                                  }`}
                               >
                                 <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-1">
                                   <span className="truncate text-xs font-black text-sibs-primary-1">
@@ -484,13 +477,17 @@ export default function OccupancyKpiDashboard({
   );
   const peopleMetricLabels = peopleMetricTicks.map((value) => `${value}%`);
 
+  // Synchronize loading so all cards wait for each other instead of popping up individually
+  const isAnyOccupancyLoading = Boolean(
+    isLoading || isUtilizationLoading || isAbsenteeismLoading
+  );
+
   return (
     <div className={isSubmodule ? (showFilters ? "space-y-1.5 sm:space-y-2" : "space-y-2.5") : "flex-1 min-h-0 flex flex-col"}>
       {/* 1. Summary Cards */}
       <div
-        className={`grid transition-[grid-template-rows,opacity] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] ${
-          showSummaryCards ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0 pointer-events-none"
-        }`}
+        className={`grid transition-[grid-template-rows,opacity] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] ${showSummaryCards ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0 pointer-events-none"
+          }`}
       >
         <div className="overflow-hidden min-h-0 pb-1">
           <OccupancySummaryCards
@@ -505,18 +502,18 @@ export default function OccupancyKpiDashboard({
         <div
           id="occupancy-graphs-container"
           data-pdf-charts="true"
-          className={`grid grid-cols-1 lg:grid-cols-2 ${
-            showFilters ? "gap-2 sm:gap-2.5" : "gap-1 sm:gap-1.5"
-          } w-full min-w-0 flex-1 min-h-0 transition-all duration-300 ease-in-out`}
+          className={`grid grid-cols-1 lg:grid-cols-2 ${showFilters ? "gap-2 sm:gap-2.5" : "gap-1 sm:gap-1.5"
+            } w-full min-w-0 flex-1 min-h-0 transition-all duration-300 ease-in-out`}
         >
           {/* Top Block: OCCUPANCY & UTILIZATION (Full width span across 2 columns) */}
           <div className="col-span-1 lg:col-span-2">
             <ChartShell
               title="Occupancy & Utilization"
               legendAlign="between"
-              isLoading={isLoading}
+              isLoading={isAnyOccupancyLoading}
               isSubmodule={isSubmodule}
               showFilters={showFilters}
+              barsPerPeriod={2}
               legend={
                 <>
                   <span className="inline-flex items-center gap-1 font-bold text-[#0b3b68]">
@@ -552,9 +549,10 @@ export default function OccupancyKpiDashboard({
           <div className="col-span-1">
             <ChartShell
               title="Headcount Metrics"
-              isLoading={isUtilizationLoading}
+              isLoading={isAnyOccupancyLoading}
               isSubmodule={isSubmodule}
               showFilters={showFilters}
+              barsPerPeriod={1}
               series={series}
               legend={
                 <>
@@ -593,53 +591,53 @@ export default function OccupancyKpiDashboard({
             </ChartShell>
           </div>
 
-            {/* Right: People Metrics */}
-            <div className="col-span-1">
-              <ChartShell
-                title="People Metrics"
-                isLoading={isAbsenteeismLoading}
+          {/* Right: People Metrics */}
+          <div className="col-span-1">
+            <ChartShell
+              title="People Metrics"
+              isLoading={isAnyOccupancyLoading}
+              isSubmodule={isSubmodule}
+              showFilters={showFilters}
+              barsPerPeriod={2}
+              series={series}
+              legend={
+                <>
+                  <span className="inline-flex items-center gap-1 font-bold text-[#0b3b68]">
+                    <i className="h-2 w-2 rounded-full bg-[#0b3b68]" />
+                    Absenteeism %
+                  </span>
+                  <span className="inline-flex items-center gap-1 font-bold text-[#2f6f9f]">
+                    <i className="h-2 w-2 rounded-full bg-[#2f6f9f]" />
+                    Attrition %
+                  </span>
+                </>
+              }
+            >
+              <ChartCanvasGrid
+                yAxisLabels={peopleMetricLabels}
+                xAxisLabels={xAxisLabels}
+                footerNotes={[]}
                 isSubmodule={isSubmodule}
                 showFilters={showFilters}
                 series={series}
-                legend={
-                  <>
-                    <span className="inline-flex items-center gap-1 font-bold text-[#0b3b68]">
-                      <i className="h-2 w-2 rounded-full bg-[#0b3b68]" />
-                      Absenteeism %
-                    </span>
-                    <span className="inline-flex items-center gap-1 font-bold text-[#2f6f9f]">
-                      <i className="h-2 w-2 rounded-full bg-[#2f6f9f]" />
-                      Attrition %
-                    </span>
-                  </>
-                }
-              >
-                <ChartCanvasGrid
-                  yAxisLabels={peopleMetricLabels}
-                  xAxisLabels={xAxisLabels}
-                  footerNotes={[]}
-                  isSubmodule={isSubmodule}
-                  showFilters={showFilters}
-                  series={series}
-                  barKey="absenteeismPct"
-                  barColor="bg-[#0b3b68]"
-                  maxAxisValue={peopleMetricMax}
-                  formatValue={(val) => `${formatNumber(val, 2)}%`}
-                  tooltipLabel="Absenteeism"
-                />
-              </ChartShell>
-            </div>
+                barKey="absenteeismPct"
+                barColor="bg-[#0b3b68]"
+                maxAxisValue={peopleMetricMax}
+                formatValue={(val) => `${formatNumber(val, 2)}%`}
+                tooltipLabel="Absenteeism"
+              />
+            </ChartShell>
           </div>
+        </div>
       ) : (
         /* Unified 3-column row for Wow Report (All 4 Modules view) */
         <div
-          className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 md:grid-rows-1 gap-1.5 sm:gap-1.5 w-full min-w-0 flex-1 min-h-0 transition-all duration-300 ease-in-out ${
-            !isSubmodule && showFilters
+          className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 md:grid-rows-1 gap-1.5 sm:gap-1.5 w-full min-w-0 flex-1 min-h-0 transition-all duration-300 ease-in-out ${!isSubmodule && showFilters
               ? "min-h-[200px]"
               : !isSubmodule
-              ? "min-h-[170px]"
-              : ""
-          }`}
+                ? "min-h-[170px]"
+                : ""
+            }`}
         >
           {/* Chart 1: Occupancy & Utilization */}
           <div className="col-span-1 md:col-span-2 lg:col-span-1 min-h-[160px] md:min-h-0 md:h-full flex flex-col">

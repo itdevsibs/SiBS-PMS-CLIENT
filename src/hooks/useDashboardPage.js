@@ -7,12 +7,15 @@ import {
   ClipboardList,
   Database,
   Filter,
+  FolderArchive,
   FolderDown,
   Gauge,
+  LineChart,
   Mail,
   PhoneCall,
   ShieldCheck,
   Users,
+  UsersRound,
 } from "lucide-react";
 
 import { useAuthAccess } from "@/context/AuthAccessContext";
@@ -26,12 +29,15 @@ const moduleIcons = {
   "clipboard-list": ClipboardList,
   database: Database,
   filter: Filter,
+  "folder-archive": FolderArchive,
   "folder-down": FolderDown,
   gauge: Gauge,
+  "line-chart": LineChart,
   mail: Mail,
   "phone-call": PhoneCall,
   "shield-check": ShieldCheck,
   users: Users,
+  "users-round": UsersRound,
 };
 
 function hydrateModuleIcons(module) {

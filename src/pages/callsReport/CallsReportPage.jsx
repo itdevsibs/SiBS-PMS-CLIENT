@@ -91,9 +91,15 @@ export default function CallsReportPage() {
       if (selectedDate) {
         params.date = selectedDate;
       }
-      const res = await getCallsReport(params);
+      const [res] = await Promise.all([
+        getCallsReport(params),
+        new Promise((resolve) => setTimeout(resolve, 550)),
+      ]);
       const rows = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
       setReportData(rows);
+      if (res?.resolvedDate && res.resolvedDate !== selectedDate) {
+        setSelectedDate(res.resolvedDate);
+      }
     } catch (err) {
       console.error("Failed to load calls report:", err);
       setFetchError(
@@ -229,8 +235,6 @@ export default function CallsReportPage() {
     };
   }, [filteredData]);
 
-  const tableMinWidth = 1150;
-
   return (
     <section className="font-jakarta flex h-screen max-h-[100dvh] min-h-screen overflow-hidden bg-[#eef3f7] text-sibs-primary-1">
       <AdminSidebar
@@ -332,25 +336,8 @@ export default function CallsReportPage() {
                 />
               </div>
 
-              {/* 6. Reset & Refresh Actions */}
+              {/* 6. Refresh Action */}
               <div className="flex items-center gap-1.5 w-full sm:col-span-2 md:col-span-3 lg:col-span-1 justify-end">
-                {(selectedDate || selectedCountries.length > 0 || selectedLanguage !== "all" || selectedSkill !== "all" || searchTerm) && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSelectedDate("");
-                      setSelectedCountries([]);
-                      setSelectedLanguage("all");
-                      setSelectedSkill("all");
-                      setSearchTerm("");
-                    }}
-                    className="inline-flex h-8 items-center justify-center px-2.5 text-xs font-bold text-rose-600 hover:text-white hover:bg-rose-600 rounded-lg transition cursor-pointer border border-rose-200 shadow-2xs"
-                    title="Reset all filters"
-                  >
-                    Reset
-                  </button>
-                )}
-
                 <button
                   type="button"
                   onClick={fetchCallsReport}
@@ -404,11 +391,15 @@ export default function CallsReportPage() {
                 </div>
               </div>
               <div className="mt-0.5 text-base sm:text-lg font-bold text-slate-900 leading-snug">
-                {isLoading ? "--" : totals.callsReceived.toLocaleString()}
+                {isLoading ? (
+                  <div className="h-6 w-16 rounded bg-slate-200 animate-pulse my-0.5" />
+                ) : (
+                  totals.callsReceived.toLocaleString()
+                )}
               </div>
             </div>
 
-            {/* 2. Calls Answered */}
+            {/* 3. Calls Answered */}
             <div className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 sm:px-3 sm:py-2 shadow-2xs transition-all hover:border-slate-300">
               <div className="flex items-center justify-between gap-1.5">
                 <span
@@ -422,11 +413,15 @@ export default function CallsReportPage() {
                 </div>
               </div>
               <div className="mt-0.5 text-base sm:text-lg font-bold text-slate-900 leading-snug">
-                {isLoading ? "--" : totals.callsAnswered.toLocaleString()}
+                {isLoading ? (
+                  <div className="h-6 w-16 rounded bg-slate-200 animate-pulse my-0.5" />
+                ) : (
+                  totals.callsAnswered.toLocaleString()
+                )}
               </div>
             </div>
 
-            {/* 3. Calls Abandoned */}
+            {/* 4. Calls Abandoned */}
             <div className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 sm:px-3 sm:py-2 shadow-2xs transition-all hover:border-slate-300">
               <div className="flex items-center justify-between gap-1.5">
                 <span
@@ -440,11 +435,15 @@ export default function CallsReportPage() {
                 </div>
               </div>
               <div className="mt-0.5 text-base sm:text-lg font-bold text-slate-900 leading-snug">
-                {isLoading ? "--" : totals.callsAbandoned.toLocaleString()}
+                {isLoading ? (
+                  <div className="h-6 w-14 rounded bg-slate-200 animate-pulse my-0.5" />
+                ) : (
+                  totals.callsAbandoned.toLocaleString()
+                )}
               </div>
             </div>
 
-            {/* 4. Average AHT */}
+            {/* 5. Average AHT */}
             <div className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 sm:px-3 sm:py-2 shadow-2xs transition-all hover:border-slate-300">
               <div className="flex items-center justify-between gap-1.5">
                 <span
@@ -458,11 +457,15 @@ export default function CallsReportPage() {
                 </div>
               </div>
               <div className="mt-0.5 text-base sm:text-lg font-bold text-slate-900 leading-snug">
-                {isLoading ? "--" : totals.aht}
+                {isLoading ? (
+                  <div className="h-6 w-14 rounded bg-slate-200 animate-pulse my-0.5" />
+                ) : (
+                  totals.aht
+                )}
               </div>
             </div>
 
-            {/* 5. Abandoned Rate */}
+            {/* 6. Abandoned Rate */}
             <div className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 sm:px-3 sm:py-2 shadow-2xs transition-all hover:border-slate-300">
               <div className="flex items-center justify-between gap-1.5">
                 <span
@@ -476,11 +479,15 @@ export default function CallsReportPage() {
                 </div>
               </div>
               <div className="mt-0.5 text-base sm:text-lg font-bold text-slate-900 leading-snug">
-                {isLoading ? "--" : totals.abandonedRate}
+                {isLoading ? (
+                  <div className="h-6 w-16 rounded bg-slate-200 animate-pulse my-0.5" />
+                ) : (
+                  totals.abandonedRate
+                )}
               </div>
             </div>
 
-            {/* 6. Service Level (60s) */}
+            {/* 7. Service Level (60s) */}
             <div className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 sm:px-3 sm:py-2 shadow-2xs transition-all hover:border-slate-300">
               <div className="flex items-center justify-between gap-1.5">
                 <span
@@ -494,7 +501,11 @@ export default function CallsReportPage() {
                 </div>
               </div>
               <div className="mt-0.5 text-base sm:text-lg font-bold text-slate-900 leading-snug">
-                {isLoading ? "--" : totals.sl}
+                {isLoading ? (
+                  <div className="h-6 w-16 rounded bg-slate-200 animate-pulse my-0.5" />
+                ) : (
+                  totals.sl
+                )}
               </div>
             </div>
           </div>
@@ -510,11 +521,8 @@ export default function CallsReportPage() {
 
           {/* Table Container */}
           <div className="flex min-h-[360px] lg:min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs">
-            <div className="min-h-0 flex-1 overflow-auto sibs-scrollbar">
-              <table
-                className="w-full table-auto border-collapse text-left text-[12.5px]"
-                style={{ minWidth: `${tableMinWidth}px` }}
-              >
+            <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden sibs-scrollbar">
+              <table className="w-full table-auto border-collapse text-left text-xs">
                 <thead className="sticky top-0 z-10 border-b border-slate-200 bg-slate-100/90 backdrop-blur-xs shadow-2xs">
                   <tr>
                     <th className="whitespace-nowrap px-4 py-3 text-[11px] font-extrabold uppercase tracking-wider text-slate-700">
@@ -553,7 +561,45 @@ export default function CallsReportPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-slate-800">
-                  {paginatedData.length > 0 ? (
+                  {isLoading ? (
+                    Array.from({ length: 10 }).map((_, i) => (
+                      <tr key={`skeleton-${i}`} className="animate-pulse">
+                        <td className="px-4 py-3">
+                          <div className="h-4 w-28 bg-slate-200 rounded-md" />
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="h-4 w-24 bg-slate-200 rounded-md" />
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="h-5 w-20 bg-slate-200 rounded-md" />
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <div className="h-4 w-14 bg-slate-200 rounded-md ml-auto" />
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <div className="h-4 w-14 bg-slate-200 rounded-md ml-auto" />
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <div className="h-4 w-14 bg-slate-200 rounded-md ml-auto" />
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <div className="h-4 w-14 bg-slate-200 rounded-md ml-auto" />
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <div className="h-4 w-14 bg-slate-200 rounded-md ml-auto" />
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <div className="h-4 w-14 bg-slate-200 rounded-md ml-auto" />
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <div className="h-4 w-14 bg-slate-200 rounded-md ml-auto" />
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <div className="h-4 w-16 bg-slate-200 rounded-md ml-auto" />
+                        </td>
+                      </tr>
+                    ))
+                  ) : paginatedData.length > 0 ? (
                     paginatedData.map((row, idx) => {
                       const isAbandonedZero = Number(row.callsAbandoned || 0) === 0;
                       const isAbandonedAfterSlZero = Number(row.callsAbandonedAfterSl || 0) === 0;
@@ -637,47 +683,6 @@ export default function CallsReportPage() {
                         </tr>
                       );
                     })
-                  ) : isLoading ? (
-                    Array.from({ length: 10 }).map((_, i) => (
-                      <tr key={`skeleton-${i}`} className="animate-pulse">
-                        <td className="px-3.5 py-2.5">
-                          <div className="h-4 w-28 bg-slate-200 rounded-md" />
-                        </td>
-                        <td className="px-3.5 py-2.5">
-                          <div className="h-4 w-24 bg-slate-200 rounded-md" />
-                        </td>
-                        <td className="px-3.5 py-2.5">
-                          <div className="h-4 w-12 bg-slate-200 rounded-md ml-auto" />
-                        </td>
-                        <td className="px-3.5 py-2.5">
-                          <div className="h-4 w-12 bg-slate-200 rounded-md ml-auto" />
-                        </td>
-                        <td className="px-3.5 py-2.5">
-                          <div className="h-4 w-12 bg-slate-200 rounded-md ml-auto" />
-                        </td>
-                        <td className="px-3.5 py-2.5">
-                          <div className="h-4 w-12 bg-slate-200 rounded-md ml-auto" />
-                        </td>
-                        <td className="px-3.5 py-2.5">
-                          <div className="h-4 w-12 bg-slate-200 rounded-md ml-auto" />
-                        </td>
-                        <td className="px-3.5 py-2.5">
-                          <div className="h-4 w-14 bg-slate-200 rounded-md ml-auto" />
-                        </td>
-                        <td className="px-3.5 py-2.5">
-                          <div className="h-4 w-16 bg-slate-200 rounded-md" />
-                        </td>
-                        <td className="px-3.5 py-2.5">
-                          <div className="h-4 w-14 bg-slate-200 rounded-md ml-auto" />
-                        </td>
-                        <td className="px-3.5 py-2.5">
-                          <div className="h-4 w-14 bg-slate-200 rounded-md ml-auto" />
-                        </td>
-                        <td className="px-3.5 py-2.5">
-                          <div className="h-4 w-14 bg-slate-200 rounded-md ml-auto" />
-                        </td>
-                      </tr>
-                    ))
                   ) : (
                     <tr>
                       <td colSpan={11} className="py-24 text-center text-sm text-slate-400">

@@ -33,6 +33,8 @@ const AppHeader = ({
 }) => {
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const userMenuRef = useRef(null);
+  const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+  const notificationRef = useRef(null);
   const authUser = getAuthUser();
   // Uses the saved employee name fields when the API does not send one full name.
   const fullNameFromParts = [
@@ -77,13 +79,16 @@ const AppHeader = ({
     null;
 
   useEffect(() => {
-    if (!isUserMenuOpen) {
+    if (!isUserMenuOpen && !isNotificationOpen) {
       return undefined;
     }
 
     const handleOutsidePointerDown = (event) => {
-      if (!userMenuRef.current?.contains(event.target)) {
+      if (isUserMenuOpen && !userMenuRef.current?.contains(event.target)) {
         setIsUserMenuOpen(false);
+      }
+      if (isNotificationOpen && !notificationRef.current?.contains(event.target)) {
+        setIsNotificationOpen(false);
       }
     };
 
@@ -92,7 +97,7 @@ const AppHeader = ({
     return () => {
       document.removeEventListener("pointerdown", handleOutsidePointerDown);
     };
-  }, [isUserMenuOpen]);
+  }, [isUserMenuOpen, isNotificationOpen]);
 
   const handleLogoutClick = () => {
     setIsUserMenuOpen(false);
@@ -145,14 +150,51 @@ const AppHeader = ({
           <div className="hidden xl:block h-6 w-px bg-slate-200 shrink-0" aria-hidden="true" />
 
           {/* 2. Notification Bell */}
-          <button
-            type="button"
-            aria-label="Notifications"
-            className="relative flex h-9 w-9 cursor-pointer items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-sibs-primary-1"
-          >
-            <Bell className="h-4.5 w-4.5" aria-hidden="true" />
-            <span className="absolute top-1.5 right-1.5 h-2.5 w-2.5 rounded-full bg-sibs-primary-2 ring-2 ring-white" />
-          </button>
+          <div ref={notificationRef} className="relative shrink-0">
+            <button
+              type="button"
+              aria-label="Notifications"
+              aria-expanded={isNotificationOpen}
+              onClick={() => {
+                setIsNotificationOpen((prev) => !prev);
+                setIsUserMenuOpen(false);
+              }}
+              className={`relative flex h-9 w-9 cursor-pointer items-center justify-center rounded-xl text-slate-500 transition ${
+                isNotificationOpen
+                  ? "bg-slate-100 text-sibs-primary-1"
+                  : "hover:bg-slate-100 hover:text-sibs-primary-1"
+              }`}
+            >
+              <Bell className="h-4.5 w-4.5" aria-hidden="true" />
+              <span className="absolute top-1.5 right-1.5 h-2.5 w-2.5 rounded-full bg-sibs-primary-2 ring-2 ring-white" />
+            </button>
+
+            {/* Empty Notification Dropdown Modal/Card */}
+            {isNotificationOpen && (
+              <div className="absolute right-0 top-full mt-2 w-88 sm:w-96 max-w-[calc(100vw-2rem)] min-h-[380px] rounded-2xl border border-slate-200 bg-white shadow-2xl shadow-slate-900/15 z-50 overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-100">
+                <div className="flex items-center justify-between border-b border-slate-100 px-5 py-3.5 shrink-0 bg-slate-50/50">
+                  <div className="flex items-center gap-2.5">
+                    <span className="text-xs font-black uppercase tracking-wider text-sibs-primary-1">
+                      Notifications
+                    </span>
+                    <span className="rounded-full bg-orange-50 px-2 py-0.5 text-[10px] font-bold text-sibs-primary-2 border border-orange-200">
+                      0
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex flex-1 flex-col items-center justify-center px-6 py-16 text-center">
+                  <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-50 text-slate-300 ring-1 ring-slate-100 shadow-inner">
+                    <Bell className="h-7 w-7" />
+                  </div>
+                  <p className="text-sm font-bold text-slate-800">No notifications yet</p>
+                  <p className="mt-1 text-xs text-slate-400 max-w-[220px]">
+                    We will notify you here when there are new updates or alerts.
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
 
           {/* Divider */}
           <div className="hidden sm:block h-6 w-px bg-slate-200 shrink-0" aria-hidden="true" />

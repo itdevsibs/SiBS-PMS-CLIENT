@@ -1320,17 +1320,26 @@ export default function OccupancyTable({
             {/* Table Body */}
             <tbody className="divide-y divide-slate-100">
               {isLoading ? (
-                <tr>
-                  <td
-                    colSpan={OCCUPANCY_COLUMNS.length}
-                    className="py-16 text-center text-slate-500 bg-white"
-                  >
-                    <div className="mx-auto flex flex-col items-center justify-center gap-2.5">
-                      <RefreshCw className="h-6 w-6 animate-spin text-slate-400" />
-                      <span className="font-medium text-sm">Loading records...</span>
-                    </div>
-                  </td>
-                </tr>
+                Array.from({ length: 12 }).map((_, i) => (
+                  <tr key={`occupancy-skeleton-${i}`} className="animate-pulse bg-white">
+                    {OCCUPANCY_COLUMNS.map((col, cIdx) => (
+                      <td
+                        key={`skeleton-cell-${col.key}-${cIdx}`}
+                        className={`px-2 py-3 border-r border-slate-100 last:border-r-0 ${col.align}`}
+                      >
+                        <div
+                          className={`h-4 rounded-md bg-slate-200 ${
+                            col.key === "name"
+                              ? "w-24"
+                              : col.align === "text-center"
+                              ? "w-12 mx-auto"
+                              : "w-14"
+                          }`}
+                        />
+                      </td>
+                    ))}
+                  </tr>
+                ))
               ) : activeData.length === 0 ? (
                 <tr>
                   <td

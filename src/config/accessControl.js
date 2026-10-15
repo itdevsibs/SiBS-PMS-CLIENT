@@ -201,60 +201,84 @@ export const DASHBOARD_MODULES = Object.freeze([
     ],
   },
   {
-    key: "employee-ledger",
-    name: "Employee Ledger",
-    iconKey: "database",
+    key: "workforce-management",
+    name: "Workforce Management",
+    iconKey: "users-round",
     path: "/employee-master-data",
-    permission: PERMISSIONS.VIEW_EMPLOYEE_LEDGER,
+    submodules: [
+      {
+        key: "employee-ledger",
+        name: "Employee Ledger",
+        iconKey: "database",
+        path: "/employee-master-data",
+        permission: PERMISSIONS.VIEW_EMPLOYEE_LEDGER,
+      },
+      {
+        key: "task-order-ledger",
+        name: "Task-Order Ledger",
+        iconKey: "award",
+        path: "/task-order-ledger",
+        permission: PERMISSIONS.WFM_TASK_ORDER_LEDGER,
+      },
+    ],
   },
   {
-    key: "task-order-ledger",
-    name: "Task-Order Ledger",
-    iconKey: "award",
-    path: "/task-order-ledger",
-    permission: PERMISSIONS.WFM_TASK_ORDER_LEDGER,
-  },
-  {
-    key: "import-data",
-    name: "Import Data",
-    iconKey: "clipboard-list",
-    path: "/import-data",
-    permission: PERMISSIONS.WFM_IMPORT_DATA,
-  },
-  {
-    key: "import-repository",
-    name: "Import Repository",
-    iconKey: "folder-down",
-    path: "/import-repository",
-    permission: PERMISSIONS.WFM_IMPORT_REPOSITORY,
-  },
-  {
-    key: "occupancy",
-    name: "Occupancy",
-    iconKey: "users",
+    key: "operations-tracking",
+    name: "Operations Tracking",
+    iconKey: "line-chart",
     path: "/occupancy",
-    permission: PERMISSIONS.VIEW_OCCUPANCY,
+    submodules: [
+      {
+        key: "occupancy",
+        name: "Occupancy",
+        iconKey: "users",
+        path: "/occupancy",
+        permission: PERMISSIONS.VIEW_OCCUPANCY,
+      },
+      {
+        key: "attendance-sheet",
+        name: "Attendance Sheet",
+        iconKey: "clipboard-check",
+        path: "/attendance-sheet",
+        permission: PERMISSIONS.VIEW_ATTENDANCE_SHEET,
+      },
+      {
+        key: "calls-report",
+        name: "Calls Report",
+        iconKey: "phone-call",
+        path: "/calls-report",
+        permission: PERMISSIONS.VIEW_CALLS_REPORT,
+      },
+    ],
   },
   {
-    key: "attendance-sheet",
-    name: "Attendance Sheet",
-    iconKey: "clipboard-check",
-    path: "/attendance-sheet",
-    permission: PERMISSIONS.VIEW_ATTENDANCE_SHEET,
-  },
-  {
-    key: "calls-report",
-    name: "Calls Report",
-    iconKey: "phone-call",
-    path: "/calls-report",
-    permission: PERMISSIONS.VIEW_CALLS_REPORT,
-  },
-  {
-    key: "wfm-history",
-    name: "History Logs",
-    iconKey: "clipboard-list",
-    path: "/history",
-    permission: PERMISSIONS.WFM_HISTORY_LOGS,
+    key: "data-imports",
+    name: "Data & Imports",
+    iconKey: "folder-archive",
+    path: "/import-data",
+    submodules: [
+      {
+        key: "import-data",
+        name: "Import Data",
+        iconKey: "clipboard-list",
+        path: "/import-data",
+        permission: PERMISSIONS.WFM_IMPORT_DATA,
+      },
+      {
+        key: "import-repository",
+        name: "Import Repository",
+        iconKey: "folder-down",
+        path: "/import-repository",
+        permission: PERMISSIONS.WFM_IMPORT_REPOSITORY,
+      },
+      {
+        key: "wfm-history",
+        name: "History Logs",
+        iconKey: "clipboard-list",
+        path: "/history",
+        permission: PERMISSIONS.WFM_HISTORY_LOGS,
+      },
+    ],
   },
   {
     key: "super-admin",
@@ -425,9 +449,29 @@ export function hasPermissionForUser(user, permission) {
 export function getAllowedModules(user) {
   if (!user) return [];
 
-  return DASHBOARD_MODULES.filter((module) =>
-    hasPermissionForUser(user, module.permission),
-  );
+  return DASHBOARD_MODULES.map((module) => {
+    // If the module has submodules, filter them by permission
+    if (Array.isArray(module.submodules) && module.submodules.length > 0) {
+      const allowedSubmodules = module.submodules.filter((sub) =>
+        !sub.permission || hasPermissionForUser(user, sub.permission),
+      );
+
+      if (allowedSubmodules.length === 0) return null;
+
+      return {
+        ...module,
+        path: module.path || allowedSubmodules[0].path,
+        submodules: allowedSubmodules,
+      };
+    }
+
+    // Direct module permission check
+    if (module.permission && !hasPermissionForUser(user, module.permission)) {
+      return null;
+    }
+
+    return module;
+  }).filter(Boolean);
 }
 
 export function canAccessDashboardPath(user, pathname) {
