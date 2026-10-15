@@ -29,6 +29,10 @@ export const SOURCE_OPTIONS = [
     label: "Fusecom",
   },
   {
+    value: "FUSENET",
+    label: "FuseNet",
+  },
+  {
     value: "HERODASH",
     label: "HeroDash",
   },
@@ -50,6 +54,12 @@ export const TASK_ORDER_OPTIONS_BY_SOURCE = {
     { value: "", label: "All Task Orders" },
     { value: "TO12", label: "TO12 - NICE" },
     { value: "TO16", label: "TO16 - SEURECA" },
+    { value: "OTHER", label: "Other" },
+  ],
+  FUSENET: [
+    { value: "", label: "All Task Orders" },
+    { value: "TO18", label: "TO18 - NEA" },
+    { value: "TO22", label: "TO22 - SAMI" },
     { value: "OTHER", label: "Other" },
   ],
   HERODASH: [
@@ -755,28 +765,16 @@ export const DEFAULT_FILTERS = {
 export function getTaskOrderOptions(sourceSystem) {
   const sources = Array.isArray(sourceSystem)
     ? sourceSystem.filter((s) => s && s !== "__NONE__")
-    : [sourceSystem];
+    : [sourceSystem].filter(Boolean);
 
-  if (
-    !sources.length ||
-    sources.includes("US_VISA") ||
-    (sources.includes("FUSECOM") && sources.includes("HERODASH"))
-  ) {
+  if (!sources.length || sources.includes("US_VISA") || sources.length > 1) {
     return (TASK_ORDER_OPTIONS_BY_SOURCE.US_VISA || []).filter(
       (opt) => opt.value !== "",
     );
   }
-  if (sources.includes("FUSECOM") && !sources.includes("HERODASH")) {
-    return (TASK_ORDER_OPTIONS_BY_SOURCE.FUSECOM || []).filter(
-      (opt) => opt.value !== "",
-    );
-  }
-  if (sources.includes("HERODASH") && !sources.includes("FUSECOM")) {
-    return (TASK_ORDER_OPTIONS_BY_SOURCE.HERODASH || []).filter(
-      (opt) => opt.value !== "",
-    );
-  }
-  return (TASK_ORDER_OPTIONS_BY_SOURCE.US_VISA || []).filter(
+
+  const source = String(sources[0] || "").trim().toUpperCase();
+  return (TASK_ORDER_OPTIONS_BY_SOURCE[source] || TASK_ORDER_OPTIONS_BY_SOURCE.US_VISA || []).filter(
     (opt) => opt.value !== "",
   );
 }
