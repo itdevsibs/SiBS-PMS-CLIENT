@@ -14,8 +14,8 @@ export async function fetchAttendanceSheetAccounts() {
   return unwrap(response);
 }
 
-export async function fetchAttendancePreview(params = {}) {
-  const response = await api.get("/kronos/attendance/preview", { params });
+export async function fetchAttendanceSheet(params = {}) {
+  const response = await api.get("/kronos/attendance-sheet", { params });
   return unwrap(response);
 }
 

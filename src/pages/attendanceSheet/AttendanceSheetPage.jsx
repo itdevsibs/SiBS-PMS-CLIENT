@@ -28,7 +28,7 @@ import DatePicker from "@/components/ui/Filter/DatePicker";
 import LoadingModal from "@/components/ui/loading-modal";
 import useDashboardPage from "@/hooks/useDashboardPage";
 import {
-  fetchAttendancePreview,
+  fetchAttendanceSheet,
   fetchAttendanceSheetAccounts,
   fetchAttendanceSheetStatus,
 } from "@/lib/axios/attendance-sheet";
@@ -407,6 +407,14 @@ export default function AttendanceSheetPage() {
   const accountDropdownRef = useRef(null);
 
   const [dataRows, setDataRows] = useState([]);
+  // Do not retain employee data in localStorage. Ignore stale responses when the
+  // user changes dates/searches or pages while a prior fetch is still pending.
+  const attendanceRequestId = useRef(0);
+
+  useEffect(() => {
+    // Remove obsolete localStorage rows saved by the previous implementation.
+    try { localStorage.removeItem("sibs_attendance_cache"); } catch { /* unavailable */ }
+  }, []);
   const [responseMeta, setResponseMeta] = useState(null);
   const [pagination, setPagination] = useState({
     currentPage: 1,
@@ -557,6 +565,7 @@ export default function AttendanceSheetPage() {
         currentPage: targetPage,
       }));
 
+      const requestId = ++attendanceRequestId.current;
       setIsLoadingData(true);
       setDataError(null);
 
@@ -574,7 +583,8 @@ export default function AttendanceSheetPage() {
       };
 
       try {
-        const response = await fetchAttendancePreview(params);
+        const response = await fetchAttendanceSheet(params);
+        if (requestId !== attendanceRequestId.current) return;
         const payload = response?.data || {};
         const rows = Array.isArray(payload?.data) ? payload.data : [];
         const nextPagination = payload?.pagination || {};
@@ -593,26 +603,13 @@ export default function AttendanceSheetPage() {
         setPagination(resolvedPagination);
         setHasLoadedData(true);
 
-        if (rows.length > 0 && !trimmedSearch && targetPage === 1) {
-          try {
-            localStorage.setItem(
-              "sibs_attendance_cache",
-              JSON.stringify({
-                rows,
-                meta: payload,
-                pagination: resolvedPagination,
-              }),
-            );
-          } catch {
-            // ignore localStorage quota error
-          }
-        }
       } catch (error) {
+        if (requestId !== attendanceRequestId.current) return;
         const details = getErrorDetails(error, "Unable to load attendance data.");
         setDataError(details);
         setHasLoadedData(true);
       } finally {
-        setIsLoadingData(false);
+        if (requestId === attendanceRequestId.current) setIsLoadingData(false);
       }
     },
     [
