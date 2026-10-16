@@ -11,20 +11,20 @@ import {
   Trash2,
 } from "lucide-react";
 
-import AdminSidebar from "@/components/layout/AdminSidebar";
-import AppHeader from "@/components/layout/AppHeader";
-import SingleSelectDropdown from "@/components/ui/Filter/SingleSelectDropdown";
-import ConfirmationModal from "@/components/ui/confirmation-modal";
-import LoadingModal from "@/components/ui/loading-modal";
-import WfmBatchDetailsModal from "@/components/ui/import/wfm-batch-details-modal";
-import WfmErrorDetailsModal from "@/components/ui/import/wfm-error-details-modal";
-import WfmReadOnlyExcelModal from "@/components/ui/import/wfm-read-only-excel-modal";
-import WfmFilterBar from "@/components/ui/import/wfm-filter-bar";
-import WfmImportSummaryBar from "@/components/ui/import/wfm-import-summary-bar";
-import { RemovedUploadSuccessModal } from "@/components/ui/import/wfm-status-feedback-modals";
-import WfmWarningsModal from "@/components/ui/import/wfm-warnings-modal";
-import WfmRejectedModal from "@/components/ui/import/wfm-rejected-modal";
-import WfmDuplicatesModal from "@/components/ui/import/wfm-duplicates-modal";
+import AdminSidebar from "@/components/common/layout/AdminSidebar";
+import AppHeader from "@/components/common/layout/AppHeader";
+import SingleSelectDropdown from "@/components/common/filters/SingleSelectDropdown";
+import ConfirmationModal from "@/components/common/ui/ConfirmationModal";
+import LoadingModal from "@/components/common/ui/LoadingModal";
+import WfmBatchDetailsModal from "@/components/modules/wfm/imports/WfmBatchDetailsModal";
+import WfmErrorDetailsModal from "@/components/modules/wfm/imports/WfmErrorDetailsModal";
+import WfmReadOnlyExcelModal from "@/components/modules/wfm/imports/WfmReadOnlyExcelModal";
+import WfmFilterBar from "@/components/modules/wfm/imports/WfmFilterBar";
+import WfmImportSummaryBar from "@/components/modules/wfm/imports/WfmImportSummaryBar";
+import { RemovedUploadSuccessModal } from "@/components/modules/wfm/imports/WfmStatusFeedbackModals";
+import WfmWarningsModal from "@/components/modules/wfm/imports/WfmWarningsModal";
+import WfmRejectedModal from "@/components/modules/wfm/imports/WfmRejectedModal";
+import WfmDuplicatesModal from "@/components/modules/wfm/imports/WfmDuplicatesModal";
 import useDashboardPage from "@/hooks/useDashboardPage";
 import { getAuthDisplayName } from "@/lib/auth";
 import { recordWfmHistoryLogQuietly } from "@/lib/axios/wfm-history-logs";

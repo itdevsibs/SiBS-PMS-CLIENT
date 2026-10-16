@@ -1,9 +1,9 @@
 // Dashboard page for operations management users.
-import AdminSidebar from "@/components/layout/AdminSidebar";
-import AppHeader from "@/components/layout/AppHeader";
+import AdminSidebar from "@/components/common/layout/AdminSidebar";
+import AppHeader from "@/components/common/layout/AppHeader";
 import OperationsManagerPerformanceDashboard from "./OperationsManagerPerformanceDashboard";
-import ConfirmationModal from "@/components/ui/confirmation-modal";
-import LoadingModal from "@/components/ui/loading-modal";
+import ConfirmationModal from "@/components/common/ui/ConfirmationModal";
+import LoadingModal from "@/components/common/ui/LoadingModal";
 import useDashboardPage from "@/hooks/useDashboardPage";
 import useOperationsManagerPerformance from "@/hooks/useOperationsManagerPerformance";
 

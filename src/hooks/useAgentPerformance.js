@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   buildAgentPerformanceParams,
   DEFAULT_AGENT_PERFORMANCE_FILTERS,
-} from "@/components/agent/agentPerformanceFilterUtils";
+} from "@/components/modules/agent/agentPerformanceFilterUtils";
 import { getMyUsVisaPerformance } from "@/lib/axios/us-visa-performance";
 
 function getErrorMessage(error) {

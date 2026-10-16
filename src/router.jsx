@@ -1,7 +1,7 @@
 // Defines frontend routes and protects dashboard pages using centralized permissions.
 import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 
-import ProtectedRoute from "./components/auth/ProtectedRoute";
+import ProtectedRoute from "./components/common/auth/ProtectedRoute";
 import { PERMISSIONS } from "./config/accessControl";
 import { useAuthAccess } from "./context/AuthAccessContext";
 import AgentsPage from "./pages/dashboard/AgentsPage";
@@ -10,7 +10,7 @@ import ClientPage from "./pages/dashboard/ClientPage";
 import SuperAdminDashboard from "./pages/dashboard/SuperAdminDashboard";
 import SeniorOperationsManagerPage from "@/pages/dashboard/SeniorOperationsManagerPage";
 import EmployeeMasterDataPage from "./pages/employeeMasterData/EmployeeMasterDataPage";
-import ViewGraphsPage from "./pages/graphs/viewGraphsPage";
+import ViewGraphsPage from "./pages/graphs/ViewGraphsPage";
 import InterfaceAccessHistory from "./pages/historyLogs/InterfaceAccessHistory";
 import AttendanceSheetPage from "./pages/attendanceSheet/AttendanceSheetPage";
 import CallsReportPage from "./pages/callsReport/CallsReportPage";
@@ -19,7 +19,7 @@ import OccupancyPage from "./pages/occupancy/OccupancyPage";
 import OperationsManagementPage from "./pages/operationsManager/OperationsManagementPage";
 import TaskOrderLedger from "./pages/TaskOrderLedger/TaskOrderLedger";
 import TeamLeaderPage from "./pages/teamLeader/TeamLeaderPage";
-import WfmHistoryLogs from "./pages/workForceManagement/wfmHistoryLogs";
+import WfmHistoryLogs from "./pages/workForceManagement/WfmHistoryLogs";
 import WfmImportDataPage from "./pages/workForceManagement/WfmImportDataPage";
 import WfmImportedRepository from "./pages/workForceManagement/WfmImportedRepository";
 

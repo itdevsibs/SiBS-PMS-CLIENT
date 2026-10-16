@@ -9,11 +9,11 @@ import {
   X,
 } from "lucide-react";
 
-import AdminSidebar from "@/components/layout/AdminSidebar";
-import AppHeader from "@/components/layout/AppHeader";
-import ConfirmationModal from "@/components/ui/confirmation-modal";
-import LoadingModal from "@/components/ui/loading-modal";
-import TablePagination from "@/components/tables/TablePagination";
+import AdminSidebar from "@/components/common/layout/AdminSidebar";
+import AppHeader from "@/components/common/layout/AppHeader";
+import ConfirmationModal from "@/components/common/ui/ConfirmationModal";
+import LoadingModal from "@/components/common/ui/LoadingModal";
+import TablePagination from "@/components/common/tables/TablePagination";
 import useDashboardPage from "@/hooks/useDashboardPage";
 import { getAuthDisplayName } from "@/lib/auth";
 import { fetchTaskOrderLedger } from "@/lib/axios/task-order-ledger";
