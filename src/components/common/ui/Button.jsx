@@ -1,7 +1,7 @@
 // Shared button component with variant styling.
 import { Button as ButtonPrimitive } from "@base-ui/react/button"
 
-import { buttonVariants } from "@/components/common/ui/Button-variants";
+import { buttonVariants } from "./buttonVariants";
 import { cn } from "@/lib/utils"
 
 function Button({
