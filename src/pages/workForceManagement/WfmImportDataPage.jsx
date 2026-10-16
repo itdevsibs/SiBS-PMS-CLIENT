@@ -2,13 +2,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-import AdminSidebar from "@/components/layout/AdminSidebar";
-import AppHeader from "@/components/layout/AppHeader";
-import WfmAccountWorkspacesGrid from "@/components/ui/import/wfm-account-workspaces-grid";
-import WfmFilterBar from "@/components/ui/import/wfm-filter-bar";
-import WfmImportModals from "@/components/ui/import/wfm-import-modals";
-import WfmImportSummaryBar from "@/components/ui/import/wfm-import-summary-bar";
-import WfmRawDataCardsGrid from "@/components/ui/import/wfm-raw-data-cards-grid";
+import AdminSidebar from "@/components/common/layout/AdminSidebar";
+import AppHeader from "@/components/common/layout/AppHeader";
+import WfmAccountWorkspacesGrid from "@/components/modules/wfm/imports/WfmAccountWorkspacesGrid";
+import WfmFilterBar from "@/components/modules/wfm/imports/WfmFilterBar";
+import WfmImportModals from "@/components/modules/wfm/imports/WfmImportModals";
+import WfmImportSummaryBar from "@/components/modules/wfm/imports/WfmImportSummaryBar";
+import WfmRawDataCardsGrid from "@/components/modules/wfm/imports/WfmRawDataCardsGrid";
 import useDashboardPage from "@/hooks/useDashboardPage";
 import { getAuthDisplayName } from "@/lib/auth";
 import { recordWfmHistoryLogQuietly } from "@/lib/axios/wfm-history-logs";

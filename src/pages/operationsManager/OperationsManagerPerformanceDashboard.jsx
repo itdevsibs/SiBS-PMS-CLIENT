@@ -11,11 +11,11 @@ import {
   Users,
 } from "lucide-react";
 
-import AgentKpiDetail from "@/components/agent/AgentKpiDetail";
-import { formatNumber, formatSeconds } from "@/components/agent/AgentPerformanceDashboard";
-import { Button } from "@/components/ui/button";
-import DatePicker from "@/components/ui/Filter/DatePicker";
-import SingleSelectDropdown from "@/components/ui/Filter/SingleSelectDropdown";
+import AgentKpiDetail from "@/components/modules/agent/AgentKpiDetail";
+import { formatNumber, formatSeconds } from "@/components/modules/agent/AgentPerformanceDashboard";
+import { Button } from "@/components/common/ui/Button";
+import DatePicker from "@/components/common/filters/DatePicker";
+import SingleSelectDropdown from "@/components/common/filters/SingleSelectDropdown";
 
 const PERIOD_OPTIONS = [
   { value: "weekly", label: "Weekly" },

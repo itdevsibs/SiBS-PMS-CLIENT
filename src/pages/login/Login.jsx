@@ -11,9 +11,9 @@ import {
 } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 
-import AppModal from "@/components/ui/app-modal";
-import { Button } from "@/components/ui/button";
-import LoadingModal from "@/components/ui/loading-modal";
+import AppModal from "@/components/common/ui/AppModal";
+import { Button } from "@/components/common/ui/Button";
+import LoadingModal from "@/components/common/ui/LoadingModal";
 import {
   getRoleLabel,
   resolveDashboardPath,

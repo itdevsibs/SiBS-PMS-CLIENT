@@ -1,8 +1,8 @@
 // Dashboard page for client users.
-import AdminSidebar from "@/components/layout/AdminSidebar";
-import AppHeader from "@/components/layout/AppHeader";
-import ConfirmationModal from "@/components/ui/confirmation-modal";
-import LoadingModal from "@/components/ui/loading-modal";
+import AdminSidebar from "@/components/common/layout/AdminSidebar";
+import AppHeader from "@/components/common/layout/AppHeader";
+import ConfirmationModal from "@/components/common/ui/ConfirmationModal";
+import LoadingModal from "@/components/common/ui/LoadingModal";
 import useDashboardPage from "@/hooks/useDashboardPage";
 
 function ClientPage() {

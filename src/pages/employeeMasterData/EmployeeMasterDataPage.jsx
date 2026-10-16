@@ -16,13 +16,13 @@ import {
   X,
 } from "lucide-react";
 
-import AdminSidebar from "@/components/layout/AdminSidebar";
-import AppHeader from "@/components/layout/AppHeader";
-import AppModal from "@/components/ui/app-modal";
-import ConfirmationModal from "@/components/ui/confirmation-modal";
-import LoadingModal from "@/components/ui/loading-modal";
-import EditEmployeeLedgerModal from "@/components/ui/masterdata/EditEmployeeLedgerModal";
-import TablePagination from "@/components/tables/TablePagination";
+import AdminSidebar from "@/components/common/layout/AdminSidebar";
+import AppHeader from "@/components/common/layout/AppHeader";
+import AppModal from "@/components/common/ui/AppModal";
+import ConfirmationModal from "@/components/common/ui/ConfirmationModal";
+import LoadingModal from "@/components/common/ui/LoadingModal";
+import EditEmployeeLedgerModal from "@/components/modules/employee-ledger/EditEmployeeLedgerModal";
+import TablePagination from "@/components/common/tables/TablePagination";
 import useDashboardPage from "@/hooks/useDashboardPage";
 import {
   fetchMasterDataAccounts,

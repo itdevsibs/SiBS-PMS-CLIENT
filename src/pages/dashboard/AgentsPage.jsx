@@ -1,9 +1,9 @@
 // Dashboard page for agent users.
-import AgentPerformanceDashboard from "@/components/agent/AgentPerformanceDashboard";
-import AdminSidebar from "@/components/layout/AdminSidebar";
-import AppHeader from "@/components/layout/AppHeader";
-import ConfirmationModal from "@/components/ui/confirmation-modal";
-import LoadingModal from "@/components/ui/loading-modal";
+import AgentPerformanceDashboard from "@/components/modules/agent/AgentPerformanceDashboard";
+import AdminSidebar from "@/components/common/layout/AdminSidebar";
+import AppHeader from "@/components/common/layout/AppHeader";
+import ConfirmationModal from "@/components/common/ui/ConfirmationModal";
+import LoadingModal from "@/components/common/ui/LoadingModal";
 import useAgentPerformance from "@/hooks/useAgentPerformance";
 import useDashboardPage from "@/hooks/useDashboardPage";
 

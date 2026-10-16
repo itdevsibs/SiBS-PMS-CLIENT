@@ -2,12 +2,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { Search, Settings2, UserPlus } from "lucide-react";
 
-import AdminSidebar from "@/components/layout/AdminSidebar";
-import AppHeader from "@/components/layout/AppHeader";
-import AppModal from "@/components/ui/app-modal";
-import { Button } from "@/components/ui/button";
-import ConfirmationModal from "@/components/ui/confirmation-modal";
-import LoadingModal from "@/components/ui/loading-modal";
+import AdminSidebar from "@/components/common/layout/AdminSidebar";
+import AppHeader from "@/components/common/layout/AppHeader";
+import AppModal from "@/components/common/ui/AppModal";
+import { Button } from "@/components/common/ui/Button";
+import ConfirmationModal from "@/components/common/ui/ConfirmationModal";
+import LoadingModal from "@/components/common/ui/LoadingModal";
 import useDashboardPage from "@/hooks/useDashboardPage";
 import api from "@/lib/axios/api-template";
 

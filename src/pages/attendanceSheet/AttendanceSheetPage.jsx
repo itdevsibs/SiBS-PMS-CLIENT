@@ -19,13 +19,13 @@ import {
   X,
 } from "lucide-react";
 
-import AdminSidebar from "@/components/layout/AdminSidebar";
-import AppHeader from "@/components/layout/AppHeader";
-import TablePagination from "@/components/tables/TablePagination";
-import { Button } from "@/components/ui/button";
-import ConfirmationModal from "@/components/ui/confirmation-modal";
-import DatePicker from "@/components/ui/Filter/DatePicker";
-import LoadingModal from "@/components/ui/loading-modal";
+import AdminSidebar from "@/components/common/layout/AdminSidebar";
+import AppHeader from "@/components/common/layout/AppHeader";
+import TablePagination from "@/components/common/tables/TablePagination";
+import { Button } from "@/components/common/ui/Button";
+import ConfirmationModal from "@/components/common/ui/ConfirmationModal";
+import DatePicker from "@/components/common/filters/DatePicker";
+import LoadingModal from "@/components/common/ui/LoadingModal";
 import useDashboardPage from "@/hooks/useDashboardPage";
 import {
   fetchAttendanceSheet,

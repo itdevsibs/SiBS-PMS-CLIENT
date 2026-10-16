@@ -8,11 +8,11 @@ import {
   Users,
 } from "lucide-react";
 
-import AdminSidebar from "@/components/layout/AdminSidebar";
-import AppHeader from "@/components/layout/AppHeader";
-import ConfirmationModal from "@/components/ui/confirmation-modal";
-import LoadingModal from "@/components/ui/loading-modal";
-import OccupancyTable from "@/components/tables/OccupancyTable";
+import AdminSidebar from "@/components/common/layout/AdminSidebar";
+import AppHeader from "@/components/common/layout/AppHeader";
+import ConfirmationModal from "@/components/common/ui/ConfirmationModal";
+import LoadingModal from "@/components/common/ui/LoadingModal";
+import OccupancyTable from "@/components/modules/occupancy/OccupancyTable";
 import useDashboardPage from "@/hooks/useDashboardPage";
 
 export default function OccupancyPage() {

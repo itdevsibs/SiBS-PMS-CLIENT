@@ -1,12 +1,12 @@
 import React, { useEffect, useMemo, useState } from "react";
-import AdminSidebar from "@/components/layout/AdminSidebar";
-import AppHeader from "@/components/layout/AppHeader";
-import ConfirmationModal from "@/components/ui/confirmation-modal";
-import LoadingModal from "@/components/ui/loading-modal";
-import TablePagination from "@/components/tables/TablePagination";
-import DatePicker from "@/components/ui/Filter/DatePicker";
-import MultiSelectDropdown from "@/components/ui/Filter/MultiSelectDropdown";
-import SingleSelectDropdown from "@/components/ui/Filter/SingleSelectDropdown";
+import AdminSidebar from "@/components/common/layout/AdminSidebar";
+import AppHeader from "@/components/common/layout/AppHeader";
+import ConfirmationModal from "@/components/common/ui/ConfirmationModal";
+import LoadingModal from "@/components/common/ui/LoadingModal";
+import TablePagination from "@/components/common/tables/TablePagination";
+import DatePicker from "@/components/common/filters/DatePicker";
+import MultiSelectDropdown from "@/components/common/filters/MultiSelectDropdown";
+import SingleSelectDropdown from "@/components/common/filters/SingleSelectDropdown";
 import useDashboardPage from "@/hooks/useDashboardPage";
 import { getCallsReport } from "@/lib/axios/wfm-kpis";
 import {
