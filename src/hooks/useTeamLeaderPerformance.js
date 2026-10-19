@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { getTeamUsVisaPerformance } from "@/lib/axios/us-visa-performance";
-import { getWfmCallKpis } from "@/lib/axios/wfm-kpis";
+import { getCallKpis } from "@/lib/axios/kpis";
 
 const DEFAULT_FILTERS = {
   period: "weekly",
@@ -95,7 +95,7 @@ export default function useTeamLeaderPerformance(initialFilters = DEFAULT_FILTER
       setOperationalError("");
 
       try {
-        const response = await getWfmCallKpis({
+        const response = await getCallKpis({
           ...requestParams,
           sourceSystem: "US_VISA",
         });

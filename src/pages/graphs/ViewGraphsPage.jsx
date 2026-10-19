@@ -43,14 +43,14 @@ import SingleSelectDropdown from "@/components/common/filters/SingleSelectDropdo
 import { PERMISSIONS } from "@/config/accessControl";
 import useDashboardPage from "@/hooks/useDashboardPage";
 import {
-  getWfmCallKpis,
-  getWfmCallSkills,
-  getWfmEmailKpis,
-  getWfmQualityAuditKpis,
-  getWfmOccupancyKpis,
-  getWfmUtilizationKpis,
-  getWfmAbsenteeismKpis,
-} from "@/lib/axios/wfm-kpis";
+  getCallKpis,
+  getCallSkills,
+  getEmailKpis,
+  getQualityAuditKpis,
+  getOccupancyKpis,
+  getUtilizationKpis,
+  getAbsenteeismKpis,
+} from "@/lib/axios/kpis";
 import {
   PERIOD_OPTIONS,
   SOURCE_OPTIONS,
@@ -398,32 +398,32 @@ export default function ViewGraphsPage() {
       const fetches = [];
       if ((isAllReports || selectedReportIds.includes("calls")) && !kpiResponse) {
         fetches.push(
-          getWfmCallKpis(buildRequestParams(filters)).then((res) => setKpiResponse(res)),
+          getCallKpis(buildRequestParams(filters)).then((res) => setKpiResponse(res)),
         );
       }
       if ((isAllReports || selectedReportIds.includes("emails")) && !emailKpiResponse) {
         fetches.push(
-          getWfmEmailKpis(buildEmailRequestParams(filters)).then((res) => setEmailKpiResponse(res)),
+          getEmailKpis(buildEmailRequestParams(filters)).then((res) => setEmailKpiResponse(res)),
         );
       }
       if ((isAllReports || selectedReportIds.includes("qa")) && !qualityAuditKpiResponse) {
         fetches.push(
-          getWfmQualityAuditKpis(buildQualityAuditRequestParams(filters)).then((res) => setQualityAuditKpiResponse(res)),
+          getQualityAuditKpis(buildQualityAuditRequestParams(filters)).then((res) => setQualityAuditKpiResponse(res)),
         );
       }
       if ((isAllReports || selectedReportIds.includes("occupancy")) && !occupancyKpiResponse) {
         fetches.push(
-          getWfmOccupancyKpis(buildEmailRequestParams(filters)).then((res) => setOccupancyKpiResponse(res)),
+          getOccupancyKpis(buildEmailRequestParams(filters)).then((res) => setOccupancyKpiResponse(res)),
         );
       }
       if ((isAllReports || selectedReportIds.includes("occupancy")) && !utilizationKpiResponse) {
         fetches.push(
-          getWfmUtilizationKpis(buildEmailRequestParams(filters)).then((res) => setUtilizationKpiResponse(res)),
+          getUtilizationKpis(buildEmailRequestParams(filters)).then((res) => setUtilizationKpiResponse(res)),
         );
       }
       if ((isAllReports || selectedReportIds.includes("occupancy")) && !absenteeismKpiResponse) {
         fetches.push(
-          getWfmAbsenteeismKpis(buildEmailRequestParams(filters)).then((res) => setAbsenteeismKpiResponse(res)),
+          getAbsenteeismKpis(buildEmailRequestParams(filters)).then((res) => setAbsenteeismKpiResponse(res)),
         );
       }
 
@@ -507,7 +507,7 @@ export default function ViewGraphsPage() {
 
   useEffect(() => {
     let isMounted = true;
-    getWfmCallSkills()
+    getCallSkills()
       .then((res) => {
         if (!isMounted || !res?.data) return;
         const serverMap = res.data;
@@ -580,7 +580,7 @@ export default function ViewGraphsPage() {
       if (showCalls) {
         const callParams = buildRequestParams(filters);
         promises.push(
-          getWfmCallKpis(callParams)
+          getCallKpis(callParams)
             .then((res) => {
               setKpiResponse(res);
             })
@@ -600,7 +600,7 @@ export default function ViewGraphsPage() {
       if (showEmails) {
         const emailParams = buildEmailRequestParams(filters);
         promises.push(
-          getWfmEmailKpis(emailParams)
+          getEmailKpis(emailParams)
             .then((res) => {
               setEmailKpiResponse(res);
             })
@@ -624,7 +624,7 @@ export default function ViewGraphsPage() {
       if (showQa) {
         const qualityAuditParams = buildQualityAuditRequestParams(filters);
         promises.push(
-          getWfmQualityAuditKpis(qualityAuditParams)
+          getQualityAuditKpis(qualityAuditParams)
             .then((res) => {
               setQualityAuditKpiResponse(res);
             })
@@ -652,7 +652,7 @@ export default function ViewGraphsPage() {
 
         // Occupancy remains a fast PMS-only request and controls the main page loader.
         promises.push(
-          getWfmOccupancyKpis(occupancyParams)
+          getOccupancyKpis(occupancyParams)
             .then((res) => {
               setOccupancyKpiResponse(res);
             })
@@ -673,7 +673,7 @@ export default function ViewGraphsPage() {
         setIsUtilizationLoading(true);
         setUtilizationKpiResponse(null);
         promises.push(
-          getWfmUtilizationKpis(occupancyParams)
+          getUtilizationKpis(occupancyParams)
             .then((res) => {
               if (utilizationRequestId !== utilizationRequestRef.current) return;
               setUtilizationKpiResponse(res);
@@ -697,7 +697,7 @@ export default function ViewGraphsPage() {
         setIsAbsenteeismLoading(true);
         setAbsenteeismKpiResponse(null);
         promises.push(
-          getWfmAbsenteeismKpis(occupancyParams)
+          getAbsenteeismKpis(occupancyParams)
             .then((res) => {
               if (absenteeismRequestId !== absenteeismRequestRef.current) return;
               setAbsenteeismKpiResponse(res);
