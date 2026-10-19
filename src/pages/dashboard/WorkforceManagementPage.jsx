@@ -22,7 +22,7 @@ import LoadingModal from "@/components/common/ui/LoadingModal";
 import useDashboardPage from "@/hooks/useDashboardPage";
 import { getUsVisaImportSummary } from "@/lib/axios/us-visa-imports";
 import { fetchWfmHistoryLogs } from "@/lib/axios/wfm-history-logs";
-import { getWfmCallKpis } from "@/lib/axios/wfm-kpis";
+import { getCallKpis } from "@/lib/axios/kpis";
 
 function formatNumber(value) {
   if (value === null || value === undefined || isNaN(value)) return "0";
@@ -157,7 +157,7 @@ function WorkforceManagementPage() {
       try {
         const [importRes, kpiRes, logsRes] = await Promise.allSettled([
           getUsVisaImportSummary({ account: "US VISA" }),
-          getWfmCallKpis({ grain: "weekly" }),
+          getCallKpis({ grain: "weekly" }),
           fetchWfmHistoryLogs({ limit: 12 }),
         ]);
 

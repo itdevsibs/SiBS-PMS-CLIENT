@@ -8,7 +8,7 @@ import DatePicker from "@/components/common/filters/DatePicker";
 import MultiSelectDropdown from "@/components/common/filters/MultiSelectDropdown";
 import SingleSelectDropdown from "@/components/common/filters/SingleSelectDropdown";
 import useDashboardPage from "@/hooks/useDashboardPage";
-import { getCallsReport } from "@/lib/axios/wfm-kpis";
+import { getCallsReport } from "@/lib/axios/kpis";
 import {
   AlertCircle,
   Calendar,
