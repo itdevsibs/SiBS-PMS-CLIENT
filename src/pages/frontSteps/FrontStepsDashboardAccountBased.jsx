@@ -282,25 +282,17 @@ export default function FrontStepsDashboardAccountBased({
                   <line x1="0" y1="154" x2="450" y2="154" stroke="#cbd5e1" strokeWidth="1.5" />
 
                   {/* Bar W1 */}
-                  <rect x="55" y="22" width="60" height="132" rx="5" fill="url(#barGradient)" className="hover:opacity-90 transition-opacity drop-shadow-2xs" />
+                  <rect x="55" y="24" width="60" height="130" rx="5" fill="url(#barGradient)" className="hover:opacity-90 transition-opacity drop-shadow-2xs" />
+                  <text x="85" y="16" textAnchor="middle" className="font-mono text-[12px] font-black fill-[#042c51]">3,421</text>
+
                   {/* Bar W2 */}
-                  <rect x="195" y="34" width="60" height="120" rx="5" fill="url(#barGradient)" className="hover:opacity-90 transition-opacity drop-shadow-2xs" />
+                  <rect x="195" y="36" width="60" height="118" rx="5" fill="url(#barGradient)" className="hover:opacity-90 transition-opacity drop-shadow-2xs" />
+                  <text x="225" y="28" textAnchor="middle" className="font-mono text-[12px] font-black fill-[#042c51]">3,110</text>
+
                   {/* Bar W3 */}
                   <rect x="335" y="122" width="60" height="32" rx="5" fill="url(#barGradient)" className="hover:opacity-90 transition-opacity drop-shadow-2xs" />
+                  <text x="365" y="114" textAnchor="middle" className="font-mono text-[12px] font-black fill-[#042c51]">832</text>
                 </svg>
-
-                {/* Value Callouts placed neatly on top of bars */}
-                <div className="absolute inset-0 pointer-events-none flex">
-                  <div className="flex-1 flex flex-col items-center justify-between pb-1 pt-1">
-                    <span className="font-mono text-xs font-black text-[#042c51]">3,421</span>
-                  </div>
-                  <div className="flex-1 flex flex-col items-center justify-between pb-1 pt-3.5">
-                    <span className="font-mono text-xs font-black text-[#042c51]">3,110</span>
-                  </div>
-                  <div className="flex-1 flex flex-col items-center justify-end pb-9">
-                    <span className="font-mono text-xs font-black text-[#042c51]">832</span>
-                  </div>
-                </div>
               </div>
             </div>
 
@@ -382,22 +374,14 @@ export default function FrontStepsDashboardAccountBased({
 
                   {/* Dots */}
                   <circle cx="75" cy="44" r="5" fill="white" stroke="#1b6ca8" strokeWidth="2.8" className="drop-shadow-2xs" />
-                  <circle cx="225" cy="81" r="5" fill="white" stroke="#1b6ca8" strokeWidth="2.8" className="drop-shadow-2xs" />
-                  <circle cx="375" cy="127" r="5" fill="white" stroke="#1b6ca8" strokeWidth="2.8" className="drop-shadow-2xs" />
-                </svg>
+                  <text x="75" y="34" textAnchor="middle" className="font-mono text-[12px] font-black fill-[#042c51]">1,634</text>
 
-                {/* Value Callouts placed neatly on top of nodes */}
-                <div className="absolute inset-0 pointer-events-none flex">
-                  <div className="flex-1 flex flex-col items-center justify-between pb-1 pt-3">
-                    <span className="font-mono text-xs font-black text-[#042c51]">1,634</span>
-                  </div>
-                  <div className="flex-1 flex flex-col items-center justify-between pb-1 pt-11">
-                    <span className="font-mono text-xs font-black text-[#042c51]">1,090</span>
-                  </div>
-                  <div className="flex-1 flex flex-col items-center justify-end pb-8">
-                    <span className="font-mono text-xs font-black text-[#042c51]">382</span>
-                  </div>
-                </div>
+                  <circle cx="225" cy="81" r="5" fill="white" stroke="#1b6ca8" strokeWidth="2.8" className="drop-shadow-2xs" />
+                  <text x="225" y="71" textAnchor="middle" className="font-mono text-[12px] font-black fill-[#042c51]">1,090</text>
+
+                  <circle cx="375" cy="127" r="5" fill="white" stroke="#1b6ca8" strokeWidth="2.8" className="drop-shadow-2xs" />
+                  <text x="375" y="117" textAnchor="middle" className="font-mono text-[12px] font-black fill-[#042c51]">382</text>
+                </svg>
               </div>
             </div>
 
@@ -669,18 +653,18 @@ export default function FrontStepsDashboardAccountBased({
         {/* Monthly Incentive Projection */}
         <div className="rounded-xl border border-slate-200/90 bg-white p-3.5 shadow-2xs hover:shadow-xs transition-all flex flex-col justify-between">
           <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-            <span className="text-[10px] font-black uppercase tracking-wider text-slate-500">
+            <span className="text-[11px] font-black uppercase tracking-wider text-slate-500">
               Monthly Incentive Projection
             </span>
             <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-50/80 border border-blue-200/60 text-blue-600 shadow-2xs">
-              <DollarSign className="h-3.5 w-3.5 text-blue-600" />
+              <DollarSign className="h-4 w-4 text-blue-600" />
             </div>
           </div>
           <div className="flex items-baseline justify-between pt-2">
-            <span className="font-mono text-2xl font-black text-[#042c51] leading-none">
+            <span className="font-mono text-3xl lg:text-[36px] xl:text-[40px] font-black text-[#042c51] leading-none tracking-tight">
               $0
             </span>
-            <span className="text-[11px] font-semibold text-slate-400">
+            <span className="text-xs font-semibold text-slate-400">
               Unapproved estimate
             </span>
           </div>
@@ -689,23 +673,23 @@ export default function FrontStepsDashboardAccountBased({
         {/* Milestone Incentive Status */}
         <div className="rounded-xl border border-slate-200/90 bg-white p-3.5 shadow-2xs hover:shadow-xs transition-all flex flex-col justify-between">
           <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-            <span className="text-[10px] font-black uppercase tracking-wider text-slate-500">
+            <span className="text-[11px] font-black uppercase tracking-wider text-slate-500">
               Milestone Incentive Status
             </span>
             <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-50/80 border border-blue-200/60 text-blue-600 shadow-2xs">
-              <Star className="h-3.5 w-3.5 text-blue-600" />
+              <Star className="h-4 w-4 text-blue-600" />
             </div>
           </div>
           <div className="flex items-baseline justify-between pt-2">
             <div className="flex items-baseline gap-1.5">
-              <span className="font-mono text-2xl font-black text-[#042c51] leading-none">
+              <span className="font-mono text-3xl lg:text-[36px] xl:text-[40px] font-black text-[#042c51] leading-none tracking-tight">
                 0
               </span>
-              <span className="font-mono text-sm font-bold text-slate-400">
+              <span className="font-mono text-base lg:text-lg font-bold text-slate-400">
                 / 67
               </span>
             </div>
-            <span className="text-[11px] font-semibold text-slate-400 truncate max-w-[55%] text-right" title="Meet score threshold; not approved">
+            <span className="text-xs font-semibold text-slate-400 truncate max-w-[55%] text-right" title="Meet score threshold; not approved">
               Threshold met; unapproved
             </span>
           </div>
@@ -714,18 +698,18 @@ export default function FrontStepsDashboardAccountBased({
         {/* Pending Validations */}
         <div className="rounded-xl border border-slate-200/90 bg-white p-3.5 shadow-2xs hover:shadow-xs transition-all flex flex-col justify-between">
           <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-            <span className="text-[10px] font-black uppercase tracking-wider text-slate-500">
+            <span className="text-[11px] font-black uppercase tracking-wider text-slate-500">
               Pending Validations
             </span>
             <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-50/80 border border-blue-200/60 text-blue-600 shadow-2xs">
-              <FileText className="h-3.5 w-3.5 text-blue-600" />
+              <FileText className="h-4 w-4 text-blue-600" />
             </div>
           </div>
           <div className="flex items-baseline justify-between pt-2">
-            <span className="font-mono text-2xl font-black text-[#042c51] leading-none">
+            <span className="font-mono text-3xl lg:text-[36px] xl:text-[40px] font-black text-[#042c51] leading-none tracking-tight">
               54
             </span>
-            <span className="text-[11px] font-semibold text-slate-400">
+            <span className="text-xs font-semibold text-slate-400">
               Require confirmation
             </span>
           </div>
