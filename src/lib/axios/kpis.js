@@ -40,3 +40,7 @@ export async function getCallsReport(params = {}) {
   const response = await api.get("/kpis/calls-report", { params });
   return response?.data || response;
 }
+export async function getChatReport(params = {}) {
+  const response = await api.get("/kpis/chat-report", { params });
+  return response?.data || response;
+}

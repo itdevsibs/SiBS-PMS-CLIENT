@@ -53,11 +53,13 @@ export const TASK_ORDER_OPTIONS_BY_SOURCE = {
   FUSECOM: [
     { value: "", label: "All Task Orders" },
     { value: "TO12", label: "TO12 - NICE" },
+    { value: "TO14", label: "TO14 - NESAMI" },
     { value: "TO16", label: "TO16 - SEURECA" },
     { value: "OTHER", label: "Other" },
   ],
   FUSENET: [
     { value: "", label: "All Task Orders" },
+    { value: "TO14", label: "TO14 - NESAMI" },
     { value: "TO18", label: "TO18 - NEA" },
     { value: "TO22", label: "TO22 - SAMI" },
     { value: "OTHER", label: "Other" },
@@ -887,14 +889,22 @@ export function getCountryOptions(sourceSystem, taskOrder) {
     ? sourceSystem.filter((s) => s && s !== "__NONE__")
     : [sourceSystem];
 
+  // Multiple selected source systems can span different Task Orders/countries,
+  // so use the full US Visa map. FuseNet also uses the shared US Visa
+  // country map because its TO14/TO18/TO22/OTHER country groups are not
+  // represented by a dedicated COUNTRY_OPTIONS_BY_SOURCE_AND_TO entry.
+  const normalizedSources = sources.map((source) => String(source || "").trim().toUpperCase());
   const primarySource =
-    !sources.length ||
-      sources.includes("US_VISA") ||
-      (sources.includes("FUSECOM") && sources.includes("HERODASH"))
+    !normalizedSources.length
+      || normalizedSources.includes("US_VISA")
+      || normalizedSources.length > 1
+      || normalizedSources.includes("FUSENET")
       ? "US_VISA"
-      : sources.includes("FUSECOM")
+      : normalizedSources[0] === "FUSECOM"
         ? "FUSECOM"
-        : "HERODASH";
+        : normalizedSources[0] === "HERODASH"
+          ? "HERODASH"
+          : "US_VISA";
 
   const sourceCountries =
     COUNTRY_OPTIONS_BY_SOURCE_AND_TO[primarySource] ||

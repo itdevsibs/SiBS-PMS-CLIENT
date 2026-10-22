@@ -1283,15 +1283,21 @@ export default function CallKpiDashboard({
                   icon={Clock3}
                   label="Call AHT"
                   value={summaryAhtSeconds > 0 ? `${formatNumber(summaryAhtSeconds)}s` : "--"}
-                  hint={`Target ${formatNumber(targetAhtSeconds)}s`}
-                  status={{
-                    label: ahtMet
-                      ? "Target met"
-                      : "Above target",
-                    className: ahtMet
-                      ? "bg-green-100 text-green-700"
-                      : "bg-amber-100 text-amber-700",
-                  }}
+                  hint={
+                    summaryAhtSeconds > 0
+                      ? `Target ${formatNumber(targetAhtSeconds)}s`
+                      : "Pending Documented Calls (AHT) source"
+                  }
+                  status={
+                    summaryAhtSeconds > 0
+                      ? {
+                          label: ahtMet ? "Target met" : "Above target",
+                          className: ahtMet
+                            ? "bg-green-100 text-green-700"
+                            : "bg-amber-100 text-amber-700",
+                        }
+                      : null
+                  }
                   {...cardClickProps}
                 />
 

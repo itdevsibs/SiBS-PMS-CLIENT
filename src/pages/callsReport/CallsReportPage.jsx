@@ -6,9 +6,15 @@ import LoadingModal from "@/components/common/ui/LoadingModal";
 import TablePagination from "@/components/common/tables/TablePagination";
 import DatePicker from "@/components/common/filters/DatePicker";
 import MultiSelectDropdown from "@/components/common/filters/MultiSelectDropdown";
-import SingleSelectDropdown from "@/components/common/filters/SingleSelectDropdown";
 import useDashboardPage from "@/hooks/useDashboardPage";
-import { getCallsReport } from "@/lib/axios/kpis";
+import { getCallsReport, getCallSkills } from "@/lib/axios/kpis";
+import {
+  SOURCE_OPTIONS,
+  SKILLS_BY_COUNTRY,
+  getTaskOrderOptions,
+  getCountryOptions,
+  getSkillOptions,
+} from "@/config/kpiFiltersConfig";
 import {
   AlertCircle,
   Calendar,
@@ -75,9 +81,11 @@ export default function CallsReportPage() {
   const [fetchError, setFetchError] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedDate, setSelectedDate] = useState(() => formatManilaDate()); // Default to today's date
-  const [selectedCountries, setSelectedCountries] = useState([]); // Array of selected country names, empty means all
-  const [selectedLanguage, setSelectedLanguage] = useState("all");
-  const [selectedSkill, setSelectedSkill] = useState("all");
+  const [selectedSources, setSelectedSources] = useState([]); // Empty means all sources
+  const [selectedTaskOrders, setSelectedTaskOrders] = useState([]); // Empty means all task orders
+  const [selectedCountries, setSelectedCountries] = useState([]); // Empty means all countries
+  const [selectedSkills, setSelectedSkills] = useState([]); // Empty means all skills
+  const [skillsByCountry, setSkillsByCountry] = useState(SKILLS_BY_COUNTRY);
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -87,7 +95,12 @@ export default function CallsReportPage() {
     setIsLoading(true);
     setFetchError(null);
     try {
-      const params = {};
+      const params = {
+        sourceSystem: selectedSources.length ? selectedSources.join(",") : "US_VISA",
+        taskOrder: selectedTaskOrders.length ? selectedTaskOrders.join(",") : undefined,
+        country: selectedCountries.length ? selectedCountries.join(",") : undefined,
+        skill: selectedSkills.length ? selectedSkills.join(",") : undefined,
+      };
       if (selectedDate) {
         params.date = selectedDate;
       }
@@ -112,78 +125,105 @@ export default function CallsReportPage() {
 
   useEffect(() => {
     void fetchCallsReport();
-  }, [selectedDate]);
+  }, [selectedDate, selectedSources, selectedTaskOrders, selectedCountries, selectedSkills]);
 
-  // Unique country list formatted for MultiSelectDropdown
-  const countryOptions = useMemo(() => {
-    const set = new Set();
-    reportData.forEach((row) => {
-      if (row.country && row.country !== "—") set.add(row.country);
+  useEffect(() => {
+    let isMounted = true;
+    getCallSkills()
+      .then((res) => {
+        if (!isMounted || !res?.data) return;
+        setSkillsByCountry((prev) => {
+          const merged = { ...prev };
+          for (const [country, skills] of Object.entries(res.data)) {
+            const current = [...(merged[country] || [])];
+            for (const skill of skills || []) {
+              const key = String(skill).toLowerCase().replace(/[^a-z0-9]/g, "");
+              if (!current.some((item) => String(item).toLowerCase().replace(/[^a-z0-9]/g, "") === key)) {
+                current.push(skill);
+              }
+            }
+            merged[country] = current;
+          }
+          return merged;
+        });
+      })
+      .catch((err) => console.warn("Could not load dynamic source skills:", err?.message));
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const sourceOptions = useMemo(() => SOURCE_OPTIONS, []);
+
+  const taskOrderOptions = useMemo(
+    () => getTaskOrderOptions(selectedSources),
+    [selectedSources],
+  );
+
+  const countryOptions = useMemo(
+    () => getCountryOptions(selectedSources, selectedTaskOrders),
+    [selectedSources, selectedTaskOrders],
+  );
+
+  const skillOptions = useMemo(
+    () => getSkillOptions(
+      selectedSources,
+      selectedCountries,
+      selectedTaskOrders,
+      skillsByCountry,
+    ),
+    [selectedSources, selectedCountries, selectedTaskOrders, skillsByCountry],
+  );
+
+  useEffect(() => {
+    const valid = new Set(taskOrderOptions.map((option) => option.value));
+    setSelectedTaskOrders((current) => {
+      const next = current.filter((taskOrder) => valid.has(taskOrder));
+      return next.length === current.length && next.every((item, index) => item === current[index])
+        ? current
+        : next;
     });
-    return Array.from(set)
-      .sort((a, b) => a.localeCompare(b))
-      .map((c) => ({ value: c, label: c }));
-  }, [reportData]);
+  }, [taskOrderOptions]);
 
-  // Unique language list formatted for SingleSelectDropdown
-  const languageOptions = useMemo(() => {
-    const set = new Set();
-    reportData.forEach((row) => {
-      const matchCountry =
-        selectedCountries.length === 0 || selectedCountries.includes(row.country);
-      if (matchCountry && row.language && row.language !== "—") {
-        set.add(row.language);
-      }
+  useEffect(() => {
+    const validCountries = new Set(countryOptions.map((option) => option.value));
+    setSelectedCountries((current) => {
+      const next = current.filter((country) => validCountries.has(country));
+      return next.length === current.length && next.every((item, index) => item === current[index])
+        ? current
+        : next;
     });
-    const sorted = Array.from(set).sort((a, b) => a.localeCompare(b));
-    return [
-      { value: "all", label: "All Languages" },
-      ...sorted.map((lang) => ({ value: lang, label: lang })),
-    ];
-  }, [reportData, selectedCountries]);
+  }, [countryOptions]);
 
-  // Unique skills list formatted for SingleSelectDropdown
-  const skillOptions = useMemo(() => {
-    const set = new Set();
-    reportData.forEach((row) => {
-      if (row.skill && row.skill !== "—") set.add(row.skill);
+  useEffect(() => {
+    const validSkills = new Set(skillOptions.map((option) => String(option.value).toLowerCase()));
+    setSelectedSkills((current) => {
+      const next = current.filter((skill) => validSkills.has(String(skill).toLowerCase()));
+      return next.length === current.length && next.every((item, index) => item === current[index])
+        ? current
+        : next;
     });
-    const sorted = Array.from(set).sort((a, b) => a.localeCompare(b));
-    return [
-      { value: "all", label: "All Skills" },
-      ...sorted.map((sk) => ({ value: sk, label: sk })),
-    ];
-  }, [reportData]);
+  }, [skillOptions]);
 
-  // Filter rows by Search, selectedCountries, Language, and Skill
+  // Source / Task Order / Country / Skill filters are applied by the API.
+  // Search only narrows the currently loaded report rows.
   const filteredData = useMemo(() => {
     const term = searchTerm.toLowerCase().trim();
+    if (!term) return reportData;
+
     return reportData.filter((row) => {
-      const matchesCountry =
-        selectedCountries.length === 0 || selectedCountries.includes(row.country);
-      const matchesLanguage =
-        selectedLanguage === "all" || row.language === selectedLanguage;
-      const matchesSkill =
-        selectedSkill === "all" || row.skill === selectedSkill;
-
-      if (!matchesCountry || !matchesLanguage || !matchesSkill) return false;
-
-      if (!term) return true;
       const country = String(row.country || "").toLowerCase();
       const language = String(row.language || "").toLowerCase();
       const skill = String(row.skill || "").toLowerCase();
-      return (
-        country.includes(term) ||
-        language.includes(term) ||
-        skill.includes(term)
-      );
+      return country.includes(term) || language.includes(term) || skill.includes(term);
     });
-  }, [reportData, searchTerm, selectedCountries, selectedLanguage, selectedSkill]);
+  }, [reportData, searchTerm]);
 
   // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, selectedCountries, selectedLanguage, selectedSkill]);
+  }, [searchTerm, selectedSources, selectedTaskOrders, selectedCountries, selectedSkills]);
 
   // Paginated Rows
   const totalItems = filteredData.length;
@@ -216,12 +256,14 @@ export default function CallsReportPage() {
     const avgAhtSec = callsAnswered > 0 ? Math.round(totalSeconds / callsAnswered) : 0;
     const ahtMin = Math.floor(avgAhtSec / 60);
     const ahtRem = avgAhtSec % 60;
-    const ahtStr = `${String(ahtMin).padStart(2, "0")}:${String(ahtRem).padStart(2, "0")}`;
+    const ahtStr = totalSeconds > 0
+      ? `${String(ahtMin).padStart(2, "0")}:${String(ahtRem).padStart(2, "0")}`
+      : "--";
 
     const abandonedRate =
       callsReceived > 0 ? ((callsAbandoned / callsReceived) * 100).toFixed(2) + "%" : "0.00%";
     const sl =
-      callsReceived > 0 ? ((callsAnsweredWithinSl / callsReceived) * 100).toFixed(2) + "%" : "0.00%";
+      callsAnswered > 0 ? ((callsAnsweredWithinSl / callsAnswered) * 100).toFixed(2) + "%" : "0.00%";
 
     return {
       callsReceived,
@@ -262,8 +304,65 @@ export default function CallsReportPage() {
         <main className="flex min-h-0 flex-1 flex-col gap-2.5 overflow-hidden px-2.5 pb-2.5 pt-2.5 sm:gap-3 sm:px-4 sm:pt-3 lg:px-5">
           {/* Search & Filter Toolbar (Matching WOW Report Filter Design) */}
           <div className="sibs-card relative z-40 overflow-visible shadow-xs shrink-0 p-2 sm:p-2.5 bg-white">
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 gap-2 sm:gap-2.5 items-end">
-              {/* 1. Search */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-2 sm:gap-2.5 items-end">
+              {/* 1. Source System */}
+              <div className="w-full">
+                <MultiSelectDropdown
+                  label="Source System"
+                  value={selectedSources}
+                  onChange={(value) => setSelectedSources(Array.isArray(value) ? value : [])}
+                  options={sourceOptions}
+                  placeholder="All Sources"
+                  allOptionLabel="All Sources"
+                />
+              </div>
+
+              {/* 2. Task Order */}
+              <div className="w-full">
+                <MultiSelectDropdown
+                  label="Task Order"
+                  value={selectedTaskOrders}
+                  onChange={(value) => setSelectedTaskOrders(Array.isArray(value) ? value : [])}
+                  options={taskOrderOptions}
+                  placeholder="All Task Orders"
+                  allOptionLabel="All Task Orders"
+                />
+              </div>
+
+              {/* 3. Country */}
+              <div className="w-full">
+                <MultiSelectDropdown
+                  label="Country"
+                  value={selectedCountries}
+                  onChange={(val) => setSelectedCountries(Array.isArray(val) ? val : [])}
+                  options={countryOptions}
+                  placeholder="All Countries"
+                  allOptionLabel="All Countries"
+                />
+              </div>
+
+              {/* 4. Skill */}
+              <div className="w-full">
+                <MultiSelectDropdown
+                  label="Skill"
+                  value={selectedSkills}
+                  onChange={(value) => setSelectedSkills(Array.isArray(value) ? value : [])}
+                  options={skillOptions}
+                  placeholder="All Skills"
+                  allOptionLabel="All Skills"
+                />
+              </div>
+
+              {/* 5. Select Date */}
+              <div className="w-full">
+                <DatePicker
+                  label="Select Date"
+                  value={selectedDate}
+                  onChange={(val) => setSelectedDate(val || "")}
+                />
+              </div>
+
+              {/* 6. Search */}
               <div className="w-full">
                 <span className="mb-0.5 block text-[9.5px] font-extrabold uppercase text-sibs-tertiary-5">
                   Search
@@ -289,67 +388,18 @@ export default function CallsReportPage() {
                 </div>
               </div>
 
-              {/* 2. Country (Multi-Select) */}
-              <div className="w-full">
-                <MultiSelectDropdown
-                  label="Country"
-                  value={selectedCountries}
-                  onChange={(val) => {
-                    setSelectedCountries(Array.isArray(val) ? val : []);
-                  }}
-                  options={countryOptions}
-                  placeholder="All Countries"
-                  allOptionLabel="All Countries"
-                />
-              </div>
-
-              {/* 3. Language */}
-              <div className="w-full">
-                <SingleSelectDropdown
-                  label="Language"
-                  value={selectedLanguage}
-                  onChange={(e) => setSelectedLanguage(e?.target?.value || e || "all")}
-                  options={languageOptions}
-                  placeholder="All Languages"
-                />
-              </div>
-
-              {/* 4. Skill */}
-              <div className="w-full">
-                <SingleSelectDropdown
-                  label="Skill"
-                  value={selectedSkill}
-                  onChange={(e) => setSelectedSkill(e?.target?.value || e || "all")}
-                  options={skillOptions}
-                  placeholder="All Skills"
-                />
-              </div>
-
-              {/* 5. Select Date */}
-              <div className="w-full">
-                <DatePicker
-                  label="Select Date"
-                  value={selectedDate}
-                  onChange={(val) => {
-                    setSelectedDate(val || "");
-                  }}
-                />
-              </div>
-
-              {/* 6. Refresh Action */}
-              <div className="flex items-center gap-1.5 w-full sm:col-span-2 md:col-span-3 lg:col-span-1 justify-end">
+              {/* 7. Refresh Action */}
+              <div className="flex items-center gap-1.5 w-full justify-end">
                 <button
                   type="button"
                   onClick={fetchCallsReport}
                   disabled={isLoading}
                   title="Refresh data"
-                  className="inline-flex h-8 cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-sibs-tertiary-8 bg-white px-3 text-xs font-bold text-sibs-primary-1 shadow-2xs transition hover:border-sibs-primary-1 hover:bg-sibs-primary-1 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+                  className="inline-flex h-8 w-full cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-sibs-tertiary-8 bg-white px-3 text-xs font-bold text-sibs-primary-1 shadow-2xs transition hover:border-sibs-primary-1 hover:bg-sibs-primary-1 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   <RefreshCw
                     size={12}
-                    className={`shrink-0 ${
-                      isLoading ? "animate-spin text-inherit" : ""
-                    }`}
+                    className={`shrink-0 ${isLoading ? "animate-spin text-inherit" : ""}`}
                   />
                   <span>Refresh</span>
                 </button>

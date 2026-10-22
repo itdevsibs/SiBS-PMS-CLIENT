@@ -53,10 +53,14 @@ function normalizeLevelValue(val) {
   if (!val) return "ALL";
   const upper = String(val).trim().toUpperCase();
   if (upper === "ALL" || upper === "ALL LEVEL") return "ALL";
-  if (upper.includes("SERVICE") || upper.includes("QUEUE")) return "SERVICE / QUEUE LEVEL";
+  if (upper.includes("CALL REPORT")) return "CALL REPORT (EOD)";
+  if (upper.includes("CHAT REPORT")) return "CHAT REPORT (EOD)";
+  // Legacy Agent Level is now represented by Call Report (EOD).
+  if (upper.includes("AGENT LEVEL")) return "CALL REPORT (EOD)";
+  // Service / Queue Level (legacy Skill Statistics) is retired from the repository filter.
+  if (upper.includes("SERVICE") || upper.includes("QUEUE")) return "ALL";
   if (upper.includes("QUALITY") || upper === "QA") return "QUALITY AUDIT";
   if (upper.includes("OCCUPANCY")) return "AGENT OCCUPANCY";
-  if (upper.includes("AGENT")) return "AGENT LEVEL";
   if (upper.includes("EMAIL")) return "EMAIL LEVEL";
   return val;
 }
@@ -239,11 +243,23 @@ export default function WfmImportedRepository() {
     };
   }, [selectedAccount, summaryRefreshVersion]);
 
-  // Helper to resolve level/group category for an upload
+  // Helper to resolve level/group category for an upload.
+  // Legacy Agent Level batches are grouped under Call Report (EOD);
+  // retired Service / Queue Level batches remain available only through ALL.
   const getUploadLevel = useCallback((upload) => {
-    if (upload.groupLabel) return upload.groupLabel;
-    if (upload.level) return upload.level;
-    return getBatchCategory(upload);
+    const rawLevel =
+      upload.groupLabel ||
+      upload.level ||
+      getBatchCategory(upload);
+
+    const upper = String(rawLevel || "").trim().toUpperCase();
+    if (upper.includes("AGENT LEVEL")) return "CALL REPORT (EOD)";
+    if (upper.includes("CALL REPORT")) return "CALL REPORT (EOD)";
+    if (upper.includes("CHAT REPORT")) return "CHAT REPORT (EOD)";
+    if (upper.includes("OCCUPANCY")) return "AGENT OCCUPANCY";
+    if (upper.includes("EMAIL")) return "EMAIL LEVEL";
+    if (upper.includes("QUALITY") || upper === "QA") return "QUALITY AUDIT";
+    return rawLevel;
   }, []);
 
   // Account cards for the selected account (defaults to US VISA cards)
@@ -251,23 +267,23 @@ export default function WfmImportedRepository() {
     return getRawDataCards(selectedAccount === "All Accounts" ? "US VISA" : selectedAccount);
   }, [selectedAccount]);
 
-  // Array of all uploads matching the active account's cards
+  // Preserve legacy import history. Agent Level batches roll into Call Report (EOD),
+  // while retired Skill Statistics / Service Level batches remain visible under ALL only.
   const allUploads = useMemo(() => {
-    const list = [];
-    accountCards.forEach((card) => {
-      const cardUploads = uploadsByCard[card.id];
-      if (Array.isArray(cardUploads)) {
-        list.push(...cardUploads);
-      }
-    });
+    const list = Object.values(uploadsByCard)
+      .flat()
+      .filter(Boolean)
+      .filter((upload) =>
+        selectedAccount === "All Accounts" || upload.account === selectedAccount
+      );
     return list.sort((a, b) => (b.uploadedAtMs || 0) - (a.uploadedAtMs || 0));
-  }, [uploadsByCard, accountCards]);
+  }, [uploadsByCard, selectedAccount]);
 
   // Count uploads per level
   const levelCounts = useMemo(() => {
     const counts = {
-      "SERVICE / QUEUE LEVEL": 0,
-      "AGENT LEVEL": 0,
+      "CALL REPORT (EOD)": 0,
+      "CHAT REPORT (EOD)": 0,
       "AGENT OCCUPANCY": 0,
       "EMAIL LEVEL": 0,
       "QUALITY AUDIT": 0,
@@ -291,12 +307,12 @@ export default function WfmImportedRepository() {
         label: `ALL LEVEL (${allUploads.length})`,
       },
       {
-        value: "SERVICE / QUEUE LEVEL",
-        label: `SERVICE / QUEUE LEVEL (${levelCounts["SERVICE / QUEUE LEVEL"] || 0})`,
+        value: "CALL REPORT (EOD)",
+        label: `CALL REPORT (EOD) (${levelCounts["CALL REPORT (EOD)"] || 0})`,
       },
       {
-        value: "AGENT LEVEL",
-        label: `AGENT LEVEL (${levelCounts["AGENT LEVEL"] || 0})`,
+        value: "CHAT REPORT (EOD)",
+        label: `CHAT REPORT (EOD) (${levelCounts["CHAT REPORT (EOD)"] || 0})`,
       },
       {
         value: "AGENT OCCUPANCY",

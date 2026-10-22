@@ -111,6 +111,10 @@ export function getApiErrorMessage(error, card) {
       ? "Quality Audit"
       : /email/i.test(profileLabel)
         ? "Email Raw Data"
+        : /chat/i.test(profileLabel)
+        ? "Chat Report (EOD)"
+        : /call/i.test(profileLabel)
+        ? "Call Report (EOD)"
         : /occupancy/i.test(profileLabel)
         ? "Agent Occupancy"
         : /agent/i.test(profileLabel)
@@ -533,6 +537,8 @@ export function mapBatchToUpload(batch) {
 }
 
 export const WARNING_CATEGORY_LABELS = [
+  "CALL REPORT (EOD)",
+  "CHAT REPORT (EOD)",
   "SERVICE / QUEUE LEVEL",
   "AGENT LEVEL",
   "AGENT OCCUPANCY",
@@ -559,7 +565,9 @@ export function getBatchCategory(batch) {
     return card.groupLabel;
   }
 
-  const text = `${batch.rawDataTitle || ""} ${batch.fileName || ""} ${batch.importProfileName || ""}`.toLowerCase();
+  const text = `${batch.rawDataTitle || ""} ${batch.fileName || ""} ${batch.importProfileName || ""} ${batch.importProfileCode || ""}`.toLowerCase();
+  if (text.includes("call report") || text.includes("call_report_eod")) return "CALL REPORT (EOD)";
+  if (text.includes("chat report") || text.includes("chat_report_eod")) return "CHAT REPORT (EOD)";
   if (text.includes("quality") || text.includes("qa ")) return "QUALITY AUDIT";
   if (text.includes("email")) return "EMAIL LEVEL";
   if (text.includes("occupancy")) return "AGENT OCCUPANCY";
@@ -725,6 +733,8 @@ export async function executeCardImport({
 
 export function groupRawDataCards(cards = []) {
   const groupOrder = [
+    "CALL REPORT (EOD)",
+    "CHAT REPORT (EOD)",
     "SERVICE / QUEUE LEVEL",
     "AGENT LEVEL",
     "AGENT OCCUPANCY",
