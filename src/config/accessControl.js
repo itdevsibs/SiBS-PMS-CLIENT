@@ -11,6 +11,7 @@ export const ACCESS = Object.freeze({
   TL: 8,
   WFM: 9,
   SOM: 10,
+  FRONTSTEPS: 11,
   MASTER_DATA: 11,
 });
 
@@ -26,8 +27,8 @@ export const PERMISSIONS = Object.freeze({
   VIEW_EMPLOYEE_LEDGER: "VIEW_EMPLOYEE_LEDGER",
   VIEW_OCCUPANCY: "VIEW_OCCUPANCY",
   VIEW_ATTENDANCE_SHEET: "VIEW_ATTENDANCE_SHEET",
-  VIEW_CALLS_REPORT: "VIEW_CALLS_REPORT",
   VIEW_CHAT_REPORT: "VIEW_CHAT_REPORT",
+  VIEW_FRONTSTEPS: "VIEW_FRONTSTEPS",
   SUPER_ADMIN_ACCESS: "SUPER_ADMIN_ACCESS",
   SUPER_ADMIN_HISTORY: "SUPER_ADMIN_HISTORY",
   CLIENT_DASHBOARD: "CLIENT_DASHBOARD",
@@ -36,7 +37,7 @@ export const PERMISSIONS = Object.freeze({
 const ACCESS_PRIORITY = [
   ACCESS.SUPER_ADMIN,
   ACCESS.BOD,
-  ACCESS.MASTER_DATA,
+  ACCESS.FRONTSTEPS,
   ACCESS.SOM,
   ACCESS.OM,
   ACCESS.WFM,
@@ -50,7 +51,7 @@ const ROLE_BY_ACCESS = Object.freeze({
   [ACCESS.TL]: "tl",
   [ACCESS.WFM]: "wfm",
   [ACCESS.SOM]: "som",
-  [ACCESS.MASTER_DATA]: "masterdata",
+  [ACCESS.FRONTSTEPS]: "frontsteps",
 });
 
 const ROLE_LABELS = Object.freeze({
@@ -58,6 +59,7 @@ const ROLE_LABELS = Object.freeze({
   bod: "Board of Directors",
   client: "Client",
   employee: "Employee",
+  frontsteps: "FrontSteps",
   masterdata: "Master Data / Ledger Admin",
   om: "Operations Manager",
   som: "Senior Operations Manager",
@@ -70,6 +72,7 @@ const HOME_ROUTES = Object.freeze({
   bod: "/bod",
   client: "/client",
   employee: "/agent",
+  frontsteps: "/frontsteps",
   masterdata: "/employee-master-data",
   om: "/om",
   som: "/som",
@@ -136,6 +139,10 @@ const PERMISSION_RULES = Object.freeze({
   },
   [PERMISSIONS.VIEW_CHAT_REPORT]: {
     access: [ACCESS.SUPER_ADMIN, ACCESS.WFM],
+  },
+  [PERMISSIONS.VIEW_FRONTSTEPS]: {
+    access: [ACCESS.FRONTSTEPS, ACCESS.SUPER_ADMIN],
+    roles: ["frontsteps"],
   },
   [PERMISSIONS.SUPER_ADMIN_ACCESS]: {
     access: [ACCESS.SUPER_ADMIN],
@@ -319,6 +326,9 @@ const ROUTE_PERMISSION_RULES = Object.freeze([
   { paths: ["/employee-master-data"], permission: PERMISSIONS.VIEW_EMPLOYEE_LEDGER },
   { paths: ["/occupancy"], permission: PERMISSIONS.VIEW_OCCUPANCY },
   { paths: ["/attendance-sheet"], permission: PERMISSIONS.VIEW_ATTENDANCE_SHEET },
+  { paths: ["/calls-report"], permission: PERMISSIONS.VIEW_CALLS_REPORT },
+  { paths: ["/chat-reports"], permission: PERMISSIONS.VIEW_CHAT_REPORT },
+  { paths: ["/frontsteps"], permission: PERMISSIONS.VIEW_FRONTSTEPS },
   { paths: ["/superadmin"], permission: PERMISSIONS.SUPER_ADMIN_ACCESS },
   { paths: ["/interface-access-history"], permission: PERMISSIONS.SUPER_ADMIN_HISTORY },
   { paths: ["/client"], permission: PERMISSIONS.CLIENT_DASHBOARD },
@@ -330,6 +340,7 @@ function normalizeRoleName(value) {
   if (role === "agent") return "employee";
   if (role === "superadmin" || role === "super-admin") return "admin";
   if (role === "master-data") return "masterdata";
+  if (role === "frontstep" || role === "front-step" || role === "frontsteps") return "frontsteps";
 
   return ROLE_LABELS[role] ? role : "";
 }
