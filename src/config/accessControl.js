@@ -27,6 +27,7 @@ export const PERMISSIONS = Object.freeze({
   VIEW_EMPLOYEE_LEDGER: "VIEW_EMPLOYEE_LEDGER",
   VIEW_OCCUPANCY: "VIEW_OCCUPANCY",
   VIEW_ATTENDANCE_SHEET: "VIEW_ATTENDANCE_SHEET",
+  VIEW_CALLS_REPORT: "VIEW_CALLS_REPORT",
   VIEW_CHAT_REPORT: "VIEW_CHAT_REPORT",
   VIEW_FRONTSTEPS: "VIEW_FRONTSTEPS",
   SUPER_ADMIN_ACCESS: "SUPER_ADMIN_ACCESS",
@@ -135,10 +136,26 @@ const PERMISSION_RULES = Object.freeze({
     access: [ACCESS.SUPER_ADMIN, ACCESS.WFM],
   },
   [PERMISSIONS.VIEW_CALLS_REPORT]: {
-    access: [ACCESS.SUPER_ADMIN, ACCESS.WFM],
+    access: [
+      ACCESS.OM,
+      ACCESS.BOD,
+      ACCESS.SUPER_ADMIN,
+      ACCESS.TL,
+      ACCESS.WFM,
+      ACCESS.SOM,
+    ],
+    roles: ["om", "bod", "admin", "tl", "wfm", "som"],
   },
   [PERMISSIONS.VIEW_CHAT_REPORT]: {
-    access: [ACCESS.SUPER_ADMIN, ACCESS.WFM],
+    access: [
+      ACCESS.OM,
+      ACCESS.BOD,
+      ACCESS.SUPER_ADMIN,
+      ACCESS.TL,
+      ACCESS.WFM,
+      ACCESS.SOM,
+    ],
+    roles: ["om", "bod", "admin", "tl", "wfm", "som"],
   },
   [PERMISSIONS.VIEW_FRONTSTEPS]: {
     access: [ACCESS.FRONTSTEPS, ACCESS.SUPER_ADMIN],
