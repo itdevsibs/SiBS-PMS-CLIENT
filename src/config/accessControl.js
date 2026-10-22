@@ -27,6 +27,7 @@ export const PERMISSIONS = Object.freeze({
   VIEW_OCCUPANCY: "VIEW_OCCUPANCY",
   VIEW_ATTENDANCE_SHEET: "VIEW_ATTENDANCE_SHEET",
   VIEW_CALLS_REPORT: "VIEW_CALLS_REPORT",
+  VIEW_CHAT_REPORT: "VIEW_CHAT_REPORT",
   SUPER_ADMIN_ACCESS: "SUPER_ADMIN_ACCESS",
   SUPER_ADMIN_HISTORY: "SUPER_ADMIN_HISTORY",
   CLIENT_DASHBOARD: "CLIENT_DASHBOARD",
@@ -131,6 +132,9 @@ const PERMISSION_RULES = Object.freeze({
     access: [ACCESS.SUPER_ADMIN, ACCESS.WFM],
   },
   [PERMISSIONS.VIEW_CALLS_REPORT]: {
+    access: [ACCESS.SUPER_ADMIN, ACCESS.WFM],
+  },
+  [PERMISSIONS.VIEW_CHAT_REPORT]: {
     access: [ACCESS.SUPER_ADMIN, ACCESS.WFM],
   },
   [PERMISSIONS.SUPER_ADMIN_ACCESS]: {
@@ -248,6 +252,13 @@ export const DASHBOARD_MODULES = Object.freeze([
         iconKey: "phone-call",
         path: "/calls-report",
         permission: PERMISSIONS.VIEW_CALLS_REPORT,
+      },
+      {
+        key: "chat-reports",
+        name: "Chat Reports",
+        iconKey: "message-circle",
+        path: "/chat-reports",
+        permission: PERMISSIONS.VIEW_CHAT_REPORT,
       },
     ],
   },

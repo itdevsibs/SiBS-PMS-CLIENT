@@ -20,6 +20,7 @@ import {
 } from "@/lib/wfm-import-utils";
 
 const REJECTED_LEVEL_ORDER = [
+  "CALL REPORT (EOD)",
   "SERVICE / QUEUE LEVEL",
   "AGENT LEVEL",
   "AGENT OCCUPANCY",
@@ -93,6 +94,7 @@ export default function WfmRejectedModal({
 
   const levelCounts = useMemo(() => {
     const counts = {
+      "CALL REPORT (EOD)": 0,
       "SERVICE / QUEUE LEVEL": 0,
       "AGENT LEVEL": 0,
       "AGENT OCCUPANCY": 0,
@@ -113,6 +115,10 @@ export default function WfmRejectedModal({
       {
         value: "ALL LEVEL",
         label: `ALL LEVEL (${filteredRejectedBatches.length})`,
+      },
+      {
+        value: "CALL REPORT (EOD)",
+        label: `CALL REPORT (EOD) (${levelCounts["CALL REPORT (EOD)"] || 0})`,
       },
       {
         value: "SERVICE / QUEUE LEVEL",

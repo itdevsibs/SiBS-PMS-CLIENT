@@ -121,6 +121,7 @@ function getErrorMessage(error) {
 
 function formatGrain(value) {
   const labels = {
+    CALL_DETAIL: "Call Report (EOD) detail source",
     SKILL_DAY: "Daily source",
     SKILL_15_MINUTE: "15-minute source",
     SKILL_30_MINUTE: "30-minute source",
@@ -319,7 +320,10 @@ export default function ViewGraphsPage() {
   const navigate = useNavigate();
 
   const searchParams = new URLSearchParams(location.search);
-  const currentSection = (searchParams.get("section") || "").toLowerCase();
+  const requestedSection = (searchParams.get("section") || "").toLowerCase();
+  const currentSection = ["calls", "emails", "qa", "occupancy"].includes(requestedSection)
+    ? requestedSection
+    : "";
   const isCallsOnly = currentSection === "calls";
   const isEmailsOnly = currentSection === "emails";
   const isQaOnly = currentSection === "qa";
