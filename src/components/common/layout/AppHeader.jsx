@@ -26,6 +26,8 @@ function formatHeaderDateTime() {
 const AppHeader = ({
   onLogoutClick,
   onMenuClick,
+  onSidebarToggle,
+  isSidebarHidden,
   subtitle,
   title,
   userEmail,
@@ -116,6 +118,22 @@ const AppHeader = ({
       <header className="app-header fixed top-0 left-0 right-0 z-[90] bg-white md:sticky md:top-0 md:left-auto md:right-auto md:w-full">
         <div className="app-header-inner justify-between gap-3 px-4 sm:px-6">
         <div className="flex min-w-0 items-center gap-3">
+          {onSidebarToggle && (
+            <button
+              type="button"
+              aria-label={isSidebarHidden ? "Show sidebar" : "Hide sidebar"}
+              title={isSidebarHidden ? "Show sidebar" : "Hide sidebar"}
+              onClick={onSidebarToggle}
+              className={`hidden md:inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border transition-all duration-200 cursor-pointer shadow-xs ${
+                isSidebarHidden
+                  ? "border-[#ff5c28]/40 bg-[#ff5c28]/10 text-[#ff5c28] hover:bg-[#ff5c28] hover:text-white hover:border-[#ff5c28]"
+                  : "border-slate-200 bg-white text-slate-700 hover:border-[#042c51] hover:bg-slate-50 hover:text-[#042c51]"
+              }`}
+            >
+              <Menu className="h-4.5 w-4.5" aria-hidden="true" />
+            </button>
+          )}
+
           {onMenuClick && (
             <button
               type="button"

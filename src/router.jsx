@@ -15,6 +15,7 @@ import InterfaceAccessHistory from "./pages/historyLogs/InterfaceAccessHistory";
 import AttendanceSheetPage from "./pages/attendanceSheet/AttendanceSheetPage";
 import CallsReportPage from "./pages/callsReport/CallsReportPage";
 import ChatReportsPage from "./pages/chatReports/ChatReportsPage";
+import FrontStepsDashboard from "./pages/frontSteps/FrontStepsDashboard";
 import Login from "./pages/login/Login";
 import OccupancyPage from "./pages/occupancy/OccupancyPage";
 import OperationsManagementPage from "./pages/operationsManager/OperationsManagementPage";
@@ -139,6 +140,14 @@ const Router = () => {
         element={(
           <Protected permission={PERMISSIONS.VIEW_CHAT_REPORT}>
             <ChatReportsPage />
+          </Protected>
+        )}
+      />
+      <Route
+        path="/frontsteps"
+        element={(
+          <Protected permission={PERMISSIONS.VIEW_FRONTSTEPS}>
+            <FrontStepsDashboard />
           </Protected>
         )}
       />
