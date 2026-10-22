@@ -185,6 +185,9 @@ export default function FrontStepsDashboard() {
   // Find active label for header
   const allSubmodules = FRONTSTEPS_MODULES.flatMap((m) => m.submodules);
   const currentSubmodule = allSubmodules.find((sub) => sub.id === activeSubmoduleId);
+  const currentParentModule = FRONTSTEPS_MODULES.find((m) =>
+    m.submodules.some((sub) => sub.id === activeSubmoduleId),
+  );
   const activeTitle = currentSubmodule ? currentSubmodule.name : "FrontSteps";
 
   // Render the dashboard with 3 distinct sections: Summary, Account-based KPI, KPI(PMP/PIP)
@@ -1038,7 +1041,38 @@ export default function FrontStepsDashboard() {
       {/* Main View Area */}
       <main className="min-w-0 flex-1 flex flex-col h-full overflow-hidden transition-all duration-300 ease-in-out">
         {/* Module Content View: Full stretch without empty left gaps */}
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden px-2.5 sm:px-4 lg:px-5 pb-2.5 pt-2.5 sm:pb-3 sm:pt-3 transition-all duration-300 ease-in-out">
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden px-2.5 sm:px-4 lg:px-5 pb-2.5 pt-2.5 sm:pb-3 sm:pt-3 transition-all duration-300 ease-in-out gap-2.5">
+          {/* Global Header Bar for Non-Overview Modules */}
+          {!["dashboard", "dashboard-summary", "dashboard-account-based", "dashboard-kpi-indiv"].includes(activeSubmoduleId) && (
+            <div className="flex items-center justify-between gap-3 rounded-xl border border-slate-200/90 bg-white px-3.5 py-2 shadow-2xs shrink-0 select-none">
+              <div className="flex items-center gap-2.5">
+                {isSidebarHidden && (
+                  <button
+                    type="button"
+                    aria-label="Expand sidebar"
+                    title="Expand sidebar"
+                    onClick={() => setIsSidebarHidden(false)}
+                    className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-[#042c51] hover:border-[#ff5c28] hover:bg-[#ff5c28] hover:text-white transition-all duration-150 cursor-pointer active:scale-95 shadow-2xs shrink-0"
+                  >
+                    <Menu className="h-4 w-4" aria-hidden="true" />
+                  </button>
+                )}
+                {/* Module Title */}
+                <span className="text-xs font-black uppercase tracking-wider text-[#042c51]">
+                  {activeTitle}
+                </span>
+              </div>
+
+              {/* Status Indicator / Breadcrumb Tag */}
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10.5px] font-bold bg-slate-50 text-slate-600 border border-slate-200/80 shadow-2xs">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  <span>FrontSteps</span>
+                </span>
+              </div>
+            </div>
+          )}
+
           {renderModuleView()}
         </div>
       </main>

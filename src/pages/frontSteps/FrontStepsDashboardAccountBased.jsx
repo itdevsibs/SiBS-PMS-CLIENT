@@ -79,8 +79,8 @@ export default function FrontStepsDashboardAccountBased({
             </span>
           </div>
           <div className="my-1 text-center">
-            <span className="font-mono text-3xl lg:text-[32px] font-black tracking-tight text-[#042c51] leading-none block">
-              89.1
+            <span className="font-mono text-3xl lg:text-[32px] font-black tracking-tight text-slate-300 leading-none block">
+              —
             </span>
           </div>
           <div className="text-center pt-1 border-t border-slate-100/80">
@@ -100,8 +100,8 @@ export default function FrontStepsDashboardAccountBased({
             </span>
           </div>
           <div className="my-1 text-center">
-            <span className="font-mono text-3xl lg:text-[32px] font-black tracking-tight text-[#042c51] leading-none block">
-              7,363
+            <span className="font-mono text-3xl lg:text-[32px] font-black tracking-tight text-slate-300 leading-none block">
+              —
             </span>
           </div>
           <div className="text-center pt-1 border-t border-slate-100/80">
@@ -121,8 +121,8 @@ export default function FrontStepsDashboardAccountBased({
             </span>
           </div>
           <div className="my-1 text-center">
-            <span className="font-mono text-3xl lg:text-[32px] font-black tracking-tight text-[#042c51] leading-none block">
-              84%
+            <span className="font-mono text-3xl lg:text-[32px] font-black tracking-tight text-slate-300 leading-none block">
+              —
             </span>
           </div>
           <div className="text-center pt-1 border-t border-slate-100/80">
@@ -142,8 +142,8 @@ export default function FrontStepsDashboardAccountBased({
             </span>
           </div>
           <div className="my-1 text-center">
-            <span className="font-mono text-3xl lg:text-[32px] font-black tracking-tight text-[#042c51] leading-none block">
-              61%
+            <span className="font-mono text-3xl lg:text-[32px] font-black tracking-tight text-slate-300 leading-none block">
+              —
             </span>
           </div>
           <div className="text-center pt-1 border-t border-slate-100/80">
@@ -163,8 +163,8 @@ export default function FrontStepsDashboardAccountBased({
             </span>
           </div>
           <div className="my-1 text-center">
-            <span className="font-mono text-3xl lg:text-[32px] font-black tracking-tight text-[#042c51] leading-none block">
-              82%
+            <span className="font-mono text-3xl lg:text-[32px] font-black tracking-tight text-slate-300 leading-none block">
+              —
             </span>
           </div>
           <div className="text-center pt-1 border-t border-slate-100/80">
@@ -184,8 +184,8 @@ export default function FrontStepsDashboardAccountBased({
             </span>
           </div>
           <div className="my-1 text-center">
-            <span className="font-mono text-3xl lg:text-[32px] font-black tracking-tight text-[#042c51] leading-none block">
-              16%
+            <span className="font-mono text-3xl lg:text-[32px] font-black tracking-tight text-slate-300 leading-none block">
+              —
             </span>
           </div>
           <div className="text-center pt-1 border-t border-slate-100/80">
@@ -205,8 +205,8 @@ export default function FrontStepsDashboardAccountBased({
             </span>
           </div>
           <div className="my-1 text-center">
-            <span className="font-mono text-3xl lg:text-[32px] font-black tracking-tight text-[#042c51] leading-none block">
-              2,789
+            <span className="font-mono text-3xl lg:text-[32px] font-black tracking-tight text-slate-300 leading-none block">
+              —
             </span>
           </div>
           <div className="text-center pt-1 border-t border-slate-100/80">
@@ -226,8 +226,8 @@ export default function FrontStepsDashboardAccountBased({
             </span>
           </div>
           <div className="my-1 text-center">
-            <span className="font-mono text-3xl lg:text-[32px] font-black tracking-tight text-[#042c51] leading-none block">
-              54
+            <span className="font-mono text-3xl lg:text-[32px] font-black tracking-tight text-slate-300 leading-none block">
+              —
             </span>
           </div>
           <div className="text-center pt-1 border-t border-slate-100/80">
@@ -251,61 +251,39 @@ export default function FrontStepsDashboardAccountBased({
             </div>
           </div>
 
-          {/* Chart Body: Unsquished HTML Y-Axis + Responsive Vector Canvas */}
+          {/* Chart Body: Empty State Canvas */}
           <div className="w-full flex-1 min-h-0 flex flex-col justify-between pt-2">
             <div className="flex-1 flex gap-2 min-h-0 relative">
-              {/* HTML Y-Axis Labels (Never squished or flattened) */}
-              <div className="flex flex-col justify-between text-right font-mono text-[10px] font-bold text-slate-400 shrink-0 pb-1 select-none">
-                <span>3,930</span>
-                <span>2,947</span>
-                <span>1,965</span>
-                <span>982</span>
-                <span className="text-slate-500 font-extrabold">0</span>
+              {/* HTML Y-Axis Labels */}
+              <div className="flex flex-col justify-between text-right font-mono text-[10px] font-bold text-slate-300 shrink-0 pb-1 select-none">
+                <span>—</span>
+                <span>—</span>
+                <span>—</span>
+                <span>—</span>
+                <span className="text-slate-400 font-extrabold">0</span>
               </div>
 
-              {/* Graphic Canvas */}
+              {/* Graphic Canvas with Empty State */}
               <div className="flex-1 relative flex flex-col justify-end min-h-0">
                 <svg viewBox="0 0 450 160" preserveAspectRatio="none" className="w-full h-full">
-                  <defs>
-                    <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#1b6ca8" />
-                      <stop offset="100%" stopColor="#2563eb" />
-                    </linearGradient>
-                  </defs>
-
-                  {/* Horizontal Grid lines matching Y-axis exactly */}
-                  <line x1="0" y1="8" x2="450" y2="8" stroke="#f1f5f9" strokeWidth="1" strokeDasharray="3 3" />
-                  <line x1="0" y1="44" x2="450" y2="44" stroke="#f1f5f9" strokeWidth="1" strokeDasharray="3 3" />
-                  <line x1="0" y1="81" x2="450" y2="81" stroke="#f1f5f9" strokeWidth="1" strokeDasharray="3 3" />
-                  <line x1="0" y1="117" x2="450" y2="117" stroke="#f1f5f9" strokeWidth="1" strokeDasharray="3 3" />
+                  {/* Horizontal Grid lines */}
+                  <line x1="0" y1="8" x2="450" y2="8" stroke="#f8fafc" strokeWidth="1" strokeDasharray="3 3" />
+                  <line x1="0" y1="44" x2="450" y2="44" stroke="#f8fafc" strokeWidth="1" strokeDasharray="3 3" />
+                  <line x1="0" y1="81" x2="450" y2="81" stroke="#f8fafc" strokeWidth="1" strokeDasharray="3 3" />
+                  <line x1="0" y1="117" x2="450" y2="117" stroke="#f8fafc" strokeWidth="1" strokeDasharray="3 3" />
                   {/* Baseline 0 */}
-                  <line x1="0" y1="154" x2="450" y2="154" stroke="#cbd5e1" strokeWidth="1.5" />
-
-                  {/* Bar W1 */}
-                  <rect x="55" y="22" width="60" height="132" rx="5" fill="url(#barGradient)" className="hover:opacity-90 transition-opacity drop-shadow-2xs" />
-                  {/* Bar W2 */}
-                  <rect x="195" y="34" width="60" height="120" rx="5" fill="url(#barGradient)" className="hover:opacity-90 transition-opacity drop-shadow-2xs" />
-                  {/* Bar W3 */}
-                  <rect x="335" y="122" width="60" height="32" rx="5" fill="url(#barGradient)" className="hover:opacity-90 transition-opacity drop-shadow-2xs" />
+                  <line x1="0" y1="154" x2="450" y2="154" stroke="#e2e8f0" strokeWidth="1.5" />
                 </svg>
 
-                {/* Value Callouts placed neatly on top of bars */}
-                <div className="absolute inset-0 pointer-events-none flex">
-                  <div className="flex-1 flex flex-col items-center justify-between pb-1 pt-1">
-                    <span className="font-mono text-xs font-black text-[#042c51]">3,421</span>
-                  </div>
-                  <div className="flex-1 flex flex-col items-center justify-between pb-1 pt-3.5">
-                    <span className="font-mono text-xs font-black text-[#042c51]">3,110</span>
-                  </div>
-                  <div className="flex-1 flex flex-col items-center justify-end pb-9">
-                    <span className="font-mono text-xs font-black text-[#042c51]">832</span>
-                  </div>
+                {/* Empty State Message */}
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className="text-xs font-semibold text-slate-400">No weekly cases data available</span>
                 </div>
               </div>
             </div>
 
-            {/* X-Axis Labels (Clean unflattened HTML) */}
-            <div className="flex pl-10 pr-2 pt-1 text-center font-bold text-xs text-slate-700">
+            {/* X-Axis Labels */}
+            <div className="flex pl-10 pr-2 pt-1 text-center font-bold text-xs text-slate-400">
               <div className="flex-1">W1</div>
               <div className="flex-1">W2</div>
               <div className="flex-1">W3</div>
@@ -331,78 +309,39 @@ export default function FrontStepsDashboardAccountBased({
             </div>
           </div>
 
-          {/* Chart Body: Unsquished HTML Y-Axis + Responsive Vector Canvas */}
+          {/* Chart Body: Empty State Canvas */}
           <div className="w-full flex-1 min-h-0 flex flex-col justify-between pt-2">
             <div className="flex-1 flex gap-2 min-h-0 relative">
-              {/* HTML Y-Axis Labels (Never squished or flattened) */}
-              <div className="flex flex-col justify-between text-right font-mono text-[10px] font-bold text-slate-400 shrink-0 pb-1 select-none">
-                <span>2,179</span>
-                <span>1,634</span>
-                <span>1,090</span>
-                <span>545</span>
-                <span className="text-slate-500 font-extrabold">0</span>
+              {/* HTML Y-Axis Labels */}
+              <div className="flex flex-col justify-between text-right font-mono text-[10px] font-bold text-slate-300 shrink-0 pb-1 select-none">
+                <span>—</span>
+                <span>—</span>
+                <span>—</span>
+                <span>—</span>
+                <span className="text-slate-400 font-extrabold">0</span>
               </div>
 
               {/* Graphic Canvas */}
               <div className="flex-1 relative flex flex-col justify-end min-h-0">
                 <svg viewBox="0 0 450 160" preserveAspectRatio="none" className="w-full h-full">
-                  <defs>
-                    <linearGradient id="callsGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#2563eb" stopOpacity="0.18" />
-                      <stop offset="100%" stopColor="#2563eb" stopOpacity="0.0" />
-                    </linearGradient>
-                  </defs>
-
                   {/* Horizontal Grid lines */}
-                  <line x1="0" y1="8" x2="450" y2="8" stroke="#f1f5f9" strokeWidth="1" strokeDasharray="3 3" />
-                  <line x1="0" y1="44" x2="450" y2="44" stroke="#f1f5f9" strokeWidth="1" strokeDasharray="3 3" />
-                  <line x1="0" y1="81" x2="450" y2="81" stroke="#f1f5f9" strokeWidth="1" strokeDasharray="3 3" />
-                  <line x1="0" y1="117" x2="450" y2="117" stroke="#f1f5f9" strokeWidth="1" strokeDasharray="3 3" />
+                  <line x1="0" y1="8" x2="450" y2="8" stroke="#f8fafc" strokeWidth="1" strokeDasharray="3 3" />
+                  <line x1="0" y1="44" x2="450" y2="44" stroke="#f8fafc" strokeWidth="1" strokeDasharray="3 3" />
+                  <line x1="0" y1="81" x2="450" y2="81" stroke="#f8fafc" strokeWidth="1" strokeDasharray="3 3" />
+                  <line x1="0" y1="117" x2="450" y2="117" stroke="#f8fafc" strokeWidth="1" strokeDasharray="3 3" />
                   {/* Baseline 0 */}
-                  <line x1="0" y1="154" x2="450" y2="154" stroke="#cbd5e1" strokeWidth="1.5" />
-
-                  {/* Target benchmark dashed line */}
-                  <line x1="0" y1="52" x2="450" y2="52" stroke="#93c5fd" strokeWidth="1.8" strokeDasharray="4 4" />
-
-                  {/* Area under curve */}
-                  <polygon
-                    points="75,44 225,81 375,127 375,154 75,154"
-                    fill="url(#callsGradient)"
-                  />
-
-                  {/* Trend line */}
-                  <polyline
-                    points="75,44 225,81 375,127"
-                    fill="none"
-                    stroke="#1b6ca8"
-                    strokeWidth="2.8"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-
-                  {/* Dots */}
-                  <circle cx="75" cy="44" r="5" fill="white" stroke="#1b6ca8" strokeWidth="2.8" className="drop-shadow-2xs" />
-                  <circle cx="225" cy="81" r="5" fill="white" stroke="#1b6ca8" strokeWidth="2.8" className="drop-shadow-2xs" />
-                  <circle cx="375" cy="127" r="5" fill="white" stroke="#1b6ca8" strokeWidth="2.8" className="drop-shadow-2xs" />
+                  <line x1="0" y1="154" x2="450" y2="154" stroke="#e2e8f0" strokeWidth="1.5" />
                 </svg>
 
-                {/* Value Callouts placed neatly on top of nodes */}
-                <div className="absolute inset-0 pointer-events-none flex">
-                  <div className="flex-1 flex flex-col items-center justify-between pb-1 pt-3">
-                    <span className="font-mono text-xs font-black text-[#042c51]">1,634</span>
-                  </div>
-                  <div className="flex-1 flex flex-col items-center justify-between pb-1 pt-11">
-                    <span className="font-mono text-xs font-black text-[#042c51]">1,090</span>
-                  </div>
-                  <div className="flex-1 flex flex-col items-center justify-end pb-8">
-                    <span className="font-mono text-xs font-black text-[#042c51]">382</span>
-                  </div>
+                {/* Empty State Message */}
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className="text-xs font-semibold text-slate-400">No calls trend data available</span>
                 </div>
               </div>
             </div>
 
-            {/* X-Axis Labels (Clean unflattened HTML) */}
-            <div className="flex pl-10 pr-2 pt-1 text-center font-bold text-xs text-slate-700">
+            {/* X-Axis Labels */}
+            <div className="flex pl-10 pr-2 pt-1 text-center font-bold text-xs text-slate-400">
               <div className="flex-1">W1</div>
               <div className="flex-1">W2</div>
               <div className="flex-1">W3</div>
@@ -419,52 +358,16 @@ export default function FrontStepsDashboardAccountBased({
             <h4 className="text-sm font-black tracking-wide text-slate-800">
               Case Closure Timeliness
             </h4>
-            <span className="text-[9px] font-bold text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded border border-slate-200/60">
-              Target: ≥70%
-            </span>
           </div>
 
           <div className="flex items-center justify-between gap-6 pt-2 flex-1 min-h-0">
-            {/* Donut SVG (Maximized) */}
+            {/* Donut SVG */}
             <div className="relative w-52 h-52 lg:w-56 lg:h-56 xl:w-60 xl:h-60 shrink-0 flex items-center justify-center">
               <svg viewBox="0 0 140 140" className="w-full h-full -rotate-90">
                 <circle cx="70" cy="70" r="54" fill="none" stroke="#f1f5f9" strokeWidth="24" />
-                {/* 61% arc (339.29 * 0.61 = 206.97) */}
-                <circle
-                  cx="70"
-                  cy="70"
-                  r="54"
-                  fill="none"
-                  stroke="#042c51"
-                  strokeWidth="24"
-                  strokeDasharray="206.97 339.29"
-                  strokeDashoffset="0"
-                />
-                {/* 20% arc (339.29 * 0.20 = 67.86) */}
-                <circle
-                  cx="70"
-                  cy="70"
-                  r="54"
-                  fill="none"
-                  stroke="#2563eb"
-                  strokeWidth="24"
-                  strokeDasharray="67.86 339.29"
-                  strokeDashoffset="-206.97"
-                />
-                {/* 19% arc (339.29 * 0.19 = 64.46) */}
-                <circle
-                  cx="70"
-                  cy="70"
-                  r="54"
-                  fill="none"
-                  stroke="#93c5fd"
-                  strokeWidth="24"
-                  strokeDasharray="64.46 339.29"
-                  strokeDashoffset="-274.83"
-                />
               </svg>
               <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-                <span className="font-mono text-3xl lg:text-4xl font-black text-slate-900 leading-none">61%</span>
+                <span className="font-mono text-3xl lg:text-4xl font-black text-slate-300 leading-none">—</span>
                 <span className="text-[10px] font-semibold text-slate-400 mt-1">Closed within 7 days</span>
               </div>
             </div>
@@ -473,31 +376,31 @@ export default function FrontStepsDashboardAccountBased({
             <div className="flex flex-col gap-2.5 flex-1 text-[13px]">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
-                  <span className="h-3 w-3 rounded-full bg-[#042c51]" />
-                  <span className="text-slate-600 font-medium">Within 1 day</span>
+                  <span className="h-3 w-3 rounded-full bg-slate-200" />
+                  <span className="text-slate-500 font-medium">Within 1 day</span>
                 </div>
-                <span className="font-black text-slate-800 font-mono text-sm">40%</span>
+                <span className="font-black text-slate-400 font-mono text-sm">—</span>
               </div>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
-                  <span className="h-3 w-3 rounded-full bg-[#1e40af]" />
-                  <span className="text-slate-600 font-medium">2–3 days</span>
+                  <span className="h-3 w-3 rounded-full bg-slate-200" />
+                  <span className="text-slate-500 font-medium">2–3 days</span>
                 </div>
-                <span className="font-black text-slate-800 font-mono text-sm">6%</span>
+                <span className="font-black text-slate-400 font-mono text-sm">—</span>
               </div>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
-                  <span className="h-3 w-3 rounded-full bg-[#2563eb]" />
-                  <span className="text-slate-600 font-medium">4–7 days</span>
+                  <span className="h-3 w-3 rounded-full bg-slate-200" />
+                  <span className="text-slate-500 font-medium">4–7 days</span>
                 </div>
-                <span className="font-black text-slate-800 font-mono text-sm">15%</span>
+                <span className="font-black text-slate-400 font-mono text-sm">—</span>
               </div>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
-                  <span className="h-3 w-3 rounded-full bg-[#93c5fd]" />
-                  <span className="text-slate-600 font-medium">Over 7 days</span>
+                  <span className="h-3 w-3 rounded-full bg-slate-200" />
+                  <span className="text-slate-500 font-medium">Over 7 days</span>
                 </div>
-                <span className="font-black text-slate-800 font-mono text-sm">39%</span>
+                <span className="font-black text-slate-400 font-mono text-sm">—</span>
               </div>
             </div>
           </div>
@@ -509,63 +412,16 @@ export default function FrontStepsDashboardAccountBased({
             <h4 className="text-sm font-black tracking-wide text-slate-800">
               Queue / Work Mix
             </h4>
-            <span className="text-[9px] font-bold text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded border border-slate-200/60">
-              Total: 7,363
-            </span>
           </div>
 
           <div className="flex items-center justify-between gap-6 pt-2 flex-1 min-h-0">
-            {/* Donut SVG (Maximized) */}
+            {/* Donut SVG */}
             <div className="relative w-52 h-52 lg:w-56 lg:h-56 xl:w-60 xl:h-60 shrink-0 flex items-center justify-center">
               <svg viewBox="0 0 140 140" className="w-full h-full -rotate-90">
                 <circle cx="70" cy="70" r="54" fill="none" stroke="#f1f5f9" strokeWidth="24" />
-                {/* 90% Tier 1 (339.29 * 0.90 = 305.36) */}
-                <circle
-                  cx="70"
-                  cy="70"
-                  r="54"
-                  fill="none"
-                  stroke="#042c51"
-                  strokeWidth="24"
-                  strokeDasharray="305.36 339.29"
-                  strokeDashoffset="0"
-                />
-                {/* 7% Tier 2 (339.29 * 0.07 = 23.75) */}
-                <circle
-                  cx="70"
-                  cy="70"
-                  r="54"
-                  fill="none"
-                  stroke="#0284c7"
-                  strokeWidth="24"
-                  strokeDasharray="23.75 339.29"
-                  strokeDashoffset="-305.36"
-                />
-                {/* 2% Unspecified (339.29 * 0.02 = 6.79) */}
-                <circle
-                  cx="70"
-                  cy="70"
-                  r="54"
-                  fill="none"
-                  stroke="#38bdf8"
-                  strokeWidth="24"
-                  strokeDasharray="6.79 339.29"
-                  strokeDashoffset="-329.11"
-                />
-                {/* 1% Other (339.29 * 0.01 = 3.39) */}
-                <circle
-                  cx="70"
-                  cy="70"
-                  r="54"
-                  fill="none"
-                  stroke="#94a3b8"
-                  strokeWidth="24"
-                  strokeDasharray="3.39 339.29"
-                  strokeDashoffset="-335.90"
-                />
               </svg>
               <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-                <span className="font-mono text-3xl lg:text-4xl font-black text-slate-900 leading-none">7,363</span>
+                <span className="font-mono text-3xl lg:text-4xl font-black text-slate-300 leading-none">—</span>
                 <span className="text-[10px] font-semibold text-slate-400 mt-1">Total closed cases</span>
               </div>
             </div>
@@ -574,31 +430,31 @@ export default function FrontStepsDashboardAccountBased({
             <div className="flex flex-col gap-2.5 flex-1 text-[13px]">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
-                  <span className="h-3 w-3 rounded-full bg-[#042c51]" />
-                  <span className="text-slate-600 font-medium">Tier 1</span>
+                  <span className="h-3 w-3 rounded-full bg-slate-200" />
+                  <span className="text-slate-500 font-medium">Tier 1</span>
                 </div>
-                <span className="font-black text-slate-800 font-mono text-sm">90%</span>
+                <span className="font-black text-slate-400 font-mono text-sm">—</span>
               </div>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
-                  <span className="h-3 w-3 rounded-full bg-[#0284c7]" />
-                  <span className="text-slate-600 font-medium">Tier 2</span>
+                  <span className="h-3 w-3 rounded-full bg-slate-200" />
+                  <span className="text-slate-500 font-medium">Tier 2</span>
                 </div>
-                <span className="font-black text-slate-800 font-mono text-sm">7%</span>
+                <span className="font-black text-slate-400 font-mono text-sm">—</span>
               </div>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
-                  <span className="h-3 w-3 rounded-full bg-[#38bdf8]" />
-                  <span className="text-slate-600 font-medium">Unspecified</span>
+                  <span className="h-3 w-3 rounded-full bg-slate-200" />
+                  <span className="text-slate-500 font-medium">Unspecified</span>
                 </div>
-                <span className="font-black text-slate-800 font-mono text-sm">2%</span>
+                <span className="font-black text-slate-400 font-mono text-sm">—</span>
               </div>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
-                  <span className="h-3 w-3 rounded-full bg-[#94a3b8]" />
-                  <span className="text-slate-600 font-medium">Other</span>
+                  <span className="h-3 w-3 rounded-full bg-slate-200" />
+                  <span className="text-slate-500 font-medium">Other</span>
                 </div>
-                <span className="font-black text-slate-800 font-mono text-sm">1%</span>
+                <span className="font-black text-slate-400 font-mono text-sm">—</span>
               </div>
             </div>
           </div>
@@ -610,30 +466,16 @@ export default function FrontStepsDashboardAccountBased({
             <h4 className="text-sm font-black tracking-wide text-slate-800">
               Employee Performance Distribution
             </h4>
-            <span className="text-[9px] font-bold text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded border border-slate-200/60">
-              Exceptions
-            </span>
           </div>
 
           <div className="flex items-center justify-between gap-6 pt-2 flex-1 min-h-0">
-            {/* Donut SVG (Maximized) */}
+            {/* Donut SVG */}
             <div className="relative w-52 h-52 lg:w-56 lg:h-56 xl:w-60 xl:h-60 shrink-0 flex items-center justify-center">
               <svg viewBox="0 0 140 140" className="w-full h-full -rotate-90">
                 <circle cx="70" cy="70" r="54" fill="none" stroke="#f1f5f9" strokeWidth="24" />
-                {/* 100% Unsatisfactory */}
-                <circle
-                  cx="70"
-                  cy="70"
-                  r="54"
-                  fill="none"
-                  stroke="#94a3b8"
-                  strokeWidth="24"
-                  strokeDasharray="339.29 339.29"
-                  strokeDashoffset="0"
-                />
               </svg>
               <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-                <span className="font-mono text-3xl lg:text-4xl font-black text-slate-900 leading-none">0%</span>
+                <span className="font-mono text-3xl lg:text-4xl font-black text-slate-300 leading-none">—</span>
                 <span className="text-[10px] font-semibold text-slate-400 mt-1">Satisfactory or higher</span>
               </div>
             </div>
@@ -642,31 +484,31 @@ export default function FrontStepsDashboardAccountBased({
             <div className="flex flex-col gap-2.5 flex-1 text-[13px]">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
-                  <span className="h-3 w-3 rounded-full bg-[#042c51]" />
-                  <span className="text-slate-600 font-medium">Exceptional</span>
+                  <span className="h-3 w-3 rounded-full bg-slate-200" />
+                  <span className="text-slate-500 font-medium">Exceptional</span>
                 </div>
-                <span className="font-black text-slate-800 font-mono text-sm">0%</span>
+                <span className="font-black text-slate-400 font-mono text-sm">—</span>
               </div>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
-                  <span className="h-3 w-3 rounded-full bg-[#2563eb]" />
-                  <span className="text-slate-600 font-medium">Very Satisfactory</span>
+                  <span className="h-3 w-3 rounded-full bg-slate-200" />
+                  <span className="text-slate-500 font-medium">Very Satisfactory</span>
                 </div>
-                <span className="font-black text-slate-800 font-mono text-sm">0%</span>
+                <span className="font-black text-slate-400 font-mono text-sm">—</span>
               </div>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
-                  <span className="h-3 w-3 rounded-full bg-[#60a5fa]" />
-                  <span className="text-slate-600 font-medium">Satisfactory</span>
+                  <span className="h-3 w-3 rounded-full bg-slate-200" />
+                  <span className="text-slate-500 font-medium">Satisfactory</span>
                 </div>
-                <span className="font-black text-slate-800 font-mono text-sm">0%</span>
+                <span className="font-black text-slate-400 font-mono text-sm">—</span>
               </div>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
-                  <span className="h-3 w-3 rounded-full bg-[#94a3b8]" />
-                  <span className="text-slate-600 font-medium">Unsatisfactory</span>
+                  <span className="h-3 w-3 rounded-full bg-slate-200" />
+                  <span className="text-slate-500 font-medium">Unsatisfactory</span>
                 </div>
-                <span className="font-black text-slate-800 font-mono text-sm">100%</span>
+                <span className="font-black text-slate-400 font-mono text-sm">—</span>
               </div>
             </div>
           </div>
@@ -686,8 +528,8 @@ export default function FrontStepsDashboardAccountBased({
             </div>
           </div>
           <div className="flex items-baseline justify-between pt-2">
-            <span className="font-mono text-2xl font-black text-[#042c51] leading-none">
-              $0
+            <span className="font-mono text-2xl font-black text-slate-300 leading-none">
+              —
             </span>
             <span className="text-[11px] font-semibold text-slate-400">
               Unapproved estimate
@@ -707,11 +549,8 @@ export default function FrontStepsDashboardAccountBased({
           </div>
           <div className="flex items-baseline justify-between pt-2">
             <div className="flex items-baseline gap-1.5">
-              <span className="font-mono text-2xl font-black text-[#042c51] leading-none">
-                0
-              </span>
-              <span className="font-mono text-sm font-bold text-slate-400">
-                / 67
+              <span className="font-mono text-2xl font-black text-slate-300 leading-none">
+                —
               </span>
             </div>
             <span className="text-[11px] font-semibold text-slate-400 truncate max-w-[55%] text-right" title="Meet score threshold; not approved">
@@ -731,8 +570,8 @@ export default function FrontStepsDashboardAccountBased({
             </div>
           </div>
           <div className="flex items-baseline justify-between pt-2">
-            <span className="font-mono text-2xl font-black text-[#042c51] leading-none">
-              54
+            <span className="font-mono text-2xl font-black text-slate-300 leading-none">
+              —
             </span>
             <span className="text-[11px] font-semibold text-slate-400">
               Require confirmation
