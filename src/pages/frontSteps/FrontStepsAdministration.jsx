@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import SingleSelectDropdown from "../../components/common/filters/SingleSelectDropdown";
 import TablePagination from "../../components/common/tables/TablePagination";
+import FrontStepsUserAssignmentManagement from "./FrontStepsUserAssignmentManagement";
 
 const MODULES = [
   "Dashboard",
@@ -278,7 +279,7 @@ const INITIAL_USERS = [
 ];
 
 const NAV_TABS = [
-  { id: "users", label: "Users & Assignments", icon: BriefcaseBusiness },
+  { id: "users", label: "User Assignment", icon: BriefcaseBusiness },
   { id: "roles", label: "Roles & Permissions", icon: Users },
   { id: "kpis", label: "KPI Configuration", icon: SlidersHorizontal },
   { id: "alerts", label: "Management Alerts", icon: BellRing },
@@ -698,7 +699,7 @@ export default function FrontStepsAdministration() {
       </div>
 
       {/* 3. Search and Action Controls (For Roles, KPIs, and Alerts) */}
-      {tab !== "settings" && (
+      {tab !== "settings" && tab !== "users" && (
         <div className="rounded-xl border border-slate-200/80 bg-white px-3.5 py-2.5 shadow-xs shrink-0">
           <div className="flex flex-wrap items-center justify-between gap-2.5">
             {/* Left Filter & Search Controls */}
@@ -859,104 +860,9 @@ export default function FrontStepsAdministration() {
         </div>
       )}
 
-      {/* TAB 0: User Management & Employee Assignments (Req #1, #4) */}
+      {/* TAB 0: FrontSteps User Assignment / Employee Mapping */}
       {tab === "users" && (
-        <div className="rounded-xl border border-slate-200/80 bg-white shadow-xs overflow-hidden flex flex-col flex-1 min-h-0">
-          <div className="overflow-auto flex-1 min-h-0 sibs-scrollbar">
-            <table className="w-full table-fixed text-left text-xs border-collapse">
-              <thead className="sticky top-0 z-10">
-                <tr className="border-b border-[#042c51] bg-[#042c51] text-[11px] font-bold uppercase tracking-wider text-white select-none shadow-xs">
-                  <th className="py-3 px-4 w-[22%]">User Name / Email</th>
-                  <th className="py-3 px-4 w-[12%]">User ID</th>
-                  <th className="py-3 px-4 w-[20%]">Assigned Role</th>
-                  <th className="py-3 px-4 w-[20%]">Team & Shift</th>
-                  <th className="py-3 px-4 w-[12%] text-center">Status</th>
-                  <th className="py-3 px-4 w-[14%] text-center">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
-                {paginatedUsers.length > 0 ? (
-                  paginatedUsers.map((u) => (
-                    <tr key={u.id} className="hover:bg-slate-50/70 transition-colors h-[52px]">
-                      <td className="py-3 px-4">
-                        <span className="block font-bold text-slate-900 text-[13px] leading-tight">
-                          {u.name}
-                        </span>
-                        <span className="block text-[11px] text-slate-400 mt-0.5">{u.email}</span>
-                      </td>
-                      <td className="py-3 px-4 font-mono font-bold text-slate-600 text-xs">
-                        {u.id}
-                      </td>
-                      <td className="py-3 px-4">
-                        <Chip tone={u.role === "Operations Manager" ? "purple" : u.role === "Supervisor" ? "blue" : "slate"}>
-                          {u.role}
-                        </Chip>
-                      </td>
-                      <td className="py-3 px-4 text-xs text-slate-700">
-                        {u.team}
-                      </td>
-                      <td className="py-3 px-4 text-center">
-                        <Chip tone={u.status === "Active" ? "green" : "red"}>
-                          {u.status}
-                        </Chip>
-                      </td>
-                      <td className="py-3 px-4 text-center">
-                        <div className="flex items-center justify-center gap-2">
-                          <button
-                            type="button"
-                            onClick={() => openUser(u)}
-                            className="inline-flex items-center justify-center gap-1.5 rounded-md border border-slate-200 px-2.5 py-1 text-xs font-bold text-[#042c51] hover:bg-slate-50 transition-colors cursor-pointer"
-                          >
-                            <Pencil size={12} />
-                            <span>Edit</span>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const updated = users.map((item) =>
-                                item.id === u.id
-                                  ? { ...item, status: item.status === "Active" ? "Inactive" : "Active" }
-                                  : item
-                              );
-                              setUsers(updated);
-                              showNotice(`User ${u.name} status updated.`);
-                            }}
-                            className={`inline-flex items-center justify-center rounded-md px-2 py-1 text-[11px] font-bold cursor-pointer transition-colors ${
-                              u.status === "Active"
-                                ? "text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200"
-                                : "text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200"
-                            }`}
-                          >
-                            {u.status === "Active" ? "Deactivate" : "Activate"}
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan={6} className="py-12 text-center text-slate-500">
-                      <p className="text-xs font-bold text-slate-700">No users found</p>
-                      <p className="text-[11px] text-slate-400 mt-0.5">
-                        No user accounts match your search query.
-                      </p>
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-
-          <TablePagination
-            currentPage={userPage}
-            totalPages={totalUserPages}
-            totalItems={usersShown.length}
-            pageSize={pageSize}
-            onPageChange={(page) => setUserPage(page)}
-            itemLabel="users"
-            className="shrink-0"
-          />
-        </div>
+        <FrontStepsUserAssignmentManagement />
       )}
 
       {/* TAB 1: User Roles & Permissions */}
@@ -1494,106 +1400,6 @@ export default function FrontStepsAdministration() {
             </button>
           </div>
         </div>
-      )}
-
-      {/* Modal 0: Add / Edit User & Employee Assignment (Req #1, #4) */}
-      {modal === "user" && draft && (
-        <Modal
-          title={draft.id ? "Edit User & Assignment" : "Add User & Assignment"}
-          subtitle="Configure user profile, account role, and team/supervisor assignment."
-          onClose={closeModal}
-          footer={
-            <>
-              <button
-                type="button"
-                onClick={closeModal}
-                className="rounded-lg border border-slate-200 px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50 transition-colors cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={saveUser}
-                disabled={!draft.name.trim() || !draft.email.trim()}
-                className="rounded-lg bg-[#ff5c28] px-4 py-2 text-xs font-bold text-white hover:bg-[#e04816] transition-colors cursor-pointer disabled:opacity-40"
-              >
-                Save User
-              </button>
-            </>
-          }
-        >
-          <div className="space-y-3.5">
-            <Field label="Full Name">
-              <input
-                className={inputCls}
-                value={draft.name}
-                onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))}
-                placeholder="e.g. Dwight Anthony Buma-at"
-              />
-            </Field>
-
-            <Field label="Email Address">
-              <input
-                type="email"
-                className={inputCls}
-                value={draft.email}
-                onChange={(e) => setDraft((d) => ({ ...d, email: e.target.value }))}
-                placeholder="e.g. employee@frontsteps.com"
-              />
-            </Field>
-
-            <div className="grid gap-3 sm:grid-cols-2">
-              <Field label="Assigned Role">
-                <SingleSelectDropdown
-                  value={draft.role}
-                  onChange={(e) => setDraft((d) => ({ ...d, role: e.target.value }))}
-                  options={[
-                    { value: "Employee", label: "Employee" },
-                    { value: "Supervisor", label: "Supervisor" },
-                    { value: "Operations Manager", label: "Operations Manager" },
-                    { value: "WFM Analyst", label: "WFM Analyst" },
-                    { value: "QTM (Quality Training Management)", label: "QTM" },
-                    { value: "HR Specialist", label: "HR Specialist" },
-                    { value: "Client Reporting Viewer", label: "Client Reporting Viewer" },
-                    { value: "System Administrator", label: "System Administrator" },
-                  ]}
-                  buttonClassName="h-9 rounded-lg border-slate-200 px-3 text-xs"
-                />
-              </Field>
-
-              <Field label="Team & Shift Assignment">
-                <SingleSelectDropdown
-                  value={draft.team}
-                  onChange={(e) => setDraft((d) => ({ ...d, team: e.target.value }))}
-                  options={[
-                    { value: "Team Alpha (Day)", label: "Team Alpha (Day - Sarah Gomez)" },
-                    { value: "Team Bravo (Mid)", label: "Team Bravo (Mid - Mark Ramos)" },
-                    { value: "Team Charlie (Night)", label: "Team Charlie (Night - Alexandria Chua)" },
-                    { value: "Operations", label: "Operations Management" },
-                  ]}
-                  buttonClassName="h-9 rounded-lg border-slate-200 px-3 text-xs"
-                />
-              </Field>
-            </div>
-
-            <Field label="Account Assignment">
-              <input
-                className={inputCls}
-                value={draft.account || "FrontSteps"}
-                disabled
-              />
-            </Field>
-
-            <div className="pt-1">
-              <Toggle
-                checked={draft.status === "Active"}
-                onChange={(v) => setDraft((d) => ({ ...d, status: v ? "Active" : "Inactive" }))}
-                label="Account Active"
-                description="Inactive accounts cannot log in or be assigned active production tickets."
-              />
-            </div>
-          </div>
-        </Modal>
       )}
 
       {/* Modal 1: Configure Role */}
