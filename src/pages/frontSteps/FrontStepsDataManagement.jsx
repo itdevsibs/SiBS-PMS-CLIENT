@@ -3,7 +3,7 @@ import {
   AlertTriangle, AlertCircle, CheckCircle2,
   Clock3, Database, FileText,
   FilterX, RotateCcw, Search, X, UploadCloud, FileSpreadsheet, PhoneCall, FolderOpen, Trash2, Info,
-  Upload, Eye, ListPlus, UserX,
+  Upload, Eye, ListPlus, UserX, Download, Plus, RefreshCw, FileCheck, Shield, BookOpen, Loader2, Check, Sparkles
 } from "lucide-react";
 import SingleSelectDropdown from "../../components/common/filters/SingleSelectDropdown";
 import TablePagination from "../../components/common/tables/TablePagination";
@@ -583,6 +583,194 @@ export default function FrontStepsDataManagement() {
 
   const validationReady = checks.every(Boolean) && !!reviewer.trim() && !chosen?.quality.some((q) => q === "Missing" || q === "Incomplete") && chosen?.issues.every((i) => ["Resolved", "Ready for Revalidation"].includes(i.status));
 
+  // --- Policy Repository State & Logic ---
+  const [activeTab, setActiveTab] = useState("sources"); // "sources" | "policies"
+  const [policies, setPolicies] = useState([]);
+  const [isLoadingPolicies, setIsLoadingPolicies] = useState(false);
+  const [policyCategoryFilter, setPolicyCategoryFilter] = useState("all");
+  const [policySearch, setPolicySearch] = useState("");
+  const [isUploadPolicyModalOpen, setIsUploadPolicyModalOpen] = useState(false);
+  const [isSubmittingPolicy, setIsSubmittingPolicy] = useState(false);
+  const [policyFormError, setPolicyFormError] = useState("");
+  const [policyFile, setPolicyFile] = useState(null);
+  const [policyFormData, setPolicyFormData] = useState({
+    document_code: "",
+    policy_title: "",
+    policy_category: "PMP",
+    revision_number: "000",
+    last_review_date: "",
+    effectivity_date: "",
+    effectivity_note: "Upon Approval",
+    approval_status: "Pending Approval",
+    prepared_for: "FrontSteps",
+    prepared_by: "",
+    reviewed_by: "",
+    approved_by: "",
+    remarks: "",
+  });
+
+  const fetchPolicies = async () => {
+    try {
+      setIsLoadingPolicies(true);
+      const res = await fetch("http://localhost:5003/api/frontsteps/policies");
+      const json = await res.json();
+      if (json.success) {
+        setPolicies(json.data || []);
+      }
+    } catch (err) {
+      console.error("Error loading policies:", err);
+    } finally {
+      setIsLoadingPolicies(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchPolicies();
+  }, []);
+
+  const handleDownloadPolicy = (policyId, fileName) => {
+    window.open(`http://localhost:5003/api/frontsteps/policies/${policyId}/download`, "_blank");
+  };
+
+  const handlePolicyFormChange = (e) => {
+    const { name, value } = e.target;
+    setPolicyFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handlePolicyFileSelect = (e) => {
+    const selected = e.target.files?.[0];
+    if (!selected) return;
+    const ext = selected.name.split(".").pop()?.toLowerCase();
+    if (!["pdf", "docx", "doc"].includes(ext)) {
+      setPolicyFormError("Unsupported file type. Only PDF and DOCX files are allowed for policies.");
+      return;
+    }
+    setPolicyFormError("");
+    setPolicyFile(selected);
+  };
+
+  const handleUploadPolicySubmit = async (e) => {
+    e.preventDefault();
+    if (!policyFile) {
+      setPolicyFormError("Please select a policy file (PDF or DOCX).");
+      return;
+    }
+    if (!policyFormData.document_code.trim() || !policyFormData.policy_title.trim()) {
+      setPolicyFormError("Document Code and Policy Title are required.");
+      return;
+    }
+
+    try {
+      setIsSubmittingPolicy(true);
+      setPolicyFormError("");
+
+      const data = new FormData();
+      data.append("file", policyFile);
+      Object.entries(policyFormData).forEach(([key, val]) => {
+        if (val !== undefined && val !== null) {
+          data.append(key, val);
+        }
+      });
+
+      const res = await fetch("http://localhost:5003/api/frontsteps/policies/upload", {
+        method: "POST",
+        body: data,
+      });
+      const json = await res.json();
+
+      if (!res.ok || !json.success) {
+        throw new Error(json.message || "Failed to upload policy document.");
+      }
+
+      setToast(`Policy "${policyFormData.document_code}" uploaded successfully to database.`);
+      setIsUploadPolicyModalOpen(false);
+      setPolicyFile(null);
+      setPolicyFormData({
+        document_code: "",
+        policy_title: "",
+        policy_category: "PMP",
+        revision_number: "000",
+        last_review_date: "",
+        effectivity_date: "",
+        effectivity_note: "Upon Approval",
+        approval_status: "Pending Approval",
+        prepared_for: "FrontSteps",
+        prepared_by: "",
+        reviewed_by: "",
+        approved_by: "",
+        remarks: "",
+      });
+      fetchPolicies();
+    } catch (err) {
+      setPolicyFormError(err.message);
+    } finally {
+      setIsSubmittingPolicy(false);
+    }
+  };
+
+  const filteredPolicies = useMemo(() => {
+    return policies.filter((p) => {
+      const matchesCategory = policyCategoryFilter === "all" || p.policy_category === policyCategoryFilter;
+      const term = policySearch.trim().toLowerCase();
+      const matchesSearch = !term || [p.document_code, p.policy_title, p.file_name, p.prepared_by, p.reviewed_by].some(
+        (field) => String(field || "").toLowerCase().includes(term)
+      );
+      return matchesCategory && matchesSearch;
+    });
+  }, [policies, policyCategoryFilter, policySearch]);
+
+  const setPresetPolicy = (presetCode) => {
+    if (presetCode === "PMP") {
+      setPolicyFormData({
+        document_code: "FS - PMP - 001",
+        policy_title: "FrontSteps Resident Support Agent - Performance Management Policy",
+        policy_category: "PMP",
+        revision_number: "000",
+        last_review_date: "2026-08-06",
+        effectivity_date: "",
+        effectivity_note: "Upon Approval",
+        approval_status: "Pending Approval",
+        prepared_for: "FrontSteps",
+        prepared_by: "Operations & Quality Leadership",
+        reviewed_by: "HR & Account Management",
+        approved_by: "",
+        remarks: "Official Performance Management Policy for FrontSteps Resident Support Agents",
+      });
+    } else if (presetCode === "PIP") {
+      setPolicyFormData({
+        document_code: "FS - PIP - 001",
+        policy_title: "FrontSteps Resident Support - Performance Incentive Program",
+        policy_category: "PIP",
+        revision_number: "000",
+        last_review_date: "2026-08-06",
+        effectivity_date: "",
+        effectivity_note: "Upon Approval",
+        approval_status: "Pending Approval",
+        prepared_for: "FrontSteps",
+        prepared_by: "Operations Leadership",
+        reviewed_by: "Account Management",
+        approved_by: "",
+        remarks: "Performance Incentive Program criteria and tier structure",
+      });
+    } else if (presetCode === "MILESTONE") {
+      setPolicyFormData({
+        document_code: "FS - MILESTONE - 001",
+        policy_title: "FrontSteps Quarterly Retention and Consistency Incentive Policy",
+        policy_category: "Milestone",
+        revision_number: "002",
+        last_review_date: "2026-08-06",
+        effectivity_date: "",
+        effectivity_note: "Upon Approval",
+        approval_status: "Pending Approval",
+        prepared_for: "FrontSteps",
+        prepared_by: "WFM & Operations Leadership",
+        reviewed_by: "Management Committee",
+        approved_by: "",
+        remarks: "Quarterly retention bonus guidelines and 3-month consistency requirement",
+      });
+    }
+  };
+
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-2.5 sm:gap-3 overflow-hidden font-jakarta text-slate-800">
       {/* Toast Notice */}
@@ -695,7 +883,6 @@ export default function FrontStepsDataManagement() {
 
       {/* 2. Source File Uploads */}
       <section className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto pb-2 sibs-scrollbar">
-
         {uploadError && (
           <div role="alert" className="flex items-center justify-between gap-3 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-xs font-semibold text-rose-700">
             <span className="flex items-center gap-2"><AlertTriangle size={15} />{uploadError}</span>
