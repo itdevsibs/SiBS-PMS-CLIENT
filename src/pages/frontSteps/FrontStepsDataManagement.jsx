@@ -1,12 +1,16 @@
-import React, { useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
-  AlertTriangle, CheckCircle2,
+  AlertTriangle, AlertCircle, CheckCircle2,
   Clock3, Database, FileText,
   FilterX, RotateCcw, Search, X, UploadCloud, FileSpreadsheet, PhoneCall, FolderOpen, Trash2, Info,
-  Upload, Eye,
+  Upload, Eye, ListPlus, UserX,
 } from "lucide-react";
 import SingleSelectDropdown from "../../components/common/filters/SingleSelectDropdown";
 import TablePagination from "../../components/common/tables/TablePagination";
+import ImportProgressModal from "../../components/common/ui/ImportProgressModal";
+import AppModal from "../../components/common/ui/AppModal";
+import BatchDetailStat from "../../components/modules/wfm/imports/WfmBatchDetailStat";
+import { uploadFrontStepsFile, getFrontStepsHistory, getFrontStepsRows, getFrontStepsIssues, getFrontStepsUnmatchedRecords, getFrontStepsSummary, deleteFrontStepsBatch } from "../../lib/axios/frontsteps-imports";
 
 // FrontSteps Data Management module for record tracking, validation review, and correction tracking.
 const INITIAL_RECORDS = [];
@@ -37,8 +41,9 @@ function Modal({ title, subtitle, onClose, children, footer, wide = false, size 
   const sizeClasses = {
     default: "max-w-2xl max-h-[90vh]",
     wide: "max-w-4xl max-h-[90vh]",
-    xl: "max-w-5xl h-[85vh] max-h-[92vh]",
-    full: "max-w-6xl h-[88vh] max-h-[95vh]",
+    xl: "max-w-[1280px] w-[94vw] h-[88vh] max-h-[94vh]",
+    repository: "max-w-[1500px] w-[96vw] h-[91vh] max-h-[96vh]",
+    full: "max-w-[1500px] w-[96vw] h-[92vh] max-h-[96vh]",
   };
   const chosenSize = size !== "default" ? sizeClasses[size] || sizeClasses.default : wide ? sizeClasses.wide : sizeClasses.default;
 
@@ -66,6 +71,63 @@ function Modal({ title, subtitle, onClose, children, footer, wide = false, size 
   );
 }
 
+function FrontStepsImportSummaryModal({ summary, onClose, onViewIssues, onViewUnmatched }) {
+  if (!summary) return null;
+  const batch = summary.batch || {};
+  const issueCount = Number(batch.issueCount ?? batch.issue_count ?? 0);
+  const unmatchedRecordCount = Number(batch.unmatchedRecords ?? batch.unmatched_record_count ?? batch.unmapped ?? 0);
+  const hasWarnings = issueCount > 0 || unmatchedRecordCount > 0 || Number(batch.invalid || 0) > 0 || Number(batch.conflict || 0) > 0;
+
+  return (
+    <AppModal isOpen className="!max-w-none sm:!w-[920px]" textAlign="center">
+      <div className={`mx-auto flex h-12 w-12 items-center justify-center rounded-full ${hasWarnings ? "bg-amber-100 text-amber-600" : "bg-emerald-100 text-emerald-600"}`}>
+        {hasWarnings ? <AlertTriangle className="h-6 w-6" /> : <CheckCircle2 className="h-6 w-6" />}
+      </div>
+      <p className="mt-4 mb-0 text-lg font-bold text-[#042c51]">
+        {hasWarnings ? "Import Completed with Warnings" : "Import Successful"}
+      </p>
+      <p className="mt-2 mb-0 text-sm text-slate-500">
+        <span className="font-semibold text-[#042c51]">{summary.fileName}</span> was processed successfully.
+      </p>
+
+      <div className="mt-4 rounded-xl border border-slate-200 bg-white p-4 text-left">
+        <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-bold text-[#042c51]">
+          <span className="font-mono text-blue-700">Batch: {batch.batchCode || batch.id}</span>
+          <Badge kind={hasWarnings ? "warn" : "success"}>{batch.status || "COMPLETED"}</Badge>
+        </div>
+        <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
+          <BatchDetailStat label="Total Rows" value={batch.total} icon={FileSpreadsheet} tone="blue" />
+          <BatchDetailStat label="Valid Rows" value={batch.valid} icon={CheckCircle2} tone="emerald" />
+          <BatchDetailStat label="New Rows" value={batch.inserted} icon={UploadCloud} tone="cyan" />
+          <BatchDetailStat label="Updated" value={batch.updated} icon={RotateCcw} tone="sky" />
+          <BatchDetailStat label="Duplicates" value={batch.duplicate} icon={ListPlus} tone="orange" />
+          <BatchDetailStat label="Unmatched Records" value={unmatchedRecordCount} icon={UserX} tone="amber" />
+          <BatchDetailStat label="Issues" value={issueCount} icon={AlertCircle} tone="rose" />
+        </div>
+        {(Number(batch.invalid || 0) > 0 || Number(batch.conflict || 0) > 0) && (
+          <p className="mt-3 mb-0 text-xs text-slate-500">
+            {Number(batch.invalid || 0).toLocaleString()} invalid · {Number(batch.conflict || 0).toLocaleString()} conflicts · {Number(batch.unmapped || 0).toLocaleString()} rows affected by employee mapping
+          </p>
+        )}
+      </div>
+
+      <div className="mt-5 flex justify-end gap-2">
+        {unmatchedRecordCount > 0 && (
+          <button type="button" className={btnSecondary} onClick={onViewUnmatched}>
+            <UserX size={14} /> Unmatched Records ({unmatchedRecordCount.toLocaleString()})
+          </button>
+        )}
+        {issueCount > 0 && (
+          <button type="button" className={btnSecondary} onClick={onViewIssues}>
+            <AlertTriangle size={14} /> View Issues ({issueCount.toLocaleString()})
+          </button>
+        )}
+        <button type="button" className={btnPrimary} onClick={onClose}>Done</button>
+      </div>
+    </AppModal>
+  );
+}
+
 function Section({ title, description, children }) {
   return (
     <section className="mb-5 last:mb-0">
@@ -86,8 +148,44 @@ function Detail({ label, value }) {
   );
 }
 
+function RepositoryStatCard({ label, value, caption, icon: Icon, tone = "blue" }) {
+  const tones = {
+    blue: "border-blue-100 bg-blue-50/60 text-blue-700",
+    emerald: "border-emerald-100 bg-emerald-50/60 text-emerald-700",
+    amber: "border-amber-100 bg-amber-50/60 text-amber-700",
+    rose: "border-rose-100 bg-rose-50/60 text-rose-700",
+  };
+  return (
+    <div className={`rounded-xl border p-4 ${tones[tone] || tones.blue}`}>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-[10px] font-extrabold uppercase tracking-[0.14em] opacity-70">{label}</p>
+          <p className="mt-1 text-2xl font-extrabold leading-none">{Number(value || 0).toLocaleString()}</p>
+          <p className="mt-2 text-[11px] font-medium opacity-75">{caption}</p>
+        </div>
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/80 shadow-xs">
+          <Icon size={17} />
+        </div>
+      </div>
+    </div>
+  );
+}
 
-// Frontend-only file selector. Files remain in memory and are not sent to a server.
+function parseJsonish(value, fallback) {
+  if (value == null) return fallback;
+  if (typeof value === "object") return value;
+  try { return JSON.parse(value); } catch { return fallback; }
+}
+
+function sourceRecordIdentity(row) {
+  const raw = parseJsonish(row?.row_json, {});
+  if (raw?.["Case Number"]) return `Case #${raw["Case Number"]}`;
+  if (raw?.["Voice Call ID"]) return `Voice Call ${raw["Voice Call ID"]}`;
+  return row?.data_grain === "CASE_DETAIL" ? "Case record" : row?.data_grain === "CALL_DETAIL" ? "Call record" : "Source record";
+}
+
+
+// FrontSteps raw upload formats, validated again on the server.
 const ACCEPTED_UPLOAD_EXTENSIONS = ["csv", "xlsx", "xls"];
 const MAX_UPLOAD_BYTES = 25 * 1024 * 1024;
 
@@ -102,6 +200,8 @@ function UploadCard({
   onViewFolder,
   hasUploadedFiles,
   uploadedCount = 0,
+  uploading = false,
+  uploadProgress = 0,
 }) {
   const inputRef = useRef(null);
   const [dragging, setDragging] = useState(false);
@@ -217,10 +317,11 @@ function UploadCard({
                 <button
                   type="button"
                   onClick={() => onUpload(category)}
+                  disabled={uploading}
                   className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-[#ff5c28] hover:bg-[#ed4a1b] px-4 py-2 text-xs font-bold text-white shadow-xs transition-colors cursor-pointer"
                 >
                   <Upload size={14} />
-                  <span>Upload</span>
+                  <span>{uploading ? `Uploading ${uploadProgress}% / Processing` : "Upload"}</span>
                 </button>
               </div>
             </div>
@@ -250,39 +351,75 @@ export default function FrontStepsDataManagement() {
   const [records, setRecords] = useState(INITIAL_RECORDS);
   const [uploadFiles, setUploadFiles] = useState({ cases: null, calls: null });
   const [uploadError, setUploadError] = useState("");
-  // Helper to format live timestamp as: "Oct 12, 2026,- 1:42 AM"
-  const formatLiveTimestamp = (date = new Date()) => {
-    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-    const month = months[date.getMonth()];
-    const day = date.getDate();
-    const year = date.getFullYear();
-    let hours = date.getHours();
-    const minutes = String(date.getMinutes()).padStart(2, "0");
-    const ampm = hours >= 12 ? "PM" : "AM";
-    hours = hours % 12;
-    hours = hours ? hours : 12; // 0 hour is 12
-    return `${month} ${day}, ${year},- ${hours}:${minutes} ${ampm}`;
-  };
+  const [uploading, setUploading] = useState(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [importStage, setImportStage] = useState("uploading");
+  const [importProgressDetail, setImportProgressDetail] = useState({message:"",processedRows:null,totalRows:null});
+  const [uploadedHistory, setUploadedHistory] = useState({cases:[],calls:[]});
+  const [importSummary,setImportSummary] = useState({sourceRows:0,storedRecords:0,unmappedRows:0,issueRows:0});
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [batchPreview,setBatchPreview] = useState(null);
+  const [previewKind,setPreviewKind] = useState('raw');
+  const [previewRows,setPreviewRows] = useState([]);
+  const [previewPage,setPreviewPage] = useState(1);
+  const [previewTotal,setPreviewTotal] = useState(0);
+  const [previewLoading,setPreviewLoading] = useState(false);
+  const [previewError,setPreviewError] = useState('');
+  const [deleteTarget,setDeleteTarget] = useState(null);
+  const [deletingBatchId,setDeletingBatchId] = useState(null);
+  const [uploadSummary,setUploadSummary] = useState(null);
 
-  // Track uploaded files per category with timestamp and exact filename
-  const [uploadedHistory, setUploadedHistory] = useState({
-    cases: [
-      {
-        id: "cases-sample-1",
-        name: "FrontSteps_Cases_Closed_W3_Oct2026.xlsx",
-        timestamp: "Oct 22, 2026,- 9:15 AM",
-        size: "1.4 MB",
-      },
-    ],
-    calls: [
-      {
-        id: "calls-sample-1",
-        name: "FrontSteps_Telephony_Inbound_Oct2026.csv",
-        timestamp: "Oct 22, 2026,- 9:18 AM",
-        size: "842 KB",
-      },
-    ],
-  });
+  const loadHistory = async () => {
+    setHistoryLoading(true);
+    try {
+      const [historyResult,summaryResult]=await Promise.all([
+        getFrontStepsHistory({page:1,limit:100}),
+        getFrontStepsSummary(),
+      ]);
+      const {items=[]}=historyResult;
+      setImportSummary(summaryResult.summary||{sourceRows:0,storedRecords:0,unmappedRows:0,issueRows:0});
+      const grouped={cases:[],calls:[]};
+      for (const item of items) {
+        const cat=item.report_type==='CASES'?'cases':'calls';
+        grouped[cat].push({
+          id:item.id,name:item.source_filename,timestamp:item.created_at,
+          size:`${(Number(item.file_size||0)/1024).toFixed(1)} KB`,
+          status:item.status,inserted:item.inserted_rows||0,updated:item.updated_rows||0,
+          duplicates:item.duplicate_rows||0,invalid:item.invalid_rows||0,
+          conflicts:item.conflict_rows||0,unmapped:item.unmapped_rows||0,
+          issueCount:Number(item.issue_count ?? 0),
+          unmatchedRecordCount:Number(item.unmatched_record_count ?? item.unmapped_rows ?? 0),
+          total:item.total_rows||0,
+        });
+      }
+      setUploadedHistory(grouped);
+    } catch (error) {setUploadError(error?.response?.data?.message || 'Unable to load FrontSteps upload history.');}
+    finally {setHistoryLoading(false);}
+  };
+  useEffect(()=>{loadHistory();},[]);
+
+  const openBatchPreview = async (item, kind='raw')=>{
+    setFolderModal(null);
+    setBatchPreview(item);
+    setPreviewKind(kind);
+    setPreviewPage(1);
+  };
+  useEffect(()=>{
+    if (!batchPreview) return;
+    let cancelled=false;
+    setPreviewLoading(true);setPreviewError('');
+    const request=previewKind==='raw' ? getFrontStepsRows : previewKind==='unmatched' ? getFrontStepsUnmatchedRecords : getFrontStepsIssues;
+    request(batchPreview.id,{page:previewPage,limit:25}).then(data=>{
+      if (!cancelled) {
+        setPreviewRows(data.items||[]);
+        setPreviewTotal(data.total ?? (previewKind==='raw' ? batchPreview.total || 0 : 0));
+      }
+    }).catch(error=>{
+      if (!cancelled) setPreviewError(error?.response?.data?.message||'Unable to load records.');
+    }).finally(()=>{if(!cancelled)setPreviewLoading(false);});
+    return ()=>{cancelled=true;};
+  },[batchPreview,previewKind,previewPage]);
+
   // Modal for viewing the folder/datas of uploaded files
   const [folderModal, setFolderModal] = useState(null); // { category: 'cases'|'calls', title: string }
 
@@ -305,28 +442,68 @@ export default function FrontStepsDataManagement() {
     setUploadFiles((previous) => ({ ...previous, [category]: null }));
   };
 
-  // Upload handler: saves file into uploaded folder history with exact timestamp and filename
-  const handleUpload = (category) => {
-    const file = uploadFiles[category];
-    if (!file) return;
+  // Actual authenticated multipart upload to dedicated FrontSteps database tables.
+  const handleUpload = async (category) => {
+    const file=uploadFiles[category];
+    if (!file || uploading) return;
+    setUploading(category);
+    setUploadProgress(0);
+    setImportStage("uploading");
+    setImportProgressDetail({message:"Uploading file to the FrontSteps ingestion service.",processedRows:null,totalRows:null});
+    setUploadError('');
+    try {
+      const result=await uploadFrontStepsFile(
+        category,
+        file,
+        (percent)=>{
+          setImportStage("uploading");
+          setUploadProgress(Math.round(percent*0.2));
+          setImportProgressDetail({message:"Uploading file to the FrontSteps ingestion service.",processedRows:null,totalRows:null});
+        },
+        (progress)=>{
+          if (!progress) return;
+          setImportStage(progress.stage||"processing");
+          setUploadProgress(progress.percent??0);
+          setImportProgressDetail({
+            message:progress.message||"",
+            processedRows:progress.processedRows??null,
+            totalRows:progress.totalRows??null,
+          });
+        },
+      );
+      setImportStage("complete");
+      setUploadProgress(100);
+      const b=result.batch;
+      setImportProgressDetail({message:"Import completed successfully.",processedRows:b.total,totalRows:b.total});
+      setUploadFiles(previous=>({...previous,[category]:null}));
+      await loadHistory();
+      setUploadSummary({ fileName:file.name, category, batch:b });
+      await new Promise(resolve=>setTimeout(resolve,250));
+    } catch (error) {
+      setUploadError(error?.response?.data?.message||error.message||'FrontSteps upload failed.');
+    } finally {
+      setUploading(null);
+      setUploadProgress(0);
+      setImportStage("uploading");
+      setImportProgressDetail({message:"",processedRows:null,totalRows:null});
+    }
+  };
 
-    const formattedTimestamp = formatLiveTimestamp(new Date());
-
-    const newRecord = {
-      id: `${category}-${Date.now()}`,
-      name: file.name,
-      timestamp: formattedTimestamp,
-      size: `${(file.size / 1024).toFixed(1)} KB`,
-    };
-
-    setUploadedHistory((prev) => ({
-      ...prev,
-      [category]: [newRecord, ...(prev[category] || [])],
-    }));
-
-    // Clear selected file stage and show success toast
-    setUploadFiles((prev) => ({ ...prev, [category]: null }));
-    setToast(`Successfully uploaded "${file.name}" to ${category === "cases" ? "Cases" : "Calls"} data folder.`);
+  const handleDeleteBatch = async () => {
+    if (!deleteTarget || deletingBatchId) return;
+    setDeletingBatchId(deleteTarget.id);
+    setUploadError('');
+    try {
+      const response=await deleteFrontStepsBatch(deleteTarget.id);
+      if (batchPreview?.id===deleteTarget.id) setBatchPreview(null);
+      setDeleteTarget(null);
+      await loadHistory();
+      setToast(response?.message||'FrontSteps import batch deleted.');
+    } catch (error) {
+      setUploadError(error?.response?.data?.message||error.message||'Unable to delete FrontSteps import batch.');
+    } finally {
+      setDeletingBatchId(null);
+    }
   };
 
   const openViewFolder = (category, title) => {
@@ -358,12 +535,24 @@ export default function FrontStepsDataManagement() {
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const visible = filtered.slice((Math.min(page, totalPages) - 1) * pageSize, Math.min(page, totalPages) * pageSize);
   const chosen = modal ? records.find((r) => r.id === modal.id) : null;
+  // Import counters must come from MySQL, never in-memory sample records.
+  // These are structural source/import metrics, NOT WFM-certified KPI values.
   const stats = {
-    total: records.length,
-    validated: records.filter((r) => r.validation === "Validated").length,
-    pending: records.filter((r) => r.validation !== "Validated").length,
-    issues: records.filter((r) => r.quality.length > 0 || r.issues.some((i) => i.status !== "Resolved")).length
+    total: importSummary.sourceRows || 0,
+    stored: importSummary.storedRecords || 0,
+    unmapped: importSummary.unmappedRows || 0,
+    issues: importSummary.issueRows || 0,
   };
+
+  const folderItems = folderModal ? (uploadedHistory[folderModal.category] || []) : [];
+  const folderStats = folderItems.reduce((acc, item) => {
+    acc.sourceRows += Number(item.total || 0);
+    acc.unmatchedRecords += Number(item.unmatchedRecordCount ?? item.unmapped ?? 0);
+    acc.issues += Number(item.issueCount || 0);
+    if (item.status === "COMPLETED") acc.completed += 1;
+    if (item.status === "COMPLETED_WITH_ERRORS") acc.withWarnings += 1;
+    return acc;
+  }, { sourceRows: 0, unmatchedRecords: 0, issues: 0, completed: 0, withWarnings: 0 });
 
   const reset = () => {
     setSearch("");
@@ -432,7 +621,7 @@ export default function FrontStepsDataManagement() {
               <span className="text-xs font-medium text-slate-400">Sources</span>
             </div>
             <span className="block text-[10px] text-slate-400 mt-0.5">
-              Source Records
+              Uploaded Source Rows
             </span>
           </div>
           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-50 text-[#042c51] border border-slate-100">
@@ -444,16 +633,16 @@ export default function FrontStepsDataManagement() {
         <div className="flex items-center justify-between rounded-xl border border-slate-200/90 bg-white px-4 py-2.5 shadow-xs">
           <div className="min-w-0">
             <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">
-              Validated Records
+              Stored Unique Records
             </span>
             <div className="flex items-baseline gap-1 mt-0.5">
               <span className="text-lg font-extrabold text-emerald-600">
-                {stats.validated}
+                {stats.stored}
               </span>
-              <span className="text-xs font-medium text-emerald-600/80">Valid</span>
+              <span className="text-xs font-medium text-emerald-600/80">Stored</span>
             </div>
             <span className="block text-[10px] text-emerald-600/80 mt-0.5">
-              Reviewed & verified
+              Stored in FrontSteps tables
             </span>
           </div>
           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-100">
@@ -465,16 +654,16 @@ export default function FrontStepsDataManagement() {
         <div className="flex items-center justify-between rounded-xl border border-slate-200/90 bg-white px-4 py-2.5 shadow-xs">
           <div className="min-w-0">
             <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">
-              Pending Validation
+              Unmatched Records
             </span>
             <div className="flex items-baseline gap-1 mt-0.5">
               <span className="text-lg font-extrabold text-amber-600">
-                {stats.pending}
+                {stats.unmapped}
               </span>
-              <span className="text-xs font-medium text-amber-600/80">Pending</span>
+              <span className="text-xs font-medium text-amber-600/80">Unmapped</span>
             </div>
             <span className="block text-[10px] text-amber-600/80 mt-0.5">
-              Awaiting review
+              Awaiting Salesforce alias / Kronos match
             </span>
           </div>
           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-50 text-amber-600 border border-amber-100">
@@ -486,7 +675,7 @@ export default function FrontStepsDataManagement() {
         <div className="flex items-center justify-between rounded-xl border border-slate-200/90 bg-white px-4 py-2.5 shadow-xs">
           <div className="min-w-0">
             <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">
-              Records with Issues
+              Import Issues
             </span>
             <div className="flex items-baseline gap-1 mt-0.5">
               <span className="text-lg font-extrabold text-rose-600">
@@ -495,7 +684,7 @@ export default function FrontStepsDataManagement() {
               <span className="text-xs font-medium text-rose-600/80">Issues</span>
             </div>
             <span className="block text-[10px] text-rose-600/80 mt-0.5">
-              Missing, incomplete, or corrected
+              Validation, duplicate/conflict, and source-data issues
             </span>
           </div>
           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-rose-50 text-rose-600 border border-rose-100">
@@ -525,6 +714,8 @@ export default function FrontStepsDataManagement() {
             onUpload={handleUpload}
             onViewFolder={openViewFolder}
             uploadedCount={uploadedHistory.cases?.length || 0}
+            uploading={uploading === "cases"}
+            uploadProgress={uploadProgress}
           />
           <UploadCard
             title="Calls Report"
@@ -536,6 +727,8 @@ export default function FrontStepsDataManagement() {
             onUpload={handleUpload}
             onViewFolder={openViewFolder}
             uploadedCount={uploadedHistory.calls?.length || 0}
+            uploading={uploading === "calls"}
+            uploadProgress={uploadProgress}
           />
         </div>
       </section>
@@ -804,75 +997,315 @@ export default function FrontStepsDataManagement() {
         </Modal>
       )}
 
-      {/* 5. View Datas / Folder Modal */}
+      {/* 5. View Datas / Repository Modal */}
       {folderModal && (
         <Modal
-          size="xl"
+          size="repository"
           title={`Uploaded Files: ${folderModal.title}`}
-          subtitle={`Repository for ${folderModal.category === "cases" ? "Cases Closed" : "Inbound Calls"} source datasets`}
+          subtitle={`FrontSteps repository for ${folderModal.category === "cases" ? "Cases Closed" : "Inbound Calls"} source datasets`}
           onClose={() => setFolderModal(null)}
           footer={
-            <button
-              type="button"
-              className={btnPrimary}
-              onClick={() => setFolderModal(null)}
-            >
+            <button type="button" className={btnPrimary} onClick={() => setFolderModal(null)}>
               Close
             </button>
           }
         >
-          <div className="flex flex-col gap-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div className="flex items-center gap-2">
-                <FolderOpen className="h-5 w-5 text-[#ff5c28]" />
-                <span className="text-xs font-bold text-slate-700">
-                  Total Uploaded:{" "}
-                  <strong className="text-[#042c51]">
-                    {uploadedHistory[folderModal.category]?.length || 0} files
-                  </strong>
+          <div className="flex flex-col gap-7">
+            <Section
+              title="1. Repository Overview"
+              description="High-level status of all uploaded batches for this FrontSteps source."
+            >
+              <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+                <RepositoryStatCard
+                  label="Uploaded Files"
+                  value={folderItems.length}
+                  caption={`${folderStats.completed} completed · ${folderStats.withWarnings} with warnings`}
+                  icon={FolderOpen}
+                  tone="blue"
+                />
+                <RepositoryStatCard
+                  label="Source Rows"
+                  value={folderStats.sourceRows}
+                  caption="Rows received across all batches"
+                  icon={Database}
+                  tone="emerald"
+                />
+                <RepositoryStatCard
+                  label="Unmatched Records"
+                  value={folderStats.unmatchedRecords}
+                  caption="Source rows awaiting employee mapping"
+                  icon={UserX}
+                  tone="amber"
+                />
+                <RepositoryStatCard
+                  label="Import Issues"
+                  value={folderStats.issues}
+                  caption="Validation, duplicate, or conflict findings"
+                  icon={AlertTriangle}
+                  tone="rose"
+                />
+              </div>
+            </Section>
+
+            <Section
+              title="2. Uploaded Batches"
+              description="Each upload remains traceable to its source rows, mapping findings, and batch-level status."
+            >
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50/70 px-4 py-3">
+                <div className="flex items-center gap-2">
+                  <FileSpreadsheet className="h-4 w-4 text-[#ff5c28]" />
+                  <span className="text-xs font-bold text-slate-700">
+                    {folderItems.length.toLocaleString()} batch{folderItems.length === 1 ? "" : "es"}
+                  </span>
+                </div>
+                <span className="text-[11px] text-slate-400">
+                  {historyLoading ? "Loading server history..." : "Sorted by most recent upload"}
                 </span>
               </div>
-              <span className="text-[11px] text-slate-400">
-                Sorted by most recent upload
-              </span>
-            </div>
 
-            {uploadedHistory[folderModal.category]?.length > 0 ? (
-              <div className="overflow-hidden rounded-xl border border-slate-200">
-                <table className="w-full text-left text-xs">
-                  <thead className="border-b border-slate-200 bg-slate-50 text-[10px] font-extrabold uppercase tracking-wider text-slate-500">
-                    <tr>
-                      <th className="px-4 py-3">Exact Filename</th>
-                      <th className="px-4 py-3 w-48 text-right sm:text-left">Timestamp Uploaded</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {uploadedHistory[folderModal.category].map((item) => (
-                      <tr key={item.id} className="hover:bg-slate-50/80 transition-colors">
-                        <td className="px-4 py-3 font-semibold text-slate-800 break-all">
-                          <div className="flex items-center gap-2.5">
-                            <FileSpreadsheet className="h-4 w-4 shrink-0 text-blue-600" />
-                            <span className="font-mono text-xs">{item.name}</span>
+              {folderItems.length > 0 ? (
+                <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xs">
+                  <div className="overflow-x-auto sibs-scrollbar">
+                    <table className="w-full min-w-[1180px] text-left text-xs">
+                      <thead className="border-b border-slate-200 bg-slate-50 text-[10px] font-extrabold uppercase tracking-wider text-slate-500">
+                        <tr>
+                          <th className="w-[34%] px-5 py-3.5">Source File</th>
+                          <th className="w-[18%] px-5 py-3.5">Uploaded</th>
+                          <th className="w-[27%] px-5 py-3.5">Batch Status & Records</th>
+                          <th className="w-[21%] px-5 py-3.5 text-right">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {folderItems.map((item) => (
+                          <tr key={item.id} className="align-top transition-colors hover:bg-slate-50/70">
+                            <td className="px-5 py-4">
+                              <div className="flex min-w-0 items-start gap-3">
+                                <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-700">
+                                  <FileSpreadsheet className="h-4 w-4" />
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="break-words font-semibold leading-5 text-slate-800">{item.name}</p>
+                                  <p className="mt-1 text-[10px] font-medium text-slate-400">Batch #{item.id} · {item.size}</p>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-5 py-4">
+                              <div className="flex items-center gap-2 text-slate-600">
+                                <Clock3 className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+                                <span className="font-mono text-[11px]">{item.timestamp ? String(item.timestamp).replace("T", " ").slice(0,19) : "—"}</span>
+                              </div>
+                            </td>
+                            <td className="px-5 py-4">
+                              <div className="flex flex-col gap-2">
+                                <div>
+                                  <Badge kind={item.status === "COMPLETED" ? "success" : item.status === "COMPLETED_WITH_ERRORS" ? "warn" : "danger"}>{item.status}</Badge>
+                                </div>
+                                <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-[10px] text-slate-500">
+                                  <span><strong className="text-slate-700">{Number(item.inserted || 0).toLocaleString()}</strong> new</span>
+                                  <span><strong className="text-slate-700">{Number(item.updated || 0).toLocaleString()}</strong> updated</span>
+                                  <span><strong className="text-slate-700">{Number(item.duplicates || 0).toLocaleString()}</strong> duplicates</span>
+                                  <span><strong className="text-amber-700">{Number(item.unmatchedRecordCount ?? item.unmapped ?? 0).toLocaleString()}</strong> unmatched</span>
+                                </div>
+                                {item.issueCount > 0 && <span className="text-[10px] font-semibold text-rose-600">{Number(item.issueCount).toLocaleString()} import issue{Number(item.issueCount) === 1 ? "" : "s"}</span>}
+                              </div>
+                            </td>
+                            <td className="px-5 py-4">
+                              <div className="flex flex-wrap justify-end gap-2">
+                                <button type="button" onClick={()=>openBatchPreview(item,'raw')} className="inline-flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1.5 text-[11px] font-bold text-blue-700 transition hover:bg-blue-100"><Eye size={13}/>Rows</button>
+                                <button type="button" onClick={()=>openBatchPreview(item,'issues')} className="inline-flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-[11px] font-bold text-amber-700 transition hover:bg-amber-100"><AlertTriangle size={13}/>Issues{item.issueCount > 0 ? ` (${item.issueCount})` : ''}</button>
+                                <button type="button" onClick={()=>openBatchPreview(item,'unmatched')} className="inline-flex items-center gap-1.5 rounded-lg border border-violet-200 bg-violet-50 px-2.5 py-1.5 text-[11px] font-bold text-violet-700 transition hover:bg-violet-100"><UserX size={13}/>Unmatched{item.unmatchedRecordCount > 0 ? ` (${item.unmatchedRecordCount})` : ''}</button>
+                                <button type="button" onClick={()=>setDeleteTarget(item)} className="inline-flex items-center gap-1.5 rounded-lg border border-rose-200 bg-rose-50 px-2.5 py-1.5 text-[11px] font-bold text-rose-700 transition hover:bg-rose-100" title="Delete this import batch and all linked data"><Trash2 size={13}/>Delete</button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50/40 py-14 text-center">
+                  <FolderOpen className="mb-3 h-11 w-11 text-slate-300" />
+                  <p className="text-sm font-bold text-slate-600">No uploaded files in this repository yet</p>
+                  <p className="mt-1 text-xs text-slate-400">Use the Upload button on the source card to create the first batch.</p>
+                </div>
+              )}
+            </Section>
+          </div>
+        </Modal>
+      )}
+      <FrontStepsImportSummaryModal
+        summary={uploadSummary}
+        onClose={()=>setUploadSummary(null)}
+        onViewIssues={()=>{
+          if (!uploadSummary?.batch) return;
+          const b=uploadSummary.batch;
+          const item={
+            id:b.id,
+            name:uploadSummary.fileName,
+            status:b.status,
+            total:b.total||0,
+            inserted:b.inserted||0,
+            updated:b.updated||0,
+            duplicates:b.duplicate||0,
+            invalid:b.invalid||0,
+            conflicts:b.conflict||0,
+            unmapped:b.unmapped||0,
+            issueCount:b.issueCount||0,
+            unmatchedRecordCount:b.unmapped||b.unmatchedRecords||0,
+          };
+          setUploadSummary(null);
+          openBatchPreview(item,'issues');
+        }}
+        onViewUnmatched={()=>{
+          if (!uploadSummary?.batch) return;
+          const b=uploadSummary.batch;
+          const item={
+            id:b.id,
+            name:uploadSummary.fileName,
+            status:b.status,
+            total:b.total||0,
+            inserted:b.inserted||0,
+            updated:b.updated||0,
+            duplicates:b.duplicate||0,
+            invalid:b.invalid||0,
+            conflicts:b.conflict||0,
+            unmapped:b.unmapped||0,
+            issueCount:b.issueCount||0,
+            unmatchedRecordCount:b.unmapped||b.unmatchedRecords||0,
+          };
+          setUploadSummary(null);
+          openBatchPreview(item,'unmatched');
+        }}
+      />
+
+      <ImportProgressModal
+        isOpen={Boolean(uploading)}
+        fileName={uploading ? uploadFiles[uploading]?.name || "" : ""}
+        cardTitle={uploading === "cases" ? "Cases Report" : uploading === "calls" ? "Calls Report" : "FrontSteps Import"}
+        currentStage={importStage}
+        progressPercent={uploadProgress}
+        progressMessage={importProgressDetail.message}
+        processedRows={importProgressDetail.processedRows}
+        totalRows={importProgressDetail.totalRows}
+      />
+
+      {deleteTarget && (
+        <Modal
+          title="Delete Import Batch"
+          subtitle={`Batch #${deleteTarget.id} · ${deleteTarget.name}`}
+          onClose={()=>{if(!deletingBatchId)setDeleteTarget(null);}}
+          footer={<>
+            <button type="button" className={btnSecondary} disabled={Boolean(deletingBatchId)} onClick={()=>setDeleteTarget(null)}>Cancel</button>
+            <button type="button" className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-rose-600 px-4 py-2 text-xs font-semibold text-white transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-50" disabled={Boolean(deletingBatchId)} onClick={handleDeleteBatch}><Trash2 size={14}/>{deletingBatchId ? "Deleting..." : "Delete Batch"}</button>
+          </>}
+        >
+          <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-900">
+            <p className="font-bold">This permanently deletes the import batch and every FrontSteps row linked to it.</p>
+            <p className="mt-1 text-xs leading-relaxed text-rose-700">Raw import rows, normalized Cases/Calls records sourced by this batch, and import issues are removed through database cascade relationships.</p>
+          </div>
+        </Modal>
+      )}
+
+      {batchPreview && (
+        <Modal size="full" title={`Raw Source: ${batchPreview.name}`} subtitle={`FrontSteps batch #${batchPreview.id} · ${batchPreview.status} · ${Number(batchPreview.total || 0).toLocaleString()} source records`} onClose={()=>setBatchPreview(null)} footer={<button type="button" className={btnPrimary} onClick={()=>setBatchPreview(null)}>Close</button>}>
+          <div className="flex flex-col gap-5">
+            <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+              <Detail label="Batch ID" value={`#${batchPreview.id}`} />
+              <Detail label="Status" value={batchPreview.status} />
+              <Detail label="Source Records" value={Number(batchPreview.total || 0).toLocaleString()} />
+              <Detail label="Unmatched Records" value={Number(batchPreview.unmatchedRecordCount ?? batchPreview.unmapped ?? 0).toLocaleString()} />
+            </div>
+            <div className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-slate-50/70 p-2">
+              <button type="button" className={previewKind==='raw'?btnPrimary:btnSecondary} onClick={()=>{setPreviewKind('raw');setPreviewPage(1);}}>Source Rows</button>
+              <button type="button" className={previewKind==='issues'?btnPrimary:btnSecondary} onClick={()=>{setPreviewKind('issues');setPreviewPage(1);}}>Import Issues</button>
+              <button type="button" className={previewKind==='unmatched'?btnPrimary:btnSecondary} onClick={()=>{setPreviewKind('unmatched');setPreviewPage(1);}}>Unmatched Records</button>
+              <span className="ml-auto pr-2 text-xs font-semibold text-slate-500">{Number(previewTotal || 0).toLocaleString()} {previewKind==='raw'?'rows':previewKind==='unmatched'?'records':'issues'}</span>
+            </div>
+            {previewError && <p role="alert" className="text-xs text-rose-700">{previewError}</p>}
+            {previewLoading ? <p className="text-xs text-slate-500">Loading rows...</p> :
+              <div className="max-h-[55vh] overflow-auto rounded-xl border border-slate-200 bg-slate-50 p-3 sibs-scrollbar">
+                {previewRows.length===0 ? <p className="text-xs text-slate-500">No records on this page.</p> :
+                previewRows.map((r)=> {
+                  if (previewKind==='unmatched') {
+                    const raw = parseJsonish(r.row_json, {});
+                    const mappings = parseJsonish(r.mappings, []);
+                    const mappingRows = Array.isArray(mappings) ? mappings : [];
+                    const recordIdentity = sourceRecordIdentity(r);
+                    const contextEntries = r.data_grain === 'CASE_DETAIL'
+                      ? [
+                          ['Queue', raw?.Queue],
+                          ['Status', raw?.Status],
+                          ['Case Owner', raw?.['Case Owner']],
+                          ['Last Modified By', raw?.['Case Last Modified By']],
+                        ]
+                      : [
+                          ['Call Type', raw?.['Call Type']],
+                          ['Queue', raw?.['Queue Name']],
+                          ['Owner Name', raw?.['Owner Name: Full Name']],
+                          ['Call Status', raw?.Status],
+                        ];
+                    return <div key={`${r.batch_id}-${r.excel_row_number}`} className="mb-3 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs">
+                      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 bg-slate-50/80 px-4 py-3">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="font-bold text-slate-900">Source row {r.excel_row_number}</span>
+                          <Badge kind="warn">{r.mapping_status}</Badge>
+                          {r.data_grain && <span className="rounded-md bg-slate-100 px-2 py-0.5 font-mono text-[10px] font-semibold text-slate-600">{r.data_grain}</span>}
+                        </div>
+                        <span className="font-mono text-[11px] font-bold text-[#042c51]">{recordIdentity}</span>
+                      </div>
+
+                      <div className="grid gap-4 p-4 lg:grid-cols-[1.15fr_0.85fr]">
+                        <div>
+                          <p className="mb-2 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-400">Unmatched employee field{mappingRows.length === 1 ? '' : 's'}</p>
+                          <div className="space-y-2">
+                            {mappingRows.map((mapping, index) => (
+                              <div key={`${r.id}-${index}`} className="rounded-lg border border-violet-100 bg-violet-50/60 px-3 py-2.5">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <span className="text-[10px] font-bold uppercase tracking-wide text-violet-500">{mapping?.field || 'Employee field'}</span>
+                                  <Badge kind="warn">{mapping?.status || r.mapping_status}</Badge>
+                                </div>
+                                <p className="mt-1 text-sm font-bold text-slate-900">{mapping?.name || 'Unknown name'}</p>
+                                {mapping?.message && <p className="mt-1 text-[11px] leading-relaxed text-amber-700">{mapping.message}</p>}
+                              </div>
+                            ))}
                           </div>
-                        </td>
-                        <td className="px-4 py-3 font-mono text-slate-500 whitespace-nowrap text-right sm:text-left">
-                          <div className="flex items-center gap-1.5 sm:justify-start justify-end">
-                            <Clock3 className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-                            <span>{item.timestamp}</span>
+                        </div>
+
+                        <div>
+                          <p className="mb-2 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-400">Source record context</p>
+                          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
+                            {contextEntries.map(([label, value]) => (
+                              <Detail key={label} label={label} value={value || '—'} />
+                            ))}
                           </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-slate-200 py-10 text-center">
-                <FolderOpen className="h-10 w-10 text-slate-300 mb-2" />
-                <p className="text-xs font-bold text-slate-600">No uploaded files in this folder yet</p>
-                <p className="text-[11px] text-slate-400 mt-0.5">Use the "Upload" button on the card to upload reports.</p>
-              </div>
-            )}
+                        </div>
+                      </div>
+                    </div>;
+                  }
+                  const status = r.validation_status || r.severity;
+                  const badgeKind = r.severity==='ERROR' || r.validation_status==='INVALID' ? 'danger' : r.validation_status==='PROCESSED' || r.validation_status==='VALID' ? 'success' : 'warn';
+                  return <div key={r.id} className="mb-2 rounded-lg border border-slate-200 bg-white p-3 text-xs">
+                    <div className="mb-2 flex flex-wrap items-center gap-2">
+                      <span className="font-bold text-slate-800">Source row {r.excel_row_number}</span>
+                      <Badge kind={badgeKind}>{status}</Badge>
+                      {r.data_grain && <span className="font-mono text-slate-500">{r.data_grain}</span>}
+                      {r.error_code && <span className="text-rose-600">{r.error_code}</span>}
+                    </div>
+                    <div className="grid grid-cols-1 gap-x-4 gap-y-2 md:grid-cols-2">
+                      {Object.entries(r.row_json||{}).map(([key,val])=><div key={key} className="min-w-0"><span className="font-semibold text-slate-500">{key}: </span><span className="break-words text-slate-800">{String(val??'').slice(0,1000)}</span></div>)}
+                      {previewKind==='issues' && r.column_name && <div className="min-w-0"><span className="font-semibold text-slate-500">Field: </span><span className="break-words text-slate-800">{r.column_name}</span></div>}
+                      {previewKind==='issues' && r.raw_value != null && <div className="min-w-0"><span className="font-semibold text-slate-500">Source Value: </span><span className="break-words font-semibold text-slate-800">{String(r.raw_value).slice(0,1000)}</span></div>}
+                      {r.message && <p className={`md:col-span-2 ${r.severity==='WARNING' ? 'text-amber-700' : 'text-rose-700'}`}>{r.message}</p>}
+                    </div>
+                  </div>;
+                })}
+              </div>}
+            <div className="flex items-center justify-between">
+              <button type="button" disabled={previewPage<=1 || previewLoading} className={btnSecondary} onClick={()=>setPreviewPage(x=>Math.max(1,x-1))}>Previous</button>
+              <span className="text-xs text-slate-500">Page {previewPage} of {Math.max(1,Math.ceil(previewTotal/25))}</span>
+              <button type="button" disabled={previewPage*25>=previewTotal || previewLoading} className={btnSecondary} onClick={()=>setPreviewPage(x=>x+1)}>Next</button>
+            </div>
           </div>
         </Modal>
       )}
