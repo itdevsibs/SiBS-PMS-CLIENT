@@ -130,3 +130,38 @@ export async function setFrontStepsEmployeeAssignmentStatus(sibsId, active) {
   );
   return data;
 }
+
+export async function getFrontStepsPolicies(params = {}) {
+  const { data } = await api.get('/frontsteps/policies', { params });
+  return data;
+}
+
+export async function uploadFrontStepsPolicy(formData, onProgress) {
+  const { data } = await api.post('/frontsteps/policies/upload', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+    onUploadProgress: (event) => {
+      if (onProgress && event.total) {
+        const percent = Math.round((event.loaded * 100) / event.total);
+        onProgress(percent);
+      }
+    },
+  });
+  return data;
+}
+
+export async function approveFrontStepsPolicy(policyId, payload = {}) {
+  const { data } = await api.patch(`/frontsteps/policies/${encodeURIComponent(policyId)}/approve`, payload);
+  return data;
+}
+
+export async function deleteFrontStepsPolicy(policyId) {
+  const { data } = await api.delete(`/frontsteps/policies/${encodeURIComponent(policyId)}`);
+  return data;
+}
+
+export async function getFrontStepsPolicyBlob(policyId) {
+  const response = await api.get(`/frontsteps/policies/${encodeURIComponent(policyId)}/download?inline=true`, {
+    responseType: 'blob',
+  });
+  return response.data;
+}

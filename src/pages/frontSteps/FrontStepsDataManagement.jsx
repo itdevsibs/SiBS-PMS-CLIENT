@@ -10,7 +10,20 @@ import TablePagination from "../../components/common/tables/TablePagination";
 import ImportProgressModal from "../../components/common/ui/ImportProgressModal";
 import AppModal from "../../components/common/ui/AppModal";
 import BatchDetailStat from "../../components/modules/wfm/imports/WfmBatchDetailStat";
-import { uploadFrontStepsFile, getFrontStepsHistory, getFrontStepsRows, getFrontStepsIssues, getFrontStepsUnmatchedRecords, getFrontStepsSummary, deleteFrontStepsBatch } from "../../lib/axios/frontsteps-imports";
+import {
+  uploadFrontStepsFile,
+  getFrontStepsHistory,
+  getFrontStepsRows,
+  getFrontStepsIssues,
+  getFrontStepsUnmatchedRecords,
+  getFrontStepsSummary,
+  deleteFrontStepsBatch,
+  getFrontStepsPolicies,
+  uploadFrontStepsPolicy,
+  approveFrontStepsPolicy,
+  deleteFrontStepsPolicy,
+  getFrontStepsPolicyBlob,
+} from "../../lib/axios/frontsteps-imports";
 
 // FrontSteps Data Management module for record tracking, validation review, and correction tracking.
 const INITIAL_RECORDS = [];
@@ -37,10 +50,47 @@ function Badge({ children, kind = "neutral" }) {
 const qualityKind = (q) => q === "Missing" || q === "Incomplete" ? "danger" : q === "Corrected" ? "info" : "success";
 const validationKind = (v) => v === "Validated" ? "success" : v === "Requires Review" ? "danger" : v === "Pending Validation" ? "warn" : "neutral";
 
-function Modal({ title, subtitle, onClose, children, footer, wide = false, size = "default" }) {
+/**
+ * Format UTC datetime string (from MySQL database) into local Philippine time (12-hour format with AM/PM).
+ * @param {string|Date} value - Raw timestamp or string from MySQL
+ * @param {boolean} withSeparatorSpace - If true returns "MM/DD/YYYY · h:mm AM", else "MM/DD/YYYY-h:mmAM"
+ */
+function formatUtcTimestamp(value, withSeparatorSpace = false) {
+  if (!value) return "—";
+  const str = String(value).trim();
+  let dateObj = null;
+
+  const sqlMatch = str.match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::(\d{2}))?/);
+  if (sqlMatch) {
+    // MySQL timestamp is in UTC
+    dateObj = new Date(Date.UTC(+sqlMatch[1], +sqlMatch[2] - 1, +sqlMatch[3], +sqlMatch[4], +sqlMatch[5], +(sqlMatch[6] || 0)));
+  } else {
+    const parsed = new Date(str.endsWith("Z") ? str : str + "Z");
+    dateObj = isNaN(parsed.getTime()) ? new Date(str) : parsed;
+  }
+
+  if (!dateObj || isNaN(dateObj.getTime())) return str;
+
+  const m = String(dateObj.getMonth() + 1).padStart(2, "0");
+  const d = String(dateObj.getDate()).padStart(2, "0");
+  const y = dateObj.getFullYear();
+  let hours = dateObj.getHours();
+  const minutes = String(dateObj.getMinutes()).padStart(2, "0");
+  const ampm = hours >= 12 ? "PM" : "AM";
+  hours = hours % 12 || 12;
+
+  if (withSeparatorSpace) {
+    return `${m}/${d}/${y} · ${hours}:${minutes} ${ampm}`;
+  }
+  return `${m}/${d}/${y}-${hours}:${minutes}${ampm}`;
+}
+
+function Modal({ title, subtitle, onClose, children, footer, wide = false, size = "default", bodyClassName = "" }) {
   const sizeClasses = {
     default: "max-w-2xl max-h-[90vh]",
     wide: "max-w-4xl max-h-[90vh]",
+    policy: "max-w-[1200px] w-[92vw] h-[85vh] max-h-[92vh]",
+    policyViewer: "max-w-[1200px] w-[92vw] h-[88vh] max-h-[94vh]",
     xl: "max-w-[1280px] w-[94vw] h-[88vh] max-h-[94vh]",
     repository: "max-w-[1500px] w-[96vw] h-[91vh] max-h-[96vh]",
     full: "max-w-[1500px] w-[96vw] h-[92vh] max-h-[96vh]",
@@ -64,7 +114,7 @@ function Modal({ title, subtitle, onClose, children, footer, wide = false, size 
             <X size={16} />
           </button>
         </header>
-        <div className="min-h-0 flex-1 overflow-y-auto p-6 sm:p-7 sibs-scrollbar">{children}</div>
+        <div className={`min-h-0 flex-1 overflow-y-auto sibs-scrollbar ${bodyClassName || "p-6 sm:p-7"}`}>{children}</div>
         {footer && <footer className="flex shrink-0 flex-wrap justify-end gap-2 border-t border-slate-100 bg-slate-50 px-6 py-3.5">{footer}</footer>}
       </section>
     </div>
@@ -125,6 +175,122 @@ function FrontStepsImportSummaryModal({ summary, onClose, onViewIssues, onViewUn
         <button type="button" className={btnPrimary} onClick={onClose}>Done</button>
       </div>
     </AppModal>
+  );
+}
+
+function PolicyDocViewerModal({ policy, onClose }) {
+  const [blobUrl, setBlobUrl] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (!policy?.id) return;
+    let url = null;
+    let active = true;
+    setLoading(true);
+    setError("");
+
+    getFrontStepsPolicyBlob(policy.id)
+      .then((blob) => {
+        if (!active) return;
+        const mime = blob.type || (policy.file_extension?.toLowerCase() === "pdf" ? "application/pdf" : "application/octet-stream");
+        const typedBlob = new Blob([blob], { type: mime });
+        url = URL.createObjectURL(typedBlob);
+        setBlobUrl(url);
+      })
+      .catch((err) => {
+        if (!active) return;
+        setError(err?.response?.data?.message || err.message || "Failed to load document content.");
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+
+    return () => {
+      active = false;
+      if (url) URL.revokeObjectURL(url);
+    };
+  }, [policy?.id]);
+
+  if (!policy) return null;
+
+  const title = policy.file_name || policy.policy_title || "Policy Document";
+  const ext = (policy.file_extension || policy.file_name?.split(".").pop() || "").toLowerCase();
+  const isPdf = ext === "pdf";
+
+  return (
+    <Modal
+      title={title}
+      subtitle={`Policy Code: ${policy.document_code || "—"} · Revision: Rev ${policy.revision_number || "000"} · Status: ${policy.approval_status || "Active"}`}
+      onClose={onClose}
+      size="policyViewer"
+      bodyClassName="p-0 flex flex-col h-full bg-slate-100"
+      footer={
+        <div className="flex w-full items-center justify-between">
+          <div className="text-xs text-slate-500 font-medium">
+            {policy.file_size ? `${(Number(policy.file_size) / 1024).toFixed(1)} KB` : ""} {ext ? `· ${ext.toUpperCase()}` : ""}
+          </div>
+          <div className="flex items-center gap-2">
+            {blobUrl && (
+              <a
+                href={blobUrl}
+                download={policy.file_name || `${policy.document_code || "policy"}.${ext || "pdf"}`}
+                className={btnSecondary}
+              >
+                <Download size={14} /> Download Copy
+              </a>
+            )}
+            <button type="button" className={btnPrimary} onClick={onClose}>
+              Close
+            </button>
+          </div>
+        </div>
+      }
+    >
+      <div className="flex flex-1 min-h-0 w-full flex-col items-center justify-center relative h-full">
+        {loading && (
+          <div className="flex flex-col items-center justify-center gap-3 py-20 text-slate-500">
+            <Loader2 size={32} className="animate-spin text-purple-700" />
+            <span className="text-xs font-bold text-slate-600">Loading document viewer...</span>
+          </div>
+        )}
+
+        {error && !loading && (
+          <div className="flex flex-col items-center justify-center p-8 text-center max-w-md">
+            <AlertTriangle className="h-10 w-10 text-rose-500 mb-2" />
+            <p className="text-sm font-bold text-slate-800">Unable to display document</p>
+            <p className="mt-1 text-xs text-rose-600">{error}</p>
+          </div>
+        )}
+
+        {!loading && !error && blobUrl && (
+          isPdf ? (
+            <iframe
+              src={blobUrl}
+              title={title}
+              className="w-full h-full border-none flex-1 min-h-[500px]"
+            />
+          ) : (
+            <div className="flex flex-col items-center justify-center p-12 text-center max-w-md">
+              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-purple-100 text-purple-700 mb-4 shadow-xs">
+                <FileText size={32} />
+              </div>
+              <h4 className="text-base font-extrabold text-[#042c51]">{policy.file_name}</h4>
+              <p className="mt-1.5 text-xs text-slate-500 leading-relaxed">
+                Word document ({ext.toUpperCase()}) cannot be rendered directly inside the browser viewport, but can be downloaded for full fidelity editing or viewing.
+              </p>
+              <a
+                href={blobUrl}
+                download={policy.file_name || `${policy.document_code || "policy"}.${ext}`}
+                className={`${btnPrimary} mt-5`}
+              >
+                <Download size={15} /> Download Document
+              </a>
+            </div>
+          )
+        )}
+      </div>
+    </Modal>
   );
 }
 
@@ -189,28 +355,34 @@ function sourceRecordIdentity(row) {
 const ACCEPTED_UPLOAD_EXTENSIONS = ["csv", "xlsx", "xls"];
 const MAX_UPLOAD_BYTES = 25 * 1024 * 1024;
 
-function UploadCard({
-  title,
-  description,
-  category,
+function UnifiedUploadCard({
+  selectedCategory,
+  onCategoryChange,
   file,
   onSelect,
   onRemove,
   onUpload,
   onViewFolder,
-  hasUploadedFiles,
-  uploadedCount = 0,
+  uploadedCounts = { cases: 0, calls: 0 },
+  historyItems = [],
   uploading = false,
   uploadProgress = 0,
 }) {
   const inputRef = useRef(null);
   const [dragging, setDragging] = useState(false);
-  const isCases = category === "cases";
+  const isCases = selectedCategory === "cases";
   const Icon = isCases ? FileSpreadsheet : PhoneCall;
+
+  const currentTitle = isCases ? "Cases Report" : "Calls Report";
+  const currentDescription = isCases
+    ? "Upload the Cases Closed source report for FrontSteps case productivity and reporting."
+    : "Upload the Inbound Calls source report for FrontSteps call activity and reporting.";
+  const currentCount = uploadedCounts[selectedCategory] || 0;
+  const totalCount = (uploadedCounts.cases || 0) + (uploadedCounts.calls || 0);
 
   const selectFile = (candidate) => {
     if (!candidate) return;
-    onSelect(category, candidate);
+    onSelect(selectedCategory, candidate);
   };
   const openPicker = () => inputRef.current?.click();
   const onDrop = (event) => {
@@ -220,46 +392,84 @@ function UploadCard({
   };
 
   return (
-    <article className="flex min-w-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-shadow hover:shadow-md">
-      {/* Card Header with View Folder/Datas button */}
-      <div className="flex items-start justify-between gap-3 border-b border-slate-100 px-5 py-4 sm:px-6">
-        <div className="flex items-start gap-3 min-w-0">
-          <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${isCases ? "bg-blue-50 text-blue-700" : "bg-cyan-50 text-cyan-700"}`}>
-            <Icon size={22} strokeWidth={1.8} />
+    <article className="flex min-w-0 flex-1 flex-col overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-xs transition-shadow hover:shadow-md h-full">
+      {/* 1. Header Bar: Title & Category Pill */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 bg-slate-50/70 px-5 py-3.5 sm:px-6 shrink-0">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-colors ${isCases ? "bg-blue-50 text-blue-700" : "bg-cyan-50 text-cyan-700"}`}>
+            <Icon size={20} strokeWidth={2} />
           </div>
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <h3 className="text-sm font-extrabold text-[#042c51]">{title}</h3>
-              <span className="rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] font-semibold text-slate-500">CSV / Excel</span>
-            </div>
-            <p className="mt-1 text-xs leading-relaxed text-slate-500">{description}</p>
+          <div className="min-w-0">
+            <h3 className="text-sm font-extrabold text-[#042c51]">
+              {isCases ? "Cases Report Upload" : "Calls Report Upload"}
+            </h3>
           </div>
         </div>
 
-        {/* View Folder / View Datas Button in Header */}
+        {/* View Datas Button */}
         <button
           type="button"
-          onClick={() => onViewFolder(category, title)}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 hover:border-slate-300 px-3 py-1.5 text-xs font-bold text-[#042c51] transition-all cursor-pointer shrink-0 shadow-2xs"
-          title={`View uploaded ${title} files`}
+          onClick={() => onViewFolder(selectedCategory, currentTitle)}
+          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 px-3 py-1.5 text-xs font-bold text-[#042c51] shadow-2xs transition-all cursor-pointer self-start sm:self-auto shrink-0"
+          title={`View repository for ${currentTitle}`}
         >
           <FolderOpen size={14} className="text-[#042c51]" />
-          <span>View Datas</span>
-          {uploadedCount > 0 && (
-            <span className="ml-1 inline-flex h-4 min-w-[16px] items-center justify-center rounded-full bg-[#ff5c28] px-1 text-[10px] font-extrabold text-white">
-              {uploadedCount}
-            </span>
-          )}
+          <span>View Folder</span>
+          <span className="ml-1 inline-flex h-4 min-w-[18px] items-center justify-center rounded-full bg-[#ff5c28] px-1 text-[10px] font-extrabold text-white">
+            {currentCount}
+          </span>
         </button>
       </div>
 
-      <div className="flex flex-1 flex-col p-5 sm:p-6">
+      {/* 2. Sub-Bar: Segmented Report Switcher Tabs */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 px-5 py-3 sm:px-6 bg-slate-50/40 shrink-0">
+        <div className="flex items-center gap-2.5">
+          <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Target Source:</span>
+          <div className="inline-flex rounded-xl bg-slate-200/80 p-1 text-xs font-bold shadow-inner">
+            <button
+              type="button"
+              onClick={() => onCategoryChange("cases")}
+              disabled={uploading}
+              className={`flex items-center gap-2 rounded-lg px-3.5 py-1.5 transition-all cursor-pointer ${
+                isCases
+                  ? "bg-[#042c51] text-white shadow-sm font-extrabold"
+                  : "text-slate-600 hover:text-slate-900 hover:bg-white/50"
+              }`}
+            >
+              <FileSpreadsheet size={14} className={isCases ? "text-[#ff5c28]" : "text-slate-500"} />
+              <span>Cases Report</span>
+              <span className={`rounded-full px-1.5 py-0.2 text-[10px] font-mono font-bold ${isCases ? "bg-white/20 text-white" : "bg-slate-300/80 text-slate-600"}`}>
+                {uploadedCounts.cases || 0}
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => onCategoryChange("calls")}
+              disabled={uploading}
+              className={`flex items-center gap-2 rounded-lg px-3.5 py-1.5 transition-all cursor-pointer ${
+                !isCases
+                  ? "bg-[#042c51] text-white shadow-sm font-extrabold"
+                  : "text-slate-600 hover:text-slate-900 hover:bg-white/50"
+              }`}
+            >
+              <PhoneCall size={14} className={!isCases ? "text-[#ff5c28]" : "text-slate-500"} />
+              <span>Calls Report</span>
+              <span className={`rounded-full px-1.5 py-0.2 text-[10px] font-mono font-bold ${!isCases ? "bg-white/20 text-white" : "bg-slate-300/80 text-slate-600"}`}>
+                {uploadedCounts.calls || 0}
+              </span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* 3. Main Body */}
+      <div className="flex flex-1 min-h-0 flex-col p-5 sm:p-6 gap-4">
         <input
           ref={inputRef}
           type="file"
           className="hidden"
           accept=".csv,.xlsx,.xls"
-          aria-label={`Choose ${title} file`}
+          aria-label={`Choose ${currentTitle} file`}
           onChange={(event) => {
             selectFile(event.target.files?.[0]);
             event.target.value = "";
@@ -280,67 +490,463 @@ function UploadCard({
           onDragOver={(event) => { event.preventDefault(); setDragging(true); }}
           onDragLeave={(event) => { event.preventDefault(); setDragging(false); }}
           onDrop={onDrop}
-          className={`flex min-h-[190px] cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed px-5 py-6 text-center outline-none transition-colors focus-visible:ring-2 focus-visible:ring-blue-500 ${dragging ? "border-blue-500 bg-blue-50" : "border-slate-200 bg-slate-50/60 hover:border-blue-300 hover:bg-blue-50/40"}`}
+          className={`group flex min-h-[220px] flex-1 cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed px-6 py-8 text-center outline-none transition-all focus-visible:ring-2 focus-visible:ring-blue-500 ${
+            dragging
+              ? "border-[#ff5c28] bg-orange-50/50"
+              : "border-slate-200 bg-slate-50/50 hover:border-blue-300 hover:bg-blue-50/30"
+          }`}
         >
-          <div className="mb-2.5 flex h-11 w-11 items-center justify-center rounded-xl border border-blue-100 bg-white text-blue-700 shadow-sm">
-            <UploadCloud size={22} strokeWidth={1.8} />
+          <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl border border-blue-100 bg-white text-[#042c51] shadow-xs group-hover:scale-105 group-hover:border-blue-200 transition-transform">
+            <UploadCloud size={28} strokeWidth={1.8} className="text-[#042c51]" />
           </div>
-          <p className="text-sm font-bold text-[#042c51]">Drag and drop your file here</p>
-          <p className="mt-1 text-xs text-slate-500">or select a file from your device</p>
-          <span className="mt-3.5 inline-flex items-center gap-2 rounded-lg bg-[#042c51] px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-[#063d70] transition-colors">
+          <p className="text-sm sm:text-base font-extrabold text-[#042c51]">
+            Drag and drop your <span className="text-[#ff5c28]">{currentTitle}</span> here
+          </p>
+          <p className="mt-1 text-xs text-slate-500">
+            or click browse to select a spreadsheet from your device
+          </p>
+          <span className="mt-3.5 inline-flex items-center gap-2 rounded-xl bg-[#042c51] px-4 py-2 text-xs font-bold text-white shadow-xs group-hover:bg-[#063d70] transition-colors">
             <FolderOpen size={14} /> Browse Files
           </span>
-          <p className="mt-2.5 text-[11px] text-slate-400">CSV, XLSX or XLS · Maximum 25 MB</p>
+          <p className="mt-2.5 text-[11px] text-slate-400">
+            Formats: CSV, XLSX, XLS · Max file size: 25 MB
+          </p>
         </div>
 
-        {/* Selected file area + Upload Button */}
-        <div className="mt-4">
+        {/* File Staging / Selection & Last 3 Uploads Section */}
+        <div className="flex flex-col gap-3 shrink-0">
+          {/* Active Staged File (Selected file not yet uploaded) */}
           {file ? (
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-blue-200 bg-blue-50/60 p-3 shadow-2xs">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-blue-200 bg-blue-50/70 p-3 shadow-2xs">
               <div className="flex min-w-0 items-center gap-3">
-                <FileSpreadsheet size={20} className="shrink-0 text-blue-700" />
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white border border-blue-200 text-blue-700 shadow-2xs">
+                  <FileSpreadsheet size={20} />
+                </div>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-xs font-bold text-slate-800" title={file.name}>{file.name}</p>
-                  <p className="mt-0.5 text-[11px] text-slate-500">{(file.size / 1024).toFixed(1)} KB · Ready to upload</p>
+                  <div className="flex items-center gap-2">
+                    <p className="truncate text-xs font-bold text-slate-800" title={file.name}>{file.name}</p>
+                    <span className="rounded bg-blue-100 px-1.5 py-0.2 text-[9px] font-bold text-blue-800 uppercase">
+                      Ready to Upload
+                    </span>
+                  </div>
+                  <p className="mt-0.5 text-[11px] text-slate-500">
+                    {(file.size / 1024).toFixed(1)} KB · Staged for {currentTitle}
+                  </p>
                 </div>
               </div>
               <div className="flex items-center gap-2 shrink-0">
                 <button
                   type="button"
-                  onClick={() => onRemove(category)}
-                  aria-label={`Remove ${title} file`}
+                  onClick={openPicker}
+                  className="rounded-lg border border-slate-200 bg-white hover:bg-slate-50 px-2.5 py-1.5 text-xs font-semibold text-slate-700 transition cursor-pointer"
+                  title="Choose a different file"
+                >
+                  Change
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onRemove(selectedCategory)}
+                  aria-label={`Remove ${currentTitle} file`}
                   title="Remove selected file"
-                  className="rounded-lg p-2 text-slate-500 transition hover:bg-white hover:text-rose-600 cursor-pointer"
+                  className="rounded-lg p-1.5 text-slate-500 transition hover:bg-white hover:text-rose-600 cursor-pointer"
                 >
                   <Trash2 size={16} />
                 </button>
                 <button
                   type="button"
-                  onClick={() => onUpload(category)}
+                  onClick={() => onUpload(selectedCategory)}
                   disabled={uploading}
                   className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-[#ff5c28] hover:bg-[#ed4a1b] px-4 py-2 text-xs font-bold text-white shadow-xs transition-colors cursor-pointer"
                 >
                   <Upload size={14} />
-                  <span>{uploading ? `Uploading ${uploadProgress}% / Processing` : "Upload"}</span>
+                  <span>{uploading ? `Ingesting ${uploadProgress}%...` : `Upload ${isCases ? "Cases" : "Calls"}`}</span>
                 </button>
               </div>
             </div>
-          ) : (
-            <div className="flex items-center justify-between gap-2 rounded-lg border border-slate-100 bg-slate-50/60 px-3.5 py-3 text-xs text-slate-500">
-              <span className="flex items-center gap-2">
-                <Info size={15} className="shrink-0 text-slate-400" />
-                No file selected yet.
-              </span>
+          ) : null}
+
+          {/* Recent Uploads History (Fixed 3 slots) */}
+          <div className="rounded-xl border border-slate-200/90 bg-white p-3 shadow-2xs">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-2 mb-2">
+              <div className="flex items-center gap-1.5 text-xs font-bold text-[#042c51]">
+                <Clock3 size={13} className="text-[#ff5c28]" />
+                <span>Recent Uploads:</span>
+              </div>
               <button
                 type="button"
-                onClick={() => onViewFolder(category, title)}
-                className="text-xs font-bold text-[#042c51] hover:underline flex items-center gap-1 cursor-pointer"
+                onClick={() => onViewFolder(selectedCategory, currentTitle)}
+                className="text-[11px] font-bold text-blue-700 hover:underline flex items-center gap-1 cursor-pointer"
               >
-                <Eye size={13} />
-                View Folder ({uploadedCount})
+                <span>View All ({currentCount})</span>
               </button>
             </div>
+
+            {(() => {
+              const displayItems = historyItems.slice(0, 3);
+              const emptySlotsCount = Math.max(0, 3 - displayItems.length);
+              return (
+                <div className="space-y-1.5">
+                  {displayItems.map((item) => {
+                    const formattedTime = formatUtcTimestamp(item.timestamp);
+
+                    return (
+                      <div
+                        key={item.id}
+                        className="flex h-[38px] items-center justify-between gap-2 rounded-lg bg-slate-50/80 hover:bg-slate-100/70 px-3 py-1.5 text-xs transition-colors"
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <FileSpreadsheet size={14} className="shrink-0 text-blue-600" />
+                          <span className="font-mono text-[11px] font-bold text-slate-700 shrink-0">
+                            {formattedTime}
+                          </span>
+                          <span className="text-slate-300">-</span>
+                          <span className="truncate font-semibold text-slate-800 text-xs" title={item.name}>
+                            {item.name}
+                          </span>
+                        </div>
+                        <Badge kind={item.status === "COMPLETED" ? "success" : item.status === "COMPLETED_WITH_ERRORS" ? "warn" : "danger"}>
+                          {item.status === "COMPLETED" ? "Uploaded" : item.status}
+                        </Badge>
+                      </div>
+                    );
+                  })}
+                  {Array.from({ length: emptySlotsCount }).map((_, index) => (
+                    <div
+                      key={`empty-slot-${index}`}
+                      className="flex h-[38px] items-center justify-between gap-2 rounded-lg border border-dashed border-slate-200 bg-slate-50/40 px-3 py-1.5 text-xs text-slate-400 select-none"
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <FileSpreadsheet size={14} className="shrink-0 text-slate-300" />
+                        <span className="font-mono text-[11px] text-slate-400 shrink-0">--/--/---- --:--</span>
+                        <span className="text-slate-300">-</span>
+                        <span className="truncate italic text-slate-400 text-xs">
+                          {displayItems.length === 0 && index === 0
+                            ? `No uploaded files yet for ${currentTitle}`
+                            : `Slot ${displayItems.length + index + 1} empty`}
+                        </span>
+                      </div>
+                      <span className="text-[10px] uppercase font-semibold text-slate-400 px-2 py-0.5 rounded bg-slate-100">
+                        Pending
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
+          </div>
+        </div>
+      </div>
+    </article>
+  );
+}
+
+// Fixed 3 FrontSteps Policy Definitions matching the database frontsteps_policies_repository
+const FRONTSTEPS_POLICIES_CONFIG = [
+  {
+    code: "PMP",
+    title: "Performance Management Policy",
+    category: "Operations",
+    color: "from-blue-600 to-indigo-700",
+    badgeColor: "bg-blue-50 text-blue-700 border-blue-200",
+    badgeLabel: "Core Standard",
+    description: "Employee operational benchmarks, audit SLAs, and procedural evaluation rules.",
+  },
+  {
+    code: "PIP",
+    title: "Performance Incentive Program",
+    category: "Incentives",
+    color: "from-emerald-600 to-teal-700",
+    badgeColor: "bg-emerald-50 text-emerald-700 border-emerald-200",
+    badgeLabel: "Incentives",
+    description: "Monthly score targets, case resolution bonuses, and inbound call quality tier criteria.",
+  },
+  {
+    code: "MILESTONE",
+    title: "Quarterly Retention and Consistency Incentive Policy",
+    category: "Tenure & Retention",
+    color: "from-purple-600 to-violet-700",
+    badgeColor: "bg-purple-50 text-purple-700 border-purple-200",
+    badgeLabel: "Milestone",
+    description: "Quarterly retention metrics, consistency multipliers, and tenure rewards structure.",
+  },
+];
+
+function FrontStepsPolicyUploadCard({
+  policies = [],
+  loading = false,
+  selectedCode: controlledCode,
+  onSelectCode,
+  onUploadPolicy,
+  onApprovePolicy,
+  onDeletePolicy,
+  onViewPolicy,
+  onViewFolder,
+  uploadingCode = null,
+  uploadProgress = 0,
+}) {
+  const [stagedFile, setStagedFile] = useState(null);
+  const [dragging, setDragging] = useState(false);
+  const fileInputRef = useRef(null);
+
+  const handleFileSelect = async (file) => {
+    if (!file) return;
+    const ext = file.name.split(".").pop()?.toLowerCase();
+    if (!["pdf", "docx", "doc"].includes(ext)) {
+      alert("Unsupported file format. Please select a PDF, DOCX, or DOC file.");
+      return;
+    }
+    if (file.size > 50 * 1024 * 1024) {
+      alert("File is too large. Maximum file size is 50 MB.");
+      return;
+    }
+
+    // Determine document code and title dynamically or match known policy configs
+    const upperName = file.name.toUpperCase();
+    let matchedCfg = FRONTSTEPS_POLICIES_CONFIG.find((c) =>
+      upperName.includes(c.code) || upperName.includes(c.title.toUpperCase())
+    );
+    if (!matchedCfg) {
+      const baseNameNoExt = file.name.replace(/\.[^/.]+$/, "");
+      matchedCfg = {
+        code: "POLICY",
+        title: baseNameNoExt,
+        category: "Operations Policy",
+      };
+    }
+
+    setStagedFile(file);
+    try {
+      await onUploadPolicy(matchedCfg.code, file, matchedCfg);
+    } finally {
+      setStagedFile(null);
+    }
+  };
+
+  return (
+    <article className="flex min-w-0 flex-1 flex-col overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-xs transition-shadow hover:shadow-md h-full">
+      {/* 1. Header Bar: Policy Documents Repository */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 bg-slate-50/70 px-5 py-3.5 sm:px-6 shrink-0">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-purple-50 text-purple-700">
+            <Shield size={20} strokeWidth={2} />
+          </div>
+          <div className="min-w-0">
+            <h3 className="text-sm font-extrabold text-[#042c51]">
+              Policy Documents Repository
+            </h3>
+          </div>
+        </div>
+
+        {/* View Repository Button */}
+        <button
+          type="button"
+          onClick={() => onViewFolder && onViewFolder("policies", "Policy Documents Repository")}
+          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 px-3 py-1.5 text-xs font-bold text-[#042c51] shadow-2xs transition-all cursor-pointer self-start sm:self-auto shrink-0"
+          title="View all policies and revisions"
+        >
+          <FolderOpen size={14} className="text-[#042c51]" />
+          <span>View Folder</span>
+          <span className={`ml-1 inline-flex h-4 min-w-[18px] items-center justify-center rounded-full px-1 text-[10px] font-extrabold text-white transition-colors ${policies.length > 0 ? "bg-emerald-600" : "bg-slate-400"}`}>
+            {policies.length}
+          </span>
+        </button>
+      </div>
+
+      {/* 2. Sub-Bar: Clean empty spacer matching Target Source height to align dropzone boxes exactly */}
+      <div className="border-b border-slate-100 bg-slate-50/40 shrink-0 h-[53px]" aria-hidden="true" />
+
+      {/* 3. Main Body */}
+      <div className="flex flex-1 min-h-0 flex-col p-5 sm:p-6 gap-4">
+        <input
+          ref={fileInputRef}
+          type="file"
+          className="hidden"
+          accept=".pdf,.docx,.doc"
+          aria-label="Choose policy document file"
+          onChange={(event) => {
+            handleFileSelect(event.target.files?.[0]);
+            event.target.value = "";
+          }}
+        />
+
+        {/* Drop zone */}
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={() => fileInputRef.current?.click()}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              fileInputRef.current?.click();
+            }
+          }}
+          onDragOver={(event) => { event.preventDefault(); setDragging(true); }}
+          onDragLeave={(event) => { event.preventDefault(); setDragging(false); }}
+          onDrop={(event) => {
+            event.preventDefault();
+            setDragging(false);
+            handleFileSelect(event.dataTransfer.files?.[0]);
+          }}
+          className={`group flex min-h-[220px] flex-1 cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed px-6 py-8 text-center outline-none transition-all focus-visible:ring-2 focus-visible:ring-purple-500 ${
+            dragging
+              ? "border-[#ff5c28] bg-orange-50/50"
+              : "border-slate-200 bg-slate-50/50 hover:border-purple-300 hover:bg-purple-50/20"
+          }`}
+        >
+          <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl border border-purple-100 bg-white text-purple-700 shadow-xs group-hover:scale-105 group-hover:border-purple-200 transition-transform">
+            <UploadCloud size={28} strokeWidth={1.8} className="text-purple-700" />
+          </div>
+          <p className="text-sm sm:text-base font-extrabold text-[#042c51]">
+            Drag and drop your <span className="text-[#ff5c28]">Policy Document</span> here
+          </p>
+          <p className="mt-1 text-xs text-slate-500 max-w-md">
+            or click browse to select a policy file from your device
+          </p>
+          <span className="mt-3.5 inline-flex items-center gap-2 rounded-xl bg-[#042c51] px-4 py-2 text-xs font-bold text-white shadow-xs group-hover:bg-[#063d70] transition-colors">
+            <FolderOpen size={14} /> Browse Files
+          </span>
+          <p className="mt-2.5 text-[11px] text-slate-400">
+            Formats: PDF, DOCX, DOC · Max file size: 50 MB
+          </p>
+        </div>
+
+        {/* File Staging / Selection & Last 3 Uploads Section */}
+        <div className="flex flex-col gap-3 shrink-0">
+          {/* Staged File Banner */}
+          {stagedFile && (
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-purple-200 bg-purple-50/70 p-3 shadow-2xs">
+              <div className="flex min-w-0 items-center gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white border border-purple-200 text-purple-700 shadow-2xs">
+                  <FileText size={20} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <p className="truncate text-xs font-bold text-slate-800" title={stagedFile.name}>
+                      {stagedFile.name}
+                    </p>
+                    <span className="rounded bg-purple-100 px-1.5 py-0.2 text-[9px] font-bold text-purple-800 uppercase">
+                      Uploading...
+                    </span>
+                  </div>
+                  <p className="mt-0.5 text-[11px] text-slate-500">
+                    {(stagedFile.size / 1024).toFixed(1)} KB · Staging and saving policy document
+                  </p>
+                </div>
+              </div>
+            </div>
           )}
+
+          {/* Recent Uploads History (Fixed 3 slots) */}
+          <div className="rounded-xl border border-slate-200/90 bg-white p-3 shadow-2xs">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-2 mb-2">
+              <div className="flex items-center gap-1.5 text-xs font-bold text-[#042c51]">
+                <Clock3 size={13} className="text-[#ff5c28]" />
+                <span>Recent Uploads:</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => onViewFolder && onViewFolder("policies", "Policy Documents Repository")}
+                className="text-[11px] font-bold text-blue-700 hover:underline flex items-center gap-1 cursor-pointer"
+              >
+                <span>View All ({policies.length})</span>
+              </button>
+            </div>
+
+            {(() => {
+              const displayPolicies = policies.slice(0, 3);
+              const emptySlotsCount = Math.max(0, 3 - displayPolicies.length);
+
+              return (
+                <div className="space-y-1.5">
+                  {displayPolicies.map((doc) => {
+                    const formattedTime = formatUtcTimestamp(doc.created_at);
+
+                    const isApproved = (doc.approval_status || "").toLowerCase() === "approved";
+
+                    return (
+                      <div
+                        key={doc.id}
+                        className="flex h-[38px] items-center justify-between gap-3 rounded-lg bg-slate-50/80 hover:bg-slate-100/70 border border-slate-100 px-3 py-1.5 text-xs transition-colors"
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <FileText size={14} className="shrink-0 text-purple-700" />
+                          <span className="font-mono text-[11px] font-bold text-slate-700 shrink-0">
+                            {formattedTime}
+                          </span>
+                          <span className="text-slate-300">-</span>
+                          <span className="truncate font-semibold text-slate-800 text-xs" title={doc.file_name || doc.policy_title}>
+                            {doc.file_name || doc.policy_title}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          {onApprovePolicy && (
+                            <button
+                              type="button"
+                              onClick={() => onApprovePolicy(doc.id, doc.policy_title || doc.file_name, doc.approval_status)}
+                              className={`inline-flex items-center gap-1 rounded px-2.5 py-1 text-xs font-bold transition-colors cursor-pointer border ${
+                                isApproved
+                                  ? "border-amber-200 bg-amber-50 hover:bg-amber-100 text-amber-800"
+                                  : "border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-emerald-700"
+                              }`}
+                              title={isApproved ? "Click to unapprove policy" : "Click to approve policy"}
+                            >
+                              {isApproved ? <RotateCcw size={11} /> : <Check size={11} strokeWidth={2.5} />}
+                              <span>{isApproved ? "Unapprove" : "Approve"}</span>
+                            </button>
+                          )}
+
+                          {onViewPolicy && (
+                            <button
+                              type="button"
+                              onClick={() => onViewPolicy(doc)}
+                              className="inline-flex items-center gap-1 rounded border border-blue-200 bg-white hover:bg-blue-50 px-2.5 py-1 text-xs font-bold text-blue-700 transition-colors cursor-pointer"
+                              title="View document inside modal"
+                            >
+                              <Eye size={12} />
+                              <span>View</span>
+                            </button>
+                          )}
+
+                          {onDeletePolicy && (
+                            <button
+                              type="button"
+                              onClick={() => onDeletePolicy(doc.id, doc.policy_title || doc.file_name)}
+                              className="inline-flex items-center gap-1 rounded border border-rose-200 bg-white hover:bg-rose-50 px-2 py-1 text-xs font-bold text-rose-700 transition-colors cursor-pointer"
+                              title="Delete policy document"
+                            >
+                              <Trash2 size={12} /> Delete
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                  {Array.from({ length: emptySlotsCount }).map((_, index) => (
+                    <div
+                      key={`empty-policy-slot-${index}`}
+                      className="flex h-[38px] items-center justify-between gap-2 rounded-lg border border-dashed border-slate-200 bg-slate-50/40 px-3 py-1.5 text-xs text-slate-400 select-none"
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <FileText size={14} className="shrink-0 text-slate-300" />
+                        <span className="font-mono text-[11px] text-slate-400 shrink-0">--/--/---- --:--</span>
+                        <span className="text-slate-300">-</span>
+                        <span className="truncate italic text-slate-400 text-xs">
+                          {displayPolicies.length === 0 && index === 0
+                            ? "No policy documents uploaded yet"
+                            : `Slot ${displayPolicies.length + index + 1} empty`}
+                        </span>
+                      </div>
+                      <span className="text-[10px] uppercase font-semibold text-slate-400 px-2 py-0.5 rounded bg-slate-100">
+                        Pending
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
+          </div>
         </div>
       </div>
     </article>
@@ -349,6 +955,7 @@ function UploadCard({
 
 export default function FrontStepsDataManagement() {
   const [records, setRecords] = useState(INITIAL_RECORDS);
+  const [selectedUploadCategory, setSelectedUploadCategory] = useState("cases"); // "cases" | "calls"
   const [uploadFiles, setUploadFiles] = useState({ cases: null, calls: null });
   const [uploadError, setUploadError] = useState("");
   const [uploading, setUploading] = useState(null);
@@ -519,9 +1126,17 @@ export default function FrontStepsDataManagement() {
   const [remarks, setRemarks] = useState("");
   const [reviewer, setReviewer] = useState("WFM Reviewer");
   const [checks, setChecks] = useState([false, false, false, false]);
-  const [issueDraft, setIssueDraft] = useState(null);
   const [toast, setToast] = useState("");
   const pageSize = 10;
+
+  // Automatically dismiss toast notification after 2 seconds
+  useEffect(() => {
+    if (!toast) return;
+    const timer = setTimeout(() => {
+      setToast("");
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, [toast]);
 
   const filtered = useMemo(() => records.filter((r) => {
     const term = search.trim().toLowerCase();
@@ -586,7 +1201,11 @@ export default function FrontStepsDataManagement() {
   // --- Policy Repository State & Logic ---
   const [activeTab, setActiveTab] = useState("sources"); // "sources" | "policies"
   const [policies, setPolicies] = useState([]);
+  const [viewingPolicy, setViewingPolicy] = useState(null);
+  const [selectedPolicyCode, setSelectedPolicyCode] = useState("PMP");
   const [isLoadingPolicies, setIsLoadingPolicies] = useState(false);
+  const [uploadingPolicyCode, setUploadingPolicyCode] = useState(null);
+  const [policyUploadProgress, setPolicyUploadProgress] = useState(0);
   const [policyCategoryFilter, setPolicyCategoryFilter] = useState("all");
   const [policySearch, setPolicySearch] = useState("");
   const [isUploadPolicyModalOpen, setIsUploadPolicyModalOpen] = useState(false);
@@ -612,10 +1231,9 @@ export default function FrontStepsDataManagement() {
   const fetchPolicies = async () => {
     try {
       setIsLoadingPolicies(true);
-      const res = await fetch("http://localhost:5003/api/frontsteps/policies");
-      const json = await res.json();
-      if (json.success) {
-        setPolicies(json.data || []);
+      const res = await getFrontStepsPolicies();
+      if (res && res.success) {
+        setPolicies(res.data || []);
       }
     } catch (err) {
       console.error("Error loading policies:", err);
@@ -794,93 +1412,6 @@ export default function FrontStepsDataManagement() {
         </div>
       )}
 
-      {/* 1. Summary Cards (4 Metrics) Matching Other FrontSteps Modules */}
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 shrink-0">
-        {/* Card 1 — Total Data Records */}
-        <div className="flex items-center justify-between rounded-xl border border-slate-200/90 bg-white px-4 py-2.5 shadow-xs">
-          <div className="min-w-0">
-            <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">
-              Total Data Records
-            </span>
-            <div className="flex items-baseline gap-1 mt-0.5">
-              <span className="text-lg font-extrabold text-slate-800">
-                {stats.total}
-              </span>
-              <span className="text-xs font-medium text-slate-400">Sources</span>
-            </div>
-            <span className="block text-[10px] text-slate-400 mt-0.5">
-              Uploaded Source Rows
-            </span>
-          </div>
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-50 text-[#042c51] border border-slate-100">
-            <Database size={15} />
-          </div>
-        </div>
-
-        {/* Card 2 — Validated Records */}
-        <div className="flex items-center justify-between rounded-xl border border-slate-200/90 bg-white px-4 py-2.5 shadow-xs">
-          <div className="min-w-0">
-            <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">
-              Stored Unique Records
-            </span>
-            <div className="flex items-baseline gap-1 mt-0.5">
-              <span className="text-lg font-extrabold text-emerald-600">
-                {stats.stored}
-              </span>
-              <span className="text-xs font-medium text-emerald-600/80">Stored</span>
-            </div>
-            <span className="block text-[10px] text-emerald-600/80 mt-0.5">
-              Stored in FrontSteps tables
-            </span>
-          </div>
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-100">
-            <CheckCircle2 size={15} />
-          </div>
-        </div>
-
-        {/* Card 3 — Pending Validation */}
-        <div className="flex items-center justify-between rounded-xl border border-slate-200/90 bg-white px-4 py-2.5 shadow-xs">
-          <div className="min-w-0">
-            <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">
-              Unmatched Records
-            </span>
-            <div className="flex items-baseline gap-1 mt-0.5">
-              <span className="text-lg font-extrabold text-amber-600">
-                {stats.unmapped}
-              </span>
-              <span className="text-xs font-medium text-amber-600/80">Unmapped</span>
-            </div>
-            <span className="block text-[10px] text-amber-600/80 mt-0.5">
-              Awaiting Salesforce alias / Kronos match
-            </span>
-          </div>
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-50 text-amber-600 border border-amber-100">
-            <Clock3 size={15} />
-          </div>
-        </div>
-
-        {/* Card 4 — Records with Issues */}
-        <div className="flex items-center justify-between rounded-xl border border-slate-200/90 bg-white px-4 py-2.5 shadow-xs">
-          <div className="min-w-0">
-            <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">
-              Import Issues
-            </span>
-            <div className="flex items-baseline gap-1 mt-0.5">
-              <span className="text-lg font-extrabold text-rose-600">
-                {stats.issues}
-              </span>
-              <span className="text-xs font-medium text-rose-600/80">Issues</span>
-            </div>
-            <span className="block text-[10px] text-rose-600/80 mt-0.5">
-              Validation, duplicate/conflict, and source-data issues
-            </span>
-          </div>
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-rose-50 text-rose-600 border border-rose-100">
-            <AlertTriangle size={15} />
-          </div>
-        </div>
-      </div>
-
       {/* 2. Source File Uploads */}
       <section className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto pb-2 sibs-scrollbar">
         {uploadError && (
@@ -890,33 +1421,233 @@ export default function FrontStepsDataManagement() {
           </div>
         )}
 
-        <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-          <UploadCard
-            title="Cases Report"
-            category="cases"
-            description="Choose the Cases Closed source report for FrontSteps case productivity and reporting."
-            file={uploadFiles.cases}
-            onSelect={selectUpload}
-            onRemove={removeUpload}
-            onUpload={handleUpload}
-            onViewFolder={openViewFolder}
-            uploadedCount={uploadedHistory.cases?.length || 0}
-            uploading={uploading === "cases"}
-            uploadProgress={uploadProgress}
-          />
-          <UploadCard
-            title="Calls Report"
-            category="calls"
-            description="Choose the Inbound Calls source report for FrontSteps call activity and reporting."
-            file={uploadFiles.calls}
-            onSelect={selectUpload}
-            onRemove={removeUpload}
-            onUpload={handleUpload}
-            onViewFolder={openViewFolder}
-            uploadedCount={uploadedHistory.calls?.length || 0}
-            uploading={uploading === "calls"}
-            uploadProgress={uploadProgress}
-          />
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-2 flex-1 min-h-0">
+          {/* Left Column: 4 Metric Cards + Operational Data Feeds (Unified Cases & Calls Upload) */}
+          <div className="flex flex-col flex-1 min-h-0 h-full gap-4">
+            {/* 4 Operational Metric Cards (Total Records, Stored Records, Unmatched, Import Issues) */}
+            <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4 shrink-0">
+              {/* Card 1 — Total Data Records */}
+              <div className="flex items-center justify-between rounded-xl border border-slate-200/90 bg-white px-3 py-2 shadow-2xs">
+                <div className="min-w-0">
+                  <span className="block text-[9px] font-bold uppercase tracking-wider text-slate-400">
+                    Total Records
+                  </span>
+                  <div className="flex items-baseline gap-1 mt-0.5">
+                    <span className="text-base font-extrabold text-slate-800">
+                      {stats.total}
+                    </span>
+                    <span className="text-[10px] font-medium text-slate-400">Sources</span>
+                  </div>
+                  <span className="block text-[9px] text-slate-400 mt-0.5 truncate">
+                    Uploaded Rows
+                  </span>
+                </div>
+                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-slate-50 text-[#042c51] border border-slate-100">
+                  <Database size={13} />
+                </div>
+              </div>
+
+              {/* Card 2 — Stored Unique Records */}
+              <div className="flex items-center justify-between rounded-xl border border-slate-200/90 bg-white px-3 py-2 shadow-2xs">
+                <div className="min-w-0">
+                  <span className="block text-[9px] font-bold uppercase tracking-wider text-slate-400">
+                    Stored Records
+                  </span>
+                  <div className="flex items-baseline gap-1 mt-0.5">
+                    <span className="text-base font-extrabold text-emerald-600">
+                      {stats.stored}
+                    </span>
+                    <span className="text-[10px] font-medium text-emerald-600/80">Stored</span>
+                  </div>
+                  <span className="block text-[9px] text-emerald-600/80 mt-0.5 truncate">
+                    In PMS tables
+                  </span>
+                </div>
+                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-100">
+                  <CheckCircle2 size={13} />
+                </div>
+              </div>
+
+              {/* Card 3 — Unmatched Records */}
+              <div className="flex items-center justify-between rounded-xl border border-slate-200/90 bg-white px-3 py-2 shadow-2xs">
+                <div className="min-w-0">
+                  <span className="block text-[9px] font-bold uppercase tracking-wider text-slate-400">
+                    Unmatched
+                  </span>
+                  <div className="flex items-baseline gap-1 mt-0.5">
+                    <span className="text-base font-extrabold text-amber-600">
+                      {stats.unmapped}
+                    </span>
+                    <span className="text-[10px] font-medium text-amber-600/80">Unmapped</span>
+                  </div>
+                  <span className="block text-[9px] text-amber-600/80 mt-0.5 truncate">
+                    Awaiting Alias
+                  </span>
+                </div>
+                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-amber-50 text-amber-600 border border-amber-100">
+                  <Clock3 size={13} />
+                </div>
+              </div>
+
+              {/* Card 4 — Import Issues */}
+              <div className="flex items-center justify-between rounded-xl border border-slate-200/90 bg-white px-3 py-2 shadow-2xs">
+                <div className="min-w-0">
+                  <span className="block text-[9px] font-bold uppercase tracking-wider text-slate-400">
+                    Import Issues
+                  </span>
+                  <div className="flex items-baseline gap-1 mt-0.5">
+                    <span className="text-base font-extrabold text-rose-600">
+                      {stats.issues}
+                    </span>
+                    <span className="text-[10px] font-medium text-rose-600/80">Issues</span>
+                  </div>
+                  <span className="block text-[9px] text-rose-600/80 mt-0.5 truncate">
+                    Validation checks
+                  </span>
+                </div>
+                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-rose-50 text-rose-600 border border-rose-100">
+                  <AlertTriangle size={13} />
+                </div>
+              </div>
+            </div>
+
+            {/* Cases & Calls Upload Card */}
+            <UnifiedUploadCard
+              selectedCategory={selectedUploadCategory}
+              onCategoryChange={(cat) => setSelectedUploadCategory(cat)}
+              file={uploadFiles[selectedUploadCategory]}
+              onSelect={selectUpload}
+              onRemove={removeUpload}
+              onUpload={handleUpload}
+              onViewFolder={openViewFolder}
+              uploadedCounts={{
+                cases: uploadedHistory.cases?.length || 0,
+                calls: uploadedHistory.calls?.length || 0,
+              }}
+              historyItems={uploadedHistory[selectedUploadCategory] || []}
+              uploading={uploading === selectedUploadCategory}
+              uploadProgress={uploadProgress}
+            />
+          </div>
+
+          {/* Right Column: Policy Metric Cards + Policy Documents Repository */}
+          <div className="flex flex-col flex-1 min-h-0 h-full gap-4">
+            {/* Policy Metric Indicator Cards: Total Uploaded Files & Approved Files */}
+            <div className="grid grid-cols-2 gap-2.5 shrink-0">
+              {/* Card 1 — All Files Uploaded */}
+              <div className="flex items-center justify-between rounded-xl border border-slate-200/90 bg-white px-3 py-2 shadow-2xs">
+                <div className="min-w-0">
+                  <span className="block text-[9px] font-bold uppercase tracking-wider text-slate-400">
+                    Uploaded Policies
+                  </span>
+                  <div className="flex items-baseline gap-1 mt-0.5">
+                    <span className="text-base font-extrabold text-[#042c51]">
+                      {policies.length}
+                    </span>
+                    <span className="text-[10px] font-medium text-slate-400">Files</span>
+                  </div>
+                  <span className="block text-[9px] text-slate-400 mt-0.5 truncate">
+                    Total in repository
+                  </span>
+                </div>
+                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-purple-50 text-purple-700 border border-purple-100">
+                  <Shield size={13} />
+                </div>
+              </div>
+
+              {/* Card 2 — Approved Files */}
+              <div className="flex items-center justify-between rounded-xl border border-slate-200/90 bg-white px-3 py-2 shadow-2xs">
+                <div className="min-w-0">
+                  <span className="block text-[9px] font-bold uppercase tracking-wider text-slate-400">
+                    Approved Policies
+                  </span>
+                  <div className="flex items-baseline gap-1 mt-0.5">
+                    <span className="text-base font-extrabold text-emerald-600">
+                      {policies.filter((p) => (p.approval_status || "").toLowerCase() === "approved").length}
+                    </span>
+                    <span className="text-[10px] font-medium text-emerald-600/80">Approved</span>
+                  </div>
+                  <span className="block text-[9px] text-emerald-600/80 mt-0.5 truncate">
+                    Active & governing
+                  </span>
+                </div>
+                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-100">
+                  <CheckCircle2 size={13} />
+                </div>
+              </div>
+            </div>
+
+            <FrontStepsPolicyUploadCard
+              policies={policies}
+              loading={isLoadingPolicies}
+              selectedCode={selectedPolicyCode}
+              onSelectCode={setSelectedPolicyCode}
+              onUploadPolicy={async (code, file, cfg) => {
+                try {
+                  setUploadingPolicyCode(code);
+                  setPolicyUploadProgress(0);
+
+                  // Calculate next revision number if policy already exists
+                  const docCode = `FS-${code}-001`;
+                  const existingRevs = policies
+                    .filter((p) => p.document_code === docCode || p.document_code?.includes(code))
+                    .map((p) => parseInt(p.revision_number, 10))
+                    .filter((n) => !isNaN(n));
+                  const nextRev = existingRevs.length > 0 ? Math.max(...existingRevs) + 1 : 0;
+                  const revisionString = String(nextRev).padStart(3, "0");
+
+                  const formData = new FormData();
+                  formData.append("file", file);
+                  formData.append("document_code", docCode);
+                  formData.append("policy_title", cfg.title);
+                  formData.append("policy_category", cfg.category);
+                  formData.append("revision_number", revisionString);
+                  formData.append("effectivity_note", "Upon Approval");
+                  formData.append("approval_status", "Active");
+                  formData.append("prepared_for", "FrontSteps");
+                  formData.append("remarks", `Official ${cfg.title} repository document (Rev ${revisionString})`);
+                  formData.append("uploaded_by", "Operations Leadership");
+
+                  await uploadFrontStepsPolicy(formData, (percent) => {
+                    setPolicyUploadProgress(percent);
+                  });
+
+                  setToast(`Policy "${code} - ${cfg.title}" successfully uploaded and saved to repository (Rev ${revisionString}).`);
+                  await fetchPolicies();
+                } catch (err) {
+                  setUploadError(err?.response?.data?.message || err.message || "Failed to upload policy document.");
+                } finally {
+                  setUploadingPolicyCode(null);
+                  setPolicyUploadProgress(0);
+                }
+              }}
+              onApprovePolicy={async (id, title, currentStatus) => {
+                const isCurrentlyApproved = (currentStatus || "").toLowerCase() === "approved";
+                const nextStatus = isCurrentlyApproved ? "Pending Approval" : "Approved";
+                try {
+                  await approveFrontStepsPolicy(id, { approval_status: nextStatus, approved_by: isCurrentlyApproved ? null : "Operations Leadership" });
+                  setToast(`Policy "${title}" is now ${nextStatus}.`);
+                  await fetchPolicies();
+                } catch (err) {
+                  setUploadError(err?.response?.data?.message || err.message || "Failed to update approval status.");
+                }
+              }}
+              onDeletePolicy={async (id, title) => {
+                if (!window.confirm(`Are you sure you want to delete policy "${title}"?`)) return;
+                try {
+                  await deleteFrontStepsPolicy(id);
+                  setToast(`Policy "${title}" was deleted.`);
+                  await fetchPolicies();
+                } catch (err) {
+                  setUploadError(err?.response?.data?.message || err.message || "Failed to delete policy.");
+                }
+              }}
+              onViewPolicy={(pol) => setViewingPolicy(pol)}
+              onViewFolder={(category, title) => openViewFolder(category, title)}
+              uploadingCode={uploadingPolicyCode}
+              uploadProgress={policyUploadProgress}
+            />
+          </div>
         </div>
       </section>
 
@@ -1187,9 +1918,13 @@ export default function FrontStepsDataManagement() {
       {/* 5. View Datas / Repository Modal */}
       {folderModal && (
         <Modal
-          size="repository"
-          title={`Uploaded Files: ${folderModal.title}`}
-          subtitle={`FrontSteps repository for ${folderModal.category === "cases" ? "Cases Closed" : "Inbound Calls"} source datasets`}
+          size={folderModal.category === "policies" ? "policy" : "repository"}
+          title={folderModal.category === "policies" ? "Policy Documents Repository" : `Uploaded Files: ${folderModal.title}`}
+          subtitle={
+            folderModal.category === "policies"
+              ? "Official governing policy documents stored for FrontSteps operational tracking."
+              : `FrontSteps repository for ${folderModal.category === "cases" ? "Cases Closed" : "Inbound Calls"} source datasets`
+          }
           onClose={() => setFolderModal(null)}
           footer={
             <button type="button" className={btnPrimary} onClick={() => setFolderModal(null)}>
@@ -1197,7 +1932,125 @@ export default function FrontStepsDataManagement() {
             </button>
           }
         >
-          <div className="flex flex-col gap-7">
+          {folderModal.category === "policies" ? (
+            <div className="flex flex-col gap-2.5">
+              {policies.length > 0 ? (
+                <div className="space-y-2">
+                  {policies.map((pol) => {
+                    const formattedTime = formatUtcTimestamp(pol.created_at, true);
+
+                    const isApproved = (pol.approval_status || "").toLowerCase() === "approved";
+
+                    return (
+                      <div
+                        key={pol.id}
+                        className="group flex items-center justify-between gap-3 rounded-xl border border-slate-200/80 bg-white px-3.5 py-3 shadow-2xs hover:border-purple-200 hover:bg-slate-50/50 transition-colors"
+                      >
+                        <div className="flex items-center gap-3 min-w-0 flex-1">
+                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-purple-50 text-purple-700 border border-purple-100/80 group-hover:bg-purple-100 transition-colors">
+                            <FileText size={18} />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p
+                              className="text-sm font-bold text-[#042c51] break-words"
+                              title={pol.file_name || pol.policy_title}
+                            >
+                              {pol.file_name || pol.policy_title}
+                            </p>
+                            <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                              <span className="font-mono text-slate-500">
+                                {formattedTime}
+                              </span>
+                              {pol.file_size && (
+                                <>
+                                  <span className="text-slate-300">•</span>
+                                  <span>{(Number(pol.file_size) / 1024).toFixed(1)} KB</span>
+                                </>
+                              )}
+                              <span className="text-slate-300">•</span>
+                              <span
+                                className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-extrabold ${
+                                  isApproved
+                                    ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                                    : "bg-amber-50 text-amber-700 border border-amber-200"
+                                }`}
+                              >
+                                {isApproved ? <Check size={11} strokeWidth={3} /> : <Clock3 size={11} />}
+                                {isApproved ? "Approved" : "Pending Approval"}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              const nextStatus = isApproved ? "Pending Approval" : "Approved";
+                              try {
+                                await approveFrontStepsPolicy(pol.id, {
+                                  approval_status: nextStatus,
+                                  approved_by: isApproved ? null : "Operations Leadership",
+                                });
+                                setToast(`Policy "${pol.policy_title || pol.file_name}" is now marked as ${nextStatus}.`);
+                                await fetchPolicies();
+                              } catch (err) {
+                                setUploadError("Failed to update approval status.");
+                              }
+                            }}
+                            className={`inline-flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-xs font-bold cursor-pointer transition-colors shadow-2xs ${
+                              isApproved
+                                ? "border-amber-200 bg-amber-50 hover:bg-amber-100 text-amber-800"
+                                : "border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-emerald-700"
+                            }`}
+                            title={isApproved ? "Click to revoke approval" : "Click to approve policy"}
+                          >
+                            {isApproved ? <RotateCcw size={12} /> : <Check size={12} strokeWidth={2.5} />}
+                            <span>{isApproved ? "Unapprove" : "Approve"}</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => setViewingPolicy(pol)}
+                            className="inline-flex items-center gap-1 rounded-lg border border-blue-200 bg-white hover:bg-blue-50 px-2.5 py-1.5 text-xs font-bold text-blue-700 cursor-pointer transition-colors shadow-2xs"
+                            title="View document inside modal"
+                          >
+                            <Eye size={12} />
+                            <span>View</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              if (!window.confirm(`Are you sure you want to delete policy "${pol.policy_title || pol.file_name}"?`)) return;
+                              try {
+                                await deleteFrontStepsPolicy(pol.id);
+                                setToast(`Policy "${pol.policy_title || pol.file_name}" deleted.`);
+                                await fetchPolicies();
+                              } catch (err) {
+                                setUploadError("Failed to delete policy.");
+                              }
+                            }}
+                            className="inline-flex items-center gap-1 rounded-lg border border-rose-200 bg-white hover:bg-rose-50 px-2.5 py-1.5 text-xs font-bold text-rose-700 cursor-pointer transition-colors shadow-2xs"
+                            title="Delete policy"
+                          >
+                            <Trash2 size={12} /> <span>Delete</span>
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50/40 py-12 text-center">
+                  <Shield className="mb-2.5 h-10 w-10 text-slate-300" />
+                  <p className="text-sm font-bold text-slate-600">No policy documents in repository yet</p>
+                  <p className="mt-1 text-xs text-slate-400">Use the policy upload dropzone on the main card to upload documents.</p>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="flex flex-col gap-7">
             <Section
               title="1. Repository Overview"
               description="High-level status of all uploaded batches for this FrontSteps source."
@@ -1279,7 +2132,7 @@ export default function FrontStepsDataManagement() {
                             <td className="px-5 py-4">
                               <div className="flex items-center gap-2 text-slate-600">
                                 <Clock3 className="h-3.5 w-3.5 shrink-0 text-slate-400" />
-                                <span className="font-mono text-[11px]">{item.timestamp ? String(item.timestamp).replace("T", " ").slice(0,19) : "—"}</span>
+                                <span className="font-mono text-[11px]">{formatUtcTimestamp(item.timestamp, true)}</span>
                               </div>
                             </td>
                             <td className="px-5 py-4">
@@ -1319,8 +2172,9 @@ export default function FrontStepsDataManagement() {
               )}
             </Section>
           </div>
-        </Modal>
-      )}
+        )}
+      </Modal>
+    )}
       <FrontStepsImportSummaryModal
         summary={uploadSummary}
         onClose={()=>setUploadSummary(null)}
@@ -1495,6 +2349,14 @@ export default function FrontStepsDataManagement() {
             </div>
           </div>
         </Modal>
+      )}
+
+      {/* 6. Policy Document Viewer Modal */}
+      {viewingPolicy && (
+        <PolicyDocViewerModal
+          policy={viewingPolicy}
+          onClose={() => setViewingPolicy(null)}
+        />
       )}
     </div>
   );
