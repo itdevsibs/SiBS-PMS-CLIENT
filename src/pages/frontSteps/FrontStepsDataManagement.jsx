@@ -691,8 +691,8 @@ function FrontStepsPolicyUploadCard({
   const handleFileSelect = async (file) => {
     if (!file) return;
     const ext = file.name.split(".").pop()?.toLowerCase();
-    if (!["pdf", "docx", "doc"].includes(ext)) {
-      alert("Unsupported file format. Please select a PDF, DOCX, or DOC file.");
+    if (ext !== "pdf") {
+      alert("Unsupported file format. Please select a PDF file (.pdf).");
       return;
     }
     if (file.size > 50 * 1024 * 1024) {
@@ -761,7 +761,7 @@ function FrontStepsPolicyUploadCard({
           ref={fileInputRef}
           type="file"
           className="hidden"
-          accept=".pdf,.docx,.doc"
+          accept=".pdf,application/pdf"
           aria-label="Choose policy document file"
           onChange={(event) => {
             handleFileSelect(event.target.files?.[0]);
@@ -806,9 +806,10 @@ function FrontStepsPolicyUploadCard({
             <FolderOpen size={14} /> Browse Files
           </span>
           <p className="mt-2.5 text-[11px] text-slate-400">
-            Formats: PDF, DOCX, DOC · Max file size: 50 MB
+            Formats: PDF · Max file size: 50 MB
           </p>
         </div>
+
 
         {/* File Staging / Selection & Last 3 Uploads Section */}
         <div className="flex flex-col gap-3 shrink-0">
