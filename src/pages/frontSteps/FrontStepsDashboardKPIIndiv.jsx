@@ -1114,14 +1114,14 @@ export default function FrontStepsDashboardKPIIndiv({
 
                   {/* Metric Display Box: COMPLETION & SCORE Side-by-Side */}
                   <div className="rounded-xl border border-slate-100 bg-slate-50/60 p-2.5 lg:p-3 grid grid-cols-2 divide-x divide-slate-200/70 mt-2.5">
-                    {/* Left: Completion % */}
-                    <div className="flex flex-col pr-2.5">
-                      <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 font-jakarta">
+                    {/* Left: Completion % (Centered) */}
+                    <div className="flex flex-col items-center justify-center pr-2.5">
+                      <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 font-jakarta text-center">
                         COMPLETION
                       </span>
-                      <div className="flex items-center gap-1.5 mt-0.5">
+                      <div className="flex items-center justify-center gap-1.5 mt-0.5">
                         <span
-                          className="text-2xl font-black font-jakarta leading-none tracking-tight"
+                          className="text-2xl font-black font-jakarta leading-none tracking-tight text-center"
                           style={{ color: KPI_COLORS.compliance }}
                         >
                           <AnimatedNumber value="99.3%" duration={1600} delay={300} />
@@ -1130,62 +1130,18 @@ export default function FrontStepsDashboardKPIIndiv({
                       </div>
                     </div>
 
-                    {/* Right: Score + Rate Indicator */}
-                    <div className="flex flex-col pl-3">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 font-jakarta">
-                          SCORE
-                        </span>
-                        <span className="text-[8.5px] font-bold text-slate-400 uppercase tracking-tight font-jakarta">
-                          RATE
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between gap-1.5 mt-0.5">
+                    {/* Right: Score (Centered) */}
+                    <div className="flex flex-col items-center justify-center pl-2.5">
+                      <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 font-jakarta text-center">
+                        SCORE
+                      </span>
+                      <div className="flex items-center justify-center mt-0.5">
                         <span
-                          className="text-2xl font-black font-jakarta leading-none tracking-tight"
+                          className="text-2xl font-black font-jakarta leading-none tracking-tight text-center"
                           style={{ color: KPI_COLORS.weightedScore }}
                         >
                           <AnimatedNumber value="9.90" duration={1600} delay={350} />
                         </span>
-                        <div
-                          className="shrink-0 flex items-center justify-center"
-                          title="Score Rate: 99%"
-                        >
-                          <svg className="w-8 h-8" viewBox="0 0 36 36">
-                            <g transform="rotate(-90 18 18)">
-                              <circle
-                                cx="18"
-                                cy="18"
-                                r="14"
-                                fill="none"
-                                stroke="#e2e8f0"
-                                strokeWidth="2.8"
-                              />
-                              <circle
-                                cx="18"
-                                cy="18"
-                                r="14"
-                                fill="none"
-                                stroke={KPI_COLORS.weightedScore}
-                                strokeWidth="2.8"
-                                strokeLinecap="round"
-                                strokeDasharray={isMounted ? "87 88" : "0 88"}
-                                style={{
-                                  transition: "stroke-dasharray 1.6s cubic-bezier(0.2, 0.8, 0.2, 1) 0.35s",
-                                }}
-                              />
-                            </g>
-                            <text
-                              x="18"
-                              y="19"
-                              textAnchor="middle"
-                              dominantBaseline="middle"
-                              className="fill-slate-900 text-[10px] font-black font-jakarta select-none"
-                            >
-                              99%
-                            </text>
-                          </svg>
-                        </div>
                       </div>
                     </div>
                   </div>
@@ -1272,14 +1228,14 @@ export default function FrontStepsDashboardKPIIndiv({
 
                   {/* Metric Display Box: COMPLETION & SCORE Side-by-Side */}
                   <div className="rounded-xl border border-slate-100 bg-slate-50/60 p-2.5 lg:p-3 grid grid-cols-2 divide-x divide-slate-200/70 mt-2.5">
-                    {/* Left: Completion % */}
-                    <div className="flex flex-col pr-2.5">
-                      <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 font-jakarta">
+                    {/* Left: Completion % (Centered) */}
+                    <div className="flex flex-col items-center justify-center pr-2.5">
+                      <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 font-jakarta text-center">
                         COMPLETION
                       </span>
-                      <div className="flex items-center gap-1.5 mt-0.5">
+                      <div className="flex items-center justify-center gap-1.5 mt-0.5">
                         <span
-                          className="text-2xl font-black font-jakarta leading-none tracking-tight"
+                          className="text-2xl font-black font-jakarta leading-none tracking-tight text-center"
                           style={{ color: KPI_COLORS.compliance }}
                         >
                           <AnimatedNumber value="96.6%" duration={1600} delay={350} />
@@ -1288,62 +1244,18 @@ export default function FrontStepsDashboardKPIIndiv({
                       </div>
                     </div>
 
-                    {/* Right: Score + Rate Indicator */}
-                    <div className="flex flex-col pl-3">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 font-jakarta">
-                          SCORE
-                        </span>
-                        <span className="text-[8.5px] font-bold text-slate-400 uppercase tracking-tight font-jakarta">
-                          RATE
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between gap-1.5 mt-0.5">
+                    {/* Right: Score (Centered) */}
+                    <div className="flex flex-col items-center justify-center pl-2.5">
+                      <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 font-jakarta text-center">
+                        SCORE
+                      </span>
+                      <div className="flex items-center justify-center mt-0.5">
                         <span
-                          className="text-2xl font-black font-jakarta leading-none tracking-tight"
+                          className="text-2xl font-black font-jakarta leading-none tracking-tight text-center"
                           style={{ color: KPI_COLORS.weightedScore }}
                         >
                           <AnimatedNumber value="9.70" duration={1600} delay={400} />
                         </span>
-                        <div
-                          className="shrink-0 flex items-center justify-center"
-                          title="Score Rate: 97%"
-                        >
-                          <svg className="w-8 h-8" viewBox="0 0 36 36">
-                            <g transform="rotate(-90 18 18)">
-                              <circle
-                                cx="18"
-                                cy="18"
-                                r="14"
-                                fill="none"
-                                stroke="#e2e8f0"
-                                strokeWidth="2.8"
-                              />
-                              <circle
-                                cx="18"
-                                cy="18"
-                                r="14"
-                                fill="none"
-                                stroke={KPI_COLORS.weightedScore}
-                                strokeWidth="2.8"
-                                strokeLinecap="round"
-                                strokeDasharray={isMounted ? "85.3 88" : "0 88"}
-                                style={{
-                                  transition: "stroke-dasharray 1.6s cubic-bezier(0.2, 0.8, 0.2, 1) 0.4s",
-                                }}
-                              />
-                            </g>
-                            <text
-                              x="18"
-                              y="19"
-                              textAnchor="middle"
-                              dominantBaseline="middle"
-                              className="fill-slate-900 text-[10px] font-black font-jakarta select-none"
-                            >
-                              97%
-                            </text>
-                          </svg>
-                        </div>
                       </div>
                     </div>
                   </div>
@@ -1430,14 +1342,14 @@ export default function FrontStepsDashboardKPIIndiv({
 
                   {/* Metric Display Box: COMPLETION & SCORE Side-by-Side */}
                   <div className="rounded-xl border border-slate-100 bg-slate-50/60 p-2.5 lg:p-3 grid grid-cols-2 divide-x divide-slate-200/70 mt-2.5">
-                    {/* Left: Completion % */}
-                    <div className="flex flex-col pr-2.5">
-                      <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 font-jakarta">
+                    {/* Left: Completion % (Centered) */}
+                    <div className="flex flex-col items-center justify-center pr-2.5">
+                      <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 font-jakarta text-center">
                         COMPLETION
                       </span>
-                      <div className="flex items-center gap-1.5 mt-0.5">
+                      <div className="flex items-center justify-center gap-1.5 mt-0.5">
                         <span
-                          className="text-2xl font-black font-jakarta leading-none tracking-tight"
+                          className="text-2xl font-black font-jakarta leading-none tracking-tight text-center"
                           style={{ color: KPI_COLORS.compliance }}
                         >
                           <AnimatedNumber value="97.9%" duration={1600} delay={400} />
@@ -1446,62 +1358,18 @@ export default function FrontStepsDashboardKPIIndiv({
                       </div>
                     </div>
 
-                    {/* Right: Score + Rate Indicator */}
-                    <div className="flex flex-col pl-3">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 font-jakarta">
-                          SCORE
-                        </span>
-                        <span className="text-[8.5px] font-bold text-slate-400 uppercase tracking-tight font-jakarta">
-                          RATE
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between gap-1.5 mt-0.5">
+                    {/* Right: Score (Centered) */}
+                    <div className="flex flex-col items-center justify-center pl-2.5">
+                      <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 font-jakarta text-center">
+                        SCORE
+                      </span>
+                      <div className="flex items-center justify-center mt-0.5">
                         <span
-                          className="text-2xl font-black font-jakarta leading-none tracking-tight"
+                          className="text-2xl font-black font-jakarta leading-none tracking-tight text-center"
                           style={{ color: KPI_COLORS.weightedScore }}
                         >
                           <AnimatedNumber value="9.50" duration={1600} delay={450} />
                         </span>
-                        <div
-                          className="shrink-0 flex items-center justify-center"
-                          title="Score Rate: 95%"
-                        >
-                          <svg className="w-8 h-8" viewBox="0 0 36 36">
-                            <g transform="rotate(-90 18 18)">
-                              <circle
-                                cx="18"
-                                cy="18"
-                                r="14"
-                                fill="none"
-                                stroke="#e2e8f0"
-                                strokeWidth="2.8"
-                              />
-                              <circle
-                                cx="18"
-                                cy="18"
-                                r="14"
-                                fill="none"
-                                stroke={KPI_COLORS.weightedScore}
-                                strokeWidth="2.8"
-                                strokeLinecap="round"
-                                strokeDasharray={isMounted ? "83.6 88" : "0 88"}
-                                style={{
-                                  transition: "stroke-dasharray 1.6s cubic-bezier(0.2, 0.8, 0.2, 1) 0.45s",
-                                }}
-                              />
-                            </g>
-                            <text
-                              x="18"
-                              y="19"
-                              textAnchor="middle"
-                              dominantBaseline="middle"
-                              className="fill-slate-900 text-[10px] font-black font-jakarta select-none"
-                            >
-                              95%
-                            </text>
-                          </svg>
-                        </div>
                       </div>
                     </div>
                   </div>
