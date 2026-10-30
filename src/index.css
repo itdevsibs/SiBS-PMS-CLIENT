@@ -1234,6 +1234,47 @@
   }
 }
 
+
+@keyframes kpiEnter {
+  0% {
+    opacity: 0;
+    transform: translateY(16px) scale(0.98);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes kpiBadgeSlide {
+  0% {
+    opacity: 0;
+    transform: translateX(-12px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes kpiSpellLetter {
+  0% {
+    opacity: 0;
+    transform: translateY(3px) scale(0.92);
+    filter: blur(1.5px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+@keyframes kpiCursorPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
 .animate-fade-up {
   animation: dashboardFadeUp 0.85s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
@@ -1241,4 +1282,58 @@
 .animate-pop-in {
   animation: popIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
 }
+
+.animate-kpi-enter {
+  animation: kpiEnter 0.65s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.animate-kpi-badge {
+  animation: kpiBadgeSlide 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.animate-kpi-letter {
+  display: inline-block;
+  animation: kpiSpellLetter 0.25s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.animate-kpi-cursor {
+  display: inline-block;
+  animation: kpiCursorPulse 0.8s infinite;
+}
+
+/* ==========================================================================
+   Utility to hide scrollbars while preserving scroll functionality
+   ========================================================================== */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
+}
+
+/* ==========================================================================
+   Custom Table Scrollbar (Enterprise Styled Slider)
+   ========================================================================== */
+.table-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.table-scrollbar::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 9999px;
+}
+.table-scrollbar::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+  border: 1px solid #f1f5f9;
+}
+.table-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+.table-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 #f1f5f9;
+}
+
 

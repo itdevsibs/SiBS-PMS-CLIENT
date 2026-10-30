@@ -14,9 +14,11 @@ import {
   FileText,
   DollarSign,
   TrendingUp,
+  Compass,
 } from "lucide-react";
 import SingleSelectDropdown from "../../components/common/filters/SingleSelectDropdown";
 import AnimatedNumber from "../../components/modules/frontsteps/AnimatedNumber";
+import FrontStepsDashboardGuide, { ACCOUNT_BASED_GUIDE_STEPS } from "../../components/modules/frontsteps/FrontStepsDashboardGuide";
 
 const VIEW_OPTIONS = [
   { value: "dashboard-summary", label: "Summary" },
@@ -68,6 +70,7 @@ export default function FrontStepsDashboardAccountBased({
   const [selectedMonth, setSelectedMonth] = useState("10");
   const [isExporting, setIsExporting] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
+  const [isGuideOpen, setIsGuideOpen] = useState(false);
 
   useEffect(() => {
     setIsMounted(false);
@@ -181,7 +184,7 @@ export default function FrontStepsDashboardAccountBased({
           )}
 
           {/* 1. View Mode */}
-          <div className="flex items-center gap-2">
+          <div id="guide-ab-view-mode" className="flex items-center gap-2 rounded-lg border border-slate-200/90 bg-slate-50/70 px-2.5 py-1">
             <span className="text-xs font-black uppercase tracking-wider text-[#042c51]">
               View Mode:
             </span>
@@ -191,64 +194,67 @@ export default function FrontStepsDashboardAccountBased({
                 onChange={(e) => handleViewChange(e.target.value)}
                 placeholder="Select View"
                 options={VIEW_OPTIONS}
-                buttonClassName="h-8 rounded-lg border-slate-200 bg-slate-50/90 px-3 text-xs font-bold text-[#042c51] hover:border-slate-300 hover:bg-white shadow-2xs transition-all"
+                buttonClassName="h-8 rounded-lg border-slate-200 bg-white px-3 text-xs font-bold text-[#042c51] hover:border-slate-300 shadow-2xs transition-all"
               />
             </div>
           </div>
         </div>
 
-        {/* Filters Group: Employee, Period, Month, and Export Button */}
+        {/* Filters Group: Employee, Period, Month, Export Button, and Dashboard Guide */}
         <div className="flex flex-wrap items-center gap-2.5">
-          {/* 2. Employee Dropdown */}
-          <div className="flex items-center gap-1.5">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
-              Employee:
-            </span>
-            <div className="w-[210px]">
-              <SingleSelectDropdown
-                value={selectedEmployee}
-                onChange={(e) => setSelectedEmployee(e.target.value)}
-                placeholder="Select Employee"
-                options={EMPLOYEE_OPTIONS}
-                buttonClassName="h-8 rounded-lg border-slate-200 bg-slate-50/70 px-3 text-xs font-bold text-slate-800 hover:border-slate-300 hover:bg-white shadow-2xs transition-all"
-              />
+          <div id="guide-ab-filters" className="flex flex-wrap items-center gap-2.5">
+            {/* 2. Employee Dropdown */}
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                Employee:
+              </span>
+              <div className="w-[210px]">
+                <SingleSelectDropdown
+                  value={selectedEmployee}
+                  onChange={(e) => setSelectedEmployee(e.target.value)}
+                  placeholder="Select Employee"
+                  options={EMPLOYEE_OPTIONS}
+                  buttonClassName="h-8 rounded-lg border-slate-200 bg-slate-50/70 px-3 text-xs font-bold text-slate-800 hover:border-slate-300 hover:bg-white shadow-2xs transition-all"
+                />
+              </div>
             </div>
-          </div>
 
-          {/* 3. Period Dropdown (daily, weekly, monthly, annually) */}
-          <div className="flex items-center gap-1.5">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
-              Period:
-            </span>
-            <div className="w-[125px]">
-              <SingleSelectDropdown
-                value={selectedPeriod}
-                onChange={(e) => setSelectedPeriod(e.target.value)}
-                placeholder="Select Period"
-                options={PERIOD_OPTIONS}
-                buttonClassName="h-8 rounded-lg border-slate-200 bg-slate-50/70 px-3 text-xs font-bold text-slate-800 hover:border-slate-300 hover:bg-white shadow-2xs transition-all"
-              />
+            {/* 3. Period Dropdown (daily, weekly, monthly, annually) */}
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                Period:
+              </span>
+              <div className="w-[125px]">
+                <SingleSelectDropdown
+                  value={selectedPeriod}
+                  onChange={(e) => setSelectedPeriod(e.target.value)}
+                  placeholder="Select Period"
+                  options={PERIOD_OPTIONS}
+                  buttonClassName="h-8 rounded-lg border-slate-200 bg-slate-50/70 px-3 text-xs font-bold text-slate-800 hover:border-slate-300 hover:bg-white shadow-2xs transition-all"
+                />
+              </div>
             </div>
-          </div>
 
-          {/* 4. Month Dropdown */}
-          <div className="flex items-center gap-1.5">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
-              Month:
-            </span>
-            <div className="w-[130px]">
-              <SingleSelectDropdown
-                value={selectedMonth}
-                onChange={(e) => setSelectedMonth(e.target.value)}
-                placeholder="Select Month"
-                options={MONTH_OPTIONS}
-                buttonClassName="h-8 rounded-lg border-slate-200 bg-slate-50/70 px-3 text-xs font-bold text-slate-800 hover:border-slate-300 hover:bg-white shadow-2xs transition-all"
-              />
+            {/* 4. Month Dropdown */}
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                Month:
+              </span>
+              <div className="w-[130px]">
+                <SingleSelectDropdown
+                  value={selectedMonth}
+                  onChange={(e) => setSelectedMonth(e.target.value)}
+                  placeholder="Select Month"
+                  options={MONTH_OPTIONS}
+                  buttonClassName="h-8 rounded-lg border-slate-200 bg-slate-50/70 px-3 text-xs font-bold text-slate-800 hover:border-slate-300 hover:bg-white shadow-2xs transition-all"
+                />
+              </div>
             </div>
           </div>
 
           {/* 5. Export PDF Button */}
           <button
+            id="guide-ab-export"
             type="button"
             onClick={handleExportPDF}
             disabled={isExporting}
@@ -267,13 +273,24 @@ export default function FrontStepsDashboardAccountBased({
               </>
             )}
           </button>
+
+          {/* Dashboard Guide Trigger Button */}
+          <button
+            type="button"
+            onClick={() => setIsGuideOpen(true)}
+            className="flex items-center gap-1.5 h-8 rounded-lg bg-[#042c51] hover:bg-[#0c4a80] text-white px-3 text-xs font-bold shadow-2xs hover:shadow-xs transition-all active:scale-95 cursor-pointer"
+            title="Open Interactive Dashboard Guide"
+          >
+            <Compass className="h-3.5 w-3.5 text-sky-300" />
+            <span>Dashboard Guide</span>
+          </button>
         </div>
       </div>
 
       {/* Printable Dashboard Body */}
       <div ref={dashboardRef} className="flex flex-col justify-between flex-1 min-h-0 gap-2.5">
         {/* Row 1: 8 Top Metric Stat Cards (Data/Number prominently highlighted) */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2 shrink-0">
+        <div id="guide-ab-kpi-cards" className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2 shrink-0">
         {/* 1. Account KPI Score */}
         <div className="rounded-xl border border-slate-200/90 bg-white p-3 shadow-2xs hover:shadow-xs transition-all flex flex-col justify-between group animate-fade-up" style={{ animationDelay: '80ms' }}>
           <div className="my-auto py-1 text-center">
@@ -372,7 +389,7 @@ export default function FrontStepsDashboardAccountBased({
       </div>
 
       {/* Row 2: 2 Side-by-Side Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 flex-[1.1] min-h-0 animate-fade-up" style={{ animationDelay: '200ms' }}>
+      <div id="guide-ab-weekly-charts" className="grid grid-cols-1 lg:grid-cols-2 gap-3 flex-[1.1] min-h-0 animate-fade-up" style={{ animationDelay: '200ms' }}>
         {/* Left Chart: Cases Closed by weekly (Smooth Curved Area Line Chart) */}
         <div className="rounded-2xl border border-slate-200/90 bg-white p-3.5 shadow-2xs flex flex-col justify-between min-h-0">
           <div className="flex items-center justify-between pb-2 border-b border-slate-100 shrink-0">
@@ -647,8 +664,67 @@ export default function FrontStepsDashboardAccountBased({
         </div>
       </div>
 
+      {/* Row 4: 3 Bottom Summary Cards */}
+      <div id="guide-ab-incentives" className="grid grid-cols-1 md:grid-cols-3 gap-3 shrink-0 animate-fade-up" style={{ animationDelay: '550ms' }}>
+        {/* Monthly Incentive Projection */}
+        <div className="rounded-xl border border-slate-200/90 bg-white p-3.5 shadow-2xs hover:shadow-xs transition-all flex flex-col justify-between">
+          <div className="pb-2 border-b border-slate-100">
+            <span className="text-[11px] font-black uppercase tracking-wider text-slate-800">
+              Monthly Incentive Projection
+            </span>
+          </div>
+          <div className="flex items-baseline justify-between pt-2">
+            <span className="text-3xl lg:text-[36px] xl:text-[40px] font-black text-slate-950 leading-none tracking-tight font-jakarta">
+              <AnimatedNumber value="$0" duration={1400} delay={350} />
+            </span>
+            <span className="text-xs font-bold text-slate-600">
+              Unapproved estimate
+            </span>
+          </div>
+        </div>
+
+        {/* Milestone Incentive Status */}
+        <div className="rounded-xl border border-slate-200/90 bg-white p-3.5 shadow-2xs hover:shadow-xs transition-all flex flex-col justify-between">
+          <div className="pb-2 border-b border-slate-100">
+            <span className="text-[11px] font-black uppercase tracking-wider text-slate-800">
+              Milestone Incentive Status
+            </span>
+          </div>
+          <div className="flex items-baseline justify-between pt-2">
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-3xl lg:text-[36px] xl:text-[40px] font-black text-slate-950 leading-none tracking-tight font-jakarta">
+                <AnimatedNumber value="0" duration={1400} delay={400} />
+              </span>
+              <span className="text-base lg:text-lg font-black text-slate-500 font-jakarta">
+                / 67
+              </span>
+            </div>
+            <span className="text-xs font-bold text-slate-600 truncate max-w-[55%] text-right" title="Meet score threshold; not approved">
+              Threshold met; unapproved
+            </span>
+          </div>
+        </div>
+
+        {/* Pending Validations */}
+        <div className="rounded-xl border border-slate-200/90 bg-white p-3.5 shadow-2xs hover:shadow-xs transition-all flex flex-col justify-between">
+          <div className="pb-2 border-b border-slate-100">
+            <span className="text-[11px] font-black uppercase tracking-wider text-slate-800">
+              Pending Validations
+            </span>
+          </div>
+          <div className="flex items-baseline justify-between pt-2">
+            <span className="text-3xl lg:text-[36px] xl:text-[40px] font-black text-slate-950 leading-none tracking-tight font-jakarta">
+              <AnimatedNumber value="54" duration={1500} delay={450} />
+            </span>
+            <span className="text-xs font-bold text-slate-600">
+              Require confirmation
+            </span>
+          </div>
+        </div>
+      </div>
+
       {/* Row 3: 3 Bottom Donut Charts */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 flex-[1.2] min-h-0 animate-fade-up" style={{ animationDelay: '400ms' }}>
+      <div id="guide-ab-distribution-donuts" className="grid grid-cols-1 md:grid-cols-3 gap-3 flex-[1.2] min-h-0 animate-fade-up" style={{ animationDelay: '400ms' }}>
         {/* Donut 1: Case Closure Timeliness */}
         <div className="rounded-2xl border border-slate-200/90 bg-white p-4 shadow-2xs flex flex-col justify-between min-h-0">
           <div className="flex items-center justify-between pb-2 border-b border-slate-100 shrink-0">
@@ -913,66 +989,14 @@ export default function FrontStepsDashboardAccountBased({
           </div>
         </div>
       </div>
-
-      {/* Row 4: 3 Bottom Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 shrink-0 animate-fade-up" style={{ animationDelay: '550ms' }}>
-        {/* Monthly Incentive Projection */}
-        <div className="rounded-xl border border-slate-200/90 bg-white p-3.5 shadow-2xs hover:shadow-xs transition-all flex flex-col justify-between">
-          <div className="pb-2 border-b border-slate-100">
-            <span className="text-[11px] font-black uppercase tracking-wider text-slate-800">
-              Monthly Incentive Projection
-            </span>
-          </div>
-          <div className="flex items-baseline justify-between pt-2">
-            <span className="text-3xl lg:text-[36px] xl:text-[40px] font-black text-slate-950 leading-none tracking-tight font-jakarta">
-              <AnimatedNumber value="$0" duration={1400} delay={350} />
-            </span>
-            <span className="text-xs font-bold text-slate-600">
-              Unapproved estimate
-            </span>
-          </div>
-        </div>
-
-        {/* Milestone Incentive Status */}
-        <div className="rounded-xl border border-slate-200/90 bg-white p-3.5 shadow-2xs hover:shadow-xs transition-all flex flex-col justify-between">
-          <div className="pb-2 border-b border-slate-100">
-            <span className="text-[11px] font-black uppercase tracking-wider text-slate-800">
-              Milestone Incentive Status
-            </span>
-          </div>
-          <div className="flex items-baseline justify-between pt-2">
-            <div className="flex items-baseline gap-1.5">
-              <span className="text-3xl lg:text-[36px] xl:text-[40px] font-black text-slate-950 leading-none tracking-tight font-jakarta">
-                <AnimatedNumber value="0" duration={1400} delay={400} />
-              </span>
-              <span className="text-base lg:text-lg font-black text-slate-500 font-jakarta">
-                / 67
-              </span>
-            </div>
-            <span className="text-xs font-bold text-slate-600 truncate max-w-[55%] text-right" title="Meet score threshold; not approved">
-              Threshold met; unapproved
-            </span>
-          </div>
-        </div>
-
-        {/* Pending Validations */}
-        <div className="rounded-xl border border-slate-200/90 bg-white p-3.5 shadow-2xs hover:shadow-xs transition-all flex flex-col justify-between">
-          <div className="pb-2 border-b border-slate-100">
-            <span className="text-[11px] font-black uppercase tracking-wider text-slate-800">
-              Pending Validations
-            </span>
-          </div>
-          <div className="flex items-baseline justify-between pt-2">
-            <span className="text-3xl lg:text-[36px] xl:text-[40px] font-black text-slate-950 leading-none tracking-tight font-jakarta">
-              <AnimatedNumber value="54" duration={1500} delay={450} />
-            </span>
-            <span className="text-xs font-bold text-slate-600">
-              Require confirmation
-            </span>
-          </div>
-        </div>
       </div>
-      </div>
+
+      {/* Interactive Step-by-Step Dashboard Guide Modal */}
+      <FrontStepsDashboardGuide
+        isOpen={isGuideOpen}
+        onClose={() => setIsGuideOpen(false)}
+        steps={ACCOUNT_BASED_GUIDE_STEPS}
+      />
     </div>
   );
 }

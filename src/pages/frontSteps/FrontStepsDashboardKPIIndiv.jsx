@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect } from "react";
-import { User, Menu, Download, Loader2, ArrowUp, ArrowUpRight } from "lucide-react";
+import { User, Menu, Download, Loader2, ArrowUp, ArrowUpRight, Compass } from "lucide-react";
 import SingleSelectDropdown from "../../components/common/filters/SingleSelectDropdown";
 import AnimatedNumber, { useAnimatedNumber } from "../../components/modules/frontsteps/AnimatedNumber";
+import FrontStepsDashboardGuide, { KPI_INDIV_GUIDE_STEPS } from "../../components/modules/frontsteps/FrontStepsDashboardGuide";
 
 const VIEW_OPTIONS = [
   { value: "dashboard-summary", label: "Summary" },
@@ -41,7 +42,44 @@ const MONTH_OPTIONS = [
   { value: "12", label: "December" },
 ];
 
-// Standardized FrontSteps KPI (PMP/PIP) Color System - Unified Blue Hue Palette
+/**
+ * TypewriterText: Sequentially types out text character-by-character in sync
+ * with a subtle blink cursor while typing. Resets whenever text changes.
+ */
+function TypewriterText({ text, speed = 25, delay = 80, className = "" }) {
+  const [displayedLength, setDisplayedLength] = useState(0);
+
+  useEffect(() => {
+    setDisplayedLength(0);
+    const startTimeout = setTimeout(() => {
+      let current = 0;
+      const interval = setInterval(() => {
+        current += 1;
+        setDisplayedLength(current);
+        if (current >= (text?.length || 0)) {
+          clearInterval(interval);
+        }
+      }, speed);
+      return () => clearInterval(interval);
+    }, delay);
+
+    return () => clearTimeout(startTimeout);
+  }, [text, speed, delay]);
+
+  const visibleText = (text || "").slice(0, displayedLength);
+  const isTyping = displayedLength < (text?.length || 0);
+
+  return (
+    <span className={`inline-flex items-center ${className}`}>
+      <span>{visibleText}</span>
+      {isTyping && (
+        <span className="ml-0.5 inline-block w-[2px] h-[1em] bg-blue-500 animate-kpi-cursor align-middle" />
+      )}
+    </span>
+  );
+}
+
+
 const KPI_COLORS = {
   target: "#052648",       // Target / Benchmark (Deep Navy)
   targetDark: "#03172c",   // Target Pin / Bubble (Deepest Navy)
@@ -73,6 +111,7 @@ export default function FrontStepsDashboardKPIIndiv({
   const [isExporting, setIsExporting] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
   const [showCallouts, setShowCallouts] = useState(false);
+  const [isGuideOpen, setIsGuideOpen] = useState(false);
 
   const dashboardRef = useRef(null);
 
@@ -192,7 +231,7 @@ export default function FrontStepsDashboardKPIIndiv({
           )}
 
           {/* 1. View Mode */}
-          <div className="flex items-center gap-2">
+          <div id="guide-indiv-view-mode" className="flex items-center gap-2 rounded-lg border border-slate-200/90 bg-slate-50/70 px-2.5 py-1">
             <span className="text-xs font-black uppercase tracking-wider text-[#042c51]">
               View Mode:
             </span>
@@ -202,64 +241,67 @@ export default function FrontStepsDashboardKPIIndiv({
                 onChange={(e) => handleViewChange(e.target.value)}
                 placeholder="Select View"
                 options={VIEW_OPTIONS}
-                buttonClassName="h-8 rounded-lg border-slate-200 bg-slate-50/90 px-3 text-xs font-bold text-[#042c51] hover:border-slate-300 hover:bg-white shadow-2xs transition-all"
+                buttonClassName="h-8 rounded-lg border-slate-200 bg-white px-3 text-xs font-bold text-[#042c51] hover:border-slate-300 shadow-2xs transition-all"
               />
             </div>
           </div>
         </div>
 
-        {/* Filters Group: Employee, Period, Month, and Export Button */}
+        {/* Filters Group: Employee, Period, Month, Export Button, and Dashboard Guide */}
         <div className="flex flex-wrap items-center gap-2.5">
-          {/* 2. Employee Dropdown */}
-          <div className="flex items-center gap-1.5">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
-              Employee:
-            </span>
-            <div className="w-[210px]">
-              <SingleSelectDropdown
-                value={selectedEmployee}
-                onChange={(e) => setSelectedEmployee(e.target.value)}
-                placeholder="Select Employee"
-                options={EMPLOYEE_OPTIONS}
-                buttonClassName="h-8 rounded-lg border-slate-200 bg-slate-50/70 px-3 text-xs font-bold text-slate-800 hover:border-slate-300 hover:bg-white shadow-2xs transition-all"
-              />
+          <div id="guide-indiv-filters" className="flex flex-wrap items-center gap-2.5">
+            {/* 2. Employee Dropdown */}
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                Employee:
+              </span>
+              <div className="w-[210px]">
+                <SingleSelectDropdown
+                  value={selectedEmployee}
+                  onChange={(e) => setSelectedEmployee(e.target.value)}
+                  placeholder="Select Employee"
+                  options={EMPLOYEE_OPTIONS}
+                  buttonClassName="h-8 rounded-lg border-slate-200 bg-slate-50/70 px-3 text-xs font-bold text-slate-800 hover:border-slate-300 hover:bg-white shadow-2xs transition-all"
+                />
+              </div>
             </div>
-          </div>
 
-          {/* 3. Period Dropdown (daily, weekly, monthly, annually) */}
-          <div className="flex items-center gap-1.5">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
-              Period:
-            </span>
-            <div className="w-[125px]">
-              <SingleSelectDropdown
-                value={selectedPeriod}
-                onChange={(e) => setSelectedPeriod(e.target.value)}
-                placeholder="Select Period"
-                options={PERIOD_OPTIONS}
-                buttonClassName="h-8 rounded-lg border-slate-200 bg-slate-50/70 px-3 text-xs font-bold text-slate-800 hover:border-slate-300 hover:bg-white shadow-2xs transition-all"
-              />
+            {/* 3. Period Dropdown (daily, weekly, monthly, annually) */}
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                Period:
+              </span>
+              <div className="w-[125px]">
+                <SingleSelectDropdown
+                  value={selectedPeriod}
+                  onChange={(e) => setSelectedPeriod(e.target.value)}
+                  placeholder="Select Period"
+                  options={PERIOD_OPTIONS}
+                  buttonClassName="h-8 rounded-lg border-slate-200 bg-slate-50/70 px-3 text-xs font-bold text-slate-800 hover:border-slate-300 hover:bg-white shadow-2xs transition-all"
+                />
+              </div>
             </div>
-          </div>
 
-          {/* 4. Month Dropdown */}
-          <div className="flex items-center gap-1.5">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
-              Month:
-            </span>
-            <div className="w-[130px]">
-              <SingleSelectDropdown
-                value={selectedMonth}
-                onChange={(e) => setSelectedMonth(e.target.value)}
-                placeholder="Select Month"
-                options={MONTH_OPTIONS}
-                buttonClassName="h-8 rounded-lg border-slate-200 bg-slate-50/70 px-3 text-xs font-bold text-slate-800 hover:border-slate-300 hover:bg-white shadow-2xs transition-all"
-              />
+            {/* 4. Month Dropdown */}
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                Month:
+              </span>
+              <div className="w-[130px]">
+                <SingleSelectDropdown
+                  value={selectedMonth}
+                  onChange={(e) => setSelectedMonth(e.target.value)}
+                  placeholder="Select Month"
+                  options={MONTH_OPTIONS}
+                  buttonClassName="h-8 rounded-lg border-slate-200 bg-slate-50/70 px-3 text-xs font-bold text-slate-800 hover:border-slate-300 hover:bg-white shadow-2xs transition-all"
+                />
+              </div>
             </div>
           </div>
 
           {/* 5. Export PDF Button */}
           <button
+            id="guide-indiv-export"
             type="button"
             onClick={handleExportPDF}
             disabled={isExporting}
@@ -278,6 +320,17 @@ export default function FrontStepsDashboardKPIIndiv({
               </>
             )}
           </button>
+
+          {/* Dashboard Guide Trigger Button */}
+          <button
+            type="button"
+            onClick={() => setIsGuideOpen(true)}
+            className="flex items-center gap-1.5 h-8 rounded-lg bg-[#042c51] hover:bg-[#0c4a80] text-white px-3 text-xs font-bold shadow-2xs hover:shadow-xs transition-all active:scale-95 cursor-pointer"
+            title="Open Interactive Dashboard Guide"
+          >
+            <Compass className="h-3.5 w-3.5 text-sky-300" />
+            <span>Dashboard Guide</span>
+          </button>
         </div>
       </div>
 
@@ -291,64 +344,84 @@ export default function FrontStepsDashboardKPIIndiv({
         {/* Reduced width (col-span-4) to give more room for metrics */}
         {/* ======================================================== */}
         <div className="lg:col-span-4 flex flex-col gap-2.5 h-auto lg:h-full min-h-0">
-          {/* Top-Left: Agent Profile & 4 Field Layers (Taller height h-[185px]) */}
-          <div className="rounded-2xl border border-slate-200/90 bg-white p-3 lg:p-3.5 shadow-2xs hover:shadow-xs transition-all min-h-[185px] lg:h-[185px] shrink-0 flex flex-col justify-center">
+          {/* Top-Left: Agent Profile & 4 Field Layers (Taller height h-[185px]) with smooth entrance animation */}
+          <div id="guide-indiv-agent-profile" className="rounded-2xl border border-slate-200/90 bg-white p-3 lg:p-3.5 shadow-2xs hover:shadow-xs transition-all min-h-[185px] lg:h-[185px] shrink-0 flex flex-col justify-center animate-kpi-enter">
             <div className="flex items-stretch gap-3 h-full">
               {/* Photo Frame Placeholder */}
-              <div className="relative flex w-28 shrink-0 flex-col items-center justify-center rounded-xl bg-gradient-to-br from-[#042c51] to-[#0c4a80] text-white shadow-sm p-2.5">
-                <User className="h-12 w-12 text-white/95" strokeWidth={1.8} />
+              <div className="relative flex w-28 shrink-0 flex-col items-center justify-center rounded-xl bg-gradient-to-br from-[#042c51] to-[#0c4a80] text-white shadow-sm p-2.5 group">
+                <User className="h-12 w-12 text-white/95 transition-transform duration-300 group-hover:scale-105" strokeWidth={1.8} />
                 <span className="text-[9px] font-black text-white/70 tracking-widest uppercase mt-1">
                   PHOTO
                 </span>
               </div>
 
-              {/* 4 Distinct Field Layers */}
+              {/* 4 Distinct Field Layers with Staggered Cascading Animations */}
               <div className="flex flex-col min-w-0 flex-1 justify-between gap-1.5 h-full">
                 {/* Field 1: Name */}
-                <div className="flex items-center gap-2 bg-slate-50/90 px-3 py-1.5 rounded-xl border border-slate-200/70 flex-1 min-w-0">
+                <div
+                  className="flex items-center gap-2 bg-slate-50/90 px-3 py-1.5 rounded-xl border border-slate-200/70 flex-1 min-w-0 transition-all duration-300 hover:bg-slate-100/90"
+                >
                   <span className="text-xs font-bold text-slate-500 shrink-0">
                     Name:
                   </span>
-                  <span className="text-xs font-black text-slate-900 truncate">
-                    {currentEmployee.name}
-                  </span>
+                  <TypewriterText
+                    text={currentEmployee.name}
+                    speed={25}
+                    delay={100}
+                    className="text-xs font-black text-slate-900 truncate"
+                  />
                 </div>
 
                 {/* Field 2: Employee ID */}
-                <div className="flex items-center gap-2 bg-slate-50/90 px-3 py-1.5 rounded-xl border border-slate-200/70 flex-1 min-w-0">
+                <div
+                  className="flex items-center gap-2 bg-slate-50/90 px-3 py-1.5 rounded-xl border border-slate-200/70 flex-1 min-w-0 transition-all duration-300 hover:bg-slate-100/90"
+                >
                   <span className="text-xs font-bold text-slate-500 shrink-0">
                     ID:
                   </span>
-                  <span className="font-black text-slate-950 text-xs font-jakarta truncate">
-                    {currentEmployee.id}
-                  </span>
+                  <TypewriterText
+                    text={currentEmployee.id}
+                    speed={25}
+                    delay={100}
+                    className="font-black text-slate-950 text-xs font-jakarta truncate"
+                  />
                 </div>
 
                 {/* Field 3: Account */}
-                <div className="flex items-center gap-2 bg-slate-50/90 px-3 py-1.5 rounded-xl border border-slate-200/70 flex-1 min-w-0">
+                <div
+                  className="flex items-center gap-2 bg-slate-50/90 px-3 py-1.5 rounded-xl border border-slate-200/70 flex-1 min-w-0 transition-all duration-300 hover:bg-slate-100/90"
+                >
                   <span className="text-xs font-bold text-slate-500 shrink-0">
                     Account:
                   </span>
-                  <span className="text-xs font-black text-slate-800 truncate">
-                    {currentEmployee.account}
-                  </span>
+                  <TypewriterText
+                    text={currentEmployee.account}
+                    speed={25}
+                    delay={100}
+                    className="text-xs font-black text-slate-800 truncate"
+                  />
                 </div>
 
                 {/* Field 4: Line of Business */}
-                <div className="flex items-center gap-2 bg-slate-50/90 px-3 py-1.5 rounded-xl border border-slate-200/70 flex-1 min-w-0">
+                <div
+                  className="flex items-center gap-2 bg-slate-50/90 px-3 py-1.5 rounded-xl border border-slate-200/70 flex-1 min-w-0 transition-all duration-300 hover:bg-slate-100/90"
+                >
                   <span className="text-xs font-bold text-slate-500 shrink-0">
                     LOB:
                   </span>
-                  <span className="text-xs font-black text-slate-800 truncate">
-                    {currentEmployee.lob}
-                  </span>
+                  <TypewriterText
+                    text={currentEmployee.lob}
+                    speed={25}
+                    delay={100}
+                    className="text-xs font-black text-slate-800 truncate"
+                  />
                 </div>
               </div>
             </div>
           </div>
 
           {/* Bottom-Left: Substantially Bigger Donut Graph filling bottom space */}
-          <div className="flex-1 rounded-2xl border border-slate-200/90 bg-white p-3.5 lg:p-4 shadow-2xs hover:shadow-xs transition-all flex flex-col justify-between items-center min-h-[320px] lg:min-h-0">
+          <div id="guide-indiv-overall-kpi" className="flex-1 rounded-2xl border border-slate-200/90 bg-white p-3.5 lg:p-4 shadow-2xs hover:shadow-xs transition-all flex flex-col justify-between items-center min-h-[320px] lg:min-h-0">
             <div className="w-full flex items-center justify-between pb-2 border-b border-slate-100">
               <span className="text-xs font-black uppercase tracking-wider text-[#042c51]">
                 KPI Breakdown
@@ -543,7 +616,7 @@ export default function FrontStepsDashboardKPIIndiv({
           {/* Top Row: Left sub-column (Productivity + Consistency) & Right sub-column (Efficiency Gauge) */}
           <div className="grid grid-cols-1 md:grid-cols-12 gap-2.5 items-stretch shrink-0">
             {/* Left Stack (md:col-span-7 xl:col-span-8): Productivity + Consistency */}
-            <div className="md:col-span-7 xl:col-span-8 flex flex-col gap-2.5">
+            <div id="guide-indiv-prod-cons" className="md:col-span-7 xl:col-span-8 flex flex-col gap-2.5">
               {/* Card 1: Productivity (Interactive Target vs Actual Progress + Score) */}
               <div className="rounded-2xl border border-slate-200/90 bg-white p-3 shadow-2xs hover:shadow-xs transition-all flex items-stretch justify-between shrink-0 h-[124px] gap-2 lg:gap-3 animate-fade-up" style={{ animationDelay: "100ms" }}>
                 {/* Left: Title on top, Progress Bars below */}
@@ -886,7 +959,7 @@ export default function FrontStepsDashboardKPIIndiv({
             </div>
 
             {/* Right Sub-Column (md:col-span-5 xl:col-span-4): Circular EFFICIENCY Card */}
-            <div className="md:col-span-5 xl:col-span-4 flex flex-col justify-between h-[258px]">
+            <div id="guide-indiv-efficiency-gauge" className="md:col-span-5 xl:col-span-4 flex flex-col justify-between h-[258px]">
               <div className="rounded-2xl border border-slate-200/90 bg-white p-3 lg:p-3.5 shadow-2xs hover:shadow-xs transition-all flex flex-col justify-between h-[258px] max-h-[258px] overflow-hidden animate-fade-up" style={{ animationDelay: "300ms" }}>
                 {/* Header: EFFICIENCY + AHT label matching Productivity & Consistency */}
                 <div className="flex flex-col shrink-0">
@@ -1087,7 +1160,7 @@ export default function FrontStepsDashboardKPIIndiv({
           </div>
 
           {/* Card 4: CRM Documentation (3 Cards matching new design with numbered badges, completion/score box, dual bars, and audit footer) */}
-          <div className="rounded-2xl border border-slate-200/90 bg-white p-3.5 lg:p-4 shadow-2xs hover:shadow-xs transition-all flex flex-col flex-1 min-h-[380px] lg:min-h-0 animate-fade-up" style={{ animationDelay: "400ms" }}>
+          <div id="guide-indiv-crm-docs" className="rounded-2xl border border-slate-200/90 bg-white p-3.5 lg:p-4 shadow-2xs hover:shadow-xs transition-all flex flex-col flex-1 min-h-[380px] lg:min-h-0 animate-fade-up" style={{ animationDelay: "400ms" }}>
             <div className="flex items-center justify-between pb-2 mb-3 border-b border-slate-100 shrink-0">
               <h4 className="text-xs font-black tracking-wider text-slate-900 uppercase font-jakarta">
                 CRM DOCUMENTATION
@@ -1441,6 +1514,13 @@ export default function FrontStepsDashboardKPIIndiv({
           </div>
         </div>
       </div>
+
+      {/* Interactive Step-by-Step Dashboard Guide Modal */}
+      <FrontStepsDashboardGuide
+        isOpen={isGuideOpen}
+        onClose={() => setIsGuideOpen(false)}
+        steps={KPI_INDIV_GUIDE_STEPS}
+      />
     </div>
   );
 }
