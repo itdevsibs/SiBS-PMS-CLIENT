@@ -111,15 +111,19 @@ export function getApiErrorMessage(error, card) {
       ? "Quality Audit"
       : /email/i.test(profileLabel)
         ? "Email Raw Data"
-        : /chat/i.test(profileLabel)
-        ? "Chat Report (EOD)"
-        : /call/i.test(profileLabel)
-        ? "Call Report (EOD)"
-        : /occupancy/i.test(profileLabel)
-        ? "Agent Occupancy"
-        : /agent/i.test(profileLabel)
-          ? "Agent Level"
-          : "Skill Statistics";
+        : /performance.*skill/i.test(profileLabel)
+          ? "Agent Performance By Skill"
+          : /activity|productive.*break/i.test(profileLabel)
+            ? "Agent Activity - Productive Breaks"
+            : /chat/i.test(profileLabel)
+              ? "Chat Report (EOD)"
+              : /call/i.test(profileLabel)
+                ? "Call Report (EOD)"
+                : /occupancy/i.test(profileLabel)
+                  ? "Agent Occupancy"
+                  : /agent/i.test(profileLabel)
+                    ? "Agent Level"
+                    : "Skill Statistics";
 
     if (/hero/i.test(profileLabel || card?.id || "")) {
       return `Only HeroDash ${reportTypeLabel} (${formatLabel}) files are allowed for this card. The uploaded file is missing required HeroDash ${reportTypeLabel} sheets or headers.`;
@@ -542,6 +546,8 @@ export const WARNING_CATEGORY_LABELS = [
   "SERVICE / QUEUE LEVEL",
   "AGENT LEVEL",
   "AGENT OCCUPANCY",
+  "AGENT ACTIVITY - PRODUCTIVE BREAKS",
+  "AGENT PERFORMANCE BY SKILL",
   "EMAIL LEVEL",
   "QUALITY AUDIT",
 ];
@@ -571,6 +577,8 @@ export function getBatchCategory(batch) {
   if (text.includes("quality") || text.includes("qa ")) return "QUALITY AUDIT";
   if (text.includes("email")) return "EMAIL LEVEL";
   if (text.includes("occupancy")) return "AGENT OCCUPANCY";
+  if (text.includes("agent activity") || text.includes("productive breaks") || text.includes("productive_breaks")) return "AGENT ACTIVITY - PRODUCTIVE BREAKS";
+  if (text.includes("agent performance by skill") || text.includes("agent_performance_by_skill")) return "AGENT PERFORMANCE BY SKILL";
   if (text.includes("agent level")) return "AGENT LEVEL";
   if (
     text.includes("skill") ||
@@ -645,7 +653,9 @@ export async function executeCardImport({
     const uploadResponse = await uploadUsVisaImport({
       file,
       importProfileId,
-      taskOrderId: uploadContext.taskOrderId || undefined,
+      taskOrderId: card.requiresTaskOrderSelection
+        ? uploadContext.taskOrderId || undefined
+        : undefined,
       reportDateFrom: uploadContext.reportDateFrom || undefined,
       reportDateTo: uploadContext.reportDateTo || undefined,
       onProgress: (percent) => {
@@ -738,6 +748,8 @@ export function groupRawDataCards(cards = []) {
     "SERVICE / QUEUE LEVEL",
     "AGENT LEVEL",
     "AGENT OCCUPANCY",
+    "AGENT ACTIVITY - PRODUCTIVE BREAKS",
+    "AGENT PERFORMANCE BY SKILL",
     "EMAIL LEVEL",
     "QUALITY AUDIT",
   ];

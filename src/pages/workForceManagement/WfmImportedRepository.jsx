@@ -61,6 +61,8 @@ function normalizeLevelValue(val) {
   if (upper.includes("SERVICE") || upper.includes("QUEUE")) return "ALL";
   if (upper.includes("QUALITY") || upper === "QA") return "QUALITY AUDIT";
   if (upper.includes("OCCUPANCY")) return "AGENT OCCUPANCY";
+  if (upper.includes("AGENT ACTIVITY") || upper.includes("PRODUCTIVE BREAK")) return "AGENT ACTIVITY - PRODUCTIVE BREAKS";
+  if (upper.includes("AGENT PERFORMANCE") && upper.includes("SKILL")) return "AGENT PERFORMANCE BY SKILL";
   if (upper.includes("EMAIL")) return "EMAIL LEVEL";
   return val;
 }
@@ -257,6 +259,8 @@ export default function WfmImportedRepository() {
     if (upper.includes("CALL REPORT")) return "CALL REPORT (EOD)";
     if (upper.includes("CHAT REPORT")) return "CHAT REPORT (EOD)";
     if (upper.includes("OCCUPANCY")) return "AGENT OCCUPANCY";
+    if (upper.includes("AGENT ACTIVITY") || upper.includes("PRODUCTIVE BREAK")) return "AGENT ACTIVITY - PRODUCTIVE BREAKS";
+    if (upper.includes("AGENT PERFORMANCE") && upper.includes("SKILL")) return "AGENT PERFORMANCE BY SKILL";
     if (upper.includes("EMAIL")) return "EMAIL LEVEL";
     if (upper.includes("QUALITY") || upper === "QA") return "QUALITY AUDIT";
     return rawLevel;
@@ -285,6 +289,8 @@ export default function WfmImportedRepository() {
       "CALL REPORT (EOD)": 0,
       "CHAT REPORT (EOD)": 0,
       "AGENT OCCUPANCY": 0,
+      "AGENT ACTIVITY - PRODUCTIVE BREAKS": 0,
+      "AGENT PERFORMANCE BY SKILL": 0,
       "EMAIL LEVEL": 0,
       "QUALITY AUDIT": 0,
     };
@@ -317,6 +323,14 @@ export default function WfmImportedRepository() {
       {
         value: "AGENT OCCUPANCY",
         label: `AGENT OCCUPANCY (${levelCounts["AGENT OCCUPANCY"] || 0})`,
+      },
+      {
+        value: "AGENT ACTIVITY - PRODUCTIVE BREAKS",
+        label: `AGENT ACTIVITY - PRODUCTIVE BREAKS (${levelCounts["AGENT ACTIVITY - PRODUCTIVE BREAKS"] || 0})`,
+      },
+      {
+        value: "AGENT PERFORMANCE BY SKILL",
+        label: `AGENT PERFORMANCE BY SKILL (${levelCounts["AGENT PERFORMANCE BY SKILL"] || 0})`,
       },
       {
         value: "EMAIL LEVEL",
