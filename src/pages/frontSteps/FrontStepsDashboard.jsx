@@ -1039,9 +1039,9 @@ export default function FrontStepsDashboard() {
       </aside>
 
       {/* Main View Area */}
-      <main className="min-w-0 flex-1 flex flex-col h-full overflow-hidden transition-all duration-300 ease-in-out">
+      <main className="min-w-0 flex-1 flex flex-col h-full overflow-y-auto lg:overflow-hidden transition-all duration-300 ease-in-out custom-scrollbar">
         {/* Module Content View: Full stretch without empty left gaps */}
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden px-2.5 sm:px-4 lg:px-5 pb-2.5 pt-2.5 sm:pb-3 sm:pt-3 transition-all duration-300 ease-in-out gap-2.5">
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto lg:overflow-hidden px-2.5 sm:px-4 lg:px-5 pb-2.5 pt-2.5 sm:pb-3 sm:pt-3 transition-all duration-300 ease-in-out gap-2.5 custom-scrollbar">
           {/* Global Header Bar for Non-Overview Modules */}
           {!["dashboard", "dashboard-summary", "dashboard-account-based", "dashboard-kpi-indiv"].includes(activeSubmoduleId) && (
             <div className="flex items-center justify-between gap-3 rounded-xl border border-slate-200/90 bg-white px-3.5 py-2 shadow-2xs shrink-0 select-none">

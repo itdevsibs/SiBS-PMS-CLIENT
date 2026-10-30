@@ -226,7 +226,7 @@ export default function FrontStepsDashboardSummary({
   return (
     <div
       ref={dashboardRef}
-      className="flex h-full min-h-0 flex-1 flex-col justify-between font-jakarta text-slate-800 select-none gap-2 overflow-hidden"
+      className="flex min-h-0 flex-1 flex-col font-jakarta text-slate-800 select-none gap-2.5 overflow-y-auto lg:overflow-hidden custom-scrollbar pb-6 lg:pb-0"
     >
       {/* 1. Global Filter Bar: View Mode Switcher, Report Type & Guide Button */}
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200/90 bg-white px-3.5 py-2 shadow-2xs shrink-0">
@@ -406,9 +406,9 @@ export default function FrontStepsDashboardSummary({
       </div>
 
       {/* 4. Middle Row: Offered vs Handled Calls (Left 7 cols) & Call Performance Summary (Right 5 cols) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-2.5 flex-1 min-h-0">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-2.5 shrink-0 lg:flex-1 lg:min-h-0">
         {/* Left: Offered vs Handled Calls Chart with Splines & Hover Tooltip */}
-        <div id="guide-chart-offered-handled" className="lg:col-span-7 flex flex-col justify-between rounded-xl border border-slate-200/90 bg-white p-3 shadow-2xs min-h-0 relative">
+        <div id="guide-chart-offered-handled" className="lg:col-span-7 flex flex-col justify-between rounded-xl border border-slate-200/90 bg-white p-3 shadow-2xs min-h-[220px] lg:min-h-0 relative">
           {/* Header with Title on Left and Centered Legend */}
           <div className="flex items-center justify-between shrink-0 mb-1 px-1">
             <h3 className="text-xs font-black uppercase tracking-wider text-[#042c51]">
@@ -427,8 +427,10 @@ export default function FrontStepsDashboardSummary({
           </div>
 
           {/* SVG Line Chart: Smooth Bezier Splines matching Google Sheets with matching Data Labels & interactive tooltips */}
-          <div className="w-full flex-1 min-h-0 relative flex flex-col justify-end">
-            <svg viewBox="0 0 840 152" preserveAspectRatio="none" className="w-full h-full overflow-visible">
+          {/* Scrollable container on small viewports so points, time labels, and numbers are NEVER compressed horizontally */}
+          <div className="w-full flex-1 min-h-0 relative flex flex-col justify-end overflow-x-auto overflow-y-hidden custom-scrollbar">
+            <div className="min-w-[780px] w-full h-full relative flex flex-col justify-end">
+              <svg viewBox="0 0 840 152" className="w-full h-full overflow-visible">
               {/* Horizontal Grid lines */}
               <line x1="42" y1="18" x2="825" y2="18" stroke="#f1f5f9" strokeWidth="1" />
               <line x1="42" y1="56" x2="825" y2="56" stroke="#f1f5f9" strokeWidth="1" />
@@ -532,7 +534,8 @@ export default function FrontStepsDashboardSummary({
                           x={cx}
                           y={yH - 7}
                           textAnchor="middle"
-                          className="text-[9.5px] font-bold fill-[#4cae4c] pointer-events-none"
+                          style={{ fontFamily: "system-ui, -apple-system, sans-serif" }}
+                          className="text-[10px] font-bold fill-[#4cae4c] pointer-events-none select-none"
                         >
                           {pt.valH}
                         </text>
@@ -541,18 +544,20 @@ export default function FrontStepsDashboardSummary({
                           {/* Offered value in blue above */}
                           <text
                             x={cx}
-                            y={yO - 7}
+                            y={yO <= yH ? yO - 7 : yO + 13}
                             textAnchor="middle"
-                            className="text-[9.5px] font-bold fill-[#1d6fa5] pointer-events-none"
+                            style={{ fontFamily: "system-ui, -apple-system, sans-serif" }}
+                            className="text-[10px] font-bold fill-[#1d6fa5] pointer-events-none select-none"
                           >
                             {pt.valO}
                           </text>
                           {/* Handled value in green */}
                           <text
                             x={cx}
-                            y={yH < yO ? yH - 7 : yH + 12}
+                            y={yH < yO ? yH - 7 : yH + 13}
                             textAnchor="middle"
-                            className="text-[9.5px] font-bold fill-[#4cae4c] pointer-events-none"
+                            style={{ fontFamily: "system-ui, -apple-system, sans-serif" }}
+                            className="text-[10px] font-bold fill-[#4cae4c] pointer-events-none select-none"
                           >
                             {pt.valH}
                           </text>
@@ -570,6 +575,7 @@ export default function FrontStepsDashboardSummary({
                   x={leftPad + idx * stepX}
                   y="146"
                   textAnchor="middle"
+                  style={{ fontFamily: "system-ui, -apple-system, sans-serif" }}
                   className="text-[9.5px] font-medium fill-slate-700 select-none pointer-events-none"
                 >
                   {tick.time}
@@ -577,28 +583,29 @@ export default function FrontStepsDashboardSummary({
               ))}
             </svg>
 
-            {/* Hover Tooltip Overlay */}
-            {hoveredPoint && (
-              <div
-                className="absolute z-20 pointer-events-none transform -translate-x-1/2 rounded-lg bg-slate-900/95 px-2.5 py-1.5 text-white shadow-xl backdrop-blur-xs text-[10.5px] border border-slate-700/80"
-                style={{
-                  left: `${(hoveredPoint.cx / chartW) * 100}%`,
-                  top: "10px",
-                }}
-              >
-                <div className="font-bold text-slate-200 border-b border-slate-700 pb-0.5 mb-1 text-center">
-                  Time: {hoveredPoint.time}
+              {/* Hover Tooltip Overlay */}
+              {hoveredPoint && (
+                <div
+                  className="absolute z-20 pointer-events-none transform -translate-x-1/2 rounded-lg bg-slate-900/95 px-2.5 py-1.5 text-white shadow-xl backdrop-blur-xs text-[10.5px] border border-slate-700/80"
+                  style={{
+                    left: `${(hoveredPoint.cx / chartW) * 100}%`,
+                    top: "10px",
+                  }}
+                >
+                  <div className="font-bold text-slate-200 border-b border-slate-700 pb-0.5 mb-1 text-center">
+                    Time: {hoveredPoint.time}
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-[#60a5fa] font-semibold">Offered:</span>
+                    <span className="font-mono font-bold">{hoveredPoint.valO}</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-[#4ade80] font-semibold">Handled:</span>
+                    <span className="font-mono font-bold">{hoveredPoint.valH}</span>
+                  </div>
                 </div>
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-[#60a5fa] font-semibold">Offered:</span>
-                  <span className="font-mono font-bold">{hoveredPoint.valO}</span>
-                </div>
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-[#4ade80] font-semibold">Handled:</span>
-                  <span className="font-mono font-bold">{hoveredPoint.valH}</span>
-                </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </div>
 
@@ -671,9 +678,9 @@ export default function FrontStepsDashboardSummary({
       </div>
 
             {/* 5. Bottom Row: 30% Top Case Drivers (Left 3 cols) & 70% Interval Performance Details (Right 7 cols) */}
-      <div className="grid grid-cols-1 lg:grid-cols-10 gap-2.5 flex-[1.3] min-h-0">
+      <div className="grid grid-cols-1 lg:grid-cols-10 gap-2.5 shrink-0 lg:flex-[1.3] lg:min-h-0">
         {/* Left: Top Case Drivers (~30% width: 3 of 10 cols) */}
-        <div id="guide-section-case-drivers" className="lg:col-span-3 flex flex-col justify-between rounded-xl border border-slate-200/90 bg-white p-3.5 shadow-2xs min-h-0 overflow-hidden">
+        <div id="guide-section-case-drivers" className="lg:col-span-3 flex flex-col justify-between rounded-xl border border-slate-200/90 bg-white p-3.5 shadow-2xs min-h-[340px] lg:min-h-0 overflow-hidden">
           {/* Header */}
           <div className="flex items-center justify-between shrink-0 mb-1">
             <h3 className="text-xs font-black uppercase tracking-wider text-[#042c51]">

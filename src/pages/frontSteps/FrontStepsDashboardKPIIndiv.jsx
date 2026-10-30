@@ -214,7 +214,7 @@ export default function FrontStepsDashboardKPIIndiv({
   };
 
   return (
-    <div className="flex h-full min-h-0 flex-1 flex-col font-jakarta text-slate-800 select-none pb-1 gap-2.5 overflow-y-auto lg:overflow-y-visible">
+    <div className="flex min-h-0 flex-1 flex-col font-jakarta text-slate-800 select-none pb-6 lg:pb-0 gap-2.5 overflow-y-auto lg:overflow-hidden custom-scrollbar">
       {/* Top Filter Bar: View Mode, Employee, Period, Month, Export Button */}
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200/90 bg-white px-3.5 py-2 shadow-2xs shrink-0">
         <div className="flex flex-wrap items-center gap-2.5">
