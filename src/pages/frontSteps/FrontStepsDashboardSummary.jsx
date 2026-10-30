@@ -429,7 +429,7 @@ export default function FrontStepsDashboardSummary({
           {/* SVG Line Chart: Smooth Bezier Splines with horizontal scroll slider so numbers are never compressed */}
           <div className="w-full flex-1 min-h-[160px] overflow-x-auto overflow-y-hidden table-scrollbar pt-1 pb-1">
             <div className="min-w-[780px] w-full h-full relative flex flex-col justify-end">
-              <svg viewBox="0 0 840 152" preserveAspectRatio="none" className="w-full h-full overflow-visible">
+              <svg viewBox="0 0 840 152" preserveAspectRatio="xMidYMid meet" className="w-full h-full overflow-visible">
               {/* Horizontal Grid lines */}
               <line x1="42" y1="18" x2="825" y2="18" stroke="#f1f5f9" strokeWidth="1" />
               <line x1="42" y1="56" x2="825" y2="56" stroke="#f1f5f9" strokeWidth="1" />
@@ -533,7 +533,8 @@ export default function FrontStepsDashboardSummary({
                           x={cx}
                           y={yH - 7}
                           textAnchor="middle"
-                          className="text-[9.5px] font-bold fill-[#4cae4c] pointer-events-none"
+                          className="text-[10px] font-semibold fill-[#4cae4c] pointer-events-none select-none"
+                          style={{ fontVariantNumeric: "tabular-nums" }}
                         >
                           {pt.valH}
                         </text>
@@ -544,7 +545,8 @@ export default function FrontStepsDashboardSummary({
                             x={cx}
                             y={yO - 7}
                             textAnchor="middle"
-                            className="text-[9.5px] font-bold fill-[#1d6fa5] pointer-events-none"
+                            className="text-[10px] font-semibold fill-[#1d6fa5] pointer-events-none select-none"
+                            style={{ fontVariantNumeric: "tabular-nums" }}
                           >
                             {pt.valO}
                           </text>
@@ -553,7 +555,8 @@ export default function FrontStepsDashboardSummary({
                             x={cx}
                             y={yH < yO ? yH - 7 : yH + 12}
                             textAnchor="middle"
-                            className="text-[9.5px] font-bold fill-[#4cae4c] pointer-events-none"
+                            className="text-[10px] font-semibold fill-[#4cae4c] pointer-events-none select-none"
+                            style={{ fontVariantNumeric: "tabular-nums" }}
                           >
                             {pt.valH}
                           </text>
