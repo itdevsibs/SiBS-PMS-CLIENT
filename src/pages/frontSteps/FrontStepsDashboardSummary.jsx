@@ -226,7 +226,7 @@ export default function FrontStepsDashboardSummary({
   return (
     <div
       ref={dashboardRef}
-      className="flex min-h-0 flex-1 flex-col font-jakarta text-slate-800 select-none gap-2.5 overflow-y-auto lg:overflow-hidden custom-scrollbar pb-6 lg:pb-0"
+      className="flex flex-col font-jakarta text-slate-800 select-none gap-3 w-full lg:h-full lg:min-h-0 lg:flex-1 lg:justify-between lg:overflow-hidden"
     >
       {/* 1. Global Filter Bar: View Mode Switcher, Report Type & Guide Button */}
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200/90 bg-white px-3.5 py-2 shadow-2xs shrink-0">
@@ -315,7 +315,7 @@ export default function FrontStepsDashboardSummary({
 
 
       {/* 3. Top Metrics Row: Exactly 11 Summary KPI Cards with consistent height, alignment & visible values */}
-      <div id="guide-summary-kpis" className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-11 gap-2 shrink-0">
+      <div id="guide-summary-kpis" className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-11 gap-2 shrink-0">
         {/* Offered */}
         <div id="guide-kpi-offered" className="flex flex-col justify-between rounded-xl border border-slate-200/90 bg-white p-2.5 shadow-2xs min-h-[58px]">
           <span className="text-[10.5px] font-bold text-slate-500 leading-tight">Offered</span>
@@ -406,9 +406,9 @@ export default function FrontStepsDashboardSummary({
       </div>
 
       {/* 4. Middle Row: Offered vs Handled Calls (Left 7 cols) & Call Performance Summary (Right 5 cols) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-2.5 shrink-0 lg:flex-1 lg:min-h-0">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-2.5 flex-1 min-h-[220px] lg:min-h-0">
         {/* Left: Offered vs Handled Calls Chart with Splines & Hover Tooltip */}
-        <div id="guide-chart-offered-handled" className="lg:col-span-7 flex flex-col justify-between rounded-xl border border-slate-200/90 bg-white p-3 shadow-2xs min-h-[220px] lg:min-h-0 relative">
+        <div id="guide-chart-offered-handled" className="lg:col-span-7 flex flex-col justify-between rounded-xl border border-slate-200/90 bg-white p-3 shadow-2xs min-h-[210px] lg:min-h-0 relative">
           {/* Header with Title on Left and Centered Legend */}
           <div className="flex items-center justify-between shrink-0 mb-1 px-1">
             <h3 className="text-xs font-black uppercase tracking-wider text-[#042c51]">
@@ -426,11 +426,10 @@ export default function FrontStepsDashboardSummary({
             </div>
           </div>
 
-          {/* SVG Line Chart: Smooth Bezier Splines matching Google Sheets with matching Data Labels & interactive tooltips */}
-          {/* Scrollable container on small viewports so points, time labels, and numbers are NEVER compressed horizontally */}
-          <div className="w-full flex-1 min-h-0 relative flex flex-col justify-end overflow-x-auto overflow-y-hidden custom-scrollbar">
+          {/* SVG Line Chart: Smooth Bezier Splines with horizontal scroll slider so numbers are never compressed */}
+          <div className="w-full flex-1 min-h-[160px] overflow-x-auto overflow-y-hidden table-scrollbar pt-1 pb-1">
             <div className="min-w-[780px] w-full h-full relative flex flex-col justify-end">
-              <svg viewBox="0 0 840 152" className="w-full h-full overflow-visible">
+              <svg viewBox="0 0 840 152" preserveAspectRatio="none" className="w-full h-full overflow-visible">
               {/* Horizontal Grid lines */}
               <line x1="42" y1="18" x2="825" y2="18" stroke="#f1f5f9" strokeWidth="1" />
               <line x1="42" y1="56" x2="825" y2="56" stroke="#f1f5f9" strokeWidth="1" />
@@ -534,8 +533,7 @@ export default function FrontStepsDashboardSummary({
                           x={cx}
                           y={yH - 7}
                           textAnchor="middle"
-                          style={{ fontFamily: "system-ui, -apple-system, sans-serif" }}
-                          className="text-[10px] font-bold fill-[#4cae4c] pointer-events-none select-none"
+                          className="text-[9.5px] font-bold fill-[#4cae4c] pointer-events-none"
                         >
                           {pt.valH}
                         </text>
@@ -544,20 +542,18 @@ export default function FrontStepsDashboardSummary({
                           {/* Offered value in blue above */}
                           <text
                             x={cx}
-                            y={yO <= yH ? yO - 7 : yO + 13}
+                            y={yO - 7}
                             textAnchor="middle"
-                            style={{ fontFamily: "system-ui, -apple-system, sans-serif" }}
-                            className="text-[10px] font-bold fill-[#1d6fa5] pointer-events-none select-none"
+                            className="text-[9.5px] font-bold fill-[#1d6fa5] pointer-events-none"
                           >
                             {pt.valO}
                           </text>
                           {/* Handled value in green */}
                           <text
                             x={cx}
-                            y={yH < yO ? yH - 7 : yH + 13}
+                            y={yH < yO ? yH - 7 : yH + 12}
                             textAnchor="middle"
-                            style={{ fontFamily: "system-ui, -apple-system, sans-serif" }}
-                            className="text-[10px] font-bold fill-[#4cae4c] pointer-events-none select-none"
+                            className="text-[9.5px] font-bold fill-[#4cae4c] pointer-events-none"
                           >
                             {pt.valH}
                           </text>
@@ -575,7 +571,6 @@ export default function FrontStepsDashboardSummary({
                   x={leftPad + idx * stepX}
                   y="146"
                   textAnchor="middle"
-                  style={{ fontFamily: "system-ui, -apple-system, sans-serif" }}
                   className="text-[9.5px] font-medium fill-slate-700 select-none pointer-events-none"
                 >
                   {tick.time}
@@ -583,28 +578,28 @@ export default function FrontStepsDashboardSummary({
               ))}
             </svg>
 
-              {/* Hover Tooltip Overlay */}
-              {hoveredPoint && (
-                <div
-                  className="absolute z-20 pointer-events-none transform -translate-x-1/2 rounded-lg bg-slate-900/95 px-2.5 py-1.5 text-white shadow-xl backdrop-blur-xs text-[10.5px] border border-slate-700/80"
-                  style={{
-                    left: `${(hoveredPoint.cx / chartW) * 100}%`,
-                    top: "10px",
-                  }}
-                >
-                  <div className="font-bold text-slate-200 border-b border-slate-700 pb-0.5 mb-1 text-center">
-                    Time: {hoveredPoint.time}
-                  </div>
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="text-[#60a5fa] font-semibold">Offered:</span>
-                    <span className="font-mono font-bold">{hoveredPoint.valO}</span>
-                  </div>
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="text-[#4ade80] font-semibold">Handled:</span>
-                    <span className="font-mono font-bold">{hoveredPoint.valH}</span>
-                  </div>
+            {/* Hover Tooltip Overlay */}
+            {hoveredPoint && (
+              <div
+                className="absolute z-20 pointer-events-none transform -translate-x-1/2 rounded-lg bg-slate-900/95 px-2.5 py-1.5 text-white shadow-xl backdrop-blur-xs text-[10.5px] border border-slate-700/80"
+                style={{
+                  left: `${(hoveredPoint.cx / chartW) * 100}%`,
+                  top: "10px",
+                }}
+              >
+                <div className="font-bold text-slate-200 border-b border-slate-700 pb-0.5 mb-1 text-center">
+                  Time: {hoveredPoint.time}
                 </div>
-              )}
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-[#60a5fa] font-semibold">Offered:</span>
+                  <span className="font-mono font-bold">{hoveredPoint.valO}</span>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-[#4ade80] font-semibold">Handled:</span>
+                  <span className="font-mono font-bold">{hoveredPoint.valH}</span>
+                </div>
+              </div>
+            )}
             </div>
           </div>
         </div>
@@ -678,9 +673,9 @@ export default function FrontStepsDashboardSummary({
       </div>
 
             {/* 5. Bottom Row: 30% Top Case Drivers (Left 3 cols) & 70% Interval Performance Details (Right 7 cols) */}
-      <div className="grid grid-cols-1 lg:grid-cols-10 gap-2.5 shrink-0 lg:flex-[1.3] lg:min-h-0">
+      <div className="grid grid-cols-1 lg:grid-cols-10 gap-2.5 lg:flex-[1.3] min-h-0">
         {/* Left: Top Case Drivers (~30% width: 3 of 10 cols) */}
-        <div id="guide-section-case-drivers" className="lg:col-span-3 flex flex-col justify-between rounded-xl border border-slate-200/90 bg-white p-3.5 shadow-2xs min-h-[340px] lg:min-h-0 overflow-hidden">
+        <div id="guide-section-case-drivers" className="lg:col-span-3 flex flex-col justify-between rounded-xl border border-slate-200/90 bg-white p-3.5 shadow-2xs min-h-[340px] lg:min-h-0">
           {/* Header */}
           <div className="flex items-center justify-between shrink-0 mb-1">
             <h3 className="text-xs font-black uppercase tracking-wider text-[#042c51]">
@@ -775,74 +770,77 @@ export default function FrontStepsDashboardSummary({
         </div>
 
         {/* Right: Interval Performance Details Table (~70% width: 7 of 10 cols) */}
-        <div id="guide-section-interval-details" className="lg:col-span-7 flex flex-col rounded-xl border border-slate-200/90 bg-white p-3 shadow-2xs min-h-0">
+        <div id="guide-section-interval-details" className="lg:col-span-7 flex flex-col rounded-xl border border-slate-200/90 bg-white p-3 shadow-2xs min-h-[300px] lg:min-h-0">
           <div className="flex items-center justify-between mb-2 shrink-0">
             <h3 className="text-xs font-black uppercase tracking-wider text-[#042c51]">
               Interval Performance Details
             </h3>
+            <span className="text-[10px] text-slate-400 font-medium lg:hidden">Swipe sideways to view all columns</span>
           </div>
 
-          {/* Table Container with Separate Fixed Header & Scrollable Body (Slider stays strictly in the bottom body) */}
-          <div className="flex-1 min-h-0 flex flex-col border border-slate-200/90 rounded-lg overflow-hidden bg-white">
-            {/* Header: Static at the top, scrollbar NEVER touches this */}
-            <div className="bg-[#042c51] text-white text-[10px] uppercase font-bold tracking-tight shrink-0">
-              <table className="w-full text-left border-collapse table-fixed">
-                <thead>
-                  <tr>
-                    <th className="py-2 px-1 text-center border-r border-blue-900/40 w-[10%]">Interval (EST)</th>
-                    <th className="py-2 px-1 text-center border-r border-blue-900/40 bg-[#032240] w-[10%]">Interval (MT)</th>
-                    <th className="py-2 px-1 text-center border-r border-blue-900/40 w-[10%]">Offered Call</th>
-                    <th className="py-2 px-1 text-center border-r border-blue-900/40 w-[10%]">Handled Call</th>
-                    <th className="py-2 px-1 text-center border-r border-blue-900/40 w-[10%]">Abandoned Call</th>
-                    <th className="py-2 px-1 text-center border-r border-blue-900/40 w-[9%]">Closed Cases</th>
-                    <th className="py-2 px-1 text-center border-r border-blue-900/40 w-[11%]">AVG Speed Answer</th>
-                    <th className="py-2 px-1 text-center border-r border-blue-900/40 w-[11%]">AVG Handling Time</th>
-                    <th className="py-2 px-1 text-center border-r border-blue-900/40 w-[14%]">Answer Rate</th>
-                    <th className="py-2 px-1 text-center w-[15%]">Abandon Rate</th>
-                  </tr>
-                </thead>
-              </table>
-            </div>
-
-            {/* Body: Only the rows scroll vertically. The scrollbar slider is constrained to this bottom container */}
-            <div className="flex-1 min-h-0 overflow-y-scroll overflow-x-hidden table-scrollbar bg-white">
-              <table className="w-full text-left text-xs border-collapse table-fixed">
-                <tbody className="divide-y divide-slate-100 text-[11px] font-medium">
-                  {INTERVAL_PERFORMANCE_DATA.map((row, idx) => (
-                    <tr
-                      key={idx}
-                      className="hover:bg-slate-50/80 transition-colors"
-                    >
-                      <td className="py-1.5 px-1 text-center font-mono font-semibold text-slate-700 bg-slate-50/50 border-r border-slate-100 text-xs w-[10%]">{row.timeEst}</td>
-                      <td className="py-1.5 px-1 text-center font-mono font-semibold text-slate-500 bg-slate-100/60 border-r border-slate-100 text-xs w-[10%]">{row.timeMt}</td>
-                      <td className="py-1.5 px-1 text-center font-semibold text-slate-900 border-r border-slate-100 text-xs w-[10%]">
-                        <AnimatedNumber value={row.offered} duration={1300} />
-                      </td>
-                      <td className="py-1.5 px-1 text-center font-semibold text-slate-900 border-r border-slate-100 text-xs w-[10%]">
-                        <AnimatedNumber value={row.handled} duration={1300} />
-                      </td>
-                      <td className="py-1.5 px-1 text-center font-semibold text-slate-900 border-r border-slate-100 text-xs w-[10%]">
-                        <AnimatedNumber value={row.abandoned} duration={1300} />
-                      </td>
-                      <td className="py-1.5 px-1 text-center font-semibold text-slate-900 border-r border-slate-100 text-xs w-[9%]">
-                        <AnimatedNumber value={row.closed} duration={1300} />
-                      </td>
-                      <td className="py-1.5 px-1 text-center font-mono font-medium text-slate-700 border-r border-slate-100 text-[10.5px] w-[11%]">
-                        <AnimatedNumber value={row.asa} duration={1300} />
-                      </td>
-                      <td className="py-1.5 px-1 text-center font-mono font-medium text-slate-700 border-r border-slate-100 text-[10.5px] w-[11%]">
-                        <AnimatedNumber value={row.aht} duration={1300} />
-                      </td>
-                      <td className={`py-1.5 px-1.5 text-center font-bold border-r border-slate-100 text-[10.5px] w-[14%] ${getAnswerRateClass(row.answerRate)}`}>
-                        <AnimatedNumber value={row.answerRate} duration={1500} />
-                      </td>
-                      <td className="py-1.5 px-1.5 text-center font-medium text-slate-700 text-[10.5px] w-[15%]">
-                        <AnimatedNumber value={row.abandonRate} duration={1500} />
-                      </td>
+          {/* Table Container with Separate Fixed Header & Scrollable Body */}
+          <div className="flex-1 min-h-[260px] lg:min-h-0 flex flex-col border border-slate-200/90 rounded-lg overflow-x-auto lg:overflow-hidden bg-white">
+            <div className="min-w-[720px] flex-1 flex flex-col h-full min-h-0">
+              {/* Header: Static at the top */}
+              <div className="bg-[#042c51] text-white text-[10px] uppercase font-bold tracking-tight shrink-0">
+                <table className="w-full text-left border-collapse table-fixed">
+                  <thead>
+                    <tr>
+                      <th className="py-2 px-1 text-center border-r border-blue-900/40 w-[10%]">Interval (EST)</th>
+                      <th className="py-2 px-1 text-center border-r border-blue-900/40 bg-[#032240] w-[10%]">Interval (MT)</th>
+                      <th className="py-2 px-1 text-center border-r border-blue-900/40 w-[10%]">Offered Call</th>
+                      <th className="py-2 px-1 text-center border-r border-blue-900/40 w-[10%]">Handled Call</th>
+                      <th className="py-2 px-1 text-center border-r border-blue-900/40 w-[10%]">Abandoned Call</th>
+                      <th className="py-2 px-1 text-center border-r border-blue-900/40 w-[9%]">Closed Cases</th>
+                      <th className="py-2 px-1 text-center border-r border-blue-900/40 w-[11%]">AVG Speed Answer</th>
+                      <th className="py-2 px-1 text-center border-r border-blue-900/40 w-[11%]">AVG Handling Time</th>
+                      <th className="py-2 px-1 text-center border-r border-blue-900/40 w-[14%]">Answer Rate</th>
+                      <th className="py-2 px-1 text-center w-[15%]">Abandon Rate</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                </table>
+              </div>
+
+              {/* Body: Dedicated vertical scroll slider */}
+              <div className="flex-1 min-h-0 max-h-[340px] lg:max-h-none overflow-y-scroll overflow-x-hidden table-scrollbar bg-white">
+                <table className="w-full text-left text-xs border-collapse table-fixed">
+                  <tbody className="divide-y divide-slate-100 text-[11px] font-medium">
+                    {INTERVAL_PERFORMANCE_DATA.map((row, idx) => (
+                      <tr
+                        key={idx}
+                        className="hover:bg-slate-50/80 transition-colors"
+                      >
+                        <td className="py-1.5 px-1 text-center font-mono font-semibold text-slate-700 bg-slate-50/50 border-r border-slate-100 text-xs w-[10%]">{row.timeEst}</td>
+                        <td className="py-1.5 px-1 text-center font-mono font-semibold text-slate-500 bg-slate-100/60 border-r border-slate-100 text-xs w-[10%]">{row.timeMt}</td>
+                        <td className="py-1.5 px-1 text-center font-semibold text-slate-900 border-r border-slate-100 text-xs w-[10%]">
+                          <AnimatedNumber value={row.offered} duration={1300} />
+                        </td>
+                        <td className="py-1.5 px-1 text-center font-semibold text-slate-900 border-r border-slate-100 text-xs w-[10%]">
+                          <AnimatedNumber value={row.handled} duration={1300} />
+                        </td>
+                        <td className="py-1.5 px-1 text-center font-semibold text-slate-900 border-r border-slate-100 text-xs w-[10%]">
+                          <AnimatedNumber value={row.abandoned} duration={1300} />
+                        </td>
+                        <td className="py-1.5 px-1 text-center font-semibold text-slate-900 border-r border-slate-100 text-xs w-[9%]">
+                          <AnimatedNumber value={row.closed} duration={1300} />
+                        </td>
+                        <td className="py-1.5 px-1 text-center font-mono font-medium text-slate-700 border-r border-slate-100 text-[10.5px] w-[11%]">
+                          <AnimatedNumber value={row.asa} duration={1300} />
+                        </td>
+                        <td className="py-1.5 px-1 text-center font-mono font-medium text-slate-700 border-r border-slate-100 text-[10.5px] w-[11%]">
+                          <AnimatedNumber value={row.aht} duration={1300} />
+                        </td>
+                        <td className={`py-1.5 px-1.5 text-center font-bold border-r border-slate-100 text-[10.5px] w-[14%] ${getAnswerRateClass(row.answerRate)}`}>
+                          <AnimatedNumber value={row.answerRate} duration={1500} />
+                        </td>
+                        <td className="py-1.5 px-1.5 text-center font-medium text-slate-700 text-[10.5px] w-[15%]">
+                          <AnimatedNumber value={row.abandonRate} duration={1500} />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         </div>

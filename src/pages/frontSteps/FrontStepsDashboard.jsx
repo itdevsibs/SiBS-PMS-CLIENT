@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   LayoutGrid,
   Users,
@@ -124,6 +124,17 @@ export default function FrontStepsDashboard() {
   const [isSidebarHidden, setIsSidebarHidden] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [isScreenSmall, setIsScreenSmall] = useState(() =>
+    typeof window !== "undefined" ? window.innerWidth < 1024 : false
+  );
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsScreenSmall(window.innerWidth < 1024);
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   const authUser = getAuthUser();
   const fullNameFromParts = [
@@ -730,8 +741,14 @@ export default function FrontStepsDashboard() {
   const renderModuleView = () => {
     const commonProps = {
       onNavigate: handleSelectSubmodule,
-      isSidebarHidden,
-      onToggleSidebar: () => setIsSidebarHidden((prev) => !prev),
+      isSidebarHidden: isSidebarHidden || isScreenSmall,
+      onToggleSidebar: () => {
+        if (isScreenSmall) {
+          setIsMobileOpen((prev) => !prev);
+        } else {
+          setIsSidebarHidden((prev) => !prev);
+        }
+      },
     };
 
     switch (activeSubmoduleId) {
@@ -1010,7 +1027,7 @@ export default function FrontStepsDashboard() {
       {/* Desktop Sidebar matching AdminSidebar CSS */}
       {/* Desktop Sidebar with buttery smooth slide & collapse animation */}
       <aside
-        className={`sibs-sidebar hidden border-r border-[#0d3b66] bg-[#042c51] text-white shadow-sm md:flex transition-all duration-300 ease-in-out ${
+        className={`sibs-sidebar hidden border-r border-[#0d3b66] bg-[#042c51] text-white shadow-sm lg:flex transition-all duration-300 ease-in-out ${
           isSidebarHidden
             ? "!w-0 !min-w-0 !border-0 opacity-0 -translate-x-4 pointer-events-none overflow-hidden"
             : "!w-[260px] opacity-100 translate-x-0 overflow-visible"
@@ -1027,11 +1044,11 @@ export default function FrontStepsDashboard() {
           type="button"
           aria-label="Close sidebar"
           onClick={() => setIsMobileOpen(false)}
-          className="sibs-sidebar-backdrop z-[95] md:hidden"
+          className="sibs-sidebar-backdrop z-[95] lg:hidden"
         />
       )}
       <aside
-        className={`sibs-sidebar mobile z-[100] !w-[260px] max-w-[calc(100vw-2rem)] border-r border-[#0d3b66] bg-[#042c51] text-white shadow-2xl sm:!w-[280px] md:hidden ${
+        className={`sibs-sidebar mobile z-[100] !w-[260px] max-w-[calc(100vw-2rem)] border-r border-[#0d3b66] bg-[#042c51] text-white shadow-2xl sm:!w-[280px] lg:hidden ${
           isMobileOpen ? "mobile-open" : ""
         }`}
       >
@@ -1039,9 +1056,9 @@ export default function FrontStepsDashboard() {
       </aside>
 
       {/* Main View Area */}
-      <main className="min-w-0 flex-1 flex flex-col h-full overflow-y-auto lg:overflow-hidden transition-all duration-300 ease-in-out custom-scrollbar">
+      <main className="min-w-0 flex-1 flex flex-col h-full overflow-y-auto lg:overflow-hidden transition-all duration-300 ease-in-out">
         {/* Module Content View: Full stretch without empty left gaps */}
-        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto lg:overflow-hidden px-2.5 sm:px-4 lg:px-5 pb-2.5 pt-2.5 sm:pb-3 sm:pt-3 transition-all duration-300 ease-in-out gap-2.5 custom-scrollbar">
+        <div className="flex min-h-full lg:min-h-0 flex-1 flex-col px-2 sm:px-3 lg:px-4 pb-20 lg:pb-3 pt-2 sm:pt-3 transition-all duration-300 ease-in-out gap-2.5">
           {/* Global Header Bar for Non-Overview Modules */}
           {!["dashboard", "dashboard-summary", "dashboard-account-based", "dashboard-kpi-indiv"].includes(activeSubmoduleId) && (
             <div className="flex items-center justify-between gap-3 rounded-xl border border-slate-200/90 bg-white px-3.5 py-2 shadow-2xs shrink-0 select-none">

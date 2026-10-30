@@ -214,7 +214,7 @@ export default function FrontStepsDashboardKPIIndiv({
   };
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col font-jakarta text-slate-800 select-none pb-6 lg:pb-0 gap-2.5 overflow-y-auto lg:overflow-hidden custom-scrollbar">
+    <div className="flex flex-col font-jakarta text-slate-800 select-none gap-3 w-full lg:h-full lg:min-h-0 lg:flex-1 lg:justify-between lg:overflow-hidden pb-6 lg:pb-0">
       {/* Top Filter Bar: View Mode, Employee, Period, Month, Export Button */}
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200/90 bg-white px-3.5 py-2 shadow-2xs shrink-0">
         <div className="flex flex-wrap items-center gap-2.5">
@@ -618,7 +618,7 @@ export default function FrontStepsDashboardKPIIndiv({
             {/* Left Stack (md:col-span-7 xl:col-span-8): Productivity + Consistency */}
             <div id="guide-indiv-prod-cons" className="md:col-span-7 xl:col-span-8 flex flex-col gap-2.5">
               {/* Card 1: Productivity (Interactive Target vs Actual Progress + Score) */}
-              <div className="rounded-2xl border border-slate-200/90 bg-white p-3 shadow-2xs hover:shadow-xs transition-all flex items-stretch justify-between shrink-0 h-[124px] gap-2 lg:gap-3 animate-fade-up" style={{ animationDelay: "100ms" }}>
+              <div className="rounded-2xl border border-slate-200/90 bg-white p-3 shadow-2xs hover:shadow-xs transition-all flex items-stretch justify-between shrink-0 min-h-[135px] lg:h-[124px] gap-2 lg:gap-3 animate-fade-up" style={{ animationDelay: "100ms" }}>
                 {/* Left: Title on top, Progress Bars below */}
                 <div className="flex-1 flex flex-col justify-between min-w-0">
                   <div className="flex items-center justify-between shrink-0">
@@ -788,7 +788,7 @@ export default function FrontStepsDashboardKPIIndiv({
               </div>
 
               {/* Card 2: Consistency (Interactive Calls Progress + Score) */}
-              <div className="rounded-2xl border border-slate-200/90 bg-white p-3 shadow-2xs hover:shadow-xs transition-all flex items-stretch justify-between shrink-0 h-[124px] gap-2 lg:gap-3 animate-fade-up" style={{ animationDelay: "200ms" }}>
+              <div className="rounded-2xl border border-slate-200/90 bg-white p-3 shadow-2xs hover:shadow-xs transition-all flex items-stretch justify-between shrink-0 min-h-[135px] lg:h-[124px] gap-2 lg:gap-3 animate-fade-up" style={{ animationDelay: "200ms" }}>
                 {/* Left: Title on top, Progress Bars below */}
                 <div className="flex-1 flex flex-col justify-between min-w-0">
                   <div className="flex items-center justify-between shrink-0">

@@ -167,7 +167,7 @@ export default function FrontStepsDashboardAccountBased({
   };
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col font-jakarta text-slate-800 select-none pb-6 lg:pb-0 gap-2.5 overflow-y-auto lg:overflow-hidden custom-scrollbar">
+    <div className="flex flex-col font-jakarta text-slate-800 select-none gap-3 w-full lg:h-full lg:min-h-0 lg:flex-1 lg:justify-between lg:overflow-hidden pb-6 lg:pb-0">
       {/* Top Filter Bar: View Mode, Employee, Period, Month, Export Button */}
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200/90 bg-white px-3.5 py-2 shadow-2xs shrink-0">
         <div className="flex flex-wrap items-center gap-2.5">
@@ -288,9 +288,9 @@ export default function FrontStepsDashboardAccountBased({
       </div>
 
       {/* Printable Dashboard Body */}
-      <div ref={dashboardRef} className="flex flex-col justify-between flex-1 min-h-0 gap-2.5">
+      <div ref={dashboardRef} className="flex flex-col gap-3 w-full lg:flex-1 lg:min-h-0 lg:justify-between">
         {/* Row 1: 8 Top Metric Stat Cards (Data/Number prominently highlighted) */}
-        <div id="guide-ab-kpi-cards" className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2 shrink-0">
+        <div id="guide-ab-kpi-cards" className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-4 lg:grid-cols-8 gap-2 shrink-0">
         {/* 1. Account KPI Score */}
         <div className="rounded-xl border border-slate-200/90 bg-white p-3 shadow-2xs hover:shadow-xs transition-all flex flex-col justify-between group animate-fade-up" style={{ animationDelay: '80ms' }}>
           <div className="my-auto py-1 text-center">
@@ -389,9 +389,9 @@ export default function FrontStepsDashboardAccountBased({
       </div>
 
       {/* Row 2: 2 Side-by-Side Charts */}
-      <div id="guide-ab-weekly-charts" className="grid grid-cols-1 lg:grid-cols-2 gap-3 shrink-0 lg:flex-[1.1] lg:min-h-0 animate-fade-up" style={{ animationDelay: '200ms' }}>
+      <div id="guide-ab-weekly-charts" className="grid grid-cols-1 lg:grid-cols-2 gap-3 min-h-[260px] lg:min-h-0 lg:flex-[1.1] animate-fade-up" style={{ animationDelay: '200ms' }}>
         {/* Left Chart: Cases Closed by weekly (Smooth Curved Area Line Chart) */}
-        <div className="rounded-2xl border border-slate-200/90 bg-white p-3.5 shadow-2xs flex flex-col justify-between min-h-[200px] lg:min-h-0">
+        <div className="rounded-2xl border border-slate-200/90 bg-white p-3.5 shadow-2xs flex flex-col justify-between min-h-[240px] lg:min-h-0">
           <div className="flex items-center justify-between pb-2 border-b border-slate-100 shrink-0">
             <h4 className="text-sm font-black tracking-wide text-slate-800">
               Cases Closed by weekly
@@ -520,7 +520,7 @@ export default function FrontStepsDashboardAccountBased({
         </div>
 
         {/* Right Chart: Calls Received & Answered */}
-        <div className="rounded-2xl border border-slate-200/90 bg-white p-3.5 shadow-2xs flex flex-col justify-between min-h-0">
+        <div className="rounded-2xl border border-slate-200/90 bg-white p-3.5 shadow-2xs flex flex-col justify-between min-h-[240px] lg:min-h-0">
           <div className="flex items-center justify-between pb-2 border-b border-slate-100 shrink-0">
             <h4 className="text-sm font-black tracking-wide text-slate-800">
               Calls Received & Answered
@@ -724,9 +724,9 @@ export default function FrontStepsDashboardAccountBased({
       </div>
 
       {/* Row 3: 3 Bottom Donut Charts */}
-      <div id="guide-ab-distribution-donuts" className="grid grid-cols-1 md:grid-cols-3 gap-3 shrink-0 lg:flex-[1.2] lg:min-h-0 animate-fade-up" style={{ animationDelay: '400ms' }}>
+      <div id="guide-ab-distribution-donuts" className="grid grid-cols-1 md:grid-cols-3 gap-3 min-h-[300px] lg:min-h-0 lg:flex-[1.2] animate-fade-up" style={{ animationDelay: '400ms' }}>
         {/* Donut 1: Case Closure Timeliness */}
-        <div className="rounded-2xl border border-slate-200/90 bg-white p-4 shadow-2xs flex flex-col justify-between min-h-[200px] lg:min-h-0">
+        <div className="rounded-2xl border border-slate-200/90 bg-white p-4 shadow-2xs flex flex-col justify-between min-h-[260px] lg:min-h-0">
           <div className="flex items-center justify-between pb-2 border-b border-slate-100 shrink-0">
             <h4 className="text-sm font-black tracking-wide text-slate-800">
               Case Closure Timeliness
@@ -818,7 +818,7 @@ export default function FrontStepsDashboardAccountBased({
         </div>
 
         {/* Donut 2: Queue / Work Mix */}
-        <div className="rounded-2xl border border-slate-200/90 bg-white p-4 shadow-2xs flex flex-col justify-between min-h-0">
+        <div className="rounded-2xl border border-slate-200/90 bg-white p-4 shadow-2xs flex flex-col justify-between min-h-[260px] lg:min-h-0">
           <div className="flex items-center justify-between pb-2 border-b border-slate-100 shrink-0">
             <h4 className="text-sm font-black tracking-wide text-slate-800">
               Queue / Work Mix
@@ -922,7 +922,7 @@ export default function FrontStepsDashboardAccountBased({
         </div>
 
         {/* Donut 3: Employee Performance Distribution */}
-        <div className="rounded-2xl border border-slate-200/90 bg-white p-4 shadow-2xs flex flex-col justify-between min-h-0">
+        <div className="rounded-2xl border border-slate-200/90 bg-white p-4 shadow-2xs flex flex-col justify-between min-h-[260px] lg:min-h-0">
           <div className="flex items-center justify-between pb-2 border-b border-slate-100 shrink-0">
             <h4 className="text-sm font-black tracking-wide text-slate-800">
               Employee Performance Distribution
