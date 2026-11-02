@@ -312,18 +312,16 @@ export default function WfmWarningsModal({
                                   type="button"
                                   disabled={isLoadingUsVisaErrors}
                                   onClick={() => {
-                                    handleOpenUsVisaErrors(
-                                      batch.batchId || batch.id,
-                                    );
+                                    handleOpenBatchDetails(batch);
                                   }}
                                   className="sm:hidden inline-flex shrink-0 whitespace-nowrap items-center gap-1 rounded-md border border-amber-400 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-800 transition-all hover:border-amber-500 hover:bg-amber-100"
-                                  title="Completed with error - click to view error details"
+                                  title="Open batch details"
                                 >
                                   <AlertTriangle
                                     className="h-2.5 w-2.5 shrink-0 text-amber-600"
                                     aria-hidden="true"
                                   />
-                                  <span>Completed with error</span>
+                                  <span>Completed with warnings</span>
                                 </button>
                               ) : null}
                             </div>
@@ -357,18 +355,16 @@ export default function WfmWarningsModal({
                                 type="button"
                                 disabled={isLoadingUsVisaErrors}
                                 onClick={() => {
-                                  handleOpenUsVisaErrors(
-                                    batch.batchId || batch.id,
-                                  );
+                                  handleOpenBatchDetails(batch);
                                 }}
                                 className="hidden sm:inline-flex h-8 shrink-0 whitespace-nowrap items-center gap-1.5 rounded-lg border border-amber-400 bg-amber-50 px-2.5 text-xs font-semibold text-amber-800 transition-all hover:border-amber-500 hover:bg-amber-100 shadow-xs"
-                                title="Completed with error - click to view error details"
+                                title="Open batch details"
                               >
                                 <AlertTriangle
                                   className="h-3.5 w-3.5 shrink-0 text-amber-600"
                                   aria-hidden="true"
                                 />
-                                <span>Completed with error</span>
+                                <span>Completed with warnings</span>
                               </button>
                             ) : null}
 

@@ -255,6 +255,10 @@ function WfmImportDataPage() {
               invalidRows: details.batch.invalidRows ?? prev.invalidRows,
               duplicateRows: details.batch.duplicateRows ?? prev.duplicateRows,
               warningRows: details.batch.warningRows ?? prev.warningRows,
+              displayStatus: details.batch.displayStatus ?? prev.displayStatus,
+              mappingRows: details.batch.mappingRows ?? prev.mappingRows,
+              unmappedRows: details.batch.unmappedRows ?? prev.unmappedRows,
+              unassignedTaskOrderRows: details.batch.unassignedTaskOrderRows ?? prev.unassignedTaskOrderRows,
               infoRows: details.batch.infoRows ?? prev.infoRows,
               batchStatus: details.batch.status ?? prev.batchStatus,
             };

@@ -1,199 +1,121 @@
-import {
-  AlertCircle,
-  AlertTriangle,
-  CheckCircle2,
-  FileSpreadsheet,
-  Info,
-  ListPlus,
-} from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { AlertCircle, AlertTriangle, CheckCircle2, FileSpreadsheet, Loader2, Search, Users, ShieldAlert, Copy, Eye } from "lucide-react";
 import AppModal from "@/components/common/ui/AppModal";
 import { Button } from "@/components/common/ui/Button";
 import BatchDetailStat from "@/components/modules/wfm/imports/WfmBatchDetailStat";
-import { formatRelativeTime } from "@/lib/wfm-import-utils";
+import { getUsVisaImportBatchErrors } from "@/lib/axios/us-visa-imports";
+import { formatRelativeTime, getImportDisplayStatus } from "@/lib/wfm-import-utils";
 
-export default function WfmBatchDetailsModal({
-  selectedUploadDetails,
-  activeOpenCard,
-  isLoadingUsVisaErrors,
-  handleOpenUsVisaErrors,
-  onOpenRawData,
-  onClose,
-}) {
+const PAGE_SIZE = 25;
+const TABS = [
+  { key: "overview", label: "Overview", icon: Eye },
+  { key: "mapping", label: "Employee Mapping", icon: Users },
+  { key: "validation", label: "Validation Issues", icon: ShieldAlert },
+  { key: "raw", label: "Raw Data", icon: FileSpreadsheet },
+];
+
+function getIssueKey(issue) {
+  return `${issue.sheetName || ""}:${issue.excelRowNumber || issue.id}`;
+}
+
+export default function WfmBatchDetailsModal({ selectedUploadDetails: batch, activeOpenCard, onOpenRawData, onClose }) {
+  const [tab, setTab] = useState("overview");
+  const [issueType, setIssueType] = useState("validation");
+  const [search, setSearch] = useState("");
+  const [appliedSearch, setAppliedSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const [issueResponse, setIssueResponse] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState("");
+  const batchId = batch?.batchId || (typeof batch?.id === "number" ? batch.id : null);
+  const display = getImportDisplayStatus(batch);
+  const currentCategory = tab === "mapping" ? "mapping" : issueType;
+
+  useEffect(() => {
+    setTab("overview"); setPage(1); setSearch(""); setAppliedSearch("");
+    setIssueType("validation"); setIssueResponse(null);
+  }, [batchId]);
+
+  useEffect(() => {
+    if (!batchId || !["mapping", "validation"].includes(tab)) return;
+    let cancelled = false;
+    setLoading(true); setLoadError("");
+    getUsVisaImportBatchErrors(batchId, {
+      category: currentCategory, page, limit: PAGE_SIZE, search: appliedSearch || undefined,
+    }).then((result) => { if (!cancelled) setIssueResponse(result); })
+      .catch(() => { if (!cancelled) { setIssueResponse(null); setLoadError("Unable to load issues. Please retry."); } })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [batchId, tab, currentCategory, page, appliedSearch]);
+
+  const groupedMapping = useMemo(() => {
+    if (tab !== "mapping") return [];
+    const names = new Map();
+    for (const item of issueResponse?.data || []) {
+      const key = `${String(item.rawValue || "Unknown source name").trim().toUpperCase()}|${item.errorCode}`;
+      if (!names.has(key)) names.set(key, { name: item.rawValue || "Unknown source name", code: item.errorCode, entries: [] });
+      names.get(key).entries.push(item);
+    }
+    return [...names.values()];
+  }, [tab, issueResponse]);
+  const issues = issueResponse?.data || [];
+  const pagination = issueResponse?.pagination || {};
+  const issueTotal = pagination.total || 0;
+  const totalPages = Math.max(1, pagination.totalPages || 1);
+
+  const changeTab = (next) => { setTab(next); setPage(1); setSearch(""); setAppliedSearch(""); setIssueResponse(null); };
+
   return (
-    <AppModal
-      isOpen={Boolean(selectedUploadDetails)}
-      className="!max-w-none w-full max-w-[94vw] sm:!w-[900px] !p-0 overflow-hidden"
-      zIndex="z-[140]"
-    >
-      <div className="overflow-hidden rounded-2xl bg-white">
-        {/* Header */}
-        <div className="bg-gradient-to-br from-slate-50 via-white to-sky-50/50 p-4 sm:p-6 border-b border-sibs-tertiary-10">
-          {/* Top row: Icon + Details on left, Status badge on right */}
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex min-w-0 items-start gap-3 sm:gap-3.5">
-              <div className="flex h-10 w-10 sm:h-11 sm:w-11 shrink-0 items-center justify-center rounded-xl sm:rounded-2xl border border-sky-100 bg-sky-50 text-sky-600 shadow-xs">
-                <FileSpreadsheet className="h-5 w-5" aria-hidden="true" />
-              </div>
-
+    <AppModal isOpen={Boolean(batch)} className="!max-w-none w-full max-w-[96vw] sm:!w-[980px] !p-0 overflow-hidden" zIndex="z-[140]">
+      <div className="flex max-h-[90vh] flex-col overflow-hidden rounded-2xl bg-white">
+        <div className="shrink-0 border-b border-slate-100 bg-gradient-to-br from-slate-50 via-white to-sky-50/50 p-4 sm:p-5">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="flex min-w-0 items-start gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-sky-100 bg-sky-50 text-sky-600"><FileSpreadsheet className="h-5 w-5" /></div>
               <div className="min-w-0">
-                <p className="m-0 text-[10px] font-extrabold uppercase tracking-[0.08em] text-sibs-tertiary-5">
-                  Batch details
-                </p>
-
-                {/* Desktop badges shown inline under BATCH DETAILS */}
-                <div className="hidden sm:flex items-center gap-2 mt-1.5">
-                  <span className="rounded-lg bg-sibs-primary-2/10 px-2.5 py-1 text-[11px] font-extrabold text-sibs-primary-2 whitespace-nowrap">
-                    {activeOpenCard?.title || selectedUploadDetails?.rawDataTitle || "Import"}
-                  </span>
-                  <span className="text-[11px] font-bold text-sibs-tertiary-5 whitespace-nowrap">
-                    {activeOpenCard?.account || selectedUploadDetails?.account}
-                  </span>
-                </div>
+                <p className="m-0 text-[10px] font-extrabold uppercase tracking-wider text-slate-500">Batch Details</p>
+                <p className="mt-1 text-sm font-bold text-sibs-primary-1 break-words">{batch?.fileName || "Import"}</p>
+                <p className="mt-1 text-[11px] text-slate-500">{activeOpenCard?.title || batch?.rawDataTitle || "US Visa"} · {batch?.batchCode || ""} · {batch?.uploadedAt ? `${formatRelativeTime(batch)} · ${batch.uploadedAt}` : ""}</p>
               </div>
             </div>
-
-            {/* Status Badge */}
-            {selectedUploadDetails?.batchStatus === "COMPLETED_WITH_ERRORS" ||
-            (selectedUploadDetails?.invalidRows > 0) ||
-            (selectedUploadDetails?.warningRows > 0) ||
-            (selectedUploadDetails?.duplicateRows > 0) ? (
-              <button
-                type="button"
-                disabled={isLoadingUsVisaErrors}
-                onClick={() =>
-                  handleOpenUsVisaErrors(
-                    selectedUploadDetails.batchId || selectedUploadDetails.id,
-                  )
-                }
-                className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-amber-400 bg-amber-50 px-2.5 py-1 sm:px-3 sm:py-1.5 text-[10px] sm:text-[10.5px] font-semibold text-amber-800 shadow-xs transition-all hover:border-amber-500 hover:bg-amber-100 cursor-pointer"
-                title="Completed with error - click to view error details"
-              >
-                <AlertTriangle className="h-3 w-3 shrink-0 text-amber-600" aria-hidden="true" />
-                <span>Completed with error</span>
-              </button>
-            ) : (
-              <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 sm:px-3 sm:py-1.5 text-[10px] sm:text-[10.5px] font-extrabold uppercase tracking-wide text-emerald-700 shadow-xs">
-                <CheckCircle2 className="h-3 w-3 shrink-0 text-emerald-600" aria-hidden="true" />
-                <span>Completed</span>
-              </span>
-            )}
-          </div>
-
-          {/* Mobile-only badges row: sits under top bar on mobile across full width */}
-          <div className="flex sm:hidden items-center gap-2 mt-2.5">
-            <span className="rounded-lg bg-sibs-primary-2/10 px-2.5 py-1 text-[10.5px] font-extrabold text-sibs-primary-2 whitespace-nowrap">
-              {activeOpenCard?.title || selectedUploadDetails?.rawDataTitle || "Import"}
-            </span>
-            <span className="text-[10.5px] font-bold text-sibs-tertiary-5 whitespace-nowrap">
-              {activeOpenCard?.account || selectedUploadDetails?.account}
+            <span className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-[11px] font-bold ${display.tone === "success" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : display.tone === "danger" ? "border-rose-200 bg-rose-50 text-rose-700" : "border-amber-200 bg-amber-50 text-amber-700"}`}>
+              {display.tone === "success" ? <CheckCircle2 className="h-3.5 w-3.5" /> : <AlertTriangle className="h-3.5 w-3.5" />}
+              {display.label}
             </span>
           </div>
-
-          {/* File Name & Batch Code: full width */}
-          <div className="mt-2.5 sm:mt-3 min-w-0 sm:pl-[58px]">
-            <p className="m-0 break-words text-sm sm:text-[15px] font-extrabold leading-snug text-sibs-primary-1 [overflow-wrap:anywhere]">
-              {selectedUploadDetails?.fileName}
-            </p>
-
-            <div className="mt-1.5 sm:mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-sibs-tertiary-5">
-              {selectedUploadDetails?.batchCode ? (
-                <span className="rounded-md bg-white px-2 py-0.5 font-mono font-semibold text-sibs-primary-2 shadow-xs ring-1 ring-slate-200/70 whitespace-nowrap">
-                  {selectedUploadDetails.batchCode}
-                </span>
-              ) : null}
-              <span className="whitespace-nowrap">
-                ({formatRelativeTime(selectedUploadDetails)}) {selectedUploadDetails?.uploadedAt}
-              </span>
+        </div>
+        <div className="shrink-0 flex flex-wrap gap-1 border-b border-slate-100 px-4 pt-2 sm:px-5" role="tablist" aria-label="Batch details sections">
+          {TABS.map(({ key, label, icon: Icon }) => (
+            <button type="button" role="tab" aria-selected={tab === key} key={key} onClick={() => changeTab(key)} className={`inline-flex items-center gap-1.5 border-b-2 px-3 py-2.5 text-xs font-semibold transition-colors ${tab === key ? "border-sibs-primary-1 text-sibs-primary-1" : "border-transparent text-slate-500 hover:text-slate-800"}`}>
+              <Icon className="h-3.5 w-3.5" />{label}{key === "mapping" && Number(batch?.mappingRows || 0) > 0 ? ` (${batch.mappingRows})` : ""}
+            </button>
+          ))}
+        </div>
+        <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-5">
+          {tab === "overview" && <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              <BatchDetailStat label="Total Rows" value={batch?.totalRows || 0} icon={FileSpreadsheet} tone="blue" />
+              <BatchDetailStat label="Accepted" value={batch?.validRows || 0} icon={CheckCircle2} tone="emerald" />
+              <BatchDetailStat label="Rejected" value={batch?.invalidRows || 0} icon={AlertCircle} tone="rose" />
+              <BatchDetailStat label="Duplicates" value={batch?.duplicateRows || 0} icon={Copy} tone="orange" />
             </div>
-          </div>
+            <div className="rounded-xl border border-slate-200 p-4">
+              <div className="flex items-center justify-between gap-3"><div><p className="m-0 text-sm font-bold text-sibs-primary-1">Employee Mapping</p><p className="mt-1 text-xs text-slate-500">Mapping is separate from import validation and does not reject stored records.</p></div><span className="text-lg font-bold text-sibs-primary-1">{(batch?.mappingRows || 0).toLocaleString()}</span></div>
+              <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-xs text-slate-600"><span>Unmapped employee rows: <b>{batch?.unmappedRows || 0}</b></span><span>Task Order mapping rows: <b>{batch?.unassignedTaskOrderRows || 0}</b></span></div>
+              <button type="button" onClick={() => changeTab("mapping")} className="mt-3 text-xs font-semibold text-sibs-primary-2 hover:underline">Review mapping records</button>
+            </div>
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-slate-50 p-3 text-xs text-slate-600"><span>Validation warnings: <b>{batch?.warningRows || 0}</b> · Info records: <b>{batch?.infoRows || 0}</b></span><button type="button" className="font-semibold text-sibs-primary-2 hover:underline" onClick={() => changeTab("validation")}>View validation details</button></div>
+            {(batch?.invalidRows || 0) === 0 && (batch?.duplicateRows || 0) === 0 && (batch?.warningRows || 0) === 0 ? <p className="m-0 flex items-center gap-2 text-xs font-semibold text-emerald-700"><CheckCircle2 className="h-4 w-4" />No import-validation issues were reported.</p> : null}
+          </div>}
+          {["mapping", "validation"].includes(tab) && <div className="space-y-3">
+            {tab === "validation" ? <div className="flex gap-2">{["validation","duplicate"].map((type) => <button key={type} onClick={() => { setIssueType(type); setPage(1); setIssueResponse(null); }} type="button" className={`rounded-lg border px-3 py-1.5 text-xs font-semibold ${issueType === type ? "bg-sibs-primary-1 text-white" : "bg-white text-slate-600"}`}>{type === "validation" ? "Validation & warnings" : "Duplicates & conflicts"}</button>)}</div> : <p className="m-0 text-xs text-slate-500">Unresolved employee identities and Task Orders are tracked here, not as validation errors. Repeated names are grouped within each page.</p>}
+            <form className="flex gap-2" onSubmit={(event) => { event.preventDefault(); setPage(1); setAppliedSearch(search); }}><div className="relative flex-1"><Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400"/><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search name, row, issue code..." className="h-9 w-full rounded-lg border border-slate-200 pl-9 pr-3 text-xs outline-none focus:border-sky-400" /></div><Button type="submit" variant="outline" className="h-9 text-xs">Search</Button></form>
+            {loading ? <p className="flex items-center gap-2 py-5 text-xs text-slate-500"><Loader2 className="h-4 w-4 animate-spin"/>Loading records...</p> : loadError ? <p role="alert" className="text-xs text-rose-700">{loadError}</p> : issues.length === 0 ? <div className="rounded-lg border border-dashed p-6 text-center text-xs text-slate-500">No records in this category.</div> : tab === "mapping" ? <div className="space-y-2">{groupedMapping.map((group) => <div key={`${group.code}-${group.name}`} className="rounded-xl border border-slate-200 p-3"><div className="flex justify-between gap-2 text-xs"><span className="font-bold text-sibs-primary-1 break-all">{group.name}</span><span className="shrink-0 text-slate-500">{group.entries.length} on this page</span></div><p className="my-1 text-[11px] text-amber-700">{group.code?.replaceAll("_", " ")}</p><p className="m-0 text-[11px] text-slate-500">{group.entries.map((item) => `${item.sheetName || "Sheet"} · row ${item.excelRowNumber || "-"}`).join(" | ")}</p></div>)}</div> : <div className="overflow-x-auto rounded-lg border border-slate-200"><table className="w-full text-left text-xs"><thead className="bg-slate-50 text-slate-600"><tr>{["Sheet", "Row", "Severity", "Code", "Column", "Message"].map((label) => <th key={label} className="px-3 py-2">{label}</th>)}</tr></thead><tbody>{issues.map((issue) => <tr key={getIssueKey(issue) + issue.id} className="border-t border-slate-100"><td className="px-3 py-2">{issue.sheetName || "-"}</td><td className="px-3 py-2">{issue.excelRowNumber || "-"}</td><td className="px-3 py-2">{issue.severity}</td><td className="px-3 py-2">{issue.errorCode}</td><td className="px-3 py-2">{issue.columnName || "-"}</td><td className="px-3 py-2">{issue.errorMessage}</td></tr>)}</tbody></table></div>}
+            <div className="flex items-center justify-between gap-2 text-xs text-slate-500"><span>{issueTotal.toLocaleString()} issue event{issueTotal === 1 ? "" : "s"}</span><div className="flex items-center gap-2"><Button variant="outline" type="button" disabled={page <= 1 || loading} onClick={() => setPage((p) => p - 1)}>Back</Button><span>{page} / {totalPages}</span><Button variant="outline" type="button" disabled={page >= totalPages || loading} onClick={() => setPage((p) => p + 1)}>Next</Button></div></div>
+          </div>}
+          {tab === "raw" && <div className="space-y-3 rounded-xl border border-slate-200 p-5"><p className="m-0 text-sm font-bold text-sibs-primary-1">Original imported rows</p><p className="m-0 text-xs text-slate-500">Open the read-only raw-data preview to inspect and filter the source records. Imported rows and matching issues remain preserved for audit.</p><Button type="button" disabled={!batchId || !onOpenRawData} onClick={() => onOpenRawData?.(batch)} className="text-xs"><FileSpreadsheet className="h-4 w-4"/> Open Raw Data</Button></div>}
         </div>
-
-        {/* Metric Stats Cards */}
-        <div className="p-4 sm:p-6 bg-white">
-          <div className="grid grid-cols-2 gap-2 sm:gap-2.5 sm:grid-cols-6">
-            <BatchDetailStat
-              label="Total Rows"
-              value={selectedUploadDetails?.totalRows}
-              icon={FileSpreadsheet}
-              tone="blue"
-            />
-            <BatchDetailStat
-              label="Valid Rows"
-              value={selectedUploadDetails?.validRows}
-              icon={CheckCircle2}
-              tone="emerald"
-            />
-            <BatchDetailStat
-              label="Invalid Rows"
-              value={selectedUploadDetails?.invalidRows}
-              icon={AlertCircle}
-              tone="rose"
-            />
-            <BatchDetailStat
-              label="Duplicate Rows"
-              value={selectedUploadDetails?.duplicateRows}
-              icon={ListPlus}
-              tone="orange"
-            />
-            <BatchDetailStat
-              label="Warning Rows"
-              value={selectedUploadDetails?.warningRows}
-              icon={AlertTriangle}
-              tone="amber"
-            />
-            <BatchDetailStat
-              label="Info Rows"
-              value={selectedUploadDetails?.infoRows}
-              icon={Info}
-              tone="cyan"
-            />
-          </div>
-        </div>
-
-        {/* Footer Actions */}
-        <div className="px-4 pb-4 pt-3 sm:px-6 sm:pb-6 sm:pt-4 border-t border-sibs-tertiary-10 bg-slate-50/50 flex flex-col sm:flex-row sm:items-center sm:justify-end gap-2">
-          {selectedUploadDetails?.batchId &&
-          ((selectedUploadDetails.invalidRows || 0) > 0 ||
-            (selectedUploadDetails.warningRows || 0) > 0 ||
-            (selectedUploadDetails.duplicateRows || 0) > 0) ? (
-            <Button
-              type="button"
-              variant="outline"
-              disabled={isLoadingUsVisaErrors}
-              onClick={() => handleOpenUsVisaErrors(selectedUploadDetails.batchId)}
-              className="h-10 w-full sm:w-auto rounded-xl border-rose-200 bg-rose-50 px-4 text-xs font-bold text-rose-700 shadow-xs hover:border-rose-300 hover:bg-rose-100 hover:text-rose-800"
-            >
-              <AlertCircle className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-              <span>
-                View Error Details (
-                {(
-                  (selectedUploadDetails.invalidRows || 0) +
-                  (selectedUploadDetails.warningRows || 0) +
-                  (selectedUploadDetails.duplicateRows || 0)
-                ).toLocaleString()}
-                )
-              </span>
-            </Button>
-          ) : null}
-          {selectedUploadDetails?.batchId && onOpenRawData ? (
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenRawData(selectedUploadDetails)}
-              className="h-10 w-full sm:w-auto rounded-xl border-emerald-300 bg-emerald-50 px-4 text-xs font-bold text-emerald-800 shadow-xs hover:border-emerald-400 hover:bg-emerald-100 hover:text-emerald-900 cursor-pointer"
-            >
-              <FileSpreadsheet className="h-3.5 w-3.5 shrink-0 text-emerald-700" aria-hidden="true" />
-              <span>View Raw Data</span>
-            </Button>
-          ) : null}
-          <Button
-            type="button"
-            onClick={onClose}
-            className="h-10 w-full sm:w-auto rounded-xl bg-sibs-primary-1 px-5 text-xs font-bold text-white shadow-xs hover:bg-sibs-tertiary-4"
-          >
-            Close
-          </Button>
-        </div>
+        <div className="flex shrink-0 justify-end border-t border-slate-100 bg-slate-50/50 px-4 py-3 sm:px-5"><Button type="button" onClick={onClose} className="h-9 rounded-lg bg-sibs-primary-1 px-5 text-xs text-white">Close</Button></div>
       </div>
     </AppModal>
   );

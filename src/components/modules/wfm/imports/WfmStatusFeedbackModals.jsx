@@ -9,6 +9,7 @@ import {
 import AppModal from "@/components/common/ui/AppModal";
 import { Button } from "@/components/common/ui/Button";
 import BatchDetailStat from "@/components/modules/wfm/imports/WfmBatchDetailStat";
+import { getImportDisplayStatus } from "@/lib/wfm-import-utils";
 
 export function DuplicateUploadAlertModal({ duplicateUploadAlert, onClose }) {
   return (
@@ -61,13 +62,13 @@ export function AddedUploadSuccessModal({
             <span className="font-mono text-sibs-primary-2">
               Batch: {addedUpload.batch.batchCode}
             </span>
-            {addedUpload.batch.status === "COMPLETED_WITH_ERRORS" ||
+            {getImportDisplayStatus(addedUpload.batch).tone === "warning" ||
             Number(addedUpload.batch.warningRows || 0) > 0 ||
             Number(addedUpload.batch.invalidRows || 0) > 0 ||
             Number(addedUpload.batch.duplicateRows || 0) > 0 ? (
               <span className="inline-flex items-center gap-1 rounded border border-amber-400 bg-amber-50 px-2 py-0.5 text-[11px] font-bold text-amber-800">
                 <AlertTriangle className="h-3 w-3 text-amber-600" aria-hidden="true" />
-                <span>Completed with warnings</span>
+                <span>{getImportDisplayStatus(addedUpload.batch).label}</span>
               </span>
             ) : addedUpload.batch.status === "FAILED" ? (
               <span className="rounded border border-rose-200 bg-rose-50 px-2 py-0.5 text-[11px] font-bold text-rose-700">
@@ -105,7 +106,7 @@ export function AddedUploadSuccessModal({
               tone="orange"
             />
             <BatchDetailStat
-              label="Warning Rows"
+              label="Validation Warnings"
               value={addedUpload.batch.warningRows}
               icon={AlertTriangle}
               tone="amber"
@@ -117,6 +118,11 @@ export function AddedUploadSuccessModal({
               tone="cyan"
             />
           </div>
+          {Number(addedUpload.batch.mappingRows || 0) > 0 && (
+            <p className="mt-3 mb-0 text-left text-xs font-medium text-slate-600">
+              {Number(addedUpload.batch.mappingRows).toLocaleString()} imported row(s) need employee or Task Order mapping. This does not affect upload success.
+            </p>
+          )}
         </div>
       ) : null}
 
@@ -135,7 +141,7 @@ export function AddedUploadSuccessModal({
             }}
             className="h-10 rounded-lg border-sibs-danger/30 px-4 text-sibs-danger hover:bg-sibs-danger hover:text-white"
           >
-            View Errors (
+            View Import Events (
             {(
               (addedUpload.batch.invalidRows || 0) +
               (addedUpload.batch.warningRows || 0) +

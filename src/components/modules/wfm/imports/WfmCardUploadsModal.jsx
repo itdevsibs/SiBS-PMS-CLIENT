@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { AlertTriangle, Eye, FileSpreadsheet, Search, Trash2 } from "lucide-react";
 import AppModal from "@/components/common/ui/AppModal";
 import { Button } from "@/components/common/ui/Button";
-import { formatRelativeTime } from "@/lib/wfm-import-utils";
+import { formatRelativeTime, getImportDisplayStatus } from "@/lib/wfm-import-utils";
 
 export default function WfmCardUploadsModal({
   activeOpenCard,
@@ -78,11 +78,7 @@ export default function WfmCardUploadsModal({
       <div className="mt-4 max-h-[65vh] min-h-[260px] sm:min-h-[360px] space-y-2.5 overflow-x-hidden overflow-y-auto rounded-xl border border-slate-200/80 bg-slate-50/50 p-2.5 sm:p-3 sibs-scrollbar">
         {displayedUploads.length ? (
           displayedUploads.map((upload) => {
-            const isCompletedWithErrors =
-              upload.batchStatus === "COMPLETED_WITH_ERRORS" ||
-              (upload.invalidRows > 0 ||
-                upload.warningRows > 0 ||
-                upload.duplicateRows > 0);
+            const displayStatus = getImportDisplayStatus(upload);
 
             return (
               <div
@@ -97,18 +93,18 @@ export default function WfmCardUploadsModal({
                     >
                       {upload.fileName}
                     </p>
-                    {isCompletedWithErrors ? (
+                    {displayStatus.tone !== "success" ? (
                       <button
                         type="button"
                         disabled={isLoadingUsVisaErrors}
                         onClick={() =>
-                          handleOpenUsVisaErrors(upload.batchId || upload.id)
+                          handleOpenBatchDetails(upload)
                         }
                         className="sm:hidden inline-flex shrink-0 whitespace-nowrap items-center gap-1 rounded-md border border-amber-400 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-800 transition-all hover:border-amber-500 hover:bg-amber-100"
-                        title="Completed with error - click to view error details"
+                        title="Open unified batch details"
                       >
                         <AlertTriangle className="h-2.5 w-2.5 shrink-0 text-amber-600" aria-hidden="true" />
-                        <span>Completed with error</span>
+                        <span>{displayStatus.label}</span>
                       </button>
                     ) : null}
                   </div>
@@ -129,18 +125,18 @@ export default function WfmCardUploadsModal({
                 </div>
 
                 <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100 sm:border-0 sm:pt-0 sm:flex sm:flex-wrap sm:items-center sm:gap-2 sm:shrink-0">
-                  {isCompletedWithErrors ? (
+                  {displayStatus.tone !== "success" ? (
                     <button
                       type="button"
                       disabled={isLoadingUsVisaErrors}
                       onClick={() =>
-                        handleOpenUsVisaErrors(upload.batchId || upload.id)
+                        handleOpenBatchDetails(upload)
                       }
                       className="hidden sm:inline-flex h-8 shrink-0 whitespace-nowrap items-center gap-1.5 rounded-lg border border-amber-400 bg-amber-50 px-2.5 text-xs font-semibold text-amber-800 transition-all hover:border-amber-500 hover:bg-amber-100 shadow-xs"
-                      title="Completed with error - click to view error details"
+                      title="Open unified batch details"
                     >
                       <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-amber-600" aria-hidden="true" />
-                      <span>Completed with error</span>
+                      <span>{displayStatus.label}</span>
                     </button>
                   ) : null}
 

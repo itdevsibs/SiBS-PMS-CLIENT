@@ -19,7 +19,7 @@ export default function WfmIngestionBarChart({
 
       return {
         id: card.id,
-        name: card.title.replace("Skill Statistics", "Skills").replace("Agent Level", "Agents"),
+        name: card.title.replace("Agent Level", "Agents"),
         fullName: card.title,
         valid: totalValid,
         total: totalRows,
