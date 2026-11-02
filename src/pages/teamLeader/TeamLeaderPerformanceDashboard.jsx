@@ -210,7 +210,7 @@ function OperationalContext({ context, error }) {
             Operational / Queue Context
           </p>
           <p className="mt-1 mb-0 text-sm text-sibs-tertiary-5">
-            Skill Statistics queue metrics for the selected reporting window.
+            Calls EOD queue metrics for the selected reporting window.
           </p>
         </div>
       </div>

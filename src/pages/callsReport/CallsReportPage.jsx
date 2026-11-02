@@ -737,7 +737,7 @@ export default function CallsReportPage() {
                     <tr>
                       <td colSpan={11} className="py-24 text-center text-sm text-slate-400">
                         {reportData.length === 0
-                          ? "No calls recorded in us_visa_raw_skill_statistics."
+                          ? "No calls recorded for the selected filters."
                           : "No matching records found."}
                       </td>
                     </tr>

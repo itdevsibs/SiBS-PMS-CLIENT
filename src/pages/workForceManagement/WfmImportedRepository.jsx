@@ -42,6 +42,7 @@ import {
   RAW_DATA_UPLOADS_KEY,
   accountFilters,
   formatRelativeTime,
+  getImportDisplayStatus,
   getBatchCategory,
   mapBatchToUpload,
   normalizeUploadsByCard,
@@ -448,6 +449,10 @@ export default function WfmImportedRepository() {
               invalidRows: details.batch.invalidRows ?? prev.invalidRows,
               duplicateRows: details.batch.duplicateRows ?? prev.duplicateRows,
               warningRows: details.batch.warningRows ?? prev.warningRows,
+              displayStatus: details.batch.displayStatus ?? prev.displayStatus,
+              mappingRows: details.batch.mappingRows ?? prev.mappingRows,
+              unmappedRows: details.batch.unmappedRows ?? prev.unmappedRows,
+              unassignedTaskOrderRows: details.batch.unassignedTaskOrderRows ?? prev.unassignedTaskOrderRows,
               infoRows: details.batch.infoRows ?? prev.infoRows,
               batchStatus: details.batch.status ?? prev.batchStatus,
             };
@@ -694,11 +699,7 @@ export default function WfmImportedRepository() {
               {displayedUploads.length > 0 ? (
                 <div className="divide-y divide-slate-100">
                   {paginatedUploads.map((upload) => {
-                    const isCompletedWithErrors =
-                      upload.batchStatus === "COMPLETED_WITH_ERRORS" ||
-                      upload.invalidRows > 0 ||
-                      upload.warningRows > 0 ||
-                      upload.duplicateRows > 0;
+                    const batchDisplay = getImportDisplayStatus(upload);
 
                     return (
                       <div
@@ -751,26 +752,9 @@ export default function WfmImportedRepository() {
                             ) : null}
                           </div>
 
-                          {/* Completed with error banner (if errors exist) */}
-                          {isCompletedWithErrors && (
-                            <button
-                              type="button"
-                              disabled={isLoadingUsVisaErrors}
-                              onClick={() =>
-                                handleOpenUsVisaErrors(upload.batchId || upload.id)
-                              }
-                              className="flex w-full cursor-pointer items-center justify-between rounded-lg border border-amber-300 bg-amber-50/90 px-2.5 py-1.5 text-xs font-semibold text-amber-800 shadow-2xs transition-colors hover:bg-amber-100 active:scale-[0.99]"
-                              title="Completed with error - click to view error details"
-                            >
-                              <span className="inline-flex items-center gap-1.5">
-                                <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-amber-600" />
-                                <span>Completed with error</span>
-                              </span>
-                              <span className="text-[10.5px] font-bold text-amber-700 underline">
-                                View errors &rarr;
-                              </span>
-                            </button>
-                          )}
+                          <span className={`inline-flex w-fit items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-semibold ${batchDisplay.tone === "success" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-amber-200 bg-amber-50 text-amber-700"}`}>
+                            {batchDisplay.label}
+                          </span>
 
                           {/* 3 Equal-width Action Buttons */}
                           <div className="grid grid-cols-3 gap-1.5 pt-0.5">
@@ -851,23 +835,9 @@ export default function WfmImportedRepository() {
 
                           {/* Right: Actions */}
                           <div className="flex flex-wrap items-center justify-start lg:justify-end gap-1.5 sm:gap-2 pt-2.5 lg:pt-0 border-t border-slate-100 lg:border-0 shrink-0 w-full lg:w-auto">
-                            {isCompletedWithErrors && (
-                              <button
-                                type="button"
-                                disabled={isLoadingUsVisaErrors}
-                                onClick={() =>
-                                  handleOpenUsVisaErrors(upload.batchId || upload.id)
-                                }
-                                className="inline-flex h-8 shrink-0 whitespace-nowrap items-center gap-1.5 rounded-lg border border-amber-400 bg-amber-50 px-2 sm:px-2.5 text-xs font-semibold text-amber-800 transition-all hover:border-amber-500 hover:bg-amber-100 shadow-xs cursor-pointer"
-                                title="Completed with error - click to view error details"
-                              >
-                                <AlertTriangle
-                                  className="h-3.5 w-3.5 shrink-0 text-amber-600"
-                                  aria-hidden="true"
-                                />
-                                <span>Completed with error</span>
-                              </button>
-                            )}
+                            <span className={`inline-flex h-7 shrink-0 items-center rounded-full border px-2.5 text-[11px] font-semibold ${batchDisplay.tone === "success" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-amber-200 bg-amber-50 text-amber-700"}`}>
+                              {batchDisplay.label}
+                            </span>
 
                             <button
                               type="button"

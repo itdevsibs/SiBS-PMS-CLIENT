@@ -7,7 +7,7 @@ import {
   FolderOpen,
   RotateCw,
 } from "lucide-react";
-import { formatRelativeTime, normalizeTaskOrderOption } from "@/lib/wfm-import-utils";
+import { formatRelativeTime, normalizeTaskOrderOption, getImportDisplayStatus } from "@/lib/wfm-import-utils";
 
 export default function WfmRawDataCard({
   card,
@@ -22,7 +22,7 @@ export default function WfmRawDataCard({
 
   const isCompletedWithErrors = Boolean(
     latestUpload &&
-      (latestUpload.batchStatus === "COMPLETED_WITH_ERRORS" ||
+      (latestUpload.batchStatus === "COMPLETED_WITH_ERRORS" && !latestUpload.displayStatus ||
         (latestUpload.invalidRows || 0) > 0 ||
         (latestUpload.warningRows || 0) > 0 ||
         (latestUpload.duplicateRows || 0) > 0),
@@ -113,10 +113,10 @@ export default function WfmRawDataCard({
                     )
                   }
                   className="inline-flex shrink-0 items-center gap-1 rounded-full border border-amber-400 bg-amber-50 px-2 py-0.5 text-[9.5px] font-semibold text-amber-800 shadow-2xs hover:bg-amber-100 transition-colors cursor-pointer"
-                  title="Completed with error - click to view error details"
+                  title="Review validation issues"
                 >
                   <AlertTriangle size={10} className="shrink-0 text-amber-600" />
-                  <span>Completed with error</span>
+                  <span>{getImportDisplayStatus(latestUpload).label}</span>
                 </button>
               ) : (
                 <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[9.5px] font-extrabold uppercase tracking-wide text-emerald-700 shadow-2xs">
@@ -180,7 +180,7 @@ export default function WfmRawDataCard({
                 >
                   <AlertCircle size={11} className="shrink-0 text-rose-600" />
                   <span>
-                    View Error Details (
+                    View Import Events (
                     {(
                       (latestUpload.invalidRows || 0) +
                       (latestUpload.warningRows || 0) +
