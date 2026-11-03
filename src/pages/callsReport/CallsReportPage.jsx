@@ -395,11 +395,11 @@ export default function CallsReportPage() {
                   onClick={fetchCallsReport}
                   disabled={isLoading}
                   title="Refresh data"
-                  className="inline-flex h-8 w-full cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-sibs-tertiary-8 bg-white px-3 text-xs font-bold text-sibs-primary-1 shadow-2xs transition hover:border-sibs-primary-1 hover:bg-sibs-primary-1 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+                  className="inline-flex h-8 w-full cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-[#042c51] bg-[#042c51] px-3 text-xs font-bold text-white shadow-2xs transition hover:bg-[#063d70] hover:border-[#063d70] disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <RefreshCw
                     size={12}
-                    className={`shrink-0 ${isLoading ? "animate-spin text-inherit" : ""}`}
+                    className={`shrink-0 ${isLoading ? "animate-spin text-white" : ""}`}
                   />
                   <span>Refresh</span>
                 </button>
@@ -573,39 +573,39 @@ export default function CallsReportPage() {
           <div className="flex min-h-[360px] lg:min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs">
             <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden sibs-scrollbar">
               <table className="w-full table-auto border-collapse text-left text-xs">
-                <thead className="sticky top-0 z-10 border-b border-slate-200 bg-slate-100/90 backdrop-blur-xs shadow-2xs">
+                <thead className="sticky top-0 z-10 border-b border-[#0d3b66] bg-[#042c51] text-white shadow-2xs">
                   <tr>
-                    <th className="whitespace-nowrap px-4 py-3 text-[11px] font-extrabold uppercase tracking-wider text-slate-700">
+                    <th className="whitespace-nowrap px-4 py-3 text-[11px] font-extrabold uppercase tracking-wider text-white">
                       Country
                     </th>
-                    <th className="whitespace-nowrap px-4 py-3 text-[11px] font-extrabold uppercase tracking-wider text-slate-700">
+                    <th className="whitespace-nowrap px-4 py-3 text-[11px] font-extrabold uppercase tracking-wider text-white">
                       Language
                     </th>
-                    <th className="whitespace-nowrap px-4 py-3 text-[11px] font-extrabold uppercase tracking-wider text-slate-700">
+                    <th className="whitespace-nowrap px-4 py-3 text-[11px] font-extrabold uppercase tracking-wider text-white">
                       Skills
                     </th>
-                    <th className="whitespace-nowrap px-4 py-3 text-right text-[11px] font-extrabold uppercase tracking-wider text-slate-700">
+                    <th className="whitespace-nowrap px-4 py-3 text-right text-[11px] font-extrabold uppercase tracking-wider text-white">
                       Calls Received
                     </th>
-                    <th className="whitespace-nowrap px-4 py-3 text-right text-[11px] font-extrabold uppercase tracking-wider text-slate-700">
+                    <th className="whitespace-nowrap px-4 py-3 text-right text-[11px] font-extrabold uppercase tracking-wider text-white">
                       Calls Answered
                     </th>
-                    <th className="whitespace-nowrap px-4 py-3 text-right text-[11px] font-extrabold uppercase tracking-wider text-slate-700">
+                    <th className="whitespace-nowrap px-4 py-3 text-right text-[11px] font-extrabold uppercase tracking-wider text-white">
                       Calls Abandoned
                     </th>
-                    <th className="whitespace-nowrap px-4 py-3 text-right text-[11px] font-extrabold uppercase tracking-wider text-slate-700">
+                    <th className="whitespace-nowrap px-4 py-3 text-right text-[11px] font-extrabold uppercase tracking-wider text-white">
                       Calls Abandoned after SL
                     </th>
-                    <th className="whitespace-nowrap px-4 py-3 text-right text-[11px] font-extrabold uppercase tracking-wider text-slate-700">
+                    <th className="whitespace-nowrap px-4 py-3 text-right text-[11px] font-extrabold uppercase tracking-wider text-white">
                       Calls Answered within SL
                     </th>
-                    <th className="whitespace-nowrap px-4 py-3 text-right text-[11px] font-extrabold uppercase tracking-wider text-slate-700">
+                    <th className="whitespace-nowrap px-4 py-3 text-right text-[11px] font-extrabold uppercase tracking-wider text-white">
                       AHT
                     </th>
-                    <th className="whitespace-nowrap px-4 py-3 text-right text-[11px] font-extrabold uppercase tracking-wider text-slate-700">
+                    <th className="whitespace-nowrap px-4 py-3 text-right text-[11px] font-extrabold uppercase tracking-wider text-white">
                       Abandoned Rate
                     </th>
-                    <th className="whitespace-nowrap px-4 py-3 text-right text-[11px] font-extrabold uppercase tracking-wider text-slate-700">
+                    <th className="whitespace-nowrap px-4 py-3 text-right text-[11px] font-extrabold uppercase tracking-wider text-white">
                       SL (Answered within 60 secs.)
                     </th>
                   </tr>
