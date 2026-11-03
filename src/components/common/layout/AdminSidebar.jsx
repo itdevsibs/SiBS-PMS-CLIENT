@@ -10,7 +10,6 @@ import {
 import { useLocation, useNavigate } from "react-router-dom";
 
 import { Button } from "@/components/common/ui/Button";
-import { getAuthUser } from "@/lib/auth";
 import { handleLogout as handleAuthLogout } from "@/lib/axios/api-template";
 
 const SIDEBAR_COLLAPSED_KEY = "pms-sidebar-collapsed";
@@ -29,45 +28,7 @@ const AdminSidebar = ({
   const [isCollapsed, setIsCollapsed] = useState(
     () => localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "true",
   );
-  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
-
-  const authUser = getAuthUser();
-  const fullNameFromParts = [
-    authUser?.firstName,
-    authUser?.middleName,
-    authUser?.lastName,
-  ]
-    .filter(Boolean)
-    .join(" ")
-    .trim();
-  const displayName =
-    userName ||
-    authUser?.fullName ||
-    authUser?.name ||
-    fullNameFromParts ||
-    authUser?.username ||
-    authUser?.sibs_id ||
-    "User";
-  const displayEmail =
-    userRole ||
-    authUser?.email ||
-    authUser?.roleLabel ||
-    "user@thesiblingssolutions.com";
-  const userInitial = displayName?.charAt(0)?.toUpperCase() || "U";
-  const avatarSrc =
-    authUser?.avatar ||
-    authUser?.profile_photo ||
-    authUser?.photo ||
-    authUser?.photo_url ||
-    authUser?.image ||
-    authUser?.profile_image ||
-    authUser?.avatar_url ||
-    authUser?.picture ||
-    authUser?.gy_emp_photo ||
-    null;
-
   const handleLogoutAction = () => {
-    setIsUserMenuOpen(false);
     if (onLogoutClick) {
       onLogoutClick();
       return;
@@ -375,80 +336,21 @@ const AdminSidebar = ({
         </div>
       </div>
 
-      {/* Bottom User Profile Section */}
-      <div className={`relative mt-auto border-t border-white/10 ${collapsed ? "p-2" : "p-3"}`}>
-        {/* User Profile Dropdown Popover (Crisp White Card) */}
-        {isUserMenuOpen && (
-          <div
-            className={`absolute bottom-[calc(100%+0.5rem)] z-[999] overflow-hidden rounded-2xl border border-slate-200/90 bg-white p-2 shadow-2xl shadow-slate-900/20 ${
-              collapsed ? "left-2 w-[220px]" : "left-2 right-2"
-            }`}
-            role="menu"
-          >
-            <div className="px-2.5 py-2 border-b border-slate-100 mb-1.5">
-              <p className="text-[11.5px] font-extrabold uppercase tracking-tight text-slate-900 truncate">
-                {displayName}
-              </p>
-              <p className="text-[10.5px] font-semibold text-[#ff5c28] truncate">
-                {displayEmail}
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={handleLogoutAction}
-              className="flex w-full items-center gap-2.5 rounded-xl border-0 bg-[#fff1f1] px-3 py-2 text-left text-xs font-bold text-[#ef4444] hover:bg-[#ffe5e5] transition cursor-pointer"
-              role="menuitem"
-            >
-              <LogOut className="h-4 w-4 shrink-0 text-[#ef4444]" aria-hidden="true" />
-              <span>Logout</span>
-            </button>
-          </div>
-        )}
-
+      {/* Bottom Logout Button */}
+      <div className={`mt-auto border-t border-white/10 ${collapsed ? "p-2" : "p-3"}`}>
         <button
           type="button"
-          onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-          title={displayName}
-          className={`flex w-full items-center rounded-xl border border-white/15 bg-white/10 text-left transition-all duration-150 hover:bg-white/20 hover:border-white/25 cursor-pointer group ${
-            collapsed ? "justify-center p-2" : "gap-2.5 p-2"
+          onClick={handleLogoutAction}
+          title="Logout"
+          className={`flex w-full items-center rounded-xl border border-white/10 bg-white/[0.08] text-left text-xs font-bold text-white transition-all duration-150 hover:bg-[#ff5c28] hover:border-[#ff5c28] hover:text-white cursor-pointer group shadow-xs ${
+            collapsed ? "h-[38px] justify-center p-0" : "h-[40px] gap-2.5 px-3 py-2"
           }`}
         >
-          {avatarSrc ? (
-            <img
-              src={avatarSrc}
-              alt={displayName}
-              className="h-9 w-9 shrink-0 rounded-full object-cover ring-2 ring-white/30"
-            />
-          ) : (
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#ff5c28] text-xs font-black text-white shadow-xs">
-              {userInitial}
-            </span>
-          )}
-
-          {!collapsed && (
-            <>
-              <div className="min-w-0 flex-1 flex flex-col justify-center">
-                <span
-                  className="block truncate text-[11.5px] font-bold text-white group-hover:text-white"
-                  title={displayName}
-                >
-                  {displayName}
-                </span>
-                <span
-                  className="block truncate text-[10px] font-semibold text-white/80"
-                  title={displayEmail}
-                >
-                  {displayEmail}
-                </span>
-              </div>
-
-              <ChevronDown
-                className={`h-4 w-4 shrink-0 text-white/80 transition-transform duration-200 group-hover:text-white ${
-                  isUserMenuOpen ? "rotate-180" : ""
-                }`}
-              />
-            </>
-          )}
+          <LogOut
+            className="h-4 w-4 shrink-0 text-[#cad5e2] group-hover:text-white transition-colors"
+            aria-hidden="true"
+          />
+          {!collapsed && <span>Logout</span>}
         </button>
       </div>
     </>
