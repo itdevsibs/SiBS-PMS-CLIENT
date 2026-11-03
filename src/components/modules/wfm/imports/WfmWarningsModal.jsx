@@ -349,24 +349,7 @@ export default function WfmWarningsModal({
                             </div>
                           </div>
 
-                          <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100 sm:border-0 sm:pt-0 sm:flex sm:flex-wrap sm:items-center sm:gap-2 sm:shrink-0">
-                            {isCompletedWithErrors ? (
-                              <button
-                                type="button"
-                                disabled={isLoadingUsVisaErrors}
-                                onClick={() => {
-                                  handleOpenBatchDetails(batch);
-                                }}
-                                className="hidden sm:inline-flex h-8 shrink-0 whitespace-nowrap items-center gap-1.5 rounded-lg border border-amber-400 bg-amber-50 px-2.5 text-xs font-semibold text-amber-800 transition-all hover:border-amber-500 hover:bg-amber-100 shadow-xs"
-                                title="Open batch details"
-                              >
-                                <AlertTriangle
-                                  className="h-3.5 w-3.5 shrink-0 text-amber-600"
-                                  aria-hidden="true"
-                                />
-                                <span>Completed with warnings</span>
-                              </button>
-                            ) : null}
+                          <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 sm:border-0 sm:pt-0 sm:shrink-0">
 
                             <button
                               type="button"

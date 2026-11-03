@@ -1,16 +1,25 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLocation, useSearchParams } from "react-router-dom";
 import {
+  AlertCircle,
   AlertTriangle,
+  Calendar,
+  CalendarDays,
+  CheckCircle2,
   ChevronLeft,
   ChevronRight,
+  Clock,
+  Database,
   Eye,
-  CalendarDays,
-  List,
   FileSpreadsheet,
   FolderOpen,
+  List,
+  MessageSquare,
+  Phone,
   Search,
   Trash2,
+  TrendingUp,
+  User,
 } from "lucide-react";
 
 import AdminSidebar from "@/components/common/layout/AdminSidebar";
@@ -36,6 +45,7 @@ import { recordWfmHistoryLogQuietly } from "@/lib/axios/wfm-history-logs";
 import { removeWfmGraphReportsForUpload } from "@/lib/wfm-graph-reports";
 import { accountOptions, getRawDataCards } from "@/lib/wfm-raw-data-cards";
 import {
+  getRepositoryReportTypeForUpload,
   getRepositoryToolForUpload,
   getRepositoryToolsForLevel,
   normalizeRepositoryTool,
@@ -127,9 +137,16 @@ export default function WfmImportedRepository() {
   });
   const [uploadedDataSearch, setUploadedDataSearch] = useState("");
   // Calendar is the default view; List keeps the existing repository workflow.
-  const [repositoryView, setRepositoryView] = useState("calendar");
+  const [repositoryView, setRepositoryView] = useState(() => {
+    return (
+      location.state?.view ||
+      searchParams.get("view") ||
+      "calendar"
+    );
+  });
   const [calendarMonth, setCalendarMonth] = useState(() => manilaDateKey().slice(0, 7));
-  const [selectedCalendarDay, setSelectedCalendarDay] = useState(() => manilaDateKey());
+  const [selectedCalendarDay, setSelectedCalendarDay] = useState(null);
+  const [isDailyDrawerOpen, setIsDailyDrawerOpen] = useState(false);
   const [calendarDays, setCalendarDays] = useState([]);
   const [calendarLoading, setCalendarLoading] = useState(false);
   const [calendarError, setCalendarError] = useState("");
@@ -167,6 +184,13 @@ export default function WfmImportedRepository() {
       searchParams.get("account");
     if (rawAccount) {
       setSelectedAccount(rawAccount);
+    }
+
+    const rawView =
+      location.state?.view ||
+      searchParams.get("view");
+    if (rawView === "list" || rawView === "calendar") {
+      setRepositoryView(rawView);
     }
   }, [location.key]);
 
@@ -433,7 +457,10 @@ export default function WfmImportedRepository() {
   }, [repositoryView, calendarFilters, summaryRefreshVersion]);
 
   useEffect(() => {
-    if (repositoryView !== "calendar") return;
+    if (repositoryView !== "calendar" || !selectedCalendarDay) {
+      setDailyUploads([]);
+      return;
+    }
     let active = true;
     setDailyLoading(true);
     setDailyError("");
@@ -452,9 +479,20 @@ export default function WfmImportedRepository() {
 
   const changeCalendarMonth = (month) => {
     setCalendarMonth(month);
-    // Select day 1 when navigating months; avoid stale date/month mismatches.
-    setSelectedCalendarDay(month === manilaDateKey().slice(0, 7) ? manilaDateKey() : `${month}-01`);
+    setSelectedCalendarDay(null);
+    setIsDailyDrawerOpen(false);
     setDailyPage(1);
+  };
+
+  const handleSelectCalendarDay = (day, dayData) => {
+    setSelectedCalendarDay(day);
+    // If the day has batches/imports or if clicked, open the right drawer
+    if (dayData?.batchCount > 0) {
+      setIsDailyDrawerOpen(true);
+    } else {
+      // If user clicks a blank day, don't open the drawer
+      setIsDailyDrawerOpen(false);
+    }
   };
 
   // Pagination state (matching Employee Ledger)
@@ -634,7 +672,7 @@ export default function WfmImportedRepository() {
           onLogoutClick={() => dashboard.setShowLogoutModal(true)}
         />
 
-        <div className="sibs-scrollbar flex-1 overflow-y-auto [scrollbar-gutter:stable] p-2.5 sm:p-4 lg:p-5">
+        <div className="sibs-scrollbar flex-1 flex flex-col overflow-y-auto [scrollbar-gutter:stable] p-2 sm:p-2.5 lg:p-3">
           {/* Top Filter Bar */}
           <WfmFilterBar
             selectedAccount={selectedAccount}
@@ -656,10 +694,10 @@ export default function WfmImportedRepository() {
             onOpenDuplicates={() => setIsDuplicatesModalOpen(true)}
           />
 
-          {/* Main Repository Box Container */}
-          <div className="rounded-xl sm:rounded-2xl border border-slate-200/80 bg-white p-3.5 sm:p-5 lg:p-6 shadow-xs">
+          {/* Main Repository Box Container - flex-1 to fill bottom space */}
+          <div className="flex-1 flex flex-col rounded-xl sm:rounded-2xl border border-slate-200/80 bg-white p-3 sm:p-4 shadow-xs">
             {/* Header: Title/Subtitle on Left, Level dropdown & Search on Right */}
-            <div className="flex flex-col gap-3.5 lg:flex-row lg:items-center lg:justify-between border-b border-slate-100 pb-3.5 sm:pb-4">
+            <div className="flex flex-col gap-2.5 lg:flex-row lg:items-center lg:justify-between border-b border-slate-100 pb-2.5 sm:pb-3 shrink-0">
               <div className="min-w-0 flex-1">
                 <h2
                   className="m-0 truncate text-base sm:text-lg md:text-xl font-bold text-sibs-primary-1"
@@ -676,9 +714,33 @@ export default function WfmImportedRepository() {
                 </p>
               </div>
 
-              <div className="flex shrink-0 gap-1 rounded-lg border border-slate-200 bg-slate-50 p-1" role="group" aria-label="Repository view">
-                <button type="button" onClick={() => setRepositoryView("calendar")} aria-pressed={repositoryView === "calendar"} className={`flex h-8 items-center gap-1.5 rounded-md px-3 text-xs font-bold ${repositoryView === "calendar" ? "bg-white text-sibs-primary-1 shadow-xs" : "text-slate-500 hover:text-slate-800"}`}><CalendarDays className="h-3.5 w-3.5"/>Calendar</button>
-                <button type="button" onClick={() => setRepositoryView("list")} aria-pressed={repositoryView === "list"} className={`flex h-8 items-center gap-1.5 rounded-md px-3 text-xs font-bold ${repositoryView === "list" ? "bg-white text-sibs-primary-1 shadow-xs" : "text-slate-500 hover:text-slate-800"}`}><List className="h-3.5 w-3.5"/>List</button>
+              <div className="inline-flex shrink-0 items-center gap-1 rounded-xl bg-slate-200/80 p-1 shadow-inner" role="group" aria-label="Repository view">
+                <button
+                  type="button"
+                  onClick={() => setRepositoryView("calendar")}
+                  aria-pressed={repositoryView === "calendar"}
+                  className={`flex h-8 items-center gap-1.5 rounded-lg px-3.5 text-xs transition-all cursor-pointer ${
+                    repositoryView === "calendar"
+                      ? "bg-[#042c51] text-white shadow-sm font-extrabold"
+                      : "text-slate-600 hover:text-slate-900 hover:bg-white/50 font-bold"
+                  }`}
+                >
+                  <CalendarDays className="h-3.5 w-3.5" />
+                  <span>Calendar</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRepositoryView("list")}
+                  aria-pressed={repositoryView === "list"}
+                  className={`flex h-8 items-center gap-1.5 rounded-lg px-3.5 text-xs transition-all cursor-pointer ${
+                    repositoryView === "list"
+                      ? "bg-[#042c51] text-white shadow-sm font-extrabold"
+                      : "text-slate-600 hover:text-slate-900 hover:bg-white/50 font-bold"
+                  }`}
+                >
+                  <List className="h-3.5 w-3.5" />
+                  <span>List</span>
+                </button>
               </div>
 
               {/* Controls: Search Input, Level Dropdown, Tool Dropdown, Clear Button - FIXED POSITIONS */}
@@ -745,207 +807,234 @@ export default function WfmImportedRepository() {
               </div>
             </div>
 
-            {repositoryView === "calendar" ? <>
-              <WfmImportCalendar
-                month={calendarMonth} onMonthChange={changeCalendarMonth}
-                selectedDay={selectedCalendarDay} onSelectDay={setSelectedCalendarDay}
-                days={calendarDays} loading={calendarLoading} error={calendarError}
-              />
-              <WfmCalendarDailyImports
-                date={selectedCalendarDay}
-                uploads={dailyUploads} pagination={dailyPagination} loading={dailyLoading} error={dailyError}
-                onPageChange={setDailyPage} onView={handleOpenBatchDetails}
-                onRaw={setSelectedRawBatch} onRemove={setUploadToRemove}
-              />
-            </> : null}
+            {repositoryView === "calendar" ? (
+              <>
+                <WfmImportCalendar
+                  month={calendarMonth}
+                  onMonthChange={changeCalendarMonth}
+                  selectedDay={selectedCalendarDay}
+                  onSelectDay={handleSelectCalendarDay}
+                  days={calendarDays}
+                  loading={calendarLoading}
+                  error={calendarError}
+                />
+
+                {/* Slide-out side drawer on the right when a day with data is clicked */}
+                <div
+                  className={`fixed inset-0 z-[100] overflow-hidden transition-all duration-300 ${
+                    isDailyDrawerOpen && selectedCalendarDay
+                      ? "pointer-events-auto visible"
+                      : "pointer-events-none invisible"
+                  }`}
+                  role="dialog"
+                  aria-modal="true"
+                >
+                  {/* Simple Backdrop without blur */}
+                  <div
+                    className={`fixed inset-0 bg-slate-900/20 transition-opacity duration-300 ease-out ${
+                      isDailyDrawerOpen && selectedCalendarDay ? "opacity-100" : "opacity-0"
+                    }`}
+                    onClick={() => setIsDailyDrawerOpen(false)}
+                    aria-hidden="true"
+                  />
+
+                  {/* Smooth Sliding Drawer Panel */}
+                  <div className="fixed inset-y-0 right-0 flex max-w-full pl-6">
+                    <div
+                      className={`w-screen max-w-2xl sm:max-w-3xl lg:max-w-[860px] shadow-2xl transition-transform duration-300 ease-out transform ${
+                        isDailyDrawerOpen && selectedCalendarDay
+                          ? "translate-x-0"
+                          : "translate-x-full"
+                      }`}
+                    >
+                      <WfmCalendarDailyImports
+                        date={selectedCalendarDay}
+                        uploads={dailyUploads}
+                        pagination={dailyPagination}
+                        loading={dailyLoading}
+                        error={dailyError}
+                        onPageChange={setDailyPage}
+                        onView={handleOpenBatchDetails}
+                        onRaw={setSelectedRawBatch}
+                        onRemove={setUploadToRemove}
+                        onClose={() => setIsDailyDrawerOpen(false)}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </>
+            ) : null}
 
             {repositoryView === "list" ? <>
-            {/* 1 Single Clean Table Container */}
-            <div className="mt-4 sm:mt-5 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs">
+            {/* Clean Elevated Cards Container */}
+            <div className="mt-3.5 space-y-2.5">
               {displayedUploads.length > 0 ? (
-                <div className="divide-y divide-slate-100">
-                  {paginatedUploads.map((upload) => {
-                    const batchDisplay = getImportDisplayStatus(upload);
+                  paginatedUploads.map((upload) => {
+                    const display = getImportDisplayStatus(upload);
+                    const isCompleted = display.tone === "success" || display.label?.toLowerCase() === "completed";
+                    const isPartial = display.tone === "warning" || display.label?.toLowerCase().includes("partial");
+
+                    const borderAccentClass = isCompleted
+                      ? "border-l-[5px] border-l-emerald-500"
+                      : isPartial
+                      ? "border-l-[5px] border-l-amber-500"
+                      : "border-l-[5px] border-l-rose-500";
+
+                    const reportType = getRepositoryReportTypeForUpload(upload);
+                    const isChat = reportType?.toLowerCase().includes("chat");
+                    const isCall = reportType?.toLowerCase().includes("call");
+                    const isOccupancy = reportType?.toLowerCase().includes("occupancy");
 
                     return (
-                      <div
+                      <article
                         key={upload.id || `${upload.fileName}-${upload.uploadedAt}`}
-                        className="transition-colors hover:bg-slate-50/70"
+                        className={`group relative flex flex-col gap-2.5 rounded-xl border border-slate-200/90 bg-white p-3.5 shadow-xs transition-all duration-200 hover:border-slate-300 hover:shadow-sm ${borderAccentClass}`}
                       >
-                        {/* ── Mobile Only Layout (sm:hidden) ── */}
-                        <div className="sm:hidden flex flex-col gap-2.5 p-3.5">
-                          {/* File header with Excel icon */}
-                          <div className="flex items-start gap-2.5 min-w-0">
-                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-emerald-100 bg-emerald-50 text-emerald-600 shadow-2xs">
-                              <FileSpreadsheet className="h-4 w-4" aria-hidden="true" />
+                        {/* Top Row: Excel icon, File Title, and Status Badge */}
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex items-start gap-3 min-w-0 flex-1">
+                            {/* Sheet Green Badge (FileSpreadsheet logo) */}
+                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-800 shadow-2xs">
+                              <FileSpreadsheet className="h-5.5 w-5.5 text-emerald-700" />
                             </div>
 
                             <div className="min-w-0 flex-1">
                               <p
-                                className="m-0 break-words text-xs font-bold text-sibs-primary-1 leading-snug [overflow-wrap:anywhere]"
+                                className="m-0 truncate text-sm font-bold text-sibs-primary-1 leading-snug"
                                 title={upload.fileName}
                               >
-                                {upload.fileName}
+                                {upload.fileName || "Unnamed import"}
                               </p>
 
-                              {/* Category badge & row count */}
-                              <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] text-slate-500">
-                                <WfmRepositoryReportTypeBadge upload={upload} />
-                                <span className="inline-flex items-center rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] font-semibold text-slate-700">
-                                  {getRepositoryToolForUpload(upload) === "Other" ? (upload.sourceSystem || "Unknown tool") : getRepositoryToolForUpload(upload)}
+                              {/* Subtitle row: Calendar icon, Relative time, Exact timestamp, Divider, User icon, Uploader (Kronos ID) */}
+                              <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-slate-500">
+                                <span className="inline-flex items-center gap-1.5 text-slate-500">
+                                  <Calendar className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                                  <span>{formatRelativeTime(upload)} • {upload.uploadedAt}</span>
                                 </span>
-                                {upload.totalRows ? (
-                                  <span className="font-semibold text-slate-600">
-                                    • {upload.totalRows.toLocaleString()} rows
-                                  </span>
+
+                                {(upload.uploaderName || upload.uploaderEmpId || upload.uploadedBy) ? (
+                                  <>
+                                    <span className="text-slate-300 font-light">|</span>
+                                    <span className="inline-flex items-center gap-1.5 font-medium text-slate-600">
+                                      <User className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                                      <span className="font-bold text-slate-800 uppercase">{upload.uploaderName || "Unknown"}</span>
+                                      <span className="text-slate-500 font-mono text-[11px]">({upload.uploaderEmpId || upload.uploadedBy || "—"})</span>
+                                    </span>
+                                  </>
                                 ) : null}
                               </div>
                             </div>
                           </div>
 
-                          {/* Time & Batch Code */}
-                          <div className="flex flex-col gap-1 rounded-lg border border-slate-100 bg-slate-50/80 px-2.5 py-1.5 text-[10.5px] text-slate-500">
-                            <span className="truncate">
-                              ({formatRelativeTime(upload)}) {upload.uploadedAt}
-                            </span>
-                            {upload.batchCode ? (
-                              <div>
-                                <span className="inline-block rounded bg-sibs-primary-2/10 px-1.5 py-0.5 font-mono text-[9.5px] font-bold text-sibs-primary-2">
-                                  Batch: {upload.batchCode}
-                                </span>
-                              </div>
-                            ) : null}
-                          </div>
-
-                          <span className={`inline-flex w-fit items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-semibold ${batchDisplay.tone === "success" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-amber-200 bg-amber-50 text-amber-700"}`}>
-                            {batchDisplay.label}
-                          </span>
-
-                          {/* 3 Equal-width Action Buttons */}
-                          <div className="grid grid-cols-3 gap-1.5 pt-0.5">
-                            <button
-                              type="button"
-                              onClick={() => setSelectedRawBatch(upload)}
-                              className="inline-flex h-8.5 cursor-pointer items-center justify-center gap-1 rounded-lg border border-emerald-200 bg-emerald-50/80 px-1.5 text-[11px] font-bold text-emerald-700 shadow-2xs transition-all hover:bg-emerald-600 hover:text-white active:scale-95"
-                              title="View raw Excel spreadsheet data"
-                            >
-                              <FileSpreadsheet className="h-3.5 w-3.5 shrink-0" />
-                              <span>Raw data</span>
-                            </button>
-
-                            <button
-                              type="button"
-                              onClick={() => handleOpenBatchDetails(upload)}
-                              className="inline-flex h-8.5 cursor-pointer items-center justify-center gap-1 rounded-lg border border-slate-200 bg-white px-1.5 text-[11px] font-bold text-slate-700 shadow-2xs transition-all hover:border-sibs-primary-1 hover:bg-sibs-primary-1 hover:text-white active:scale-95"
-                            >
-                              <Eye className="h-3.5 w-3.5 shrink-0" />
-                              <span>View</span>
-                            </button>
-
-                            <button
-                              type="button"
-                              onClick={() => setUploadToRemove(upload)}
-                              className="inline-flex h-8.5 cursor-pointer items-center justify-center gap-1 rounded-lg border border-rose-200 bg-rose-50/80 px-1.5 text-[11px] font-bold text-rose-600 shadow-2xs transition-all hover:border-rose-600 hover:bg-rose-600 hover:text-white active:scale-95"
-                            >
-                              <Trash2 className="h-3.5 w-3.5 shrink-0" />
-                              <span>Remove</span>
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* ── Tablet & Desktop Layout (hidden sm:flex) ── */}
-                        <div className="hidden sm:flex sm:flex-col lg:flex-row lg:items-center lg:justify-between gap-3 p-4 lg:px-5 lg:py-4">
-                          {/* Left: File details, batch badge, time & row counts */}
-                          <div className="min-w-0 flex-1">
-                            <p
-                              className="m-0 min-w-0 max-w-full break-words [word-break:break-word] text-xs sm:text-sm font-bold text-sibs-primary-1 leading-snug"
-                              title={upload.fileName}
-                            >
-                              {upload.fileName}
-                            </p>
-
-                            {/* Upload time */}
-                            <div className="mt-1 text-[11px] sm:text-xs text-sibs-tertiary-5">
-                              <span className="whitespace-nowrap">
-                                ({formatRelativeTime(upload)}) {upload.uploadedAt}
-                              </span>
-                            </div>
-
-                            {/* Batch code under upload time */}
-                            {upload.batchCode ? (
-                              <div className="mt-1">
-                                <span className="rounded bg-sibs-primary-2/10 px-1.5 py-0.5 font-mono text-[10px] font-bold text-sibs-primary-2 whitespace-nowrap">
-                                  Batch: {upload.batchCode}
-                                </span>
-                              </div>
-                            ) : null}
-
-                            {/* Raw data title & row count placed under upload time & batch */}
-                            {(upload.rawDataTitle || upload.totalRows) && (
-                              <div className="mt-1.5 flex flex-wrap items-center gap-1.5 sm:gap-2 text-[11px] sm:text-xs text-sibs-tertiary-5">
-                                <WfmRepositoryReportTypeBadge upload={upload} />
-                                <span className="inline-flex items-center rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] sm:text-xs font-semibold text-slate-700">
-                                  {getRepositoryToolForUpload(upload) === "Other" ? (upload.sourceSystem || "Unknown tool") : getRepositoryToolForUpload(upload)}
-                                </span>
-
-                                {upload.totalRows ? (
-                                  <span className="text-[11px] font-medium text-slate-500 whitespace-nowrap">
-                                    • {upload.totalRows.toLocaleString()} rows
-                                  </span>
-                                ) : null}
-                              </div>
+                          {/* Status Pill Badge (with Clock icon for Partial, CheckCircle2 for Completed, AlertCircle for Failed) */}
+                          <span
+                            className={`shrink-0 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-bold tracking-tight border shadow-2xs ${
+                              isCompleted
+                                ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                : isPartial
+                                ? "bg-amber-50 text-amber-700 border-amber-200"
+                                : "bg-rose-50 text-rose-700 border-rose-200"
+                            }`}
+                          >
+                            {isCompleted ? (
+                              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                            ) : isPartial ? (
+                              <Clock className="h-3.5 w-3.5 text-amber-600 shrink-0" />
+                            ) : (
+                              <AlertCircle className="h-3.5 w-3.5 text-rose-600 shrink-0" />
                             )}
-                          </div>
+                            <span>{isCompleted ? "Completed" : isPartial ? "Partially Imported" : display.label}</span>
+                          </span>
+                        </div>
 
-                          {/* Right: Actions */}
-                          <div className="flex flex-wrap items-center justify-start lg:justify-end gap-1.5 sm:gap-2 pt-2.5 lg:pt-0 border-t border-slate-100 lg:border-0 shrink-0 w-full lg:w-auto">
-                            <span className={`inline-flex h-7 shrink-0 items-center rounded-full border px-2.5 text-[11px] font-semibold ${batchDisplay.tone === "success" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-amber-200 bg-amber-50 text-amber-700"}`}>
-                              {batchDisplay.label}
+                        {/* Bottom Row: Metadata Chips (Batch, Category, Tool, Rows) and Action Buttons */}
+                        <div className="flex flex-wrap items-center justify-between gap-2.5 pt-2 border-t border-slate-100">
+                          {/* Chips: Batch, Level Badge with icon, Tool, Rows */}
+                          <div className="flex flex-wrap items-center gap-2 text-xs">
+                            {upload.batchCode ? (
+                              <span className="inline-block rounded-md bg-rose-50 border border-rose-200/80 px-2 py-0.5 font-mono text-[10.5px] font-bold text-rose-600">
+                                Batch: {upload.batchCode}
+                              </span>
+                            ) : null}
+
+                            {/* Report Level badge with corresponding icon */}
+                            <span className="inline-flex items-center gap-1.5 rounded-md border border-sky-200 bg-sky-50 px-2.5 py-0.5 text-xs font-bold text-sky-800">
+                              {isChat ? (
+                                <MessageSquare className="h-3.5 w-3.5 text-sky-600 shrink-0" />
+                              ) : isCall ? (
+                                <Phone className="h-3.5 w-3.5 text-sky-600 shrink-0" />
+                              ) : isOccupancy ? (
+                                <TrendingUp className="h-3.5 w-3.5 text-sky-600 shrink-0" />
+                              ) : null}
+                              <span>{reportType}</span>
                             </span>
 
-                            <button
-                              type="button"
-                              onClick={() => setSelectedRawBatch(upload)}
-                              className="inline-flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50/70 px-2.5 sm:px-3 text-xs font-semibold text-emerald-700 shadow-xs transition-all hover:border-emerald-600 hover:bg-emerald-600 hover:text-white cursor-pointer"
-                              title="View raw Excel spreadsheet data"
-                            >
-                              <FileSpreadsheet className="h-3.5 w-3.5" aria-hidden="true" />
-                              <span>View raw data</span>
-                            </button>
+                            {/* Tool Tag */}
+                            <span className="inline-flex items-center rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs font-semibold text-slate-700">
+                              {getRepositoryToolForUpload(upload) === "Other"
+                                ? upload.sourceSystem || "Tool"
+                                : getRepositoryToolForUpload(upload)}
+                            </span>
 
+                            {/* Total Rows with Database icon */}
+                            {upload.totalRows ? (
+                              <span className="inline-flex items-center gap-1.5 font-semibold text-slate-600 text-xs">
+                                <Database className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                                <span>{Number(upload.totalRows).toLocaleString()} rows</span>
+                              </span>
+                            ) : null}
+                          </div>
+
+                          {/* Right Action buttons bar: View, Raw, Remove with divider styling matching mockup */}
+                          <div className="flex items-center gap-1.5 shrink-0 ml-auto pl-2 border-l border-slate-200/60">
                             <button
                               type="button"
                               onClick={() => handleOpenBatchDetails(upload)}
-                              className="inline-flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 sm:px-3 text-xs font-semibold text-slate-700 shadow-xs transition-all hover:border-sibs-primary-1 hover:bg-sibs-primary-1 hover:text-white cursor-pointer"
+                              className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 hover:border-slate-300 transition active:scale-95 cursor-pointer"
+                              title="View batch details"
                             >
-                              <Eye className="h-3.5 w-3.5" aria-hidden="true" />
+                              <Eye className="h-3.5 w-3.5 text-slate-500" />
                               <span>View</span>
                             </button>
 
                             <button
                               type="button"
-                              onClick={() => setUploadToRemove(upload)}
-                              className="inline-flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-rose-200 bg-rose-50/70 px-2.5 sm:px-3 text-xs font-semibold text-rose-600 shadow-xs transition-all hover:border-rose-600 hover:bg-rose-600 hover:text-white cursor-pointer"
+                              disabled={!upload.batchId || display.status === "FAILED"}
+                              onClick={() => setSelectedRawBatch(upload)}
+                              className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 hover:border-slate-300 disabled:opacity-40 disabled:cursor-not-allowed transition active:scale-95 cursor-pointer"
+                              title="View raw spreadsheet"
                             >
-                              <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
-                              <span>Remove</span>
+                              <FileSpreadsheet className="h-3.5 w-3.5 text-emerald-600" />
+                              <span>Raw</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => setUploadToRemove(upload)}
+                              className="inline-flex h-8 items-center justify-center rounded-lg border border-rose-200 bg-rose-50/60 px-2.5 text-rose-600 hover:bg-rose-600 hover:text-white hover:border-rose-600 transition active:scale-95 cursor-pointer"
+                              title="Remove batch"
+                              aria-label="Remove batch"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
                             </button>
                           </div>
                         </div>
-                      </div>
+                      </article>
                     );
-                  })}
-                </div>
+                  })
               ) : (
-                <div className="px-4 py-16 text-center text-sm text-sibs-tertiary-5">
+                <div className="rounded-xl border border-dashed border-slate-200 bg-white px-4 py-16 text-center text-sm text-sibs-tertiary-5">
                   <FolderOpen className="mx-auto mb-2.5 h-8 w-8 text-slate-300" />
-                  <p className="m-0 font-medium">
+                  <p className="font-semibold text-slate-700">No imported data found</p>
+                  <p className="mt-1 text-xs text-slate-400">
                     {levelFilteredUploads.length
                       ? "No uploaded data found matching your search."
                       : `No uploaded data stored for ${selectedLevel} yet.`}
                   </p>
                 </div>
               )}
+            </div>
 
               {/* ── Pagination footer (matching Employee Ledger) ── */}
               {totalCount > 0 && (
@@ -993,7 +1082,6 @@ export default function WfmImportedRepository() {
                   </div>
                 </div>
               )}
-            </div>
             </> : null}
           </div>
         </div>
@@ -1024,28 +1112,6 @@ export default function WfmImportedRepository() {
         isOpen={Boolean(selectedRawBatch)}
         batch={selectedRawBatch}
         onClose={() => setSelectedRawBatch(null)}
-      />
-
-      {/* Error Details Modal */}
-      <WfmErrorDetailsModal
-        usVisaErrorDetails={usVisaErrorDetails}
-        activeOpenCard={null}
-        isLoadingUsVisaErrors={isLoadingUsVisaErrors}
-        handleOpenUsVisaErrors={handleOpenUsVisaErrors}
-        errorPagination={errorPagination}
-        activeErrorBatchId={activeErrorBatchId}
-        errorSearchQuery={errorSearchQuery}
-        setErrorSearchQuery={setErrorSearchQuery}
-        errorSeverityFilter={errorSeverityFilter}
-        setErrorSeverityFilter={setErrorSeverityFilter}
-        jumpPageInput={jumpPageInput}
-        setJumpPageInput={setJumpPageInput}
-        onClose={() => {
-          setUsVisaErrorDetails(null);
-          setActiveErrorBatchId(null);
-          setErrorSearchQuery("");
-          setErrorSeverityFilter("ALL");
-        }}
       />
 
       {/* Warnings & Issues Modal (opened when clicking Warnings Found card) */}

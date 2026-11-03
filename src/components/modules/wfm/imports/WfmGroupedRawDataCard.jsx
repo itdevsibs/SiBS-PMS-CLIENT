@@ -7,6 +7,8 @@ import {
   FileSpreadsheet,
   FolderOpen,
   RotateCw,
+  Trash2,
+  Upload,
 } from "lucide-react";
 import SingleSelectDropdown from "@/components/common/filters/SingleSelectDropdown";
 import { formatRelativeTime, normalizeTaskOrderOption, getImportDisplayStatus } from "@/lib/wfm-import-utils";
@@ -61,6 +63,32 @@ export default function WfmGroupedRawDataCard({
 
   if (!activeCard) return null;
 
+  const [stagedFilesByCard, setStagedFilesByCard] = useState({});
+  const stagedFile = stagedFilesByCard[activeCard?.id] || null;
+
+  const handleStageFile = (card, file) => {
+    if (!file) return;
+    setStagedFilesByCard((prev) => ({
+      ...prev,
+      [card.id]: file,
+    }));
+  };
+
+  const handleRemoveStagedFile = (cardId) => {
+    setStagedFilesByCard((prev) => {
+      const next = { ...prev };
+      delete next[cardId];
+      return next;
+    });
+  };
+
+  const handleExecuteUpload = async () => {
+    if (!stagedFile || !activeCard) return;
+    const fileToUpload = stagedFile;
+    handleRemoveStagedFile(activeCard.id);
+    await onFileSelect(activeCard, { target: { files: [fileToUpload], value: "" } });
+  };
+
   return (
     <section className="sibs-card relative flex min-h-[370px] flex-col justify-between p-4 shadow-xs transition hover:border-sibs-primary-1/40">
       <div>
@@ -92,15 +120,30 @@ export default function WfmGroupedRawDataCard({
           </button>
         </div>
 
-        {/* Dropdown for selecting Report / Source within this level */}
+        {/* Segmented Toggle for selecting Report / Source within this level */}
         <div className="mt-3">
-          <SingleSelectDropdown
-            label="REPORT / SOURCE"
-            value={activeCard.id}
-            onChange={(event) => setSelectedCardId(event.target.value)}
-            options={dropdownOptions}
-            buttonClassName="h-9 rounded-lg border-sibs-tertiary-8 bg-white px-3 text-xs font-bold text-sibs-primary-1 shadow-2xs"
-          />
+          <span className="text-[10px] font-extrabold uppercase tracking-wider text-sibs-tertiary-5 block mb-1.5">
+            REPORT / SOURCE
+          </span>
+          <div className="inline-flex flex-wrap items-center gap-1.5 p-1 rounded-xl bg-slate-200/80 shadow-inner">
+            {cards.map((card) => {
+              const isActive = card.id === activeCard.id;
+              return (
+                <button
+                  key={card.id}
+                  type="button"
+                  onClick={() => setSelectedCardId(card.id)}
+                  className={`inline-flex items-center rounded-lg px-3.5 py-1.5 text-xs transition-all cursor-pointer ${
+                    isActive
+                      ? "bg-[#042c51] text-white shadow-sm font-extrabold"
+                      : "text-slate-600 hover:text-slate-900 hover:bg-white/50 font-medium"
+                  }`}
+                >
+                  <span>{card.sourceLabel || card.sourceSystem || card.title}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         {/* Task Orders badges */}
@@ -245,36 +288,114 @@ export default function WfmGroupedRawDataCard({
               </div>
             )}
           </div>
-        ) : (
-          <div className="flex h-full min-h-[120px] flex-col items-center justify-center p-3 text-center">
-            <CloudUpload
-              size={22}
-              className="mb-1.5 text-slate-400 opacity-60"
-            />
-            <p className="m-0 text-xs font-semibold text-sibs-tertiary-5">
-              No uploaded data yet
-            </p>
+        ) : stagedFile ? (
+          /* Clean, organized FrontSteps Staged File View fitting the card comfortably */
+          <div className="flex h-full min-h-[160px] flex-col justify-between rounded-2xl border-2 border-dashed border-sky-300 bg-sky-50/60 p-3 sm:p-3.5 transition-all">
+            {/* Top row: Spreadsheet icon + File name & details */}
+            <div className="flex items-start gap-2.5">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white border border-sky-200 text-sky-700 shadow-2xs">
+                <FileSpreadsheet size={18} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <p className="m-0 truncate text-xs font-bold text-slate-800" title={stagedFile.name}>
+                    {stagedFile.name}
+                  </p>
+                  <span className="rounded bg-sky-100 border border-sky-200/60 px-1.5 py-0.2 text-[8.5px] font-extrabold text-sky-800 uppercase tracking-wider whitespace-nowrap">
+                    READY TO UPLOAD
+                  </span>
+                </div>
+                <p className="m-0 mt-0.5 text-[10.5px] text-slate-500 font-medium">
+                  {(stagedFile.size / 1024).toFixed(1)} KB · Staged for {activeCard.sourceLabel || activeCard.title}
+                </p>
+              </div>
+            </div>
+
+            {/* Bottom row: Change and Trash buttons */}
+            <div className="mt-3 flex items-center justify-end gap-1.5 pt-2.5 border-t border-sky-200/50">
+              <label
+                className="rounded-lg border border-slate-200 bg-white hover:bg-slate-50 px-2.5 py-1 text-[11px] font-semibold text-slate-700 transition cursor-pointer shadow-2xs"
+                title="Choose a different file"
+              >
+                Change
+                <input
+                  type="file"
+                  accept={activeCard.acceptedFileTypes || ".xlsx,.csv"}
+                  disabled={isUploading}
+                  onChange={(event) => {
+                    const f = event.target.files?.[0];
+                    if (f) handleStageFile(activeCard, f);
+                    event.target.value = "";
+                  }}
+                  className="hidden"
+                />
+              </label>
+              <button
+                type="button"
+                onClick={() => handleRemoveStagedFile(activeCard.id)}
+                aria-label="Remove staged file"
+                title="Remove selected file"
+                className="rounded-lg p-1 text-slate-400 hover:bg-white hover:text-rose-600 transition cursor-pointer"
+              >
+                <Trash2 size={15} />
+              </button>
+            </div>
           </div>
+        ) : (
+          /* Dropzone when no file is staged */
+          <label
+            className="group flex h-full min-h-[160px] cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-sky-200/80 bg-white/70 p-4 text-center transition-all hover:border-sky-400 hover:bg-sky-50/40"
+          >
+            <input
+              type="file"
+              accept={activeCard.acceptedFileTypes || ".xlsx,.csv"}
+              disabled={isUploading}
+              onChange={(event) => {
+                const f = event.target.files?.[0];
+                if (f) handleStageFile(activeCard, f);
+                event.target.value = "";
+              }}
+              className="hidden"
+            />
+            <div className="mb-2 flex h-11 w-11 items-center justify-center rounded-2xl border border-sky-100 bg-white text-[#042c51] shadow-xs group-hover:scale-105 group-hover:border-sky-200 transition-transform">
+              <CloudUpload size={22} strokeWidth={1.8} className="text-[#042c51]" />
+            </div>
+            <p className="m-0 text-xs sm:text-sm font-extrabold text-[#042c51] leading-tight">
+              Drag and drop your <span className="text-[#ff5c28]">{activeCard.sourceLabel || activeCard.title}</span> here
+            </p>
+            <p className="m-0 mt-1 text-[11px] text-slate-500">
+              or click browse to select a spreadsheet from your device
+            </p>
+            <span className="mt-2.5 inline-flex items-center gap-1.5 rounded-lg bg-[#042c51] px-3 py-1.5 text-[11px] font-bold text-white shadow-xs group-hover:bg-[#063d70] transition-colors">
+              <FolderOpen size={13} />
+              <span>Browse Files</span>
+            </span>
+            <p className="m-0 mt-2 text-[10px] text-slate-400">
+              Formats: CSV, XLSX · Max file size: 25 MB
+            </p>
+          </label>
         )}
       </div>
 
-      {/* Action buttons: Import & Open */}
-      <div className="mt-3.5 grid grid-cols-2 gap-2.5">
-        <label className="flex h-9 cursor-pointer items-center justify-center gap-1.5 rounded-lg bg-sibs-primary-1 px-3 text-xs font-bold text-white shadow-xs transition hover:bg-sibs-tertiary-4">
-          <CloudUpload className="h-4 w-4 shrink-0" aria-hidden="true" />
-          <span>Import</span>
-          <input
-            type="file"
-            accept={activeCard.acceptedFileTypes || ".xlsx,.csv"}
+      {/* Action buttons: Upload (when staged) on left of Open */}
+      <div className={`mt-3.5 ${stagedFile ? "grid grid-cols-2 gap-2.5" : ""}`}>
+        {stagedFile && (
+          <button
+            type="button"
+            onClick={handleExecuteUpload}
             disabled={isUploading}
-            onChange={(event) => onFileSelect(activeCard, event)}
-            className="hidden"
-          />
-        </label>
+            className="flex h-9 cursor-pointer items-center justify-center gap-1.5 rounded-lg bg-[#ff5c28] hover:bg-[#ed4a1b] px-3 text-xs font-bold text-white shadow-xs transition-colors"
+          >
+            <Upload size={14} className="shrink-0" />
+            <span className="truncate">Upload {activeCard.sourceLabel || activeCard.title}</span>
+          </button>
+        )}
         <button
           type="button"
           onClick={() => onOpenCard?.(activeCard, group)}
-          className="flex h-9 cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-xs font-bold text-sibs-primary-1 shadow-xs transition hover:border-sibs-primary-1 hover:bg-sibs-primary-1 hover:text-white"
+          className={`flex h-9 cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-xs font-bold text-sibs-primary-1 shadow-xs transition hover:border-sibs-primary-1 hover:bg-sibs-primary-1 hover:text-white ${
+            stagedFile ? "" : "w-full"
+          }`}
         >
           <FolderOpen className="h-4 w-4 shrink-0" aria-hidden="true" />
           <span>Open</span>

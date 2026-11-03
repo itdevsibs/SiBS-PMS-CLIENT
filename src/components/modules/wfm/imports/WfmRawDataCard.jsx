@@ -205,22 +205,11 @@ export default function WfmRawDataCard({
         )}
       </div>
 
-      <div className="mt-3.5 grid grid-cols-2 gap-2.5">
-        <label className="flex h-9 cursor-pointer items-center justify-center gap-1.5 rounded-lg bg-sibs-primary-1 px-3 text-xs font-bold text-white shadow-xs transition hover:bg-sibs-tertiary-4">
-          <CloudUpload className="h-4 w-4 shrink-0" aria-hidden="true" />
-          <span>Import</span>
-          <input
-            type="file"
-            accept={card.acceptedFileTypes || ".xlsx,.csv"}
-            disabled={isUploading}
-            onChange={(event) => onFileSelect(card, event)}
-            className="hidden"
-          />
-        </label>
+      <div className="mt-3.5">
         <button
           type="button"
           onClick={() => onOpenCard(card)}
-          className="flex h-9 cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-xs font-bold text-sibs-primary-1 shadow-xs transition hover:border-sibs-primary-1 hover:bg-sibs-primary-1 hover:text-white"
+          className="flex h-9 w-full cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-xs font-bold text-sibs-primary-1 shadow-xs transition hover:border-sibs-primary-1 hover:bg-sibs-primary-1 hover:text-white"
         >
           <FolderOpen className="h-4 w-4 shrink-0" aria-hidden="true" />
           <span>Open</span>

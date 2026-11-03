@@ -10,7 +10,7 @@ export default function WfmFilterBar({
   sourceSystemCounts = {},
 }) {
   return (
-    <div className="mb-3 sm:mb-4 flex flex-col gap-2.5 sm:flex-row sm:flex-wrap lg:flex-nowrap sm:items-center sm:justify-start">
+    <div className="mb-2 sm:mb-2.5 flex flex-col gap-2 sm:flex-row sm:flex-wrap lg:flex-nowrap sm:items-center sm:justify-start">
       <div className="flex h-9 w-full sm:w-auto sm:min-w-[120px] shrink-0 items-center justify-center truncate rounded-full border border-sibs-tertiary-9 bg-white px-4 text-xs sm:text-sm font-extrabold text-sibs-primary-1 shadow-2xs">
         {selectedAccount === "All Accounts" ? "All Accounts" : selectedAccount}
       </div>
