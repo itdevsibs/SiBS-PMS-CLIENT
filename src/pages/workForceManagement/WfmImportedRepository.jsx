@@ -20,11 +20,13 @@ import {
   Trash2,
   TrendingUp,
   User,
+  X,
 } from "lucide-react";
 
 import AdminSidebar from "@/components/common/layout/AdminSidebar";
 import AppHeader from "@/components/common/layout/AppHeader";
 import SingleSelectDropdown from "@/components/common/filters/SingleSelectDropdown";
+import AppModal from "@/components/common/ui/AppModal";
 import ConfirmationModal from "@/components/common/ui/ConfirmationModal";
 import LoadingModal from "@/components/common/ui/LoadingModal";
 import WfmBatchDetailsModal from "@/components/modules/wfm/imports/WfmBatchDetailsModal";
@@ -196,6 +198,7 @@ export default function WfmImportedRepository() {
 
   // Modals state
   const [selectedUploadDetails, setSelectedUploadDetails] = useState(null);
+  const [noteModalUpload, setNoteModalUpload] = useState(null);
   const [selectedRawBatch, setSelectedRawBatch] = useState(null);
   const [uploadToRemove, setUploadToRemove] = useState(null);
   const [isRemovingUpload, setIsRemovingUpload] = useState(false);
@@ -909,12 +912,6 @@ export default function WfmImportedRepository() {
                                 {upload.fileName || "Unnamed import"}
                               </p>
 
-                              {upload.importNote ? (
-                                <p className="mt-1 line-clamp-2 text-xs text-slate-600" title={upload.importNote}>
-                                  <MessageSquare className="mr-1 inline h-3.5 w-3.5 text-slate-400" />{upload.importNote}
-                                </p>
-                              ) : null}
-
                               {/* Subtitle row: Calendar icon, Relative time, Exact timestamp, Divider, User icon, Uploader (Kronos ID) */}
                               <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-slate-500">
                                 <span className="inline-flex items-center gap-1.5 text-slate-500">
@@ -962,7 +959,7 @@ export default function WfmImportedRepository() {
                           {/* Chips: Batch, Level Badge with icon, Tool, Rows */}
                           <div className="flex flex-wrap items-center gap-2 text-xs">
                             {upload.batchCode ? (
-                              <span className="inline-block rounded-md bg-rose-50 border border-rose-200/80 px-2 py-0.5 font-mono text-[10.5px] font-bold text-rose-600">
+                              <span className="inline-block rounded-md bg-slate-100 border border-slate-200 px-2 py-0.5 font-mono text-[10.5px] font-bold text-slate-700">
                                 Batch: {upload.batchCode}
                               </span>
                             ) : null}
@@ -997,6 +994,18 @@ export default function WfmImportedRepository() {
 
                           {/* Right Action buttons bar: View, Raw, Remove with divider styling matching mockup */}
                           <div className="flex items-center gap-1.5 shrink-0 ml-auto pl-2 border-l border-slate-200/60">
+                            {upload.importNote ? (
+                              <button
+                                type="button"
+                                onClick={() => setNoteModalUpload(upload)}
+                                className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-sky-200 bg-sky-50 px-3 text-xs font-bold text-sky-800 shadow-2xs hover:bg-sky-100 hover:border-sky-300 transition active:scale-95 cursor-pointer"
+                                title="View notes for this import"
+                              >
+                                <MessageSquare className="h-3.5 w-3.5 text-sky-600" />
+                                <span>View Notes</span>
+                              </button>
+                            ) : null}
+
                             <button
                               type="button"
                               onClick={() => handleOpenBatchDetails(upload)}
@@ -1202,6 +1211,65 @@ export default function WfmImportedRepository() {
         title="Signing out..."
         message="Please wait while we securely end your session."
       />
+
+      {/* View Notes Modal */}
+      <AppModal
+        isOpen={Boolean(noteModalUpload)}
+        className="!max-w-none w-full sm:!w-[min(94vw,760px)] p-6 sm:p-7 rounded-2xl shadow-2xl border border-slate-200 bg-white"
+      >
+        <div className="flex items-start justify-between gap-3 border-b border-slate-100 pb-3">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-sky-50 border border-sky-200 text-sky-700">
+              <MessageSquare className="h-4.5 w-4.5" />
+            </div>
+            <div className="min-w-0">
+              <h3 className="m-0 text-base font-bold text-slate-900 leading-snug">Import Notes</h3>
+              <p className="m-0 text-xs text-slate-500 font-medium truncate max-w-sm" title={noteModalUpload?.fileName}>
+                {noteModalUpload?.fileName || "Imported File"}
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setNoteModalUpload(null)}
+            className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-400 hover:text-slate-700 hover:bg-slate-50 transition cursor-pointer"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="mt-4">
+          <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+            Written Note / Remarks
+          </label>
+          <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-4 sm:p-5 min-h-[140px]">
+            <p className="m-0 text-sm leading-relaxed text-slate-800 whitespace-pre-wrap break-words [word-break:break-word] font-medium">
+              {noteModalUpload?.importNote || "No note recorded for this import."}
+            </p>
+          </div>
+        </div>
+
+        {/* Footer info: Uploader and timestamp */}
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500 border-t border-slate-100 pt-3">
+          <span className="inline-flex items-center gap-1.5 font-medium text-slate-600">
+            <User className="h-3.5 w-3.5 text-slate-400" />
+            <span>{noteModalUpload?.uploaderName || "Unknown Uploader"}</span>
+          </span>
+          <span className="text-slate-400">
+            {noteModalUpload?.uploadedAt || ""}
+          </span>
+        </div>
+
+        <div className="mt-5 flex justify-end">
+          <button
+            type="button"
+            onClick={() => setNoteModalUpload(null)}
+            className="h-9 rounded-lg bg-[#042c51] px-5 text-xs font-bold text-white hover:bg-[#063d70] transition-colors shadow-2xs cursor-pointer"
+          >
+            Close
+          </button>
+        </div>
+      </AppModal>
     </section>
   );
 }

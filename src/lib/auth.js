@@ -17,6 +17,7 @@ const ROLE_SENSITIVE_LOCAL_STORAGE_KEYS = Object.freeze([
   "sibs-wfm-graph-reports",
   "sibs-occupancy-records",
   "sibs-occupancy-data",
+  "frontsteps_active_tab",
 ]);
 
 function getUserIdentity(user) {

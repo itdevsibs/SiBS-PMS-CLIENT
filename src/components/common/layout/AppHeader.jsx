@@ -1,7 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Bell, Calendar, ChevronDown, LogOut, Menu } from "lucide-react";
-import { getAuthUser } from "@/lib/auth";
-import { handleLogout as handleAuthLogout } from "@/lib/axios/api-template";
+import { Bell, Calendar, Menu } from "lucide-react";
 
 function formatHeaderDateTime() {
   const now = new Date();
@@ -24,42 +22,16 @@ function formatHeaderDateTime() {
 }
 
 const AppHeader = ({
-  onLogoutClick,
   onMenuClick,
   onSidebarToggle,
   isSidebarHidden,
   subtitle,
   title,
-  userEmail,
-  userName,
 }) => {
-  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
-  const userMenuRef = useRef(null);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const notificationRef = useRef(null);
-  const authUser = getAuthUser();
-  // Uses the saved employee name fields when the API does not send one full name.
-  const fullNameFromParts = [
-    authUser?.firstName,
-    authUser?.middleName,
-    authUser?.lastName,
-  ]
-    .filter(Boolean)
-    .join(" ")
-    .trim();
-  const displayName =
-    userName ||
-    authUser?.fullName ||
-    authUser?.name ||
-    fullNameFromParts ||
-    authUser?.username ||
-    authUser?.sibs_id ||
-    "User";
-  const displayEmail = userEmail || authUser?.email || authUser?.roleLabel || "signed-in";
-  const userInitial = displayName?.charAt(0)?.toUpperCase() || "U";
 
   const [currentDateTime, setCurrentDateTime] = useState(formatHeaderDateTime);
-  const [avatarError, setAvatarError] = useState(false);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -68,27 +40,12 @@ const AppHeader = ({
     return () => clearInterval(timer);
   }, []);
 
-  const avatarSrc =
-    authUser?.avatar ||
-    authUser?.profile_photo ||
-    authUser?.photo ||
-    authUser?.photo_url ||
-    authUser?.image ||
-    authUser?.profile_image ||
-    authUser?.avatar_url ||
-    authUser?.picture ||
-    authUser?.gy_emp_photo ||
-    null;
-
   useEffect(() => {
-    if (!isUserMenuOpen && !isNotificationOpen) {
+    if (!isNotificationOpen) {
       return undefined;
     }
 
     const handleOutsidePointerDown = (event) => {
-      if (isUserMenuOpen && !userMenuRef.current?.contains(event.target)) {
-        setIsUserMenuOpen(false);
-      }
       if (isNotificationOpen && !notificationRef.current?.contains(event.target)) {
         setIsNotificationOpen(false);
       }
@@ -99,19 +56,7 @@ const AppHeader = ({
     return () => {
       document.removeEventListener("pointerdown", handleOutsidePointerDown);
     };
-  }, [isUserMenuOpen, isNotificationOpen]);
-
-  const handleLogoutClick = () => {
-    setIsUserMenuOpen(false);
-
-    // Dashboard pages pass this handler to show the confirmation modal first.
-    if (onLogoutClick) {
-      onLogoutClick();
-      return;
-    }
-
-    void handleAuthLogout(true);
-  };
+  }, [isNotificationOpen]);
 
   return (
     <>
@@ -213,78 +158,6 @@ const AppHeader = ({
               </div>
             )}
           </div>
-
-          {/* Divider */}
-          <div className="hidden sm:block h-6 w-px bg-slate-200 shrink-0" aria-hidden="true" />
-
-          {/* 3. User Profile */}
-          {displayName && (
-            <div ref={userMenuRef} className="relative shrink-0">
-              <button
-                type="button"
-                onClick={() => setIsUserMenuOpen((value) => !value)}
-                className={`group flex min-w-0 cursor-pointer items-center gap-0 sm:gap-2.5 rounded-full sm:rounded-[14px] border p-0.5 sm:px-2 sm:py-1 text-left transition-all duration-150 ${
-                  isUserMenuOpen
-                    ? "border-[#ffb899] bg-[#fff3eb] shadow-xs"
-                    : "border-transparent hover:bg-slate-100"
-                }`}
-                aria-expanded={isUserMenuOpen}
-                aria-haspopup="menu"
-              >
-                {avatarSrc && !avatarError ? (
-                  <img
-                    src={avatarSrc}
-                    alt={displayName}
-                    onError={() => setAvatarError(true)}
-                    className="h-9 w-9 shrink-0 rounded-full object-cover shadow-sm ring-1 ring-slate-200"
-                  />
-                ) : (
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-sibs-primary-1 text-sm font-bold text-white shadow-sm">
-                    {userInitial}
-                  </span>
-                )}
-                <span className="hidden min-w-0 flex-col text-left md:flex">
-                  <span
-                    className="block max-w-[180px] md:max-w-[240px] lg:max-w-[320px] xl:max-w-[400px] truncate text-[12px] font-extrabold uppercase leading-5 text-sibs-primary-1"
-                    title={displayName}
-                  >
-                    {displayName}
-                  </span>
-                  <span
-                    className="block max-w-[180px] md:max-w-[240px] lg:max-w-[320px] xl:max-w-[400px] truncate text-[11px] font-semibold leading-4 text-sibs-primary-2"
-                    title={displayEmail}
-                  >
-                    {displayEmail}
-                  </span>
-                </span>
-                <ChevronDown
-                  className={`hidden sm:block h-4 w-4 shrink-0 transition-transform duration-200 ${
-                    isUserMenuOpen
-                      ? "rotate-180 text-sibs-primary-1"
-                      : "text-slate-500 group-hover:text-sibs-primary-1"
-                  }`}
-                  aria-hidden="true"
-                />
-              </button>
-
-              {isUserMenuOpen && (
-                <div
-                  className="sibs-profile-dropdown-panel absolute right-0 top-[calc(100%+0.5rem)] z-[999] w-[180px] sm:w-[200px] overflow-hidden rounded-2xl border border-slate-200/90 bg-white p-2 shadow-xl"
-                  role="menu"
-                >
-                  <button
-                    type="button"
-                    onClick={handleLogoutClick}
-                    className="flex w-full items-center gap-3 rounded-xl border-0 bg-[#fff1f1] px-3.5 py-2.5 text-left text-sm font-bold text-[#ef4444] transition hover:bg-[#ffe5e5] cursor-pointer"
-                    role="menuitem"
-                  >
-                    <LogOut className="h-4.5 w-4.5 shrink-0 text-[#ef4444]" aria-hidden="true" />
-                    <span>Logout</span>
-                  </button>
-                </div>
-              )}
-          </div>
-        )}
         </div>
       </div>
       <div className="app-header-line" />

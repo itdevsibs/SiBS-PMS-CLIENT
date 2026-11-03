@@ -4,6 +4,7 @@ import {
   Check,
   ChevronDown,
   Loader2,
+  RefreshCw,
   RotateCcw,
   Search,
   X,
@@ -508,6 +509,20 @@ export default function TaskOrderLedger() {
                 <RotateCcw className="h-3.5 w-3.5 text-slate-400" />
                 Reset
               </button>
+
+              <button
+                type="button"
+                onClick={() => loadLedgerRecords(selectedTaskOrder, selectedCountry, selectedSkill, searchTerm)}
+                disabled={isLoading}
+                title="Refresh task order records"
+                className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-[#042c51] bg-[#042c51] px-3 text-xs font-bold text-white shadow-2xs transition hover:bg-[#063d70] hover:border-[#063d70] disabled:cursor-not-allowed disabled:opacity-50 shrink-0"
+              >
+                <RefreshCw
+                  size={12}
+                  className={`shrink-0 ${isLoading ? "animate-spin text-white" : ""}`}
+                />
+                <span>Refresh</span>
+              </button>
             </div>
 
             {/* Search (Middle/Right) */}
@@ -546,15 +561,15 @@ export default function TaskOrderLedger() {
                   <col style={{ width: "30%" }} />
                 </colgroup>
                 {/* ── Table head ──────────────────────────────────── */}
-                <thead className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50 shadow-xs">
+                <thead className="sticky top-0 z-10 border-b border-[#0d3b66] bg-[#042c51] text-white shadow-xs">
                   <tr>
-                    <th className="px-3.5 sm:px-6 py-2.5 text-xs font-bold uppercase tracking-wider text-slate-600 whitespace-nowrap overflow-hidden">
+                    <th className="px-3.5 sm:px-6 py-2.5 text-xs font-bold uppercase tracking-wider text-white whitespace-nowrap overflow-hidden">
                       COUNTRY
                     </th>
-                    <th className="px-3.5 sm:px-6 py-2.5 text-xs font-bold uppercase tracking-wider text-slate-600 whitespace-nowrap overflow-hidden">
+                    <th className="px-3.5 sm:px-6 py-2.5 text-xs font-bold uppercase tracking-wider text-white whitespace-nowrap overflow-hidden">
                       SKILLS
                     </th>
-                    <th className="px-3.5 sm:px-6 py-2.5 text-xs font-bold uppercase tracking-wider text-slate-600 whitespace-nowrap overflow-hidden">
+                    <th className="px-3.5 sm:px-6 py-2.5 text-xs font-bold uppercase tracking-wider text-white whitespace-nowrap overflow-hidden">
                       TASK ORDER
                     </th>
                   </tr>

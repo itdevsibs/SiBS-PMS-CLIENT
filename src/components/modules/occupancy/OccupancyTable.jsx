@@ -1164,7 +1164,7 @@ export default function OccupancyTable({
                   onClick={() => setIntervalType("Daily")}
                   className={`rounded-md px-3 py-1 text-xs font-bold transition-all ${
                     intervalType === "Daily"
-                      ? "bg-[#18466b] text-white shadow-xs"
+                      ? "bg-[#042c51] text-white shadow-xs"
                       : "text-slate-600 hover:text-slate-900 cursor-pointer"
                   }`}
                 >
@@ -1175,7 +1175,7 @@ export default function OccupancyTable({
                   onClick={() => setIntervalType("Hourly")}
                   className={`rounded-md px-3 py-1 text-xs font-bold transition-all ${
                     intervalType === "Hourly"
-                      ? "bg-[#18466b] text-white shadow-xs"
+                      ? "bg-[#042c51] text-white shadow-xs"
                       : "text-slate-600 hover:text-slate-900 cursor-pointer"
                   }`}
                 >
@@ -1253,40 +1253,40 @@ export default function OccupancyTable({
             </colgroup>
 
             {/* Category Groups Header */}
-            <thead className="sticky top-0 z-20 bg-slate-100 shadow-xs">
-              <tr className="border-b border-slate-200 bg-slate-100/95 text-[10.5px] font-bold uppercase tracking-wider text-slate-700">
+            <thead className="sticky top-0 z-20 bg-[#042c51] shadow-2xs">
+              <tr className="border-b border-[#0d3b66] bg-[#042c51] text-[10.5px] font-bold uppercase tracking-wider text-white">
                 <th
                   colSpan={2}
-                  className="px-2 py-2 border-r border-slate-200 text-center font-extrabold tracking-wide whitespace-nowrap"
+                  className="px-2 py-2 border-r border-[#0d3b66] text-center font-extrabold tracking-wide whitespace-nowrap text-white"
                 >
                   Agent Information
                 </th>
                 <th
                   colSpan={7}
-                  className="px-2 py-2 border-r border-slate-200 text-center font-extrabold tracking-wide whitespace-nowrap"
+                  className="px-2 py-2 border-r border-[#0d3b66] text-center font-extrabold tracking-wide whitespace-nowrap text-white"
                 >
                   Phone & Calls Metrics
                 </th>
                 <th
                   colSpan={4}
-                  className="px-2 py-2 border-r border-slate-200 text-center font-extrabold tracking-wide whitespace-nowrap"
+                  className="px-2 py-2 border-r border-[#0d3b66] text-center font-extrabold tracking-wide whitespace-nowrap text-white"
                 >
                   Email Metrics
                 </th>
                 <th
                   colSpan={1}
-                  className="px-2 py-2 text-center font-extrabold tracking-wide whitespace-nowrap"
+                  className="px-2 py-2 text-center font-extrabold tracking-wide whitespace-nowrap text-white"
                 >
                   Efficiency
                 </th>
               </tr>
 
               {/* Sub-Column Header */}
-              <tr className="border-b border-slate-200 bg-slate-50 text-[10px] font-bold uppercase tracking-tight text-slate-800">
+              <tr className="border-b border-[#0d3b66] bg-[#073663] text-[10px] font-bold uppercase tracking-tight text-white">
                 {OCCUPANCY_COLUMNS.map((col) => (
                   <th
                     key={`th-${col.key}`}
-                    className={`px-1.5 py-2 border-r border-slate-200 last:border-r-0 align-middle ${col.align}`}
+                    className={`px-1.5 py-2 border-r border-[#0d3b66] last:border-r-0 align-middle text-white ${col.align}`}
                   >
                     <div
                       className={`flex flex-col justify-center min-h-[35px] leading-tight ${
@@ -1301,13 +1301,13 @@ export default function OccupancyTable({
                         col.labelLines.map((line, lIdx) => (
                           <span
                             key={lIdx}
-                            className="whitespace-nowrap font-bold text-[9.5px] xl:text-[10px] tracking-tight"
+                            className="whitespace-nowrap font-bold text-[9.5px] xl:text-[10px] tracking-tight text-white"
                           >
                             {line}
                           </span>
                         ))
                       ) : (
-                        <span className="whitespace-nowrap font-bold text-[9.5px] xl:text-[10px] tracking-tight">
+                        <span className="whitespace-nowrap font-bold text-[9.5px] xl:text-[10px] tracking-tight text-white">
                           {col.label}
                         </span>
                       )}

@@ -663,6 +663,9 @@ export default function AttendanceSheetPage() {
         isMobileOpen={dashboard.isMobileSidebarOpen}
         modules={dashboard.modules}
         onMobileClose={() => dashboard.setIsMobileSidebarOpen(false)}
+        onLogoutClick={() => dashboard.setShowLogoutModal(true)}
+        userName={dashboard.userName}
+        userRole={dashboard.authUser?.email || dashboard.authUser?.roleLabel || "User"}
       />
 
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
@@ -833,14 +836,8 @@ export default function AttendanceSheetPage() {
                 />
               </div>
 
-              {/* 5. Latest Date Button */}
-              <div className="flex flex-col justify-end w-full sm:w-auto sm:flex-1 sm:min-w-[110px] sm:max-w-[130px]">
-                <span
-                  className="mb-0.5 block text-[9.5px] font-extrabold uppercase select-none text-transparent hidden sm:block"
-                  aria-hidden="true"
-                >
-                  &nbsp;
-                </span>
+              {/* 5. Actions: Latest & Refresh */}
+              <div className="flex items-center gap-1.5 w-full sm:w-auto sm:flex-1 sm:min-w-[190px] sm:max-w-[230px] justify-end">
                 <button
                   type="button"
                   onClick={() => {
@@ -850,10 +847,24 @@ export default function AttendanceSheetPage() {
                   }}
                   disabled={isLoadingData}
                   title="Use the latest date and clear search."
-                  className="inline-flex h-8 w-full cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-xs font-bold text-sibs-primary-1 shadow-xs transition hover:border-sibs-primary-1 hover:bg-sibs-primary-1 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+                  className="inline-flex h-8 flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-bold text-sibs-primary-1 shadow-2xs transition hover:border-sibs-primary-1 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   <Clock size={12} className="shrink-0" />
                   <span>Latest</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => loadViewerData(1)}
+                  disabled={isLoadingData || !selectedAccountId}
+                  title="Refresh attendance records"
+                  className="inline-flex h-8 flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-[#042c51] bg-[#042c51] px-2.5 text-xs font-bold text-white shadow-2xs transition hover:bg-[#063d70] hover:border-[#063d70] disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <RefreshCw
+                    size={12}
+                    className={`shrink-0 ${isLoadingData ? "animate-spin text-white" : ""}`}
+                  />
+                  <span>Refresh</span>
                 </button>
               </div>
             </div>
@@ -877,7 +888,7 @@ export default function AttendanceSheetPage() {
                 className="w-full table-auto border-collapse text-left text-[12.5px]"
                 style={{ minWidth: `${tableMinWidth}px` }}
               >
-                <thead className="sticky top-0 z-10 border-b border-slate-200 bg-slate-100/90 backdrop-blur-xs shadow-2xs">
+                <thead className="sticky top-0 z-10 border-b border-[#0d3b66] bg-[#042c51] text-white shadow-2xs">
                   <tr>
                     {[
                       "Employee ID",
@@ -893,7 +904,7 @@ export default function AttendanceSheetPage() {
                     ].map((label) => (
                       <th
                         key={label}
-                        className="whitespace-nowrap px-4 py-3 text-[11px] font-extrabold uppercase tracking-wider text-slate-700"
+                        className="whitespace-nowrap px-4 py-3 text-[11px] font-extrabold uppercase tracking-wider text-white"
                       >
                         {label}
                       </th>
