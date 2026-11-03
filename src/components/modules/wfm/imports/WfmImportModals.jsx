@@ -12,7 +12,7 @@ import {
   RemovedUploadSuccessModal,
 } from "@/components/modules/wfm/imports/WfmStatusFeedbackModals";
 import WfmTaskOrderModal from "@/components/modules/wfm/imports/WfmTaskOrderModal";
-import WfmReportDateModal from "@/components/modules/wfm/imports/WfmReportDateModal";
+import WfmReviewImportModal from "@/components/modules/wfm/imports/WfmReviewImportModal";
 import WfmWarningsModal from "@/components/modules/wfm/imports/WfmWarningsModal";
 import WfmRejectedModal from "@/components/modules/wfm/imports/WfmRejectedModal";
 import WfmDuplicatesModal from "@/components/modules/wfm/imports/WfmDuplicatesModal";
@@ -25,12 +25,16 @@ export default function WfmImportModals({
   onCancelTaskOrderUpload,
   onConfirmTaskOrderUpload,
 
-  // Report Date
-  pendingReportDateUpload,
-  selectedReportDate,
-  setSelectedReportDate,
-  onCancelReportDateUpload,
-  onConfirmReportDateUpload,
+  // Review Import: reporting dates and optional note
+  pendingReviewUpload,
+  reportDateFrom,
+  setReportDateFrom,
+  reportDateTo,
+  setReportDateTo,
+  importNote,
+  setImportNote,
+  onCancelReviewImport,
+  onConfirmReviewImport,
 
   // Card Uploads
   activeOpenCard,
@@ -107,13 +111,17 @@ export default function WfmImportModals({
         onConfirm={onConfirmTaskOrderUpload}
       />
 
-      {/* Report Date Selection Modal */}
-      <WfmReportDateModal
-        pendingReportDateUpload={pendingReportDateUpload}
-        selectedReportDate={selectedReportDate}
-        setSelectedReportDate={setSelectedReportDate}
-        onCancel={onCancelReportDateUpload}
-        onConfirm={onConfirmReportDateUpload}
+      {/* One review step before the existing import progress workflow */}
+      <WfmReviewImportModal
+        pendingReviewUpload={pendingReviewUpload}
+        reportDateFrom={reportDateFrom}
+        setReportDateFrom={setReportDateFrom}
+        reportDateTo={reportDateTo}
+        setReportDateTo={setReportDateTo}
+        importNote={importNote}
+        setImportNote={setImportNote}
+        onCancel={onCancelReviewImport}
+        onConfirm={onConfirmReviewImport}
       />
 
       {/* Card Uploads Modal */}

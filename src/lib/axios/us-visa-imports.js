@@ -58,6 +58,7 @@ export async function uploadUsVisaImport({
   taskOrderId,
   reportDateFrom,
   reportDateTo,
+  importNote,
   onProgress,
   onServerProgress,
 }) {
@@ -79,6 +80,10 @@ export async function uploadUsVisaImport({
 
   if (reportDateTo) {
     formData.append("reportDateTo", reportDateTo);
+  }
+
+  if (importNote?.trim()) {
+    formData.append("importNote", importNote.trim());
   }
 
   const pollingPromise = pollUsVisaImportProgress({

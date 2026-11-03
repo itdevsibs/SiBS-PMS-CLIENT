@@ -132,6 +132,12 @@ export default function WfmCalendarDailyImports({
                         {upload.fileName || "Unnamed import"}
                       </p>
 
+                      {upload.importNote ? (
+                        <p className="mt-1 line-clamp-2 text-xs text-slate-600" title={upload.importNote}>
+                          <MessageSquare className="mr-1 inline h-3.5 w-3.5 text-slate-400" />{upload.importNote}
+                        </p>
+                      ) : null}
+
                       {/* Subtitle row: Calendar icon, Relative time, Exact timestamp, Divider, User icon, Uploader (Kronos ID) */}
                       <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-slate-500">
                         <span className="inline-flex items-center gap-1.5 text-slate-500">

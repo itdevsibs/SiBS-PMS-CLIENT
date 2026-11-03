@@ -93,6 +93,16 @@ export default function WfmBatchDetailsModal({ selectedUploadDetails: batch, act
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-5">
           {tab === "overview" && <div className="space-y-4">
+            <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-4 text-xs">
+              <p className="m-0 font-bold text-sibs-primary-1">Reporting Period</p>
+              <p className="mt-1 mb-0 text-slate-600">
+                {batch?.reportDateFrom || "Not specified"} — {batch?.reportDateTo || "Not specified"}
+              </p>
+              <p className="mt-3 mb-1 font-bold text-sibs-primary-1">Import Note</p>
+              <p className="m-0 whitespace-pre-wrap break-words text-slate-600">
+                {batch?.importNote || "No import note added."}
+              </p>
+            </div>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
               <BatchDetailStat label="Total Rows" value={batch?.totalRows || 0} icon={FileSpreadsheet} tone="blue" />
               <BatchDetailStat label="Accepted" value={batch?.validRows || 0} icon={CheckCircle2} tone="emerald" />

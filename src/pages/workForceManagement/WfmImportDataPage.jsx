@@ -85,8 +85,10 @@ function WfmImportDataPage() {
   const [selectedAccount, setSelectedAccount] = useState("All Accounts");
   const [pendingTaskOrderUpload, setPendingTaskOrderUpload] = useState(null);
   const [selectedTaskOrderId, setSelectedTaskOrderId] = useState("");
-  const [pendingReportDateUpload, setPendingReportDateUpload] = useState(null);
-  const [selectedReportDate, setSelectedReportDate] = useState("");
+  const [pendingReviewUpload, setPendingReviewUpload] = useState(null);
+  const [reportDateFrom, setReportDateFrom] = useState("");
+  const [reportDateTo, setReportDateTo] = useState("");
+  const [importNote, setImportNote] = useState("");
 
   const filteredRawDataCards = useMemo(() => {
     const cards = getRawDataCards(selectedAccount);
@@ -261,6 +263,9 @@ function WfmImportDataPage() {
               unassignedTaskOrderRows: details.batch.unassignedTaskOrderRows ?? prev.unassignedTaskOrderRows,
               infoRows: details.batch.infoRows ?? prev.infoRows,
               batchStatus: details.batch.status ?? prev.batchStatus,
+              reportDateFrom: details.batch.reportDateFrom ?? prev.reportDateFrom,
+              reportDateTo: details.batch.reportDateTo ?? prev.reportDateTo,
+              importNote: details.batch.importNote ?? prev.importNote,
             };
           });
         }
@@ -381,19 +386,20 @@ function WfmImportDataPage() {
     }
   };
 
+  const openReviewImport = (card, file, uploadContext = {}) => {
+    setReportDateFrom("");
+    setReportDateTo("");
+    setImportNote("");
+    setPendingReviewUpload({ card, file, uploadContext });
+  };
+
   const handleCardFileSelect = async (card, event) => {
     const file = event.target.files?.[0];
     event.target.value = "";
     if (!file) return;
 
-    if (card.requiresReportingPeriod) {
-      setPendingReportDateUpload({ card, file });
-      setSelectedReportDate("");
-      return;
-    }
-
     if (!card.requiresTaskOrderSelection) {
-      await processCardFile(card, file);
+      openReviewImport(card, file);
       return;
     }
 
@@ -402,22 +408,19 @@ function WfmImportDataPage() {
       .filter((option) => option?.id);
 
     if (taskOrderOptions.length === 1) {
-      await processCardFile(card, file, { taskOrderId: taskOrderOptions[0].id });
+      openReviewImport(card, file, { taskOrderId: taskOrderOptions[0].id });
       return;
     }
-
     if (taskOrderOptions.length > 1) {
       setPendingTaskOrderUpload({ card, file, taskOrderOptions });
       setSelectedTaskOrderId("");
       return;
     }
-
-    await processCardFile(card, file);
+    openReviewImport(card, file);
   };
 
-  const handleConfirmTaskOrderUpload = async () => {
+  const handleConfirmTaskOrderUpload = () => {
     if (!pendingTaskOrderUpload) return;
-
     const validSelection = pendingTaskOrderUpload.taskOrderOptions.some(
       (option) => option.id === selectedTaskOrderId,
     );
@@ -428,14 +431,11 @@ function WfmImportDataPage() {
       });
       return;
     }
-
     const pendingUpload = pendingTaskOrderUpload;
+    const taskOrderId = selectedTaskOrderId;
     setPendingTaskOrderUpload(null);
-
-    await processCardFile(pendingUpload.card, pendingUpload.file, {
-      taskOrderId: selectedTaskOrderId,
-    });
     setSelectedTaskOrderId("");
+    openReviewImport(pendingUpload.card, pendingUpload.file, { taskOrderId });
   };
 
   const handleCancelTaskOrderUpload = () => {
@@ -443,30 +443,46 @@ function WfmImportDataPage() {
     setSelectedTaskOrderId("");
   };
 
-  const handleConfirmReportDateUpload = async () => {
-    if (!pendingReportDateUpload) return;
+  const handleCancelReviewImport = () => {
+    setPendingReviewUpload(null);
+    setReportDateFrom("");
+    setReportDateTo("");
+    setImportNote("");
+  };
 
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(selectedReportDate)) {
+  const handleConfirmReviewImport = async () => {
+    if (!pendingReviewUpload) return;
+    const requiresDates = pendingReviewUpload.card.requiresReportingPeriod;
+    const from = reportDateFrom.trim();
+    const to = reportDateTo.trim();
+    // Some workbooks provide the date in their metadata, others require user input.
+    const validDate = (date) => /^\d{4}-\d{2}-\d{2}$/.test(date) &&
+      !Number.isNaN(Date.parse(`${date}T00:00:00Z`)) &&
+      new Date(`${date}T00:00:00Z`).toISOString().slice(0, 10) === date;
+    if ((from && !validDate(from)) || (to && !validDate(to)) ||
+        Boolean(from) !== Boolean(to) || (from && to && from > to) ||
+        (requiresDates && (!from || !to))) {
       setErrorModalInfo({
-        title: "Report Date Required",
-        message: `Select the Report Date represented by this ${pendingReportDateUpload.card?.title || "workbook"} before uploading.`,
+        title: "Reporting Dates Required",
+        message: requiresDates
+          ? "Select valid Reporting Date From and To values (From cannot be after To)."
+          : "Enter both reporting dates in order, or leave both blank to use the workbook dates.",
       });
       return;
     }
-
-    const pendingUpload = pendingReportDateUpload;
-    setPendingReportDateUpload(null);
-
-    await processCardFile(pendingUpload.card, pendingUpload.file, {
-      reportDateFrom: selectedReportDate,
-      reportDateTo: selectedReportDate,
-    });
-    setSelectedReportDate("");
-  };
-
-  const handleCancelReportDateUpload = () => {
-    setPendingReportDateUpload(null);
-    setSelectedReportDate("");
+    if (Array.from(importNote.trim()).length > 500) {
+      setErrorModalInfo({ title: "Import Note Too Long", message: "Maximum 500 characters." });
+      return;
+    }
+    const pending = pendingReviewUpload;
+    const context = {
+      ...pending.uploadContext,
+      reportDateFrom: from || undefined,
+      reportDateTo: to || undefined,
+      importNote: importNote.trim() || undefined,
+    };
+    handleCancelReviewImport();
+    await processCardFile(pending.card, pending.file, context);
   };
 
   const handleRemoveUpload = async () => {
@@ -654,11 +670,15 @@ function WfmImportDataPage() {
         setSelectedTaskOrderId={setSelectedTaskOrderId}
         onCancelTaskOrderUpload={handleCancelTaskOrderUpload}
         onConfirmTaskOrderUpload={handleConfirmTaskOrderUpload}
-        pendingReportDateUpload={pendingReportDateUpload}
-        selectedReportDate={selectedReportDate}
-        setSelectedReportDate={setSelectedReportDate}
-        onCancelReportDateUpload={handleCancelReportDateUpload}
-        onConfirmReportDateUpload={handleConfirmReportDateUpload}
+        pendingReviewUpload={pendingReviewUpload}
+        reportDateFrom={reportDateFrom}
+        setReportDateFrom={setReportDateFrom}
+        reportDateTo={reportDateTo}
+        setReportDateTo={setReportDateTo}
+        importNote={importNote}
+        setImportNote={setImportNote}
+        onCancelReviewImport={handleCancelReviewImport}
+        onConfirmReviewImport={handleConfirmReviewImport}
         activeOpenCard={activeOpenCard}
         onCloseCardUploads={() => setActiveOpenCard(null)}
         uploadedDataSearch={uploadedDataSearch}
