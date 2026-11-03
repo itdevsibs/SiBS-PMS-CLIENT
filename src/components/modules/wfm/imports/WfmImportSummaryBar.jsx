@@ -12,7 +12,7 @@ export default function WfmImportSummaryBar({
 }) {
   return (
     <div
-      className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6"
+      className="mb-2 sm:mb-2.5 grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6"
       aria-label="Import summary"
     >
       {IMPORT_SUMMARY_CARDS.map((card) => {

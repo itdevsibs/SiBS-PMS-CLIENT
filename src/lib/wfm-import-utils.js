@@ -562,6 +562,8 @@ export function mapBatchToUpload(batch) {
     reportDateFrom: batch.reportDateFrom || null,
     reportDateTo: batch.reportDateTo || null,
     uploadedBy: batch.uploadedBy || null,
+    uploaderName: batch.uploaderName || null,
+    uploaderEmpId: batch.uploaderEmpId || batch.uploadedBy || null,
   };
 }
 
@@ -819,5 +821,8 @@ export function mapCalendarBatchToUpload(batch) {
     invalidRows: batch.invalidRows || 0, duplicateRows: batch.duplicateRows || 0,
     warningRows: batch.warningRows || 0, mappingRows: batch.mappingRows || 0,
     reportDateFrom: batch.reportDateFrom, reportDateTo: batch.reportDateTo,
+    uploadedBy: batch.uploadedBy || null,
+    uploaderName: batch.uploaderName || null,
+    uploaderEmpId: batch.uploaderEmpId || batch.uploadedBy || null,
   };
 }

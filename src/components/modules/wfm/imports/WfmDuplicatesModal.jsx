@@ -361,26 +361,7 @@ export default function WfmDuplicatesModal({
                             </div>
                           </div>
 
-                          <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100 sm:border-0 sm:pt-0 sm:flex sm:flex-wrap sm:items-center sm:gap-2 sm:shrink-0">
-                            {duplicateCount > 0 || hasErrors ? (
-                              <button
-                                type="button"
-                                disabled={isLoadingUsVisaErrors}
-                                onClick={() => {
-                                  handleOpenUsVisaErrors(
-                                    batch.batchId || batch.id,
-                                  );
-                                }}
-                                className="hidden sm:inline-flex h-8 shrink-0 whitespace-nowrap items-center gap-1.5 rounded-lg border border-orange-300 bg-orange-50 px-2.5 text-xs font-semibold text-orange-800 transition-all hover:border-orange-400 hover:bg-orange-100 shadow-xs"
-                                title="Click to view duplicate details"
-                              >
-                                <Copy
-                                  className="h-3.5 w-3.5 shrink-0 text-orange-600"
-                                  aria-hidden="true"
-                                />
-                                <span>Duplicates</span>
-                              </button>
-                            ) : null}
+                          <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 sm:border-0 sm:pt-0 sm:shrink-0">
 
                             <button
                               type="button"

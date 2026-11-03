@@ -476,69 +476,36 @@ function UnifiedUploadCard({
           }}
         />
 
-        {/* Drop zone */}
-        <div
-          role="button"
-          tabIndex={0}
-          onClick={openPicker}
-          onKeyDown={(event) => {
-            if (event.key === "Enter" || event.key === " ") {
-              event.preventDefault();
-              openPicker();
-            }
-          }}
-          onDragOver={(event) => { event.preventDefault(); setDragging(true); }}
-          onDragLeave={(event) => { event.preventDefault(); setDragging(false); }}
-          onDrop={onDrop}
-          className={`group flex min-h-[220px] flex-1 cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed px-6 py-8 text-center outline-none transition-all focus-visible:ring-2 focus-visible:ring-blue-500 ${
-            dragging
-              ? "border-[#ff5c28] bg-orange-50/50"
-              : "border-slate-200 bg-slate-50/50 hover:border-blue-300 hover:bg-blue-50/30"
-          }`}
-        >
-          <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl border border-blue-100 bg-white text-[#042c51] shadow-xs group-hover:scale-105 group-hover:border-blue-200 transition-transform">
-            <UploadCloud size={28} strokeWidth={1.8} className="text-[#042c51]" />
-          </div>
-          <p className="text-sm sm:text-base font-extrabold text-[#042c51]">
-            Drag and drop your <span className="text-[#ff5c28]">{currentTitle}</span> here
-          </p>
-          <p className="mt-1 text-xs text-slate-500">
-            or click browse to select a spreadsheet from your device
-          </p>
-          <span className="mt-3.5 inline-flex items-center gap-2 rounded-xl bg-[#042c51] px-4 py-2 text-xs font-bold text-white shadow-xs group-hover:bg-[#063d70] transition-colors">
-            <FolderOpen size={14} /> Browse Files
-          </span>
-          <p className="mt-2.5 text-[11px] text-slate-400">
-            Formats: CSV, XLSX, XLS · Max file size: 25 MB
-          </p>
-        </div>
-
-        {/* File Staging / Selection & Last 3 Uploads Section */}
-        <div className="flex flex-col gap-3 shrink-0">
-          {/* Active Staged File (Selected file not yet uploaded) */}
-          {file ? (
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-blue-200 bg-blue-50/70 p-3 shadow-2xs">
-              <div className="flex min-w-0 items-center gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white border border-blue-200 text-blue-700 shadow-2xs">
-                  <FileSpreadsheet size={20} />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <p className="truncate text-xs font-bold text-slate-800" title={file.name}>{file.name}</p>
-                    <span className="rounded bg-blue-100 px-1.5 py-0.2 text-[9px] font-bold text-blue-800 uppercase">
-                      Ready to Upload
-                    </span>
-                  </div>
-                  <p className="mt-0.5 text-[11px] text-slate-500">
-                    {(file.size / 1024).toFixed(1)} KB · Staged for {currentTitle}
-                  </p>
-                </div>
+        {/* Drop zone or Staged File Container */}
+        {file ? (
+          <div className="flex min-h-[220px] flex-1 flex-col justify-between rounded-2xl border-2 border-dashed border-blue-300 bg-blue-50/60 p-5 sm:p-6 transition-all">
+            {/* Top row: Spreadsheet icon + File name & details */}
+            <div className="flex items-start gap-3.5">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white border border-blue-200 text-blue-700 shadow-2xs">
+                <FileSpreadsheet size={22} />
               </div>
-              <div className="flex items-center gap-2 shrink-0">
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <p className="m-0 truncate text-sm font-bold text-slate-800" title={file.name}>
+                    {file.name}
+                  </p>
+                  <span className="rounded bg-blue-100 border border-blue-200/70 px-2 py-0.5 text-[9.5px] font-extrabold text-blue-800 uppercase tracking-wider whitespace-nowrap">
+                    READY TO UPLOAD
+                  </span>
+                </div>
+                <p className="m-0 mt-1 text-xs text-slate-500 font-medium">
+                  {(file.size / 1024).toFixed(1)} KB · Staged for {currentTitle}
+                </p>
+              </div>
+            </div>
+
+            {/* Bottom action row: Change, Trash, and Upload Button */}
+            <div className="mt-4 flex items-center justify-between gap-3 pt-3.5 border-t border-blue-200/60">
+              <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={openPicker}
-                  className="rounded-lg border border-slate-200 bg-white hover:bg-slate-50 px-2.5 py-1.5 text-xs font-semibold text-slate-700 transition cursor-pointer"
+                  className="rounded-lg border border-slate-200 bg-white hover:bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-700 transition cursor-pointer shadow-2xs"
                   title="Choose a different file"
                 >
                   Change
@@ -548,22 +515,63 @@ function UnifiedUploadCard({
                   onClick={() => onRemove(selectedCategory)}
                   aria-label={`Remove ${currentTitle} file`}
                   title="Remove selected file"
-                  className="rounded-lg p-1.5 text-slate-500 transition hover:bg-white hover:text-rose-600 cursor-pointer"
+                  className="rounded-lg p-1.5 text-slate-400 hover:bg-white hover:text-rose-600 transition cursor-pointer"
                 >
                   <Trash2 size={16} />
                 </button>
-                <button
-                  type="button"
-                  onClick={() => onUpload(selectedCategory)}
-                  disabled={uploading}
-                  className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-[#ff5c28] hover:bg-[#ed4a1b] px-4 py-2 text-xs font-bold text-white shadow-xs transition-colors cursor-pointer"
-                >
-                  <Upload size={14} />
-                  <span>{uploading ? `Ingesting ${uploadProgress}%...` : `Upload ${isCases ? "Cases" : "Calls"}`}</span>
-                </button>
               </div>
+
+              <button
+                type="button"
+                onClick={() => onUpload(selectedCategory)}
+                disabled={uploading}
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#ff5c28] hover:bg-[#ed4a1b] px-5 py-2 text-xs font-bold text-white shadow-xs transition-colors cursor-pointer"
+              >
+                <Upload size={14} />
+                <span>{uploading ? `Ingesting ${uploadProgress}%...` : `Upload ${isCases ? "Cases" : "Calls"}`}</span>
+              </button>
             </div>
-          ) : null}
+          </div>
+        ) : (
+          <div
+            role="button"
+            tabIndex={0}
+            onClick={openPicker}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                openPicker();
+              }
+            }}
+            onDragOver={(event) => { event.preventDefault(); setDragging(true); }}
+            onDragLeave={(event) => { event.preventDefault(); setDragging(false); }}
+            onDrop={onDrop}
+            className={`group flex min-h-[220px] flex-1 cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed px-6 py-8 text-center outline-none transition-all focus-visible:ring-2 focus-visible:ring-blue-500 ${
+              dragging
+                ? "border-[#ff5c28] bg-orange-50/50"
+                : "border-slate-200 bg-slate-50/50 hover:border-blue-300 hover:bg-blue-50/30"
+            }`}
+          >
+            <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl border border-blue-100 bg-white text-[#042c51] shadow-xs group-hover:scale-105 group-hover:border-blue-200 transition-transform">
+              <UploadCloud size={28} strokeWidth={1.8} className="text-[#042c51]" />
+            </div>
+            <p className="text-sm sm:text-base font-extrabold text-[#042c51]">
+              Drag and drop your <span className="text-[#ff5c28]">{currentTitle}</span> here
+            </p>
+            <p className="mt-1 text-xs text-slate-500">
+              or click browse to select a spreadsheet from your device
+            </p>
+            <span className="mt-3.5 inline-flex items-center gap-2 rounded-xl bg-[#042c51] px-4 py-2 text-xs font-bold text-white shadow-xs group-hover:bg-[#063d70] transition-colors">
+              <FolderOpen size={14} /> Browse Files
+            </span>
+            <p className="mt-2.5 text-[11px] text-slate-400">
+              Formats: CSV, XLSX, XLS · Max file size: 25 MB
+            </p>
+          </div>
+        )}
+
+        {/* Recent Uploads Section */}
+        <div className="flex flex-col gap-3 shrink-0">
 
           {/* Recent Uploads History (Fixed 3 slots) */}
           <div className="rounded-xl border border-slate-200/90 bg-white p-3 shadow-2xs">

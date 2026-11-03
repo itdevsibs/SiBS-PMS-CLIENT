@@ -364,28 +364,7 @@ export default function WfmRejectedModal({
                             </div>
                           </div>
 
-                          <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100 sm:border-0 sm:pt-0 sm:flex sm:flex-wrap sm:items-center sm:gap-2 sm:shrink-0">
-                            <button
-                              type="button"
-                              disabled={isLoadingUsVisaErrors}
-                              onClick={() => {
-                                handleOpenUsVisaErrors(
-                                  batch.batchId || batch.id,
-                                );
-                              }}
-                              className="hidden sm:inline-flex h-8 shrink-0 whitespace-nowrap items-center gap-1.5 rounded-lg border border-red-300 bg-red-50 px-2.5 text-xs font-semibold text-red-800 transition-all hover:border-red-400 hover:bg-red-100 shadow-xs"
-                              title="Click to view error details"
-                            >
-                              <AlertCircle
-                                className="h-3.5 w-3.5 shrink-0 text-red-600"
-                                aria-hidden="true"
-                              />
-                              <span>
-                                {invalidCount > 0
-                                  ? `${invalidCount.toLocaleString()} Rejected`
-                                  : "View Errors"}
-                              </span>
-                            </button>
+                          <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 sm:border-0 sm:pt-0 sm:shrink-0">
 
                             <button
                               type="button"

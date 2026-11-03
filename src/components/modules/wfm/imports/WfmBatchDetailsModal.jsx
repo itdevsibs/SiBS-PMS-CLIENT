@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { AlertCircle, AlertTriangle, CheckCircle2, FileSpreadsheet, Loader2, Search, Users, ShieldAlert, Copy, Eye } from "lucide-react";
+import { AlertCircle, AlertTriangle, CheckCircle2, FileSpreadsheet, Loader2, Search, Users, ShieldAlert, Copy, Eye, UserX, FileText } from "lucide-react";
 import AppModal from "@/components/common/ui/AppModal";
 import { Button } from "@/components/common/ui/Button";
 import BatchDetailStat from "@/components/modules/wfm/imports/WfmBatchDetailStat";
@@ -66,8 +66,8 @@ export default function WfmBatchDetailsModal({ selectedUploadDetails: batch, act
   const changeTab = (next) => { setTab(next); setPage(1); setSearch(""); setAppliedSearch(""); setIssueResponse(null); };
 
   return (
-    <AppModal isOpen={Boolean(batch)} className="!max-w-none w-full max-w-[96vw] sm:!w-[980px] !p-0 overflow-hidden" zIndex="z-[140]">
-      <div className="flex max-h-[90vh] flex-col overflow-hidden rounded-2xl bg-white">
+    <AppModal isOpen={Boolean(batch)} className="!max-w-none w-full !w-[min(96vw,1280px)] !p-0 overflow-hidden" zIndex="z-[140]">
+      <div className="flex h-[84vh] max-h-[84vh] flex-col overflow-hidden rounded-2xl bg-white">
         <div className="shrink-0 border-b border-slate-100 bg-gradient-to-br from-slate-50 via-white to-sky-50/50 p-4 sm:p-5">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="flex min-w-0 items-start gap-3">
@@ -110,7 +110,123 @@ export default function WfmBatchDetailsModal({ selectedUploadDetails: batch, act
           {["mapping", "validation"].includes(tab) && <div className="space-y-3">
             {tab === "validation" ? <div className="flex gap-2">{["validation","duplicate"].map((type) => <button key={type} onClick={() => { setIssueType(type); setPage(1); setIssueResponse(null); }} type="button" className={`rounded-lg border px-3 py-1.5 text-xs font-semibold ${issueType === type ? "bg-sibs-primary-1 text-white" : "bg-white text-slate-600"}`}>{type === "validation" ? "Validation & warnings" : "Duplicates & conflicts"}</button>)}</div> : <p className="m-0 text-xs text-slate-500">Unresolved employee identities and Task Orders are tracked here, not as validation errors. Repeated names are grouped within each page.</p>}
             <form className="flex gap-2" onSubmit={(event) => { event.preventDefault(); setPage(1); setAppliedSearch(search); }}><div className="relative flex-1"><Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400"/><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search name, row, issue code..." className="h-9 w-full rounded-lg border border-slate-200 pl-9 pr-3 text-xs outline-none focus:border-sky-400" /></div><Button type="submit" variant="outline" className="h-9 text-xs">Search</Button></form>
-            {loading ? <p className="flex items-center gap-2 py-5 text-xs text-slate-500"><Loader2 className="h-4 w-4 animate-spin"/>Loading records...</p> : loadError ? <p role="alert" className="text-xs text-rose-700">{loadError}</p> : issues.length === 0 ? <div className="rounded-lg border border-dashed p-6 text-center text-xs text-slate-500">No records in this category.</div> : tab === "mapping" ? <div className="space-y-2">{groupedMapping.map((group) => <div key={`${group.code}-${group.name}`} className="rounded-xl border border-slate-200 p-3"><div className="flex justify-between gap-2 text-xs"><span className="font-bold text-sibs-primary-1 break-all">{group.name}</span><span className="shrink-0 text-slate-500">{group.entries.length} on this page</span></div><p className="my-1 text-[11px] text-amber-700">{group.code?.replaceAll("_", " ")}</p><p className="m-0 text-[11px] text-slate-500">{group.entries.map((item) => `${item.sheetName || "Sheet"} · row ${item.excelRowNumber || "-"}`).join(" | ")}</p></div>)}</div> : <div className="overflow-x-auto rounded-lg border border-slate-200"><table className="w-full text-left text-xs"><thead className="bg-slate-50 text-slate-600"><tr>{["Sheet", "Row", "Severity", "Code", "Column", "Message"].map((label) => <th key={label} className="px-3 py-2">{label}</th>)}</tr></thead><tbody>{issues.map((issue) => <tr key={getIssueKey(issue) + issue.id} className="border-t border-slate-100"><td className="px-3 py-2">{issue.sheetName || "-"}</td><td className="px-3 py-2">{issue.excelRowNumber || "-"}</td><td className="px-3 py-2">{issue.severity}</td><td className="px-3 py-2">{issue.errorCode}</td><td className="px-3 py-2">{issue.columnName || "-"}</td><td className="px-3 py-2">{issue.errorMessage}</td></tr>)}</tbody></table></div>}
+            {loading ? (
+              <p className="flex items-center gap-2 py-5 text-xs text-slate-500">
+                <Loader2 className="h-4 w-4 animate-spin"/>Loading records...
+              </p>
+            ) : loadError ? (
+              <p role="alert" className="text-xs text-rose-700">{loadError}</p>
+            ) : issues.length === 0 ? (
+              <div className="rounded-lg border border-dashed p-6 text-center text-xs text-slate-500">
+                No records in this category.
+              </div>
+            ) : tab === "mapping" ? (
+              <div className="space-y-2">
+                {groupedMapping.map((group) => (
+                  <div
+                    key={`${group.code}-${group.name}`}
+                    className="rounded-lg border border-slate-200/80 bg-white p-2.5 sm:px-3 shadow-2xs transition-colors hover:border-slate-300"
+                  >
+                    {/* Top Row: Name, Status Badge, and Count */}
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="flex h-5.5 w-5.5 shrink-0 items-center justify-center rounded-md bg-slate-100 text-slate-500 border border-slate-200/80">
+                          <UserX className="h-3 w-3" />
+                        </span>
+                        <p className="m-0 truncate text-xs font-bold text-slate-800">
+                          {group.name}
+                        </p>
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="inline-flex items-center rounded-md border border-amber-200/70 bg-amber-50/60 px-1.5 py-0.2 text-[9.5px] font-semibold text-amber-700">
+                          {group.code ? group.code.replaceAll("_", " ") : "EMPLOYEE NOT MAPPED"}
+                        </span>
+                        <span className="text-[10px] text-slate-400 font-medium">
+                          {group.entries.length} on this page
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Compact, crisp, highly legible row occurrences */}
+                    <div className="mt-2 pt-2 border-t border-slate-100 flex flex-wrap items-center gap-1.5">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mr-1">
+                        Affected Rows:
+                      </span>
+                      {group.entries.map((item, idx) => (
+                        <span
+                          key={`${item.sheetName}-${item.excelRowNumber}-${idx}`}
+                          className="inline-flex items-center gap-1.5 rounded-md border border-sky-200/70 bg-sky-50/50 px-2 py-0.5 text-[11px] shadow-2xs transition-colors hover:bg-sky-50 hover:border-sky-300"
+                        >
+                          <span className="font-semibold text-sibs-primary-1">{item.sheetName || "Sheet"}</span>
+                          <span className="text-sky-300 font-bold">·</span>
+                          <span className="inline-block rounded bg-sky-100/70 border border-sky-200/50 px-1.5 py-0.2 font-mono text-[10.5px] font-bold text-sky-800">
+                            row {item.excelRowNumber || "-"}
+                          </span>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="overflow-x-auto rounded-xl border border-slate-200/90 bg-white shadow-2xs">
+                <table className="w-full text-left text-xs">
+                  <thead className="border-b border-slate-200 bg-slate-50/80 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                    <tr>
+                      <th className="px-3.5 py-2.5 whitespace-nowrap">Sheet</th>
+                      <th className="px-3 py-2.5 whitespace-nowrap text-center">Row</th>
+                      <th className="px-3.5 py-2.5 whitespace-nowrap">Severity</th>
+                      <th className="px-3.5 py-2.5 whitespace-nowrap">Code</th>
+                      <th className="px-3.5 py-2.5 whitespace-nowrap">Column</th>
+                      <th className="px-4 py-2.5 min-w-[280px]">Message</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {issues.map((issue) => {
+                      const sev = (issue.severity || "INFO").toUpperCase();
+                      const sevBadgeClass =
+                        sev === "ERROR" || sev === "FATAL"
+                          ? "bg-rose-50 text-rose-700 border-rose-200/70"
+                          : sev === "WARNING" || sev === "WARN"
+                          ? "bg-amber-50 text-amber-700 border-amber-200/70"
+                          : "bg-sky-50 text-sky-700 border-sky-200/70";
+
+                      return (
+                        <tr key={getIssueKey(issue) + issue.id} className="transition-colors hover:bg-slate-50/60">
+                          <td className="px-3.5 py-2.5 whitespace-nowrap font-medium text-slate-700">
+                            {issue.sheetName || "-"}
+                          </td>
+                          <td className="px-3 py-2.5 whitespace-nowrap text-center">
+                            {issue.excelRowNumber ? (
+                              <span className="inline-block rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[11px] font-bold text-slate-700">
+                                {issue.excelRowNumber}
+                              </span>
+                            ) : (
+                              <span className="text-slate-400">-</span>
+                            )}
+                          </td>
+                          <td className="px-3.5 py-2.5 whitespace-nowrap">
+                            <span className={`inline-flex items-center rounded-md border px-2 py-0.5 text-[10px] font-bold tracking-wide ${sevBadgeClass}`}>
+                              {sev}
+                            </span>
+                          </td>
+                          <td className="px-3.5 py-2.5 whitespace-nowrap font-mono text-[10.5px] font-semibold text-slate-700">
+                            {issue.errorCode || "-"}
+                          </td>
+                          <td className="px-3.5 py-2.5 whitespace-nowrap font-mono text-[10.5px] text-slate-600">
+                            {issue.columnName || "-"}
+                          </td>
+                          <td className="px-4 py-2.5 text-[11.5px] leading-relaxed text-slate-600">
+                            {issue.errorMessage}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
             <div className="flex items-center justify-between gap-2 text-xs text-slate-500"><span>{issueTotal.toLocaleString()} issue event{issueTotal === 1 ? "" : "s"}</span><div className="flex items-center gap-2"><Button variant="outline" type="button" disabled={page <= 1 || loading} onClick={() => setPage((p) => p - 1)}>Back</Button><span>{page} / {totalPages}</span><Button variant="outline" type="button" disabled={page >= totalPages || loading} onClick={() => setPage((p) => p + 1)}>Next</Button></div></div>
           </div>}
           {tab === "raw" && <div className="space-y-3 rounded-xl border border-slate-200 p-5"><p className="m-0 text-sm font-bold text-sibs-primary-1">Original imported rows</p><p className="m-0 text-xs text-slate-500">Open the read-only raw-data preview to inspect and filter the source records. Imported rows and matching issues remain preserved for audit.</p><Button type="button" disabled={!batchId || !onOpenRawData} onClick={() => onOpenRawData?.(batch)} className="text-xs"><FileSpreadsheet className="h-4 w-4"/> Open Raw Data</Button></div>}

@@ -568,6 +568,7 @@ function WfmImportDataPage() {
     if (targetTool && targetTool !== "ALL") {
       params.set("tool", targetTool);
     }
+    params.set("view", "list");
     const queryString = params.toString() ? `?${params.toString()}` : "";
 
     navigate(`/import-repository${queryString}`, {
@@ -575,6 +576,7 @@ function WfmImportDataPage() {
         selectedLevel: targetLevel,
         selectedTool: targetTool,
         selectedAccount: targetAccount === "All Accounts" ? "US VISA" : targetAccount,
+        view: "list",
       },
     });
   };
