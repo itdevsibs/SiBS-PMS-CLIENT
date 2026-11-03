@@ -1162,26 +1162,22 @@ export default function EmployeeMasterDataPage() {
 
                       {/* 5. FuseCom  Name */}
                       <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-white whitespace-nowrap overflow-hidden">
-                        <span className="inline-block h-2 w-2 rounded-full bg-orange-400 mr-1.5 align-middle" />
-                        <span>FuseCom Name</span>
+                        FuseCom Name
                       </th>
 
                       {/* 6. FuseNet  Name */}
                       <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-white whitespace-nowrap overflow-hidden">
-                        <span className="inline-block h-2 w-2 rounded-full bg-blue-400 mr-1.5 align-middle" />
-                        <span>FuseNet Name</span>
+                        FuseNet Name
                       </th>
 
                       {/* 7. HeroDash Name */}
                       <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-white whitespace-nowrap overflow-hidden">
-                        <span className="inline-block h-2 w-2 rounded-full bg-amber-400 mr-1.5 align-middle" />
-                        <span>HeroDash Name</span>
+                        HeroDash Name
                       </th>
 
                       {/* 8. MSD Name */}
                       <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-white whitespace-nowrap overflow-hidden">
-                        <span className="inline-block h-2 w-2 rounded-full bg-purple-400 mr-1.5 align-middle" />
-                        <span>MSD Name</span>
+                        MSD Name
                       </th>
 
                       {/* 9. Site */}
