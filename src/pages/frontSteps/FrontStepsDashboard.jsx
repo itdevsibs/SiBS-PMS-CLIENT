@@ -994,42 +994,10 @@ export default function FrontStepsDashboard() {
           </div>
         </div>
 
-        {/* Bottom User Profile Section */}
-        <div className="relative mt-auto border-t border-white/10 p-3">
-          {/* User Profile Dropdown Popover (Crisp White Card) */}
-          {isUserMenuOpen && (
-            <div
-              className="absolute bottom-[calc(100%+0.5rem)] left-2 right-2 z-[999] overflow-hidden rounded-2xl border border-slate-200/90 bg-white p-2 shadow-2xl shadow-slate-900/20"
-              role="menu"
-            >
-              <div className="px-2.5 py-2 border-b border-slate-100 mb-1.5">
-                <p className="text-[11.5px] font-extrabold uppercase tracking-tight text-slate-900 truncate">
-                  {displayName}
-                </p>
-                <p className="text-[10.5px] font-semibold text-[#ff5c28] truncate">
-                  {displayEmail}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setIsUserMenuOpen(false);
-                  dashboard.setShowLogoutModal(true);
-                }}
-                className="flex w-full items-center gap-2.5 rounded-xl border-0 bg-[#fff1f1] px-3 py-2 text-left text-xs font-bold text-[#ef4444] hover:bg-[#ffe5e5] transition cursor-pointer"
-                role="menuitem"
-              >
-                <LogOut className="h-4 w-4 shrink-0 text-[#ef4444]" aria-hidden="true" />
-                <span>Logout</span>
-              </button>
-            </div>
-          )}
-
-          <button
-            type="button"
-            onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-            className="flex w-full items-center gap-2.5 rounded-xl border border-white/15 bg-white/10 p-2 text-left transition-all duration-150 hover:bg-white/20 hover:border-white/25 cursor-pointer group"
-          >
+        {/* Bottom User Profile & Logout Section */}
+        <div className="relative mt-auto border-t border-white/10 p-3 space-y-2">
+          {/* User Profile Card */}
+          <div className="flex w-full items-center gap-2.5 rounded-xl border border-white/15 bg-white/10 p-2 text-left">
             {avatarSrc ? (
               <img
                 src={avatarSrc}
@@ -1044,7 +1012,7 @@ export default function FrontStepsDashboard() {
 
             <div className="min-w-0 flex-1 flex flex-col justify-center">
               <span
-                className="block truncate text-[11.5px] font-bold text-white group-hover:text-white"
+                className="block truncate text-[11.5px] font-bold text-white"
                 title={displayName}
               >
                 {displayName}
@@ -1056,12 +1024,17 @@ export default function FrontStepsDashboard() {
                 {displayEmail}
               </span>
             </div>
+          </div>
 
-            <ChevronDown
-              className={`h-4 w-4 shrink-0 text-white/80 transition-transform duration-200 group-hover:text-white ${
-                isUserMenuOpen ? "rotate-180" : ""
-              }`}
-            />
+          {/* Dedicated Logout Button at the Bottom */}
+          <button
+            type="button"
+            onClick={() => dashboard.setShowLogoutModal(true)}
+            className="flex w-full items-center justify-center gap-2 rounded-xl border border-rose-500/25 bg-rose-500/15 py-2 px-3 text-xs font-bold text-rose-300 hover:bg-rose-600 hover:text-white hover:border-rose-600 transition-all duration-150 cursor-pointer active:scale-[0.98] shadow-2xs"
+            title="Log out of system"
+          >
+            <LogOut className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+            <span>Logout</span>
           </button>
         </div>
       </div>
