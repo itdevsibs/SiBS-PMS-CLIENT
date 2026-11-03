@@ -663,6 +663,9 @@ export default function AttendanceSheetPage() {
         isMobileOpen={dashboard.isMobileSidebarOpen}
         modules={dashboard.modules}
         onMobileClose={() => dashboard.setIsMobileSidebarOpen(false)}
+        onLogoutClick={() => dashboard.setShowLogoutModal(true)}
+        userName={dashboard.userName}
+        userRole={dashboard.authUser?.email || dashboard.authUser?.roleLabel || "User"}
       />
 
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">

@@ -748,6 +748,9 @@ export default function EmployeeMasterDataPage() {
         modules={dashboard.modules}
         isMobileOpen={dashboard.isMobileSidebarOpen}
         onMobileClose={() => dashboard.setIsMobileSidebarOpen(false)}
+        onLogoutClick={() => dashboard.setShowLogoutModal(true)}
+        userName={dashboard.userName}
+        userRole={dashboard.authUser?.email || dashboard.authUser?.roleLabel || "User"}
       />
 
       {/* Main content */}
