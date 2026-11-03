@@ -12,6 +12,7 @@ import {
   RemovedUploadSuccessModal,
 } from "@/components/modules/wfm/imports/WfmStatusFeedbackModals";
 import WfmTaskOrderModal from "@/components/modules/wfm/imports/WfmTaskOrderModal";
+import WfmReportDateModal from "@/components/modules/wfm/imports/WfmReportDateModal";
 import WfmWarningsModal from "@/components/modules/wfm/imports/WfmWarningsModal";
 import WfmRejectedModal from "@/components/modules/wfm/imports/WfmRejectedModal";
 import WfmDuplicatesModal from "@/components/modules/wfm/imports/WfmDuplicatesModal";
@@ -23,6 +24,13 @@ export default function WfmImportModals({
   setSelectedTaskOrderId,
   onCancelTaskOrderUpload,
   onConfirmTaskOrderUpload,
+
+  // Report Date
+  pendingReportDateUpload,
+  selectedReportDate,
+  setSelectedReportDate,
+  onCancelReportDateUpload,
+  onConfirmReportDateUpload,
 
   // Card Uploads
   activeOpenCard,
@@ -97,6 +105,15 @@ export default function WfmImportModals({
         setSelectedTaskOrderId={setSelectedTaskOrderId}
         onCancel={onCancelTaskOrderUpload}
         onConfirm={onConfirmTaskOrderUpload}
+      />
+
+      {/* Report Date Selection Modal */}
+      <WfmReportDateModal
+        pendingReportDateUpload={pendingReportDateUpload}
+        selectedReportDate={selectedReportDate}
+        setSelectedReportDate={setSelectedReportDate}
+        onCancel={onCancelReportDateUpload}
+        onConfirm={onConfirmReportDateUpload}
       />
 
       {/* Card Uploads Modal */}

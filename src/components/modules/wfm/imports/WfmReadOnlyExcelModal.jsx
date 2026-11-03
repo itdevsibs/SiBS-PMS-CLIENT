@@ -612,13 +612,26 @@ export default function WfmReadOnlyExcelModal({
                           {isSibsFilterActive && (
                             <span
                               className={`inline-block px-1 py-0.5 rounded text-[8.5px] font-extrabold uppercase tracking-tight leading-none ${
-                                row.isSibs
+                                row.rowType === "SIBS"
                                   ? "bg-emerald-100 text-emerald-800 border border-emerald-300/60"
-                                  : "bg-amber-100 text-amber-800 border border-amber-300/60"
+                                  : row.rowType === "NON_SIBS"
+                                    ? "bg-amber-100 text-amber-800 border border-amber-300/60"
+                                    : "bg-slate-200 text-slate-700 border border-slate-300/60"
                               }`}
-                              title={row.isSibs ? "SIBS Employee (Matched)" : `Non-SIBS (${row.mappingStatus || "Unmatched"})`}
+                              title={row.rowType === "SIBS"
+                                ? "SIBS Employee (Matched)"
+                                : row.rowType === "NON_SIBS"
+                                  ? `Non-SIBS (${row.mappingStatus})`
+                                  : row.rowType === "DUPLICATE"
+                                    ? "Duplicate raw row; not classified as Non-SIBS"
+                                    : row.rowType === "INVALID"
+                                      ? "Invalid raw row; employee classification unavailable"
+                                      : "Employee classification has not been verified"}
                             >
-                              {row.isSibs ? "SIBS" : "NON-SIBS"}
+                              {row.rowType === "SIBS" ? "SIBS"
+                                : row.rowType === "NON_SIBS" ? "NON-SIBS"
+                                : row.rowType === "DUPLICATE" ? "DUPLICATE"
+                                : row.rowType === "INVALID" ? "INVALID" : "UNVERIFIED"}
                             </span>
                           )}
                         </div>

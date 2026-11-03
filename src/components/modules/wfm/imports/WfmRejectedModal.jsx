@@ -21,6 +21,9 @@ import {
 
 const REJECTED_LEVEL_ORDER = [
   "CALL REPORT (EOD)",
+  "CHAT REPORT (EOD)",
+  "AGENT ACTIVITY - PRODUCTIVE BREAKS",
+  "AGENT PERFORMANCE BY SKILL",
   "SERVICE / QUEUE LEVEL",
   "AGENT LEVEL",
   "AGENT OCCUPANCY",
@@ -95,6 +98,9 @@ export default function WfmRejectedModal({
   const levelCounts = useMemo(() => {
     const counts = {
       "CALL REPORT (EOD)": 0,
+      "CHAT REPORT (EOD)": 0,
+      "AGENT ACTIVITY - PRODUCTIVE BREAKS": 0,
+      "AGENT PERFORMANCE BY SKILL": 0,
       "SERVICE / QUEUE LEVEL": 0,
       "AGENT LEVEL": 0,
       "AGENT OCCUPANCY": 0,
@@ -119,6 +125,18 @@ export default function WfmRejectedModal({
       {
         value: "CALL REPORT (EOD)",
         label: `CALL REPORT (EOD) (${levelCounts["CALL REPORT (EOD)"] || 0})`,
+      },
+      {
+        value: "CHAT REPORT (EOD)",
+        label: `CHAT REPORT (EOD) (${levelCounts["CHAT REPORT (EOD)"] || 0})`,
+      },
+      {
+        value: "AGENT ACTIVITY - PRODUCTIVE BREAKS",
+        label: `AGENT ACTIVITY - PRODUCTIVE BREAKS (${levelCounts["AGENT ACTIVITY - PRODUCTIVE BREAKS"] || 0})`,
+      },
+      {
+        value: "AGENT PERFORMANCE BY SKILL",
+        label: `AGENT PERFORMANCE BY SKILL (${levelCounts["AGENT PERFORMANCE BY SKILL"] || 0})`,
       },
       {
         value: "SERVICE / QUEUE LEVEL",

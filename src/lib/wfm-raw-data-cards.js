@@ -106,7 +106,9 @@ const accountRawDataCards = {
       ],
       importProfileCode: "FUSECOM_AGENT_OCCUPANCY",
       fileExtension: ".xlsx",
-      requiresTaskOrderSelection: true,
+      // FuseCom Occupancy resolves each employee's active Task Order from the
+      // employee ledger/scope resolver. Do not ask the uploader to choose one.
+      requiresTaskOrderSelection: false,
     },
     {
       id: "agent-occupancy-fusenet",
@@ -118,7 +120,8 @@ const accountRawDataCards = {
       ],
       importProfileCode: "FUSENET_AGENT_OCCUPANCY",
       fileExtension: ".xlsx",
-      requiresTaskOrderSelection: true,
+      // Resolve Task Order from the employee's verified active assignment.
+      requiresTaskOrderSelection: false,
     },
     {
       id: "agent-occupancy-herodash",
@@ -133,6 +136,31 @@ const accountRawDataCards = {
       fileExtension: ".xlsx",
       requiresTaskOrderSelection: true,
       requiresReportingPeriod: false,
+    },
+    {
+      id: "agent-activity-productive-breaks-herodash",
+      title: "HeroDash",
+      sourceLabel: "HeroDash",
+      groupLabel: "AGENT ACTIVITY - PRODUCTIVE BREAKS",
+      taskOrders: [],
+      importProfileCode: "HERODASH_AGENT_ACTIVITY_PRODUCTIVE_BREAKS",
+      fileExtension: ".xlsx",
+      acceptedFileTypes: ".xlsx",
+      requiresTaskOrderSelection: false,
+      requiresReportingPeriod: false,
+    },
+    {
+      id: "agent-performance-by-skill-herodash",
+      title: "HeroDash",
+      sourceLabel: "HeroDash",
+      groupLabel: "AGENT PERFORMANCE BY SKILL",
+      taskOrders: [],
+      importProfileCode: "HERODASH_AGENT_PERFORMANCE_BY_SKILL",
+      fileExtension: ".xlsx",
+      acceptedFileTypes: ".xlsx",
+      requiresTaskOrderSelection: false,
+      // The exported report has no date column; store a user-confirmed date.
+      requiresReportingPeriod: true,
     },
     {
       id: "email-raw-data",

@@ -85,6 +85,8 @@ function WfmImportDataPage() {
   const [selectedAccount, setSelectedAccount] = useState("All Accounts");
   const [pendingTaskOrderUpload, setPendingTaskOrderUpload] = useState(null);
   const [selectedTaskOrderId, setSelectedTaskOrderId] = useState("");
+  const [pendingReportDateUpload, setPendingReportDateUpload] = useState(null);
+  const [selectedReportDate, setSelectedReportDate] = useState("");
 
   const filteredRawDataCards = useMemo(() => {
     const cards = getRawDataCards(selectedAccount);
@@ -253,6 +255,10 @@ function WfmImportDataPage() {
               invalidRows: details.batch.invalidRows ?? prev.invalidRows,
               duplicateRows: details.batch.duplicateRows ?? prev.duplicateRows,
               warningRows: details.batch.warningRows ?? prev.warningRows,
+              displayStatus: details.batch.displayStatus ?? prev.displayStatus,
+              mappingRows: details.batch.mappingRows ?? prev.mappingRows,
+              unmappedRows: details.batch.unmappedRows ?? prev.unmappedRows,
+              unassignedTaskOrderRows: details.batch.unassignedTaskOrderRows ?? prev.unassignedTaskOrderRows,
               infoRows: details.batch.infoRows ?? prev.infoRows,
               batchStatus: details.batch.status ?? prev.batchStatus,
             };
@@ -380,6 +386,12 @@ function WfmImportDataPage() {
     event.target.value = "";
     if (!file) return;
 
+    if (card.requiresReportingPeriod) {
+      setPendingReportDateUpload({ card, file });
+      setSelectedReportDate("");
+      return;
+    }
+
     if (!card.requiresTaskOrderSelection) {
       await processCardFile(card, file);
       return;
@@ -429,6 +441,32 @@ function WfmImportDataPage() {
   const handleCancelTaskOrderUpload = () => {
     setPendingTaskOrderUpload(null);
     setSelectedTaskOrderId("");
+  };
+
+  const handleConfirmReportDateUpload = async () => {
+    if (!pendingReportDateUpload) return;
+
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(selectedReportDate)) {
+      setErrorModalInfo({
+        title: "Report Date Required",
+        message: `Select the Report Date represented by this ${pendingReportDateUpload.card?.title || "workbook"} before uploading.`,
+      });
+      return;
+    }
+
+    const pendingUpload = pendingReportDateUpload;
+    setPendingReportDateUpload(null);
+
+    await processCardFile(pendingUpload.card, pendingUpload.file, {
+      reportDateFrom: selectedReportDate,
+      reportDateTo: selectedReportDate,
+    });
+    setSelectedReportDate("");
+  };
+
+  const handleCancelReportDateUpload = () => {
+    setPendingReportDateUpload(null);
+    setSelectedReportDate("");
   };
 
   const handleRemoveUpload = async () => {
@@ -614,6 +652,11 @@ function WfmImportDataPage() {
         setSelectedTaskOrderId={setSelectedTaskOrderId}
         onCancelTaskOrderUpload={handleCancelTaskOrderUpload}
         onConfirmTaskOrderUpload={handleConfirmTaskOrderUpload}
+        pendingReportDateUpload={pendingReportDateUpload}
+        selectedReportDate={selectedReportDate}
+        setSelectedReportDate={setSelectedReportDate}
+        onCancelReportDateUpload={handleCancelReportDateUpload}
+        onConfirmReportDateUpload={handleConfirmReportDateUpload}
         activeOpenCard={activeOpenCard}
         onCloseCardUploads={() => setActiveOpenCard(null)}
         uploadedDataSearch={uploadedDataSearch}

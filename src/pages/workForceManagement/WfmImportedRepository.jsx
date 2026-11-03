@@ -5,6 +5,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Eye,
+  CalendarDays,
+  List,
   FileSpreadsheet,
   FolderOpen,
   Search,
@@ -17,6 +19,9 @@ import SingleSelectDropdown from "@/components/common/filters/SingleSelectDropdo
 import ConfirmationModal from "@/components/common/ui/ConfirmationModal";
 import LoadingModal from "@/components/common/ui/LoadingModal";
 import WfmBatchDetailsModal from "@/components/modules/wfm/imports/WfmBatchDetailsModal";
+import WfmImportCalendar, { manilaDateKey } from "@/components/modules/wfm/imports/WfmImportCalendar";
+import WfmCalendarDailyImports from "@/components/modules/wfm/imports/WfmCalendarDailyImports";
+import WfmRepositoryReportTypeBadge from "@/components/modules/wfm/imports/WfmRepositoryReportTypeBadge";
 import WfmErrorDetailsModal from "@/components/modules/wfm/imports/WfmErrorDetailsModal";
 import WfmReadOnlyExcelModal from "@/components/modules/wfm/imports/WfmReadOnlyExcelModal";
 import WfmFilterBar from "@/components/modules/wfm/imports/WfmFilterBar";
@@ -31,19 +36,28 @@ import { recordWfmHistoryLogQuietly } from "@/lib/axios/wfm-history-logs";
 import { removeWfmGraphReportsForUpload } from "@/lib/wfm-graph-reports";
 import { accountOptions, getRawDataCards } from "@/lib/wfm-raw-data-cards";
 import {
+  getRepositoryToolForUpload,
+  getRepositoryToolsForLevel,
+  normalizeRepositoryTool,
+} from "@/lib/wfm-import-repository-tools";
+import {
   deleteUsVisaImportBatch,
   getUsVisaImportBatchDetails,
   getUsVisaImportBatchErrors,
   getUsVisaImportHistory,
   getUsVisaImportSummary,
+  getUsVisaImportCalendar,
+  getUsVisaImportCalendarDay,
 } from "@/lib/axios/us-visa-imports";
 import {
   EMPTY_IMPORT_SUMMARY,
   RAW_DATA_UPLOADS_KEY,
   accountFilters,
   formatRelativeTime,
+  getImportDisplayStatus,
   getBatchCategory,
   mapBatchToUpload,
+  mapCalendarBatchToUpload,
   normalizeUploadsByCard,
   readJsonCache,
   writeJsonCache,
@@ -61,19 +75,12 @@ function normalizeLevelValue(val) {
   if (upper.includes("SERVICE") || upper.includes("QUEUE")) return "ALL";
   if (upper.includes("QUALITY") || upper === "QA") return "QUALITY AUDIT";
   if (upper.includes("OCCUPANCY")) return "AGENT OCCUPANCY";
+  if (upper.includes("AGENT ACTIVITY") || upper.includes("PRODUCTIVE BREAK")) return "AGENT ACTIVITY - PRODUCTIVE BREAKS";
+  if (upper.includes("AGENT PERFORMANCE") && upper.includes("SKILL")) return "AGENT PERFORMANCE BY SKILL";
   if (upper.includes("EMAIL")) return "EMAIL LEVEL";
   return val;
 }
 
-function normalizeToolValue(val) {
-  if (!val) return "ALL";
-  const raw = String(val).toLowerCase();
-  if (raw.includes("fusenet")) return "FuseNet";
-  if (raw.includes("fusecom")) return "Fusecom";
-  if (raw.includes("hero")) return "HeroDash";
-  if (raw.includes("quality")) return "Quality Audit";
-  return "ALL";
-}
 
 export default function WfmImportedRepository() {
   const location = useLocation();
@@ -111,7 +118,7 @@ export default function WfmImportedRepository() {
     );
   });
   const [selectedTool, setSelectedTool] = useState(() => {
-    return normalizeToolValue(
+    return normalizeRepositoryTool(
       location.state?.selectedTool ||
       location.state?.tool ||
       searchParams.get("tool") ||
@@ -119,6 +126,19 @@ export default function WfmImportedRepository() {
     );
   });
   const [uploadedDataSearch, setUploadedDataSearch] = useState("");
+  // Calendar is the default view; List keeps the existing repository workflow.
+  const [repositoryView, setRepositoryView] = useState("calendar");
+  const [calendarMonth, setCalendarMonth] = useState(() => manilaDateKey().slice(0, 7));
+  const [selectedCalendarDay, setSelectedCalendarDay] = useState(() => manilaDateKey());
+  const [calendarDays, setCalendarDays] = useState([]);
+  const [calendarLoading, setCalendarLoading] = useState(false);
+  const [calendarError, setCalendarError] = useState("");
+  const [dailyUploads, setDailyUploads] = useState([]);
+  const [dailyPagination, setDailyPagination] = useState({ page: 1, limit: 20, total: 0, totalPages: 1 });
+  const [dailyLoading, setDailyLoading] = useState(false);
+  const [dailyError, setDailyError] = useState("");
+  const [dailyPage, setDailyPage] = useState(1);
+
 
   // Sync filters when navigated from another page (e.g. Open button in Import Data)
   useEffect(() => {
@@ -135,7 +155,7 @@ export default function WfmImportedRepository() {
       setSelectedLevel(normalizeLevelValue(rawLevel));
     }
     if (rawTool) {
-      setSelectedTool(normalizeToolValue(rawTool));
+      setSelectedTool(normalizeRepositoryTool(rawTool));
     } else if (rawLevel) {
       setSelectedTool("ALL");
     }
@@ -257,6 +277,8 @@ export default function WfmImportedRepository() {
     if (upper.includes("CALL REPORT")) return "CALL REPORT (EOD)";
     if (upper.includes("CHAT REPORT")) return "CHAT REPORT (EOD)";
     if (upper.includes("OCCUPANCY")) return "AGENT OCCUPANCY";
+    if (upper.includes("AGENT ACTIVITY") || upper.includes("PRODUCTIVE BREAK")) return "AGENT ACTIVITY - PRODUCTIVE BREAKS";
+    if (upper.includes("AGENT PERFORMANCE") && upper.includes("SKILL")) return "AGENT PERFORMANCE BY SKILL";
     if (upper.includes("EMAIL")) return "EMAIL LEVEL";
     if (upper.includes("QUALITY") || upper === "QA") return "QUALITY AUDIT";
     return rawLevel;
@@ -285,6 +307,8 @@ export default function WfmImportedRepository() {
       "CALL REPORT (EOD)": 0,
       "CHAT REPORT (EOD)": 0,
       "AGENT OCCUPANCY": 0,
+      "AGENT ACTIVITY - PRODUCTIVE BREAKS": 0,
+      "AGENT PERFORMANCE BY SKILL": 0,
       "EMAIL LEVEL": 0,
       "QUALITY AUDIT": 0,
     };
@@ -319,6 +343,14 @@ export default function WfmImportedRepository() {
         label: `AGENT OCCUPANCY (${levelCounts["AGENT OCCUPANCY"] || 0})`,
       },
       {
+        value: "AGENT ACTIVITY - PRODUCTIVE BREAKS",
+        label: `AGENT ACTIVITY - PRODUCTIVE BREAKS (${levelCounts["AGENT ACTIVITY - PRODUCTIVE BREAKS"] || 0})`,
+      },
+      {
+        value: "AGENT PERFORMANCE BY SKILL",
+        label: `AGENT PERFORMANCE BY SKILL (${levelCounts["AGENT PERFORMANCE BY SKILL"] || 0})`,
+      },
+      {
         value: "EMAIL LEVEL",
         label: `EMAIL RAW DATA (${levelCounts["EMAIL LEVEL"] || 0})`,
       },
@@ -336,53 +368,37 @@ export default function WfmImportedRepository() {
     return allUploads.filter((u) => getUploadLevel(u) === selectedLevel);
   }, [allUploads, selectedLevel, getUploadLevel]);
 
-  // Helper to extract normalized tool name ("Fusecom", "FuseNet", "HeroDash")
-  const getUploadTool = useCallback((upload) => {
-    const raw = `${upload.sourceSystem || ""} ${upload.sourceLabel || ""} ${upload.rawDataTitle || ""} ${upload.fileName || ""} ${upload.cardId || ""}`.toLowerCase();
-    if (raw.includes("fusenet")) return "FuseNet";
-    if (raw.includes("fusecom")) return "Fusecom";
-    if (raw.includes("hero")) return "HeroDash";
-    if (raw.includes("quality")) return "Quality Audit";
-    return "Other";
-  }, []);
+  // Tool choices are determined by the raw-data category, not all available systems.
+  // A selected tool is reset when the category changes; the effective filter
+  // guards against stale URL/navigation state until that update has committed.
+  const availableTools = useMemo(() => getRepositoryToolsForLevel(selectedLevel), [selectedLevel]);
+  const effectiveSelectedTool = selectedTool === "ALL" || availableTools.includes(selectedTool)
+    ? selectedTool : "ALL";
 
-  // Tool counts for the selected level
+  useEffect(() => {
+    if (selectedTool !== effectiveSelectedTool) setSelectedTool("ALL");
+  }, [selectedTool, effectiveSelectedTool]);
+
   const toolCounts = useMemo(() => {
-    const counts = {
-      Fusecom: 0,
-      FuseNet: 0,
-      HeroDash: 0,
-      "Quality Audit": 0,
-    };
-    levelFilteredUploads.forEach((u) => {
-      const tool = getUploadTool(u);
-      if (counts[tool] !== undefined) {
-        counts[tool]++;
-      }
-    });
+    const counts = Object.fromEntries(availableTools.map((tool) => [tool, 0]));
+    for (const upload of levelFilteredUploads) {
+      const tool = getRepositoryToolForUpload(upload);
+      if (Object.hasOwn(counts, tool)) counts[tool] += 1;
+    }
     return counts;
-  }, [levelFilteredUploads, getUploadTool]);
+  }, [levelFilteredUploads, availableTools]);
 
-  // Tool filter options with live data counts
-  const toolOptions = useMemo(
-    () => [
-      { value: "ALL", label: `All Tools (${levelFilteredUploads.length})` },
-      { value: "Fusecom", label: `Fusecom (${toolCounts.Fusecom || 0})` },
-      { value: "FuseNet", label: `FuseNet (${toolCounts.FuseNet || 0})` },
-      { value: "HeroDash", label: `HeroDash (${toolCounts.HeroDash || 0})` },
-      { value: "Quality Audit", label: `Quality Audit (${toolCounts["Quality Audit"] || 0})` },
-    ],
-    [levelFilteredUploads.length, toolCounts],
-  );
+  const toolOptions = useMemo(() => [
+    { value: "ALL", label: `All Tools (${levelFilteredUploads.length})` },
+    ...availableTools.map((tool) => ({ value: tool, label: `${tool} (${toolCounts[tool] || 0})` })),
+  ], [levelFilteredUploads.length, availableTools, toolCounts]);
 
   // Uploads further filtered by tool and search query
   const displayedUploads = useMemo(() => {
     let result = levelFilteredUploads;
 
-    if (selectedTool !== "ALL") {
-      result = result.filter(
-        (u) => getUploadTool(u).toLowerCase() === selectedTool.toLowerCase(),
-      );
+    if (effectiveSelectedTool !== "ALL") {
+      result = result.filter((u) => getRepositoryToolForUpload(u) === effectiveSelectedTool);
     }
 
     const searchValue = (uploadedDataSearch || "").trim().toLowerCase();
@@ -394,7 +410,52 @@ export default function WfmImportedRepository() {
         (upload.batchCode || "").toLowerCase().includes(searchValue) ||
         (upload.rawDataTitle || "").toLowerCase().includes(searchValue),
     );
-  }, [levelFilteredUploads, selectedTool, uploadedDataSearch, getUploadTool]);
+  }, [levelFilteredUploads, effectiveSelectedTool, uploadedDataSearch]);
+
+  // Server-side calendar queries keep the calendar complete even beyond the
+  // legacy list's 100-history-item limit. Abort stale results on filter changes.
+  const calendarFilters = useMemo(() => ({
+    month: calendarMonth, account: selectedAccount,
+    level: selectedLevel, tool: effectiveSelectedTool, search: uploadedDataSearch,
+  }), [calendarMonth, selectedAccount, selectedLevel, effectiveSelectedTool, uploadedDataSearch]);
+
+  useEffect(() => {
+    if (repositoryView !== "calendar") return;
+    let active = true;
+    setCalendarLoading(true);
+    setCalendarError("");
+    getUsVisaImportCalendar(calendarFilters).then((response) => {
+      if (active) setCalendarDays(response.days || []);
+    }).catch(() => {
+      if (active) { setCalendarDays([]); setCalendarError("Unable to load the import calendar. Please try again."); }
+    }).finally(() => { if (active) setCalendarLoading(false); });
+    return () => { active = false; };
+  }, [repositoryView, calendarFilters, summaryRefreshVersion]);
+
+  useEffect(() => {
+    if (repositoryView !== "calendar") return;
+    let active = true;
+    setDailyLoading(true);
+    setDailyError("");
+    getUsVisaImportCalendarDay({ ...calendarFilters, date: selectedCalendarDay, page: dailyPage, limit: 20 })
+      .then((response) => {
+        if (!active) return;
+        setDailyUploads((response.data || []).map(mapCalendarBatchToUpload));
+        setDailyPagination(response.pagination || { page: 1, total: 0, totalPages: 1 });
+      }).catch(() => {
+        if (active) { setDailyUploads([]); setDailyPagination({ page: 1, total: 0, totalPages: 1 }); setDailyError("Unable to load imports for this date."); }
+      }).finally(() => { if (active) setDailyLoading(false); });
+    return () => { active = false; };
+  }, [repositoryView, calendarFilters, selectedCalendarDay, dailyPage, summaryRefreshVersion]);
+
+  useEffect(() => { setDailyPage(1); }, [calendarFilters, selectedCalendarDay]);
+
+  const changeCalendarMonth = (month) => {
+    setCalendarMonth(month);
+    // Select day 1 when navigating months; avoid stale date/month mismatches.
+    setSelectedCalendarDay(month === manilaDateKey().slice(0, 7) ? manilaDateKey() : `${month}-01`);
+    setDailyPage(1);
+  };
 
   // Pagination state (matching Employee Ledger)
   const [currentPage, setCurrentPage] = useState(1);
@@ -403,7 +464,7 @@ export default function WfmImportedRepository() {
   // Reset page when level, tool or search filter changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [selectedLevel, selectedTool, uploadedDataSearch]);
+  }, [selectedLevel, effectiveSelectedTool, uploadedDataSearch]);
 
   const totalCount = displayedUploads.length;
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
@@ -434,6 +495,10 @@ export default function WfmImportedRepository() {
               invalidRows: details.batch.invalidRows ?? prev.invalidRows,
               duplicateRows: details.batch.duplicateRows ?? prev.duplicateRows,
               warningRows: details.batch.warningRows ?? prev.warningRows,
+              displayStatus: details.batch.displayStatus ?? prev.displayStatus,
+              mappingRows: details.batch.mappingRows ?? prev.mappingRows,
+              unmappedRows: details.batch.unmappedRows ?? prev.unmappedRows,
+              unassignedTaskOrderRows: details.batch.unassignedTaskOrderRows ?? prev.unassignedTaskOrderRows,
               infoRows: details.batch.infoRows ?? prev.infoRows,
               batchStatus: details.batch.status ?? prev.batchStatus,
             };
@@ -611,6 +676,11 @@ export default function WfmImportedRepository() {
                 </p>
               </div>
 
+              <div className="flex shrink-0 gap-1 rounded-lg border border-slate-200 bg-slate-50 p-1" role="group" aria-label="Repository view">
+                <button type="button" onClick={() => setRepositoryView("calendar")} aria-pressed={repositoryView === "calendar"} className={`flex h-8 items-center gap-1.5 rounded-md px-3 text-xs font-bold ${repositoryView === "calendar" ? "bg-white text-sibs-primary-1 shadow-xs" : "text-slate-500 hover:text-slate-800"}`}><CalendarDays className="h-3.5 w-3.5"/>Calendar</button>
+                <button type="button" onClick={() => setRepositoryView("list")} aria-pressed={repositoryView === "list"} className={`flex h-8 items-center gap-1.5 rounded-md px-3 text-xs font-bold ${repositoryView === "list" ? "bg-white text-sibs-primary-1 shadow-xs" : "text-slate-500 hover:text-slate-800"}`}><List className="h-3.5 w-3.5"/>List</button>
+              </div>
+
               {/* Controls: Search Input, Level Dropdown, Tool Dropdown, Clear Button - FIXED POSITIONS */}
               <div className="flex flex-col sm:flex-row sm:flex-wrap xl:flex-nowrap items-stretch sm:items-center gap-2 sm:gap-2.5 lg:gap-3 w-full lg:w-auto">
                 {/* Search uploaded data input */}
@@ -641,8 +711,8 @@ export default function WfmImportedRepository() {
                 <div className="w-full sm:w-60 md:w-64 shrink-0">
                   <SingleSelectDropdown
                     value={selectedLevel}
-                    onChange={(e) => setSelectedLevel(e.target.value)}
-                    options={levelOptions}
+                    onChange={(e) => { setSelectedLevel(e.target.value); setSelectedTool("ALL"); }}
+                    options={repositoryView === "calendar" ? levelOptions.map((option) => ({ ...option, label: option.label.replace(/ \(\d+\)$/, "") })) : levelOptions}
                     placeholder="Select Level..."
                     buttonClassName="h-9 rounded-lg border-slate-200 px-2.5 text-xs font-semibold shadow-2xs"
                   />
@@ -651,9 +721,9 @@ export default function WfmImportedRepository() {
                 {/* Tool selector dropdown - fixed width so changing count text never resizes */}
                 <div className="w-full sm:w-40 md:w-44 shrink-0">
                   <SingleSelectDropdown
-                    value={selectedTool}
+                    value={effectiveSelectedTool}
                     onChange={(e) => setSelectedTool(e.target.value)}
-                    options={toolOptions}
+                    options={repositoryView === "calendar" ? toolOptions.map((option) => ({ ...option, label: option.label.replace(/ \(\d+\)$/, "") })) : toolOptions}
                     placeholder="Select Tool..."
                     buttonClassName="h-9 rounded-lg border-slate-200 px-2.5 text-xs font-semibold shadow-2xs"
                   />
@@ -675,16 +745,27 @@ export default function WfmImportedRepository() {
               </div>
             </div>
 
+            {repositoryView === "calendar" ? <>
+              <WfmImportCalendar
+                month={calendarMonth} onMonthChange={changeCalendarMonth}
+                selectedDay={selectedCalendarDay} onSelectDay={setSelectedCalendarDay}
+                days={calendarDays} loading={calendarLoading} error={calendarError}
+              />
+              <WfmCalendarDailyImports
+                date={selectedCalendarDay}
+                uploads={dailyUploads} pagination={dailyPagination} loading={dailyLoading} error={dailyError}
+                onPageChange={setDailyPage} onView={handleOpenBatchDetails}
+                onRaw={setSelectedRawBatch} onRemove={setUploadToRemove}
+              />
+            </> : null}
+
+            {repositoryView === "list" ? <>
             {/* 1 Single Clean Table Container */}
             <div className="mt-4 sm:mt-5 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs">
               {displayedUploads.length > 0 ? (
                 <div className="divide-y divide-slate-100">
                   {paginatedUploads.map((upload) => {
-                    const isCompletedWithErrors =
-                      upload.batchStatus === "COMPLETED_WITH_ERRORS" ||
-                      upload.invalidRows > 0 ||
-                      upload.warningRows > 0 ||
-                      upload.duplicateRows > 0;
+                    const batchDisplay = getImportDisplayStatus(upload);
 
                     return (
                       <div
@@ -709,11 +790,10 @@ export default function WfmImportedRepository() {
 
                               {/* Category badge & row count */}
                               <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] text-slate-500">
-                                {upload.rawDataTitle ? (
-                                  <span className="inline-flex items-center rounded-md border border-slate-200 bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-700 shadow-2xs">
-                                    {upload.rawDataTitle}
-                                  </span>
-                                ) : null}
+                                <WfmRepositoryReportTypeBadge upload={upload} />
+                                <span className="inline-flex items-center rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] font-semibold text-slate-700">
+                                  {getRepositoryToolForUpload(upload) === "Other" ? (upload.sourceSystem || "Unknown tool") : getRepositoryToolForUpload(upload)}
+                                </span>
                                 {upload.totalRows ? (
                                   <span className="font-semibold text-slate-600">
                                     • {upload.totalRows.toLocaleString()} rows
@@ -737,26 +817,9 @@ export default function WfmImportedRepository() {
                             ) : null}
                           </div>
 
-                          {/* Completed with error banner (if errors exist) */}
-                          {isCompletedWithErrors && (
-                            <button
-                              type="button"
-                              disabled={isLoadingUsVisaErrors}
-                              onClick={() =>
-                                handleOpenUsVisaErrors(upload.batchId || upload.id)
-                              }
-                              className="flex w-full cursor-pointer items-center justify-between rounded-lg border border-amber-300 bg-amber-50/90 px-2.5 py-1.5 text-xs font-semibold text-amber-800 shadow-2xs transition-colors hover:bg-amber-100 active:scale-[0.99]"
-                              title="Completed with error - click to view error details"
-                            >
-                              <span className="inline-flex items-center gap-1.5">
-                                <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-amber-600" />
-                                <span>Completed with error</span>
-                              </span>
-                              <span className="text-[10.5px] font-bold text-amber-700 underline">
-                                View errors &rarr;
-                              </span>
-                            </button>
-                          )}
+                          <span className={`inline-flex w-fit items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-semibold ${batchDisplay.tone === "success" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-amber-200 bg-amber-50 text-amber-700"}`}>
+                            {batchDisplay.label}
+                          </span>
 
                           {/* 3 Equal-width Action Buttons */}
                           <div className="grid grid-cols-3 gap-1.5 pt-0.5">
@@ -820,11 +883,10 @@ export default function WfmImportedRepository() {
                             {/* Raw data title & row count placed under upload time & batch */}
                             {(upload.rawDataTitle || upload.totalRows) && (
                               <div className="mt-1.5 flex flex-wrap items-center gap-1.5 sm:gap-2 text-[11px] sm:text-xs text-sibs-tertiary-5">
-                                {upload.rawDataTitle ? (
-                                  <span className="inline-flex items-center rounded-md border border-slate-200 bg-slate-100 px-2 py-0.5 sm:px-2.5 sm:py-0.5 text-[11px] sm:text-xs font-bold text-slate-700 shadow-2xs whitespace-nowrap">
-                                    {upload.rawDataTitle}
-                                  </span>
-                                ) : null}
+                                <WfmRepositoryReportTypeBadge upload={upload} />
+                                <span className="inline-flex items-center rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] sm:text-xs font-semibold text-slate-700">
+                                  {getRepositoryToolForUpload(upload) === "Other" ? (upload.sourceSystem || "Unknown tool") : getRepositoryToolForUpload(upload)}
+                                </span>
 
                                 {upload.totalRows ? (
                                   <span className="text-[11px] font-medium text-slate-500 whitespace-nowrap">
@@ -837,23 +899,9 @@ export default function WfmImportedRepository() {
 
                           {/* Right: Actions */}
                           <div className="flex flex-wrap items-center justify-start lg:justify-end gap-1.5 sm:gap-2 pt-2.5 lg:pt-0 border-t border-slate-100 lg:border-0 shrink-0 w-full lg:w-auto">
-                            {isCompletedWithErrors && (
-                              <button
-                                type="button"
-                                disabled={isLoadingUsVisaErrors}
-                                onClick={() =>
-                                  handleOpenUsVisaErrors(upload.batchId || upload.id)
-                                }
-                                className="inline-flex h-8 shrink-0 whitespace-nowrap items-center gap-1.5 rounded-lg border border-amber-400 bg-amber-50 px-2 sm:px-2.5 text-xs font-semibold text-amber-800 transition-all hover:border-amber-500 hover:bg-amber-100 shadow-xs cursor-pointer"
-                                title="Completed with error - click to view error details"
-                              >
-                                <AlertTriangle
-                                  className="h-3.5 w-3.5 shrink-0 text-amber-600"
-                                  aria-hidden="true"
-                                />
-                                <span>Completed with error</span>
-                              </button>
-                            )}
+                            <span className={`inline-flex h-7 shrink-0 items-center rounded-full border px-2.5 text-[11px] font-semibold ${batchDisplay.tone === "success" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-amber-200 bg-amber-50 text-amber-700"}`}>
+                              {batchDisplay.label}
+                            </span>
 
                             <button
                               type="button"
@@ -946,6 +994,7 @@ export default function WfmImportedRepository() {
                 </div>
               )}
             </div>
+            </> : null}
           </div>
         </div>
       </main>

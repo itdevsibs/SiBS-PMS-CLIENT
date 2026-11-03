@@ -13,6 +13,24 @@ import {
 } from "@/lib/wfm-raw-data-cards";
 import { uploadUsVisaImport } from "@/lib/axios/us-visa-imports";
 
+// API display status is derived from stored counters and historical issue events.
+// Raw database status stays unchanged so older KPI queries remain compatible.
+export function getImportDisplayStatus(batch = {}) {
+  const status = String(batch?.displayStatus || batch?.batchDisplayStatus || batch?.batchStatus || batch?.status || 'COMPLETED').toUpperCase();
+  const labelMap = {
+    COMPLETED: ['Completed', 'success'],
+    COMPLETED_WITH_WARNINGS: ['Completed with warnings', 'warning'],
+    PARTIALLY_IMPORTED: ['Partially imported', 'warning'],
+    COMPLETED_WITH_ERRORS: Number(batch?.warningRows || 0) === 0 && Number(batch?.invalidRows || 0) === 0 && Number(batch?.duplicateRows || 0) === 0 ? ['Completed', 'success'] : ['Completed with warnings', 'warning'],
+    FAILED: ['Failed', 'danger'],
+    DUPLICATE: ['Duplicate file', 'warning'],
+    IMPORTING: ['Importing', 'warning'],
+    VALIDATING: ['Validating', 'warning'],
+  };
+  const [label, tone] = labelMap[status] || ['Processing', 'warning'];
+  return { label, tone, status };
+}
+
 export const RAW_DATA_UPLOADS_KEY = "sibs-wfm-raw-data-uploads";
 
 export const accountFilters = [
@@ -29,6 +47,9 @@ export const EMPTY_IMPORT_SUMMARY = {
   duplicateRows: 0,
   warningRows: 0,
   infoRows: 0,
+  mappingRows: 0,
+  unmappedRows: 0,
+  unassignedTaskOrderRows: 0,
 };
 
 export const IMPORT_SUMMARY_CARDS = [
@@ -111,15 +132,19 @@ export function getApiErrorMessage(error, card) {
       ? "Quality Audit"
       : /email/i.test(profileLabel)
         ? "Email Raw Data"
-        : /chat/i.test(profileLabel)
-        ? "Chat Report (EOD)"
-        : /call/i.test(profileLabel)
-        ? "Call Report (EOD)"
-        : /occupancy/i.test(profileLabel)
-        ? "Agent Occupancy"
-        : /agent/i.test(profileLabel)
-          ? "Agent Level"
-          : "Skill Statistics";
+        : /performance.*skill/i.test(profileLabel)
+          ? "Agent Performance By Skill"
+          : /activity|productive.*break/i.test(profileLabel)
+            ? "Agent Activity - Productive Breaks"
+            : /chat/i.test(profileLabel)
+              ? "Chat Report (EOD)"
+              : /call/i.test(profileLabel)
+                ? "Call Report (EOD)"
+                : /occupancy/i.test(profileLabel)
+                  ? "Agent Occupancy"
+                  : /agent/i.test(profileLabel)
+                    ? "Agent Level"
+                    : "the selected report";
 
     if (/hero/i.test(profileLabel || card?.id || "")) {
       return `Only HeroDash ${reportTypeLabel} (${formatLabel}) files are allowed for this card. The uploaded file is missing required HeroDash ${reportTypeLabel} sheets or headers.`;
@@ -524,6 +549,10 @@ export function mapBatchToUpload(batch) {
     uploadedAtMs,
     uploadedAt,
     batchStatus: batch.status || "COMPLETED",
+    displayStatus: batch.displayStatus,
+    mappingRows: batch.mappingRows || 0,
+    unmappedRows: batch.unmappedRows || 0,
+    unassignedTaskOrderRows: batch.unassignedTaskOrderRows || 0,
     totalRows: batch.totalRows || 0,
     validRows: batch.validRows || 0,
     invalidRows: batch.invalidRows || 0,
@@ -542,6 +571,8 @@ export const WARNING_CATEGORY_LABELS = [
   "SERVICE / QUEUE LEVEL",
   "AGENT LEVEL",
   "AGENT OCCUPANCY",
+  "AGENT ACTIVITY - PRODUCTIVE BREAKS",
+  "AGENT PERFORMANCE BY SKILL",
   "EMAIL LEVEL",
   "QUALITY AUDIT",
 ];
@@ -571,6 +602,8 @@ export function getBatchCategory(batch) {
   if (text.includes("quality") || text.includes("qa ")) return "QUALITY AUDIT";
   if (text.includes("email")) return "EMAIL LEVEL";
   if (text.includes("occupancy")) return "AGENT OCCUPANCY";
+  if (text.includes("agent activity") || text.includes("productive breaks") || text.includes("productive_breaks")) return "AGENT ACTIVITY - PRODUCTIVE BREAKS";
+  if (text.includes("agent performance by skill") || text.includes("agent_performance_by_skill")) return "AGENT PERFORMANCE BY SKILL";
   if (text.includes("agent level")) return "AGENT LEVEL";
   if (
     text.includes("skill") ||
@@ -645,7 +678,9 @@ export async function executeCardImport({
     const uploadResponse = await uploadUsVisaImport({
       file,
       importProfileId,
-      taskOrderId: uploadContext.taskOrderId || undefined,
+      taskOrderId: card.requiresTaskOrderSelection
+        ? uploadContext.taskOrderId || undefined
+        : undefined,
       reportDateFrom: uploadContext.reportDateFrom || undefined,
       reportDateTo: uploadContext.reportDateTo || undefined,
       onProgress: (percent) => {
@@ -714,6 +749,10 @@ export async function executeCardImport({
     batchId: batchResult?.id || null,
     batchCode: batchResult?.batchCode || null,
     batchStatus: batchResult?.status || "COMPLETED",
+    displayStatus: batchResult?.displayStatus,
+    mappingRows: batchResult?.mappingRows ?? 0,
+    unmappedRows: batchResult?.unmappedRows ?? 0,
+    unassignedTaskOrderRows: batchResult?.unassignedTaskOrderRows ?? 0,
     totalRows: batchResult?.totalRows ?? importedData.rows?.length ?? 0,
     validRows: batchResult?.validRows ?? 0,
     invalidRows: batchResult?.invalidRows ?? 0,
@@ -738,6 +777,8 @@ export function groupRawDataCards(cards = []) {
     "SERVICE / QUEUE LEVEL",
     "AGENT LEVEL",
     "AGENT OCCUPANCY",
+    "AGENT ACTIVITY - PRODUCTIVE BREAKS",
+    "AGENT PERFORMANCE BY SKILL",
     "EMAIL LEVEL",
     "QUALITY AUDIT",
   ];
@@ -759,3 +800,24 @@ export function groupRawDataCards(cards = []) {
 }
 
 
+
+// Calendar includes failed/duplicate batches that the legacy list mapper hides.
+export function mapCalendarBatchToUpload(batch) {
+  const mapped = mapBatchToUpload(batch);
+  if (mapped) return mapped;
+  return {
+    id: `batch-${batch.id}`, batchId: batch.id, batchCode: batch.batchCode,
+    account: "US VISA", cardId: null,
+    rawDataTitle: batch.importProfileName || "Import",
+    importProfileName: batch.importProfileName || "Import",
+    importProfileCode: batch.importProfileCode || null,
+    sourceSystem: batch.sourceSystem, fileName: batch.sourceFilename,
+    uploadedAt: batch.formattedTime || batch.createdAt,
+    uploadedAtMs: batch.createdAt ? Date.parse(batch.createdAt) : 0,
+    batchStatus: batch.status, displayStatus: batch.displayStatus,
+    totalRows: batch.totalRows || 0, validRows: batch.validRows || 0,
+    invalidRows: batch.invalidRows || 0, duplicateRows: batch.duplicateRows || 0,
+    warningRows: batch.warningRows || 0, mappingRows: batch.mappingRows || 0,
+    reportDateFrom: batch.reportDateFrom, reportDateTo: batch.reportDateTo,
+  };
+}

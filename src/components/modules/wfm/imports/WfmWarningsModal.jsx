@@ -20,6 +20,9 @@ import {
 
 const WARNING_LEVEL_ORDER = [
   "CALL REPORT (EOD)",
+  "CHAT REPORT (EOD)",
+  "AGENT ACTIVITY - PRODUCTIVE BREAKS",
+  "AGENT PERFORMANCE BY SKILL",
   "SERVICE / QUEUE LEVEL",
   "AGENT LEVEL",
   "AGENT OCCUPANCY",
@@ -97,6 +100,9 @@ export default function WfmWarningsModal({
   const levelCounts = useMemo(() => {
     const counts = {
       "CALL REPORT (EOD)": 0,
+      "CHAT REPORT (EOD)": 0,
+      "AGENT ACTIVITY - PRODUCTIVE BREAKS": 0,
+      "AGENT PERFORMANCE BY SKILL": 0,
       "SERVICE / QUEUE LEVEL": 0,
       "AGENT LEVEL": 0,
       "AGENT OCCUPANCY": 0,
@@ -121,6 +127,18 @@ export default function WfmWarningsModal({
       {
         value: "CALL REPORT (EOD)",
         label: `CALL REPORT (EOD) (${levelCounts["CALL REPORT (EOD)"] || 0})`,
+      },
+      {
+        value: "CHAT REPORT (EOD)",
+        label: `CHAT REPORT (EOD) (${levelCounts["CHAT REPORT (EOD)"] || 0})`,
+      },
+      {
+        value: "AGENT ACTIVITY - PRODUCTIVE BREAKS",
+        label: `AGENT ACTIVITY - PRODUCTIVE BREAKS (${levelCounts["AGENT ACTIVITY - PRODUCTIVE BREAKS"] || 0})`,
+      },
+      {
+        value: "AGENT PERFORMANCE BY SKILL",
+        label: `AGENT PERFORMANCE BY SKILL (${levelCounts["AGENT PERFORMANCE BY SKILL"] || 0})`,
       },
       {
         value: "SERVICE / QUEUE LEVEL",
@@ -294,18 +312,16 @@ export default function WfmWarningsModal({
                                   type="button"
                                   disabled={isLoadingUsVisaErrors}
                                   onClick={() => {
-                                    handleOpenUsVisaErrors(
-                                      batch.batchId || batch.id,
-                                    );
+                                    handleOpenBatchDetails(batch);
                                   }}
                                   className="sm:hidden inline-flex shrink-0 whitespace-nowrap items-center gap-1 rounded-md border border-amber-400 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-800 transition-all hover:border-amber-500 hover:bg-amber-100"
-                                  title="Completed with error - click to view error details"
+                                  title="Open batch details"
                                 >
                                   <AlertTriangle
                                     className="h-2.5 w-2.5 shrink-0 text-amber-600"
                                     aria-hidden="true"
                                   />
-                                  <span>Completed with error</span>
+                                  <span>Completed with warnings</span>
                                 </button>
                               ) : null}
                             </div>
@@ -339,18 +355,16 @@ export default function WfmWarningsModal({
                                 type="button"
                                 disabled={isLoadingUsVisaErrors}
                                 onClick={() => {
-                                  handleOpenUsVisaErrors(
-                                    batch.batchId || batch.id,
-                                  );
+                                  handleOpenBatchDetails(batch);
                                 }}
                                 className="hidden sm:inline-flex h-8 shrink-0 whitespace-nowrap items-center gap-1.5 rounded-lg border border-amber-400 bg-amber-50 px-2.5 text-xs font-semibold text-amber-800 transition-all hover:border-amber-500 hover:bg-amber-100 shadow-xs"
-                                title="Completed with error - click to view error details"
+                                title="Open batch details"
                               >
                                 <AlertTriangle
                                   className="h-3.5 w-3.5 shrink-0 text-amber-600"
                                   aria-hidden="true"
                                 />
-                                <span>Completed with error</span>
+                                <span>Completed with warnings</span>
                               </button>
                             ) : null}
 
