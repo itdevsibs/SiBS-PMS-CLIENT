@@ -9,6 +9,7 @@ import {
   Download,
   Loader2,
   Pencil,
+  RefreshCw,
   RotateCcw,
   Search,
   Upload,
@@ -1019,6 +1020,20 @@ export default function EmployeeMasterDataPage() {
                 <RotateCcw className="h-3.5 w-3.5 text-slate-400" />
                 Reset
               </button>
+
+              <button
+                type="button"
+                onClick={() => loadData(currentPage, pageSize, searchTerm, selectedAccount, selectedTaskOrder, sortBy, sortOrder)}
+                disabled={isLoading}
+                title="Refresh ledger data"
+                className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-[#042c51] bg-[#042c51] px-3 text-xs font-bold text-white shadow-2xs transition hover:bg-[#063d70] hover:border-[#063d70] disabled:cursor-not-allowed disabled:opacity-50 shrink-0"
+              >
+                <RefreshCw
+                  size={12}
+                  className={`shrink-0 ${isLoading ? "animate-spin text-white" : ""}`}
+                />
+                <span>Refresh</span>
+              </button>
             </div>
 
             {/* Template Actions (Right) */}
@@ -1123,25 +1138,25 @@ export default function EmployeeMasterDataPage() {
                     <col style={{ width: "230px" }} />
                   </colgroup>
                   {/* ── Table head ──────────────────────────────────── */}
-                  <thead className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50 shadow-xs">
+                  <thead className="sticky top-0 z-10 border-b border-[#0d3b66] bg-[#042c51] text-white shadow-xs">
                     <tr>
                       {/* 1. SIBS ID # */}
-                      <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-600 whitespace-nowrap overflow-hidden">
+                      <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-white whitespace-nowrap overflow-hidden">
                         SIBS ID #
                       </th>
 
                       {/* 2. Kronos Name */}
-                      <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-600 whitespace-nowrap overflow-hidden">
+                      <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-white whitespace-nowrap overflow-hidden">
                         Kronos Name
                       </th>
 
                       {/* 3. Call Novo email add */}
-                      <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-600 whitespace-nowrap overflow-hidden">
+                      <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-white whitespace-nowrap overflow-hidden">
                         Call Novo email add
                       </th>
 
                       {/* 4. Agent Name */}
-                      <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-600 whitespace-nowrap overflow-hidden">
+                      <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-white whitespace-nowrap overflow-hidden">
                         Agent Name
                       </th>
 
@@ -1151,17 +1166,17 @@ export default function EmployeeMasterDataPage() {
                         title="Click to toggle filter for FuseCom names"
                         className={`group/th px-4 py-3 text-xs font-bold uppercase tracking-wider select-none cursor-pointer transition whitespace-nowrap overflow-hidden ${
                           sortBy === "fusecom"
-                            ? "bg-orange-100/80 text-orange-950"
-                            : "text-slate-600 hover:bg-orange-50/80 hover:text-orange-900"
+                            ? "bg-orange-500/30 text-orange-200"
+                            : "text-white hover:bg-white/10 hover:text-white"
                         }`}
                       >
-                        <span className="inline-block h-2 w-2 rounded-full bg-orange-500 mr-1.5 align-middle" />
+                        <span className="inline-block h-2 w-2 rounded-full bg-orange-400 mr-1.5 align-middle" />
                         <span>FuseCom  Name</span>
                         <ArrowUpDown
                           className={`inline-block ml-1.5 h-3 w-3 align-middle transition-opacity ${
                             sortBy === "fusecom"
-                              ? "opacity-100 text-orange-950"
-                              : "opacity-45 text-slate-400 group-hover/th:opacity-100 group-hover/th:text-slate-700"
+                              ? "opacity-100 text-orange-200"
+                              : "opacity-60 text-white/70 group-hover/th:opacity-100 group-hover/th:text-white"
                           }`}
                           aria-hidden="true"
                         />
@@ -1173,17 +1188,17 @@ export default function EmployeeMasterDataPage() {
                         title="Click to toggle filter for FuseNet names"
                         className={`group/th px-4 py-3 text-xs font-bold uppercase tracking-wider select-none cursor-pointer transition whitespace-nowrap overflow-hidden ${
                           sortBy === "fusenet"
-                            ? "bg-blue-100/80 text-blue-950"
-                            : "text-slate-600 hover:bg-blue-50/80 hover:text-blue-900"
+                            ? "bg-blue-500/30 text-blue-200"
+                            : "text-white hover:bg-white/10 hover:text-white"
                         }`}
                       >
-                        <span className="inline-block h-2 w-2 rounded-full bg-blue-500 mr-1.5 align-middle" />
+                        <span className="inline-block h-2 w-2 rounded-full bg-blue-400 mr-1.5 align-middle" />
                         <span>FuseNet  Name</span>
                         <ArrowUpDown
                           className={`inline-block ml-1.5 h-3 w-3 align-middle transition-opacity ${
                             sortBy === "fusenet"
-                              ? "opacity-100 text-blue-950"
-                              : "opacity-45 text-slate-400 group-hover/th:opacity-100 group-hover/th:text-slate-700"
+                              ? "opacity-100 text-blue-200"
+                              : "opacity-60 text-white/70 group-hover/th:opacity-100 group-hover/th:text-white"
                           }`}
                           aria-hidden="true"
                         />
@@ -1195,17 +1210,17 @@ export default function EmployeeMasterDataPage() {
                         title="Click to toggle filter for HeroDash names"
                         className={`group/th px-4 py-3 text-xs font-bold uppercase tracking-wider select-none cursor-pointer transition whitespace-nowrap overflow-hidden ${
                           sortBy === "herodash"
-                            ? "bg-amber-100/80 text-amber-950"
-                            : "text-slate-600 hover:bg-amber-50/80 hover:text-amber-900"
+                            ? "bg-amber-500/30 text-amber-200"
+                            : "text-white hover:bg-white/10 hover:text-white"
                         }`}
                       >
-                        <span className="inline-block h-2 w-2 rounded-full bg-amber-500 mr-1.5 align-middle" />
+                        <span className="inline-block h-2 w-2 rounded-full bg-amber-400 mr-1.5 align-middle" />
                         <span>HeroDash Name</span>
                         <ArrowUpDown
                           className={`inline-block ml-1.5 h-3 w-3 align-middle transition-opacity ${
                             sortBy === "herodash"
-                              ? "opacity-100 text-amber-950"
-                              : "opacity-45 text-slate-400 group-hover/th:opacity-100 group-hover/th:text-slate-700"
+                              ? "opacity-100 text-amber-200"
+                              : "opacity-60 text-white/70 group-hover/th:opacity-100 group-hover/th:text-white"
                           }`}
                           aria-hidden="true"
                         />
@@ -1217,82 +1232,82 @@ export default function EmployeeMasterDataPage() {
                         title="Click to toggle filter for MSD names"
                         className={`group/th px-4 py-3 text-xs font-bold uppercase tracking-wider select-none cursor-pointer transition whitespace-nowrap overflow-hidden ${
                           sortBy === "ms-d" || sortBy === "msd"
-                            ? "bg-purple-100/80 text-purple-950"
-                            : "text-slate-600 hover:bg-purple-50/80 hover:text-purple-900"
+                            ? "bg-purple-500/30 text-purple-200"
+                            : "text-white hover:bg-white/10 hover:text-white"
                         }`}
                       >
-                        <span className="inline-block h-2 w-2 rounded-full bg-purple-500 mr-1.5 align-middle" />
+                        <span className="inline-block h-2 w-2 rounded-full bg-purple-400 mr-1.5 align-middle" />
                         <span>MSD Name</span>
                         <ArrowUpDown
                           className={`inline-block ml-1.5 h-3 w-3 align-middle transition-opacity ${
                             sortBy === "ms-d" || sortBy === "msd"
-                              ? "opacity-100 text-purple-950"
-                              : "opacity-45 text-slate-400 group-hover/th:opacity-100 group-hover/th:text-slate-700"
+                              ? "opacity-100 text-purple-200"
+                              : "opacity-60 text-white/70 group-hover/th:opacity-100 group-hover/th:text-white"
                           }`}
                           aria-hidden="true"
                         />
                       </th>
 
                       {/* 9. Site */}
-                      <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-600 whitespace-nowrap overflow-hidden">
+                      <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-white whitespace-nowrap overflow-hidden">
                         Site
                       </th>
 
                       {/* 10. Status */}
-                      <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-600 whitespace-nowrap overflow-hidden">
+                      <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-white whitespace-nowrap overflow-hidden">
                         Status
                       </th>
 
                       {/* 11. Phase */}
-                      <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-600 whitespace-nowrap overflow-hidden">
+                      <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-white whitespace-nowrap overflow-hidden">
                         Phase
                       </th>
 
                       {/* 12. Task Order */}
-                      <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-600 whitespace-nowrap overflow-hidden">
+                      <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-white whitespace-nowrap overflow-hidden">
                         Task Order
                       </th>
 
                       {/* 13. Task Order Discription */}
-                      <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-600 whitespace-nowrap overflow-hidden">
+                      <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-white whitespace-nowrap overflow-hidden">
                         Task Order Discription
                       </th>
 
                       {/* 14. US Visa Join Date */}
-                      <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-600 whitespace-nowrap overflow-hidden">
+                      <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-white whitespace-nowrap overflow-hidden">
                         US Visa Join Date
                       </th>
 
                       {/* 15. US Visa Departure Date */}
-                      <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-600 whitespace-nowrap overflow-hidden">
+                      <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-white whitespace-nowrap overflow-hidden">
                         US Visa Departure Date
                       </th>
 
                       {/* 16. Team Leader */}
-                      <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-600 whitespace-nowrap overflow-hidden">
+                      <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-white whitespace-nowrap overflow-hidden">
                         Team Leader
                       </th>
 
                       {/* 17. Manager */}
-                      <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-600 whitespace-nowrap overflow-hidden">
+                      <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-white whitespace-nowrap overflow-hidden">
                         Manager
                       </th>
 
                       {/* 18. Senior Manager */}
-                      <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-600 whitespace-nowrap overflow-hidden">
+                      <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-white whitespace-nowrap overflow-hidden">
                         Senior Manager
                       </th>
 
                       {/* 19. Tenurity */}
-                      <th className="px-4 py-3 text-xs font-bold text-slate-600 whitespace-nowrap overflow-hidden">
+                      <th className="px-4 py-3 text-xs font-bold text-white whitespace-nowrap overflow-hidden">
                         <div className="inline-flex items-baseline gap-1">
                           <span className="uppercase tracking-wider">TENURITY</span>
-                          <span className="text-[10px] font-semibold lowercase tracking-normal text-slate-400">days</span>
+                          <span className="text-[10px] font-semibold lowercase tracking-normal text-white/70">days</span>
                         </div>
                       </th>
 
                       {/* 20. Modality (Voice, Chat, Email) */}
-                      <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-600 whitespace-nowrap overflow-hidden">
+                      <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-white whitespace-nowrap overflow-hidden">
                         Modality (Voice, Chat, Email)
                       </th>
                     </tr>
