@@ -561,6 +561,7 @@ export function mapBatchToUpload(batch) {
     infoRows: batch.infoRows || 0,
     reportDateFrom: batch.reportDateFrom || null,
     reportDateTo: batch.reportDateTo || null,
+    importNote: batch.importNote ?? null,
     uploadedBy: batch.uploadedBy || null,
     uploaderName: batch.uploaderName || null,
     uploaderEmpId: batch.uploaderEmpId || batch.uploadedBy || null,
@@ -685,6 +686,7 @@ export async function executeCardImport({
         : undefined,
       reportDateFrom: uploadContext.reportDateFrom || undefined,
       reportDateTo: uploadContext.reportDateTo || undefined,
+      importNote: uploadContext.importNote || undefined,
       onProgress: (percent) => {
         onStageChange?.("uploading");
         onProgress?.(Math.round(percent * 0.2));
@@ -764,6 +766,7 @@ export async function executeCardImport({
     taskOrderId: batchResult?.taskOrderId || uploadContext.taskOrderId || null,
     reportDateFrom: batchResult?.reportDateFrom || uploadContext.reportDateFrom || null,
     reportDateTo: batchResult?.reportDateTo || uploadContext.reportDateTo || null,
+    importNote: batchResult?.importNote ?? uploadContext.importNote ?? null,
     importProfileCode: card.importProfileCode || null,
     importProfileName: batchResult?.importProfileName || card.title,
     sourceSystem: batchResult?.sourceSystem || card.sourceLabel || card.title,
@@ -821,6 +824,7 @@ export function mapCalendarBatchToUpload(batch) {
     invalidRows: batch.invalidRows || 0, duplicateRows: batch.duplicateRows || 0,
     warningRows: batch.warningRows || 0, mappingRows: batch.mappingRows || 0,
     reportDateFrom: batch.reportDateFrom, reportDateTo: batch.reportDateTo,
+    importNote: batch.importNote ?? null,
     uploadedBy: batch.uploadedBy || null,
     uploaderName: batch.uploaderName || null,
     uploaderEmpId: batch.uploaderEmpId || batch.uploadedBy || null,

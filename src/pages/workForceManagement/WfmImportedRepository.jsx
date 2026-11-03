@@ -539,6 +539,9 @@ export default function WfmImportedRepository() {
               unassignedTaskOrderRows: details.batch.unassignedTaskOrderRows ?? prev.unassignedTaskOrderRows,
               infoRows: details.batch.infoRows ?? prev.infoRows,
               batchStatus: details.batch.status ?? prev.batchStatus,
+              reportDateFrom: details.batch.reportDateFrom ?? prev.reportDateFrom,
+              reportDateTo: details.batch.reportDateTo ?? prev.reportDateTo,
+              importNote: details.batch.importNote ?? prev.importNote,
             };
           });
         }
@@ -905,6 +908,12 @@ export default function WfmImportedRepository() {
                               >
                                 {upload.fileName || "Unnamed import"}
                               </p>
+
+                              {upload.importNote ? (
+                                <p className="mt-1 line-clamp-2 text-xs text-slate-600" title={upload.importNote}>
+                                  <MessageSquare className="mr-1 inline h-3.5 w-3.5 text-slate-400" />{upload.importNote}
+                                </p>
+                              ) : null}
 
                               {/* Subtitle row: Calendar icon, Relative time, Exact timestamp, Divider, User icon, Uploader (Kronos ID) */}
                               <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-slate-500">
