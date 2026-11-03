@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import {
   LayoutGrid,
   Users,
@@ -15,6 +16,7 @@ import {
   History,
   CheckCircle2,
   Clock3,
+  Lock,
   PhoneCall,
   FileCheck,
   AlertTriangle,
@@ -69,7 +71,13 @@ const FRONTSTEPS_MODULES = [
     submodules: [
       { id: "employee-performance", name: "Employee Performance", icon: Users },
       { id: "coaching-management", name: "Coaching Management", icon: ClipboardList },
-      { id: "performance-improvement", name: "Performance Improvement", icon: TrendingUp },
+      {
+        id: "performance-improvement",
+        name: "Performance Improvement",
+        icon: TrendingUp,
+        isLocked: true,
+        statusBadge: "In Progress",
+      },
       { id: "quarterly-incentives", name: "Quarterly Incentives", icon: Award },
     ],
   },
@@ -97,9 +105,16 @@ export default function FrontStepsDashboard() {
   const dashboard = useDashboardPage();
   const userName = dashboard.authUser?.name || dashboard.authUser?.username || "User";
 
+  const location = useLocation();
+
   // Check URL query param, hash, or localStorage to preserve active submodule across browser refreshes
   const getInitialSubmoduleId = () => {
     try {
+      // If newly logged in via Login page, always route straight to Summary dashboard
+      if (location?.state?.authenticatedUser) {
+        return "dashboard-summary";
+      }
+
       const urlParams = new URLSearchParams(window.location.search);
       const paramTab = urlParams.get("tab") || urlParams.get("module");
       if (paramTab) return paramTab;
@@ -600,13 +615,10 @@ export default function FrontStepsDashboard() {
                 • Performance Improvement Plans, coaching workflows, & rating bands
               </span>
             </div>
-            <button
-              type="button"
-              onClick={() => handleSelectSubmodule("performance-improvement")}
-              className="text-[11px] font-semibold text-[#ff5c28] hover:underline cursor-pointer"
-            >
-              Open PIP Module →
-            </button>
+            <span className="inline-flex items-center gap-1 rounded-md bg-amber-50 border border-amber-200/80 px-2 py-0.5 text-[10.5px] font-bold text-amber-700 select-none">
+              <Lock className="h-3 w-3 text-amber-600" />
+              <span>In Progress</span>
+            </span>
           </div>
 
           {/* Grid: PIP Status Cards + Coaching Pipeline + Performance Rating Bands */}
@@ -904,6 +916,25 @@ export default function FrontStepsDashboard() {
                             {item.submodules.map((sub) => {
                               const SubIcon = sub.icon;
                               const isSubActive = activeSubmoduleId === sub.id;
+                              const isLocked = Boolean(sub.isLocked);
+
+                              if (isLocked) {
+                                return (
+                                  <div
+                                    key={sub.id}
+                                    title={`${sub.name} (In Progress)`}
+                                    className="flex h-[32px] w-full select-none items-center gap-2 rounded-lg px-2 text-left text-[11.5px] font-medium text-slate-400/80 cursor-not-allowed opacity-80"
+                                  >
+                                    <Lock className="h-3.5 w-3.5 shrink-0 text-amber-400/90" strokeWidth={2} aria-hidden="true" />
+                                    <span className="min-w-0 flex-1 truncate text-left">
+                                      {sub.name}
+                                    </span>
+                                    <span className="shrink-0 rounded-full bg-amber-400/20 border border-amber-400/40 px-1.5 py-0.2 text-[9px] font-extrabold text-amber-300 uppercase tracking-tight">
+                                      In Progress
+                                    </span>
+                                  </div>
+                                );
+                              }
 
                               return (
                                 <button
