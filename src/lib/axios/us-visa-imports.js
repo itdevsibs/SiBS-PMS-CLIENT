@@ -183,3 +183,13 @@ export async function deleteUsVisaImportBatch(batchId) {
 
   return response.data;
 }
+
+export async function getUsVisaImportCalendar(params = {}) {
+  const response = await api.get("/us-visa/imports/calendar", { params });
+  return response.data;
+}
+
+export async function getUsVisaImportCalendarDay(params = {}) {
+  const response = await api.get("/us-visa/imports/calendar/day", { params });
+  return response.data;
+}

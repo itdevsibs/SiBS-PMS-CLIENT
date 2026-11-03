@@ -800,3 +800,24 @@ export function groupRawDataCards(cards = []) {
 }
 
 
+
+// Calendar includes failed/duplicate batches that the legacy list mapper hides.
+export function mapCalendarBatchToUpload(batch) {
+  const mapped = mapBatchToUpload(batch);
+  if (mapped) return mapped;
+  return {
+    id: `batch-${batch.id}`, batchId: batch.id, batchCode: batch.batchCode,
+    account: "US VISA", cardId: null,
+    rawDataTitle: batch.importProfileName || "Import",
+    importProfileName: batch.importProfileName || "Import",
+    importProfileCode: batch.importProfileCode || null,
+    sourceSystem: batch.sourceSystem, fileName: batch.sourceFilename,
+    uploadedAt: batch.formattedTime || batch.createdAt,
+    uploadedAtMs: batch.createdAt ? Date.parse(batch.createdAt) : 0,
+    batchStatus: batch.status, displayStatus: batch.displayStatus,
+    totalRows: batch.totalRows || 0, validRows: batch.validRows || 0,
+    invalidRows: batch.invalidRows || 0, duplicateRows: batch.duplicateRows || 0,
+    warningRows: batch.warningRows || 0, mappingRows: batch.mappingRows || 0,
+    reportDateFrom: batch.reportDateFrom, reportDateTo: batch.reportDateTo,
+  };
+}
