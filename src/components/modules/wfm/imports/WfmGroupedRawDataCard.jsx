@@ -297,48 +297,49 @@ export default function WfmGroupedRawDataCard({
                 <FileSpreadsheet size={18} />
               </div>
               <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  <p className="m-0 truncate text-xs font-bold text-slate-800" title={stagedFile.name}>
-                    {stagedFile.name}
-                  </p>
-                  <span className="rounded bg-sky-100 border border-sky-200/60 px-1.5 py-0.2 text-[8.5px] font-extrabold text-sky-800 uppercase tracking-wider whitespace-nowrap">
-                    READY TO UPLOAD
-                  </span>
-                </div>
-                <p className="m-0 mt-0.5 text-[10.5px] text-slate-500 font-medium">
+                <p className="m-0 truncate text-xs font-bold text-slate-800" title={stagedFile.name}>
+                  {stagedFile.name}
+                </p>
+                <p className="m-0 mt-0.5 text-[10.5px] text-slate-500 font-medium truncate">
                   {(stagedFile.size / 1024).toFixed(1)} KB · Staged for {activeCard.sourceLabel || activeCard.title}
                 </p>
               </div>
             </div>
 
-            {/* Bottom row: Change and Trash buttons */}
-            <div className="mt-3 flex items-center justify-end gap-1.5 pt-2.5 border-t border-sky-200/50">
-              <label
-                className="rounded-lg border border-slate-200 bg-white hover:bg-slate-50 px-2.5 py-1 text-[11px] font-semibold text-slate-700 transition cursor-pointer shadow-2xs"
-                title="Choose a different file"
-              >
-                Change
-                <input
-                  type="file"
-                  accept={activeCard.acceptedFileTypes || ".xlsx,.csv"}
-                  disabled={isUploading}
-                  onChange={(event) => {
-                    const f = event.target.files?.[0];
-                    if (f) handleStageFile(activeCard, f);
-                    event.target.value = "";
-                  }}
-                  className="hidden"
-                />
-              </label>
-              <button
-                type="button"
-                onClick={() => handleRemoveStagedFile(activeCard.id)}
-                aria-label="Remove staged file"
-                title="Remove selected file"
-                className="rounded-lg p-1 text-slate-400 hover:bg-white hover:text-rose-600 transition cursor-pointer"
-              >
-                <Trash2 size={15} />
-              </button>
+            {/* Bottom row: Ready badge on left, Change and Trash buttons on right */}
+            <div className="mt-3 flex items-center justify-between gap-1.5 pt-2.5 border-t border-sky-200/50">
+              <span className="inline-flex items-center rounded-md bg-sky-100 border border-sky-200/60 px-2 py-0.5 text-[9px] font-extrabold text-sky-800 uppercase tracking-wider whitespace-nowrap shadow-2xs">
+                READY TO UPLOAD
+              </span>
+
+              <div className="flex items-center gap-1.5">
+                <label
+                  className="rounded-lg border border-slate-200 bg-white hover:bg-slate-50 px-2.5 py-1 text-[11px] font-semibold text-slate-700 transition cursor-pointer shadow-2xs"
+                  title="Choose a different file"
+                >
+                  Change
+                  <input
+                    type="file"
+                    accept={activeCard.acceptedFileTypes || ".xlsx,.csv"}
+                    disabled={isUploading}
+                    onChange={(event) => {
+                      const f = event.target.files?.[0];
+                      if (f) handleStageFile(activeCard, f);
+                      event.target.value = "";
+                    }}
+                    className="hidden"
+                  />
+                </label>
+                <button
+                  type="button"
+                  onClick={() => handleRemoveStagedFile(activeCard.id)}
+                  aria-label="Remove staged file"
+                  title="Remove selected file"
+                  className="rounded-lg p-1 text-slate-400 hover:bg-white hover:text-rose-600 transition cursor-pointer"
+                >
+                  <Trash2 size={15} />
+                </button>
+              </div>
             </div>
           </div>
         ) : (

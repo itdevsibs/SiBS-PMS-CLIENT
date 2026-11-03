@@ -470,8 +470,8 @@ function WfmImportDataPage() {
       });
       return;
     }
-    if (Array.from(importNote.trim()).length > 500) {
-      setErrorModalInfo({ title: "Import Note Too Long", message: "Maximum 500 characters." });
+    if (Array.from(importNote.trim()).length > 200) {
+      setErrorModalInfo({ title: "Import Note Too Long", message: "Maximum 200 characters." });
       return;
     }
     const pending = pendingReviewUpload;
