@@ -288,8 +288,15 @@ export default function ChatReportsPage() {
               </div>
 
               <div className="flex w-full items-center justify-end gap-1.5">
-                <button type="button" onClick={fetchReport} disabled={isLoading} className="inline-flex h-8 w-full cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-sibs-tertiary-8 bg-white px-3 text-xs font-bold text-sibs-primary-1 shadow-2xs transition hover:border-sibs-primary-1 hover:bg-sibs-primary-1 hover:text-white disabled:cursor-not-allowed disabled:opacity-40">
-                  <RefreshCw size={12} className={isLoading ? "animate-spin" : ""} /> Refresh
+                <button
+                  type="button"
+                  onClick={fetchReport}
+                  disabled={isLoading}
+                  title="Refresh data"
+                  className="inline-flex h-8 w-full cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-[#042c51] bg-[#042c51] px-3 text-xs font-bold text-white shadow-2xs transition hover:bg-[#063d70] hover:border-[#063d70] disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <RefreshCw size={12} className={`shrink-0 ${isLoading ? "animate-spin text-white" : ""}`} />
+                  <span>Refresh</span>
                 </button>
               </div>
             </div>
@@ -318,10 +325,10 @@ export default function ChatReportsPage() {
           <div className="flex min-h-[360px] flex-1 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs lg:min-h-0">
             <div className="min-h-0 flex-1 overflow-auto sibs-scrollbar">
               <table className="w-full border-collapse text-left text-xs">
-                <thead className="sticky top-0 z-10 border-b border-slate-200 bg-slate-100/90 shadow-2xs backdrop-blur-xs">
+                <thead className="sticky top-0 z-10 border-b border-[#0d3b66] bg-[#042c51] text-white shadow-2xs">
                   <tr>
                     {["Country", "Chats Received", "Chats Answered", "No Response", "Chats Abandoned", "AHT", "SLA"].map((column, index) => (
-                      <th key={column} className={`whitespace-nowrap px-4 py-3 text-[11px] font-extrabold uppercase tracking-wider text-slate-700 ${index ? "text-right" : ""}`}>{column}</th>
+                      <th key={column} className={`whitespace-nowrap px-4 py-3 text-[11px] font-extrabold uppercase tracking-wider text-white ${index ? "text-right" : ""}`}>{column}</th>
                     ))}
                   </tr>
                 </thead>
