@@ -69,8 +69,20 @@ const FRONTSTEPS_MODULES = [
     name: "Performance Management",
     icon: Users,
     submodules: [
-      { id: "employee-performance", name: "Employee Performance", icon: Users },
-      { id: "coaching-management", name: "Coaching Management", icon: ClipboardList },
+      {
+        id: "employee-performance",
+        name: "Employee Performance",
+        icon: Users,
+        isLocked: true,
+        statusBadge: "In Progress",
+      },
+      {
+        id: "coaching-management",
+        name: "Coaching Management",
+        icon: ClipboardList,
+        isLocked: true,
+        statusBadge: "In Progress",
+      },
       {
         id: "performance-improvement",
         name: "Performance Improvement",
@@ -78,7 +90,13 @@ const FRONTSTEPS_MODULES = [
         isLocked: true,
         statusBadge: "In Progress",
       },
-      { id: "quarterly-incentives", name: "Quarterly Incentives", icon: Award },
+      {
+        id: "quarterly-incentives",
+        name: "Quarterly Incentives",
+        icon: Award,
+        isLocked: true,
+        statusBadge: "In Progress",
+      },
     ],
   },
   {
@@ -416,13 +434,10 @@ export default function FrontStepsDashboard() {
                 • FrontSteps approved KPI weights, actuals, & SLA adherence
               </span>
             </div>
-            <button
-              type="button"
-              onClick={() => handleSelectSubmodule("employee-performance")}
-              className="text-[11px] font-semibold text-[#ff5c28] hover:underline cursor-pointer"
-            >
-              View Full Scorecards →
-            </button>
+            <span className="inline-flex items-center gap-1 rounded-md bg-amber-50 border border-amber-200/80 px-2 py-0.5 text-[10.5px] font-bold text-amber-700 select-none">
+              <Lock className="h-3 w-3 text-amber-600" />
+              <span>In Progress</span>
+            </span>
           </div>
 
           {/* 6 Account KPIs Grid */}
