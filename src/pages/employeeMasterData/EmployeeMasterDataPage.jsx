@@ -1161,91 +1161,27 @@ export default function EmployeeMasterDataPage() {
                       </th>
 
                       {/* 5. FuseCom  Name */}
-                      <th
-                        onClick={() => handleToggleToolSort("fusecom")}
-                        title="Click to toggle filter for FuseCom names"
-                        className={`group/th px-4 py-3 text-xs font-bold uppercase tracking-wider select-none cursor-pointer transition whitespace-nowrap overflow-hidden ${
-                          sortBy === "fusecom"
-                            ? "bg-orange-500/30 text-orange-200"
-                            : "text-white hover:bg-white/10 hover:text-white"
-                        }`}
-                      >
+                      <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-white whitespace-nowrap overflow-hidden">
                         <span className="inline-block h-2 w-2 rounded-full bg-orange-400 mr-1.5 align-middle" />
-                        <span>FuseCom  Name</span>
-                        <ArrowUpDown
-                          className={`inline-block ml-1.5 h-3 w-3 align-middle transition-opacity ${
-                            sortBy === "fusecom"
-                              ? "opacity-100 text-orange-200"
-                              : "opacity-60 text-white/70 group-hover/th:opacity-100 group-hover/th:text-white"
-                          }`}
-                          aria-hidden="true"
-                        />
+                        <span>FuseCom Name</span>
                       </th>
 
                       {/* 6. FuseNet  Name */}
-                      <th
-                        onClick={() => handleToggleToolSort("fusenet")}
-                        title="Click to toggle filter for FuseNet names"
-                        className={`group/th px-4 py-3 text-xs font-bold uppercase tracking-wider select-none cursor-pointer transition whitespace-nowrap overflow-hidden ${
-                          sortBy === "fusenet"
-                            ? "bg-blue-500/30 text-blue-200"
-                            : "text-white hover:bg-white/10 hover:text-white"
-                        }`}
-                      >
+                      <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-white whitespace-nowrap overflow-hidden">
                         <span className="inline-block h-2 w-2 rounded-full bg-blue-400 mr-1.5 align-middle" />
-                        <span>FuseNet  Name</span>
-                        <ArrowUpDown
-                          className={`inline-block ml-1.5 h-3 w-3 align-middle transition-opacity ${
-                            sortBy === "fusenet"
-                              ? "opacity-100 text-blue-200"
-                              : "opacity-60 text-white/70 group-hover/th:opacity-100 group-hover/th:text-white"
-                          }`}
-                          aria-hidden="true"
-                        />
+                        <span>FuseNet Name</span>
                       </th>
 
                       {/* 7. HeroDash Name */}
-                      <th
-                        onClick={() => handleToggleToolSort("herodash")}
-                        title="Click to toggle filter for HeroDash names"
-                        className={`group/th px-4 py-3 text-xs font-bold uppercase tracking-wider select-none cursor-pointer transition whitespace-nowrap overflow-hidden ${
-                          sortBy === "herodash"
-                            ? "bg-amber-500/30 text-amber-200"
-                            : "text-white hover:bg-white/10 hover:text-white"
-                        }`}
-                      >
+                      <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-white whitespace-nowrap overflow-hidden">
                         <span className="inline-block h-2 w-2 rounded-full bg-amber-400 mr-1.5 align-middle" />
                         <span>HeroDash Name</span>
-                        <ArrowUpDown
-                          className={`inline-block ml-1.5 h-3 w-3 align-middle transition-opacity ${
-                            sortBy === "herodash"
-                              ? "opacity-100 text-amber-200"
-                              : "opacity-60 text-white/70 group-hover/th:opacity-100 group-hover/th:text-white"
-                          }`}
-                          aria-hidden="true"
-                        />
                       </th>
 
                       {/* 8. MSD Name */}
-                      <th
-                        onClick={() => handleToggleToolSort("ms-d")}
-                        title="Click to toggle filter for MSD names"
-                        className={`group/th px-4 py-3 text-xs font-bold uppercase tracking-wider select-none cursor-pointer transition whitespace-nowrap overflow-hidden ${
-                          sortBy === "ms-d" || sortBy === "msd"
-                            ? "bg-purple-500/30 text-purple-200"
-                            : "text-white hover:bg-white/10 hover:text-white"
-                        }`}
-                      >
+                      <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-white whitespace-nowrap overflow-hidden">
                         <span className="inline-block h-2 w-2 rounded-full bg-purple-400 mr-1.5 align-middle" />
                         <span>MSD Name</span>
-                        <ArrowUpDown
-                          className={`inline-block ml-1.5 h-3 w-3 align-middle transition-opacity ${
-                            sortBy === "ms-d" || sortBy === "msd"
-                              ? "opacity-100 text-purple-200"
-                              : "opacity-60 text-white/70 group-hover/th:opacity-100 group-hover/th:text-white"
-                          }`}
-                          aria-hidden="true"
-                        />
                       </th>
 
                       {/* 9. Site */}
