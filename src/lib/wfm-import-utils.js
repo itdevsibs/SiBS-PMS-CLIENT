@@ -114,6 +114,10 @@ export function getApiErrorMessage(error, card) {
     return "Only Excel (.xlsx) and CSV (.csv) files are supported for this import.";
   }
 
+  if (card?.importProfileCode === "US_VISA_DOCUMENTED_CALLS" && backendCode === "MISSING_REQUIRED_COLUMN") {
+    return "The selected workbook must contain the Microsoft Dynamics WFM Call Logs headers (Call Log, Created On, System Call ID, Created By, Name, Call Duration, Owner, Category, Subcategory).";
+  }
+
   if (backendCode === "FILE_TOO_LARGE") {
     return "The selected file exceeds the maximum allowed upload size.";
   }
@@ -572,6 +576,7 @@ export const WARNING_CATEGORY_LABELS = [
   "CALL REPORT (EOD)",
   "CHAT REPORT (EOD)",
   "SKILL STATISTICS",
+  "DOCUMENTED CALLS",
   "SERVICE / QUEUE LEVEL",
   "AGENT LEVEL",
   "AGENT OCCUPANCY",
@@ -601,6 +606,7 @@ export function getBatchCategory(batch) {
   }
 
   const text = `${batch.rawDataTitle || ""} ${batch.fileName || ""} ${batch.importProfileName || ""} ${batch.importProfileCode || ""}`.toLowerCase();
+  if (text.includes("documented calls") || text.includes("documented_calls")) return "DOCUMENTED CALLS";
   if (text.includes("call report") || text.includes("call_report_eod")) return "CALL REPORT (EOD)";
   if (text.includes("chat report") || text.includes("chat_report_eod")) return "CHAT REPORT (EOD)";
   if (text.includes("quality") || text.includes("qa ")) return "QUALITY AUDIT";
@@ -779,6 +785,7 @@ export async function executeCardImport({
 export function groupRawDataCards(cards = []) {
   const groupOrder = [
     "SKILL STATISTICS",
+    "DOCUMENTED CALLS",
     "CALL REPORT (EOD)",
     "CHAT REPORT (EOD)",
     "SERVICE / QUEUE LEVEL",

@@ -7,6 +7,7 @@ export const REPOSITORY_TOOLS_BY_LEVEL = Object.freeze({
   ALL: ALL_TOOLS,
   "CALL REPORT (EOD)": ["Fusecom", "FuseNet", "HeroDash"],
   "SKILL STATISTICS": ["Fusecom", "FuseNet", "HeroDash"],
+  "DOCUMENTED CALLS": ["MS Dynamics"],
   "CHAT REPORT (EOD)": ["Fusecom", "FuseNet", "HeroDash"],
   "AGENT OCCUPANCY": ["Fusecom", "FuseNet", "HeroDash"],
   "AGENT ACTIVITY - PRODUCTIVE BREAKS": ["HeroDash"],
@@ -33,6 +34,7 @@ export function normalizeRepositoryTool(input) {
 export function getRepositoryToolForUpload(upload = {}) {
   // Use source/profile identifiers, not filename text (which is user-controlled).
   const identity = `${upload.importProfileCode || ""} ${upload.sourceSystem || ""} ${upload.sourceLabel || ""} ${upload.cardId || ""}`.toUpperCase();
+  if (identity.includes("DOCUMENTED_CALLS") || String(upload.groupLabel || "").toUpperCase() === "DOCUMENTED CALLS") return "MS Dynamics";
   if (identity.includes("EMAIL") || identity.includes("DYNAMICS") || String(upload.groupLabel || "").toUpperCase() === "EMAIL LEVEL") return "MS Dynamics";
   if (identity.includes("QUALITY") || String(upload.groupLabel || "").toUpperCase() === "QUALITY AUDIT") return "Quality Audit";
   if (identity.includes("FUSENET")) return "FuseNet";
@@ -49,6 +51,7 @@ const REPOSITORY_REPORT_TYPES = Object.freeze([
   ["PERFORMANCE_BY_SKILL", "Agent Performance By Skill"],
   ["PRODUCTIVE_BREAKS", "Agent Activity – Productive Breaks"],
   ["SKILL_STATISTICS", "Skill Statistics"],
+  ["DOCUMENTED_CALLS", "Documented Calls (AHT)"],
   ["SERVICE_/_QUEUE_LEVEL", "Skill Statistics"],
   ["AGENT_LEVEL", "Agent Level (Legacy)"],
   ["CALL_REPORT", "Calls EOD"],
