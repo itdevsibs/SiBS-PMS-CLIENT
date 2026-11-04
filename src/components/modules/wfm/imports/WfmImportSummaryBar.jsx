@@ -12,8 +12,8 @@ export default function WfmImportSummaryBar({
 }) {
   return (
     <div
-      className="mb-2 sm:mb-2.5 grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6"
-      aria-label="Import summary"
+      className="mb-3.5 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6 shrink-0"
+      aria-label="Import summary metrics"
     >
       {IMPORT_SUMMARY_CARDS.map((card) => {
         const value = Number(importSummary?.[card.key] || 0);
@@ -22,10 +22,12 @@ export default function WfmImportSummaryBar({
         const isWarningCard = card.key === "warningRows";
         const isRejectedCard = card.key === "invalidRows";
         const isDuplicateCard = card.key === "duplicateRows";
-        const isError = card.key === "invalidRows" && value > 0;
-        const isWarning = card.key === "warningRows" && value > 0;
-        const isDuplicate = card.key === "duplicateRows" && value > 0;
+
+        const isError = isRejectedCard;
+        const isDuplicate = isDuplicateCard;
+        const isWarning = isWarningCard;
         const isClickable = isWarningCard || isRejectedCard || isDuplicateCard;
+
         const onClickHandler = isWarningCard
           ? onOpenWarnings
           : isRejectedCard
@@ -33,7 +35,24 @@ export default function WfmImportSummaryBar({
           : isDuplicateCard
           ? onOpenDuplicates
           : undefined;
-        const Icon = card.icon;
+
+        let cardStyle = "bg-white border-[#D7E1EE] text-[#102448]";
+        let titleColor = "text-[#587094]";
+        let valueColor = "text-[#102448]";
+
+        if (isError) {
+          cardStyle = "bg-[#FFF5F5] border-[#FED7D7] text-[#DC2626]";
+          titleColor = "text-[#DC2626]/85";
+          valueColor = "text-[#DC2626]";
+        } else if (isDuplicate) {
+          cardStyle = "bg-[#FFF9F2] border-[#FEEBC8] text-[#C65A08]";
+          titleColor = "text-[#C65A08]/85";
+          valueColor = "text-[#C65A08]";
+        } else if (isWarning) {
+          cardStyle = "bg-[#FFFDF0] border-[#FEFCBF] text-[#D97706]";
+          titleColor = "text-[#D97706]/85";
+          valueColor = "text-[#D97706]";
+        }
 
         return (
           <div
@@ -51,85 +70,50 @@ export default function WfmImportSummaryBar({
                   }
                 : undefined
             }
-            className={`group relative min-w-0 rounded-xl border bg-white p-2.5 shadow-2xs transition-all duration-150 ${
-              isWarningCard
-                ? "cursor-pointer hover:border-amber-400 hover:shadow-md active:scale-[0.99]"
-                : isRejectedCard
-                ? "cursor-pointer hover:border-red-400 hover:shadow-md active:scale-[0.99]"
-                : isDuplicateCard
-                ? "cursor-pointer hover:border-orange-400 hover:shadow-md active:scale-[0.99]"
-                : "hover:border-sibs-primary-1/40 hover:shadow-xs"
-            } ${
-              isError
-                ? "border-red-300 bg-red-50/20 ring-1 ring-red-200"
-                : isDuplicate
-                ? "border-orange-300 bg-orange-50/25 ring-1 ring-orange-200"
-                : isWarning
-                ? "border-amber-300 bg-amber-50/20 ring-1 ring-amber-200"
-                : "border-slate-200"
+            className={`min-w-0 rounded-2xl border px-4 py-2.5 shadow-2xs transition-all duration-150 flex flex-col justify-between h-[74px] ${cardStyle} ${
+              isClickable
+                ? "cursor-pointer hover:shadow-xs hover:border-[#062A5C]/40 active:scale-[0.99]"
+                : ""
             }`}
             title={
               isWarningCard
-                ? `Click to view warnings: ${value.toLocaleString()} found`
+                ? `Warnings: ${value.toLocaleString()} found`
                 : isRejectedCard
-                ? `Click to view rejected records: ${value.toLocaleString()} found`
+                ? `Rejected: ${value.toLocaleString()} found`
                 : isDuplicateCard
-                ? `Click to view duplicate records: ${value.toLocaleString()} found`
-                : isTotalUploadsCard && uploadsWithIssues > 0
-                ? `${card.label}: ${value.toLocaleString()} • ${uploadsWithIssues.toLocaleString()} with issues`
+                ? `Duplicates: ${value.toLocaleString()} found`
                 : `${card.label}: ${value.toLocaleString()}`
             }
           >
-            <div className="flex items-center justify-between gap-1 min-w-0">
-              <p className="m-0 min-w-0 truncate text-[9px] font-extrabold uppercase tracking-wider text-sibs-tertiary-5 leading-none">
-                {card.label}
-              </p>
+            <p className={`m-0 text-[10.5px] font-bold uppercase tracking-wider leading-none truncate ${titleColor}`}>
+              {card.label === "TOTAL UPLOADS"
+                ? "Total Uploads"
+                : card.label === "RECORDS PROCESSED"
+                ? "Records Processed"
+                : card.label === "RECORDS ACCEPTED"
+                ? "Records Accepted"
+                : card.label === "RECORDS REJECTED"
+                ? "Records Rejected"
+                : card.label === "DUPLICATES FOUND"
+                ? "Duplicates Found"
+                : card.label === "WARNINGS FOUND"
+                ? "Warnings Found"
+                : card.label}
+            </p>
 
-              <span
-                className={`inline-flex h-5.5 w-5.5 shrink-0 items-center justify-center rounded-md ${
-                  isError
-                    ? "bg-red-50 text-red-600 border border-red-200"
-                    : isDuplicate
-                    ? "bg-orange-50 text-orange-600 border border-orange-200"
-                    : isWarning
-                    ? "bg-amber-50 text-amber-600 border border-amber-200"
-                    : "bg-sibs-primary-3/60 text-sibs-primary-1 border border-sibs-tertiary-10"
-                }`}
-              >
-                <Icon
-                  className="h-3 w-3"
-                  strokeWidth={2}
-                  aria-hidden="true"
-                />
-              </span>
-            </div>
-
-            <div className="mt-1.5 flex min-w-0 items-baseline justify-between gap-1">
-              <p
-                className={`m-0 text-lg font-black leading-none tracking-tight ${
-                  isError
-                    ? "text-red-600"
-                    : isDuplicate
-                    ? "text-orange-600"
-                    : isWarning
-                    ? "text-amber-600"
-                    : "text-sibs-primary-1"
-                }`}
-              >
+            <div className="flex items-baseline justify-between gap-1.5 min-w-0">
+              <span className={`text-[23px] font-black leading-none tracking-tight ${valueColor}`}>
                 {importSummaryNumberFormatter.format(value)}
-              </p>
+              </span>
 
               {isTotalUploadsCard && uploadsWithIssues > 0 ? (
-                <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-amber-300 bg-amber-50/90 px-2 py-0.5 text-[9.5px] font-extrabold leading-none text-amber-800 shadow-2xs">
+                <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-[#FCD34D] bg-[#FEF3C7] px-2 py-0.5 text-[9.5px] font-bold text-[#B45309] shadow-2xs">
                   <AlertTriangle
-                    className="h-2.5 w-2.5 shrink-0 text-amber-600"
+                    className="h-2.5 w-2.5 shrink-0 text-[#B45309]"
                     strokeWidth={2.5}
                     aria-hidden="true"
                   />
-                  <span>
-                    {importSummaryNumberFormatter.format(uploadsWithIssues)}{" "}
-                    {uploadsWithIssues === 1 ? "issue" : "issues"}
-                  </span>
+                  <span>{uploadsWithIssues} Issues</span>
                 </span>
               ) : null}
             </div>
@@ -139,4 +123,3 @@ export default function WfmImportSummaryBar({
     </div>
   );
 }
-

@@ -1,3 +1,9 @@
+import CallsReportRepositoryView from "./CallsReportRepositoryView";
+import DataManagementHeader from "./DataManagementHeader";
+import DataManagementMetricCards from "./DataManagementMetricCards";
+import CallsReportUploadPanel from "./CallsReportUploadPanel";
+import PolicyDocumentsRepositoryPanel from "./PolicyDocumentsRepositoryPanel";
+import { recordAuditLog } from "@/lib/audit-logger";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle, AlertCircle, CheckCircle2,
@@ -85,20 +91,20 @@ function formatUtcTimestamp(value, withSeparatorSpace = false) {
   return `${m}/${d}/${y}-${hours}:${minutes}${ampm}`;
 }
 
-function Modal({ title, subtitle, onClose, children, footer, wide = false, size = "default", bodyClassName = "" }) {
+function Modal({ title, subtitle, onClose, children, footer, wide = false, size = "default", bodyClassName = "", zIndex = "z-[100]" }) {
   const sizeClasses = {
     default: "max-w-2xl max-h-[90vh]",
     wide: "max-w-4xl max-h-[90vh]",
     policy: "max-w-[1200px] w-[92vw] h-[85vh] max-h-[92vh]",
     policyViewer: "max-w-[1200px] w-[92vw] h-[88vh] max-h-[94vh]",
     xl: "max-w-[1280px] w-[94vw] h-[88vh] max-h-[94vh]",
-    repository: "max-w-[1500px] w-[96vw] h-[91vh] max-h-[96vh]",
+    repository: "max-w-[1400px] w-[94vw] max-h-[90vh]",
     full: "max-w-[1500px] w-[96vw] h-[92vh] max-h-[96vh]",
   };
   const chosenSize = size !== "default" ? sizeClasses[size] || sizeClasses.default : wide ? sizeClasses.wide : sizeClasses.default;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/50 backdrop-blur-2xs p-3 sm:p-6" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+    <div className={`fixed inset-0 ${zIndex} flex items-center justify-center bg-slate-950/50 backdrop-blur-2xs p-3 sm:p-6`} onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <section role="dialog" aria-modal="true" aria-label={title} className={`flex w-full ${chosenSize} flex-col overflow-hidden rounded-2xl bg-white shadow-2xl animate-in fade-in zoom-in-95 duration-150`}>
         <header className="flex shrink-0 items-center justify-between gap-3 bg-[#042c51] px-6 py-4 text-white">
           <div className="min-w-0">
@@ -108,10 +114,11 @@ function Modal({ title, subtitle, onClose, children, footer, wide = false, size 
           <button
             type="button"
             onClick={onClose}
-            className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/20 bg-white/10 text-white hover:bg-white/20 transition-colors cursor-pointer"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-white/20 bg-white/10 hover:bg-white/20 px-3 py-1.5 text-xs font-bold text-white transition-colors cursor-pointer shadow-2xs"
             aria-label="Close dialog"
           >
-            <X size={16} />
+            <X size={14} />
+            <span>Close</span>
           </button>
         </header>
         <div className={`min-h-0 flex-1 overflow-y-auto sibs-scrollbar ${bodyClassName || "p-6 sm:p-7"}`}>{children}</div>
@@ -129,50 +136,139 @@ function FrontStepsImportSummaryModal({ summary, onClose, onViewIssues, onViewUn
   const hasWarnings = issueCount > 0 || unmatchedRecordCount > 0 || Number(batch.invalid || 0) > 0 || Number(batch.conflict || 0) > 0;
 
   return (
-    <AppModal isOpen className="!max-w-none sm:!w-[920px]" textAlign="center">
-      <div className={`mx-auto flex h-12 w-12 items-center justify-center rounded-full ${hasWarnings ? "bg-amber-100 text-amber-600" : "bg-emerald-100 text-emerald-600"}`}>
-        {hasWarnings ? <AlertTriangle className="h-6 w-6" /> : <CheckCircle2 className="h-6 w-6" />}
+    <AppModal isOpen className="!max-w-none sm:!w-[940px] p-6 sm:p-7 rounded-2xl bg-white shadow-2xl" textAlign="center">
+      {/* Icon Status */}
+      <div className={`mx-auto flex h-14 w-14 items-center justify-center rounded-full shadow-2xs ${
+        hasWarnings ? "bg-amber-50 text-[#B45309] border border-amber-200" : "bg-emerald-50 text-[#15803D] border border-emerald-200"
+      }`}>
+        {hasWarnings ? <AlertTriangle className="h-7 w-7" /> : <CheckCircle2 className="h-7 w-7" />}
       </div>
-      <p className="mt-4 mb-0 text-lg font-bold text-[#042c51]">
+
+      <h3 className="mt-3.5 mb-0 text-xl font-extrabold text-[#14233F]">
         {hasWarnings ? "Import Completed with Warnings" : "Import Successful"}
-      </p>
-      <p className="mt-2 mb-0 text-sm text-slate-500">
-        <span className="font-semibold text-[#042c51]">{summary.fileName}</span> was processed successfully.
+      </h3>
+      <p className="mt-1.5 mb-0 text-xs text-[#526582]">
+        <span className="font-bold text-[#14233F]">{summary.fileName}</span> was processed successfully.
       </p>
 
-      <div className="mt-4 rounded-xl border border-slate-200 bg-white p-4 text-left">
-        <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-bold text-[#042c51]">
-          <span className="font-mono text-blue-700">Batch: {batch.batchCode || batch.id}</span>
-          <Badge kind={hasWarnings ? "warn" : "success"}>{batch.status || "COMPLETED"}</Badge>
+      {/* Structured Card Section */}
+      <div className="mt-5 overflow-hidden rounded-xl border border-[#DCE4EE] bg-[#F4F6F9]/50 p-4 text-left shadow-2xs">
+        {/* Batch Metadata Header */}
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#DCE4EE] pb-3 text-xs">
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] font-bold text-[#526582] uppercase tracking-wider">Batch Code:</span>
+            <span className="font-mono font-extrabold text-[#12376B] text-[13px]">
+              {batch.batchCode || batch.id}
+            </span>
+          </div>
+          <span
+            className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-extrabold whitespace-nowrap ${
+              hasWarnings
+                ? "bg-[#FEF3C7] text-[#B45309] border border-[#FDE68A]"
+                : "bg-emerald-50 text-[#15803D] border border-emerald-200"
+            }`}
+          >
+            {batch.status || (hasWarnings ? "COMPLETED_WITH_ERRORS" : "COMPLETED")}
+          </span>
         </div>
-        <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
-          <BatchDetailStat label="Total Rows" value={batch.total} icon={FileSpreadsheet} tone="blue" />
-          <BatchDetailStat label="Valid Rows" value={batch.valid} icon={CheckCircle2} tone="emerald" />
-          <BatchDetailStat label="New Rows" value={batch.inserted} icon={UploadCloud} tone="cyan" />
-          <BatchDetailStat label="Updated" value={batch.updated} icon={RotateCcw} tone="sky" />
-          <BatchDetailStat label="Duplicates" value={batch.duplicate} icon={ListPlus} tone="orange" />
-          <BatchDetailStat label="Unmatched Records" value={unmatchedRecordCount} icon={UserX} tone="amber" />
-          <BatchDetailStat label="Issues" value={issueCount} icon={AlertCircle} tone="rose" />
+
+        {/* Primary Row Stats: 4 core columns */}
+        <div className="mt-3.5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="rounded-xl border border-[#DCE4EE] bg-white p-3 shadow-2xs">
+            <p className="text-[10px] font-extrabold uppercase tracking-wider text-[#526582]">Total Rows</p>
+            <p className="mt-1 text-2xl font-black text-[#14233F] leading-none">
+              {Number(batch.total || 0).toLocaleString()}
+            </p>
+            <p className="mt-2 text-[10.5px] font-medium text-[#526582]">Received from file</p>
+          </div>
+
+          <div className="rounded-xl border border-[#DCE4EE] bg-white p-3 shadow-2xs">
+            <p className="text-[10px] font-extrabold uppercase tracking-wider text-[#526582]">Valid Rows</p>
+            <p className="mt-1 text-2xl font-black text-[#15803D] leading-none">
+              {Number(batch.valid || 0).toLocaleString()}
+            </p>
+            <p className="mt-2 text-[10.5px] font-medium text-[#526582]">Passed validation</p>
+          </div>
+
+          <div className="rounded-xl border border-[#DCE4EE] bg-white p-3 shadow-2xs">
+            <p className="text-[10px] font-extrabold uppercase tracking-wider text-[#526582]">New Records</p>
+            <p className="mt-1 text-2xl font-black text-[#12376B] leading-none">
+              {Number(batch.inserted || 0).toLocaleString()}
+            </p>
+            <p className="mt-2 text-[10.5px] font-medium text-[#526582]">Inserted to database</p>
+          </div>
+
+          <div className="rounded-xl border border-[#DCE4EE] bg-white p-3 shadow-2xs">
+            <p className="text-[10px] font-extrabold uppercase tracking-wider text-[#526582]">Updated</p>
+            <p className="mt-1 text-2xl font-black text-[#14233F] leading-none">
+              {Number(batch.updated || 0).toLocaleString()}
+            </p>
+            <p className="mt-2 text-[10.5px] font-medium text-[#526582]">Existing updated</p>
+          </div>
         </div>
+
+        {/* Secondary Detail Row: Duplicates, Unmatched, Issues */}
+        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div className="flex items-center justify-between rounded-xl border border-[#DCE4EE] bg-white px-3.5 py-2.5 shadow-2xs">
+            <span className="text-xs font-bold text-[#526582]">Duplicates Ignored</span>
+            <span className="text-base font-extrabold text-[#14233F]">
+              {Number(batch.duplicate || 0).toLocaleString()}
+            </span>
+          </div>
+
+          <div className="flex items-center justify-between rounded-xl border border-amber-200 bg-amber-50/70 px-3.5 py-2.5 shadow-2xs">
+            <span className="text-xs font-bold text-[#B45309]">Unmatched Records</span>
+            <span className="text-base font-black text-[#B45309]">
+              {unmatchedRecordCount.toLocaleString()}
+            </span>
+          </div>
+
+          <div className="flex items-center justify-between rounded-xl border border-rose-200 bg-rose-50/70 px-3.5 py-2.5 shadow-2xs">
+            <span className="text-xs font-bold text-[#B91C1C]">Import Issues</span>
+            <span className="text-base font-black text-[#B91C1C]">
+              {issueCount.toLocaleString()}
+            </span>
+          </div>
+        </div>
+
         {(Number(batch.invalid || 0) > 0 || Number(batch.conflict || 0) > 0) && (
-          <p className="mt-3 mb-0 text-xs text-slate-500">
-            {Number(batch.invalid || 0).toLocaleString()} invalid · {Number(batch.conflict || 0).toLocaleString()} conflicts · {Number(batch.unmapped || 0).toLocaleString()} rows affected by employee mapping
+          <p className="mt-3 mb-0 text-[11px] font-medium text-[#526582] border-t border-[#DCE4EE] pt-2">
+            Notice: {Number(batch.invalid || 0).toLocaleString()} invalid rows · {Number(batch.conflict || 0).toLocaleString()} conflicts detected in raw feed.
           </p>
         )}
       </div>
 
-      <div className="mt-5 flex justify-end gap-2">
+      {/* Modal Actions */}
+      <div className="mt-6 flex flex-wrap items-center justify-end gap-2.5">
         {unmatchedRecordCount > 0 && (
-          <button type="button" className={btnSecondary} onClick={onViewUnmatched}>
-            <UserX size={14} /> Unmatched Records ({unmatchedRecordCount.toLocaleString()})
+          <button
+            type="button"
+            onClick={onViewUnmatched}
+            className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-purple-200 bg-purple-50 hover:bg-purple-100 px-4 py-2 text-xs font-bold text-purple-700 transition-colors cursor-pointer shadow-2xs"
+          >
+            <UserX size={14} />
+            <span>Unmatched Records ({unmatchedRecordCount.toLocaleString()})</span>
           </button>
         )}
+
         {issueCount > 0 && (
-          <button type="button" className={btnSecondary} onClick={onViewIssues}>
-            <AlertTriangle size={14} /> View Issues ({issueCount.toLocaleString()})
+          <button
+            type="button"
+            onClick={onViewIssues}
+            className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 hover:bg-amber-100 px-4 py-2 text-xs font-bold text-[#B45309] transition-colors cursor-pointer shadow-2xs"
+          >
+            <AlertTriangle size={14} />
+            <span>View Issues ({issueCount.toLocaleString()})</span>
           </button>
         )}
-        <button type="button" className={btnPrimary} onClick={onClose}>Done</button>
+
+        <button
+          type="button"
+          onClick={onClose}
+          className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-[#082B60] hover:bg-[#12376B] px-6 py-2 text-xs font-bold text-white transition-colors cursor-pointer shadow-2xs"
+        >
+          Done
+        </button>
       </div>
     </AppModal>
   );
@@ -240,9 +336,7 @@ function PolicyDocViewerModal({ policy, onClose }) {
                 <Download size={14} /> Download Copy
               </a>
             )}
-            <button type="button" className={btnPrimary} onClick={onClose}>
-              Close
-            </button>
+
           </div>
         </div>
       }
@@ -1015,7 +1109,7 @@ export default function FrontStepsDataManagement() {
   useEffect(()=>{loadHistory();},[]);
 
   const openBatchPreview = async (item, kind='raw')=>{
-    setFolderModal(null);
+    // Keep folderModal open underneath so closing preview returns to repository
     setBatchPreview(item);
     setPreviewKind(kind);
     setPreviewPage(1);
@@ -1094,6 +1188,14 @@ export default function FrontStepsDataManagement() {
       setUploadFiles(previous=>({...previous,[category]:null}));
       await loadHistory();
       setUploadSummary({ fileName:file.name, category, batch:b });
+      try {
+        recordAuditLog({
+          action: "Upload",
+          module: "Data Management",
+          description: `Uploaded ${file.name} for category ${category}`,
+          recordId: b?.batchCode || b?.id || "",
+        });
+      } catch {}
       await new Promise(resolve=>setTimeout(resolve,250));
     } catch (error) {
       setUploadError(error?.response?.data?.message||error.message||'FrontSteps upload failed.');
@@ -1113,8 +1215,17 @@ export default function FrontStepsDataManagement() {
       const response=await deleteFrontStepsBatch(deleteTarget.id);
       if (batchPreview?.id===deleteTarget.id) setBatchPreview(null);
       setDeleteTarget(null);
+      setFolderModal(null);
       await loadHistory();
       setToast(response?.message||'FrontSteps import batch deleted.');
+      try {
+        recordAuditLog({
+          action: "Delete",
+          module: "Data Management",
+          description: `Deleted import batch ${deleteTarget?.fileName || deleteTarget?.id || ""}`,
+          recordId: deleteTarget?.batchCode || deleteTarget?.id || "",
+        });
+      } catch {}
     } catch (error) {
       setUploadError(error?.response?.data?.message||error.message||'Unable to delete FrontSteps import batch.');
     } finally {
@@ -1138,12 +1249,12 @@ export default function FrontStepsDataManagement() {
   const [toast, setToast] = useState("");
   const pageSize = 10;
 
-  // Automatically dismiss toast notification after 2 seconds
+  // Automatically dismiss toast notification after 3 seconds
   useEffect(() => {
     if (!toast) return;
     const timer = setTimeout(() => {
       setToast("");
-    }, 2000);
+    }, 3000);
     return () => clearTimeout(timer);
   }, [toast]);
 
@@ -1310,6 +1421,14 @@ export default function FrontStepsDataManagement() {
       }
 
       setToast(`Policy "${policyFormData.document_code}" uploaded successfully to database.`);
+      try {
+        recordAuditLog({
+          action: "Upload",
+          module: "Data Management",
+          description: `Uploaded policy document ${policyFormData.document_code} - ${policyFormData.policy_title}`,
+          recordId: policyFormData.document_code,
+        });
+      } catch {}
       setIsUploadPolicyModalOpen(false);
       setPolicyFile(null);
       setPolicyFormData({
@@ -1399,30 +1518,54 @@ export default function FrontStepsDataManagement() {
   };
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-2.5 sm:gap-3 overflow-hidden font-jakarta text-slate-800">
-      {/* Toast Notice */}
+    <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden font-jakarta text-slate-800 bg-[#FFFFFF]">
+
+
+      {/* Toast Notification Popup Modal */}
       {toast && (
         <div
-          role="status"
-          className="flex items-center justify-between rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-xs font-semibold text-emerald-800 shrink-0"
+          className="sibs-modal-backdrop-in fixed inset-0 z-[130] flex items-center justify-center overflow-y-auto bg-black/40 backdrop-blur-xs px-4 py-6"
+          onMouseDown={(e) => { if (e.target === e.currentTarget) setToast(""); }}
         >
-          <span className="flex items-center gap-2">
-            <CheckCircle2 size={15} />
-            {toast}
-          </span>
-          <button
-            type="button"
-            onClick={() => setToast("")}
-            aria-label="Dismiss notification"
-            className="cursor-pointer text-emerald-700 hover:text-emerald-900"
-          >
-            <X size={14} />
-          </button>
+          <div className="sibs-modal-pop-in relative w-full max-w-sm rounded-2xl bg-white p-6 text-center shadow-2xl border border-slate-100">
+            {/* Top-right close button */}
+            <button
+              type="button"
+              onClick={() => setToast("")}
+              className="absolute top-3.5 right-3.5 inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white hover:bg-slate-50 px-2 py-0.5 text-[11px] font-bold text-slate-600 transition-colors cursor-pointer shadow-2xs"
+              aria-label="Close dialog"
+            >
+              <X size={13} />
+              <span>Close</span>
+            </button>
+
+            {/* Centered Success Icon Badge */}
+            <div className="mx-auto mt-1 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-50 text-[#15803D] border border-emerald-200/80 shadow-xs ring-4 ring-emerald-50/50">
+              <CheckCircle2 className="h-7 w-7 text-[#15803D]" strokeWidth={2.3} />
+            </div>
+
+            <h4 className="mt-3.5 mb-1 text-base font-extrabold text-[#14233F]">
+              Success
+            </h4>
+            <p className="mt-1 text-xs text-[#526582] leading-relaxed break-words px-3">
+              {toast}
+            </p>
+
+            <div className="mt-5 flex justify-center">
+              <button
+                type="button"
+                onClick={() => setToast("")}
+                className="inline-flex items-center justify-center rounded-lg bg-[#082B60] hover:bg-[#12376B] px-7 py-2 text-xs font-bold text-white transition-all cursor-pointer shadow-sm hover:shadow"
+              >
+                OK
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
-      {/* 2. Source File Uploads */}
-      <section className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto pb-2 sibs-scrollbar">
+      {/* Main Content Area */}
+      <section className="flex min-h-0 flex-1 flex-col gap-3.5 overflow-y-auto pb-2 sibs-scrollbar">
         {uploadError && (
           <div role="alert" className="flex items-center justify-between gap-3 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-xs font-semibold text-rose-700">
             <span className="flex items-center gap-2"><AlertTriangle size={15} />{uploadError}</span>
@@ -1430,233 +1573,121 @@ export default function FrontStepsDataManagement() {
           </div>
         )}
 
+        {/* 2. Summary Metric Cards: Single horizontal row of 6 cards */}
+        <DataManagementMetricCards stats={stats} policies={policies} />
+
+        {/* 3. Main Content: Two equal-width panels */}
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-2 flex-1 min-h-0">
-          {/* Left Column: 4 Metric Cards + Operational Data Feeds (Unified Cases & Calls Upload) */}
-          <div className="flex flex-col flex-1 min-h-0 h-full gap-4">
-            {/* 4 Operational Metric Cards (Total Records, Stored Records, Unmatched, Import Issues) */}
-            <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4 shrink-0">
-              {/* Card 1 — Total Data Records */}
-              <div className="flex items-center justify-between rounded-xl border border-slate-200/90 bg-white px-3 py-2 shadow-2xs">
-                <div className="min-w-0">
-                  <span className="block text-[9px] font-bold uppercase tracking-wider text-slate-400">
-                    Total Records
-                  </span>
-                  <div className="flex items-baseline gap-1 mt-0.5">
-                    <span className="text-base font-extrabold text-slate-800">
-                      {stats.total}
-                    </span>
-                    <span className="text-[10px] font-medium text-slate-400">Sources</span>
-                  </div>
-                  <span className="block text-[9px] text-slate-400 mt-0.5 truncate">
-                    Uploaded Rows
-                  </span>
-                </div>
-                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-slate-50 text-[#042c51] border border-slate-100">
-                  <Database size={13} />
-                </div>
-              </div>
+          {/* Left Panel: Calls Report Upload */}
+          <CallsReportUploadPanel
+            selectedCategory={selectedUploadCategory}
+            onCategoryChange={(cat) => setSelectedUploadCategory(cat)}
+            file={uploadFiles[selectedUploadCategory]}
+            onSelect={selectUpload}
+            onRemove={removeUpload}
+            onUpload={handleUpload}
+            onViewFolder={openViewFolder}
+            uploadedCounts={{
+              cases: uploadedHistory.cases?.length || 0,
+              calls: uploadedHistory.calls?.length || 0,
+            }}
+            historyItems={uploadedHistory[selectedUploadCategory] || []}
+            uploading={uploading === selectedUploadCategory}
+            uploadProgress={uploadProgress}
+          />
 
-              {/* Card 2 — Stored Unique Records */}
-              <div className="flex items-center justify-between rounded-xl border border-slate-200/90 bg-white px-3 py-2 shadow-2xs">
-                <div className="min-w-0">
-                  <span className="block text-[9px] font-bold uppercase tracking-wider text-slate-400">
-                    Stored Records
-                  </span>
-                  <div className="flex items-baseline gap-1 mt-0.5">
-                    <span className="text-base font-extrabold text-emerald-600">
-                      {stats.stored}
-                    </span>
-                    <span className="text-[10px] font-medium text-emerald-600/80">Stored</span>
-                  </div>
-                  <span className="block text-[9px] text-emerald-600/80 mt-0.5 truncate">
-                    In PMS tables
-                  </span>
-                </div>
-                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-100">
-                  <CheckCircle2 size={13} />
-                </div>
-              </div>
+          {/* Right Panel: Policy Documents Repository */}
+          <PolicyDocumentsRepositoryPanel
+            policies={policies}
+            loading={isLoadingPolicies}
+            onUploadPolicy={async (code, file, cfg) => {
+              try {
+                setUploadingPolicyCode(code);
+                setPolicyUploadProgress(0);
 
-              {/* Card 3 — Unmatched Records */}
-              <div className="flex items-center justify-between rounded-xl border border-slate-200/90 bg-white px-3 py-2 shadow-2xs">
-                <div className="min-w-0">
-                  <span className="block text-[9px] font-bold uppercase tracking-wider text-slate-400">
-                    Unmatched
-                  </span>
-                  <div className="flex items-baseline gap-1 mt-0.5">
-                    <span className="text-base font-extrabold text-amber-600">
-                      {stats.unmapped}
-                    </span>
-                    <span className="text-[10px] font-medium text-amber-600/80">Unmapped</span>
-                  </div>
-                  <span className="block text-[9px] text-amber-600/80 mt-0.5 truncate">
-                    Awaiting Alias
-                  </span>
-                </div>
-                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-amber-50 text-amber-600 border border-amber-100">
-                  <Clock3 size={13} />
-                </div>
-              </div>
+                const docCode = `FS-${code}-001`;
+                const existingRevs = policies
+                  .filter((p) => p.document_code === docCode || p.document_code?.includes(code))
+                  .map((p) => parseInt(p.revision_number, 10))
+                  .filter((n) => !isNaN(n));
+                const nextRev = existingRevs.length > 0 ? Math.max(...existingRevs) + 1 : 0;
+                const revisionString = String(nextRev).padStart(3, "0");
 
-              {/* Card 4 — Import Issues */}
-              <div className="flex items-center justify-between rounded-xl border border-slate-200/90 bg-white px-3 py-2 shadow-2xs">
-                <div className="min-w-0">
-                  <span className="block text-[9px] font-bold uppercase tracking-wider text-slate-400">
-                    Import Issues
-                  </span>
-                  <div className="flex items-baseline gap-1 mt-0.5">
-                    <span className="text-base font-extrabold text-rose-600">
-                      {stats.issues}
-                    </span>
-                    <span className="text-[10px] font-medium text-rose-600/80">Issues</span>
-                  </div>
-                  <span className="block text-[9px] text-rose-600/80 mt-0.5 truncate">
-                    Validation checks
-                  </span>
-                </div>
-                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-rose-50 text-rose-600 border border-rose-100">
-                  <AlertTriangle size={13} />
-                </div>
-              </div>
-            </div>
+                const formData = new FormData();
+                formData.append("file", file);
+                formData.append("document_code", docCode);
+                formData.append("policy_title", cfg.title);
+                formData.append("policy_category", cfg.category);
+                formData.append("revision_number", revisionString);
+                formData.append("effectivity_note", "Upon Approval");
+                formData.append("approval_status", "Active");
+                formData.append("prepared_for", "FrontSteps");
+                formData.append("remarks", `Official ${cfg.title} repository document (Rev ${revisionString})`);
+                formData.append("uploaded_by", "Operations Leadership");
 
-            {/* Cases & Calls Upload Card */}
-            <UnifiedUploadCard
-              selectedCategory={selectedUploadCategory}
-              onCategoryChange={(cat) => setSelectedUploadCategory(cat)}
-              file={uploadFiles[selectedUploadCategory]}
-              onSelect={selectUpload}
-              onRemove={removeUpload}
-              onUpload={handleUpload}
-              onViewFolder={openViewFolder}
-              uploadedCounts={{
-                cases: uploadedHistory.cases?.length || 0,
-                calls: uploadedHistory.calls?.length || 0,
-              }}
-              historyItems={uploadedHistory[selectedUploadCategory] || []}
-              uploading={uploading === selectedUploadCategory}
-              uploadProgress={uploadProgress}
-            />
-          </div>
+                await uploadFrontStepsPolicy(formData, (percent) => {
+                  setPolicyUploadProgress(percent);
+                });
 
-          {/* Right Column: Policy Metric Cards + Policy Documents Repository */}
-          <div className="flex flex-col flex-1 min-h-0 h-full gap-4">
-            {/* Policy Metric Indicator Cards: Total Uploaded Files & Approved Files */}
-            <div className="grid grid-cols-2 gap-2.5 shrink-0">
-              {/* Card 1 — All Files Uploaded */}
-              <div className="flex items-center justify-between rounded-xl border border-slate-200/90 bg-white px-3 py-2 shadow-2xs">
-                <div className="min-w-0">
-                  <span className="block text-[9px] font-bold uppercase tracking-wider text-slate-400">
-                    Uploaded Policies
-                  </span>
-                  <div className="flex items-baseline gap-1 mt-0.5">
-                    <span className="text-base font-extrabold text-[#042c51]">
-                      {policies.length}
-                    </span>
-                    <span className="text-[10px] font-medium text-slate-400">Files</span>
-                  </div>
-                  <span className="block text-[9px] text-slate-400 mt-0.5 truncate">
-                    Total in repository
-                  </span>
-                </div>
-                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-purple-50 text-purple-700 border border-purple-100">
-                  <Shield size={13} />
-                </div>
-              </div>
-
-              {/* Card 2 — Approved Files */}
-              <div className="flex items-center justify-between rounded-xl border border-slate-200/90 bg-white px-3 py-2 shadow-2xs">
-                <div className="min-w-0">
-                  <span className="block text-[9px] font-bold uppercase tracking-wider text-slate-400">
-                    Approved Policies
-                  </span>
-                  <div className="flex items-baseline gap-1 mt-0.5">
-                    <span className="text-base font-extrabold text-emerald-600">
-                      {policies.filter((p) => (p.approval_status || "").toLowerCase() === "approved").length}
-                    </span>
-                    <span className="text-[10px] font-medium text-emerald-600/80">Approved</span>
-                  </div>
-                  <span className="block text-[9px] text-emerald-600/80 mt-0.5 truncate">
-                    Active & governing
-                  </span>
-                </div>
-                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-100">
-                  <CheckCircle2 size={13} />
-                </div>
-              </div>
-            </div>
-
-            <FrontStepsPolicyUploadCard
-              policies={policies}
-              loading={isLoadingPolicies}
-              selectedCode={selectedPolicyCode}
-              onSelectCode={setSelectedPolicyCode}
-              onUploadPolicy={async (code, file, cfg) => {
+                setToast(`Policy "${code} - ${cfg.title}" successfully uploaded and saved to repository (Rev ${revisionString}).`);
                 try {
-                  setUploadingPolicyCode(code);
-                  setPolicyUploadProgress(0);
-
-                  // Calculate next revision number if policy already exists
-                  const docCode = `FS-${code}-001`;
-                  const existingRevs = policies
-                    .filter((p) => p.document_code === docCode || p.document_code?.includes(code))
-                    .map((p) => parseInt(p.revision_number, 10))
-                    .filter((n) => !isNaN(n));
-                  const nextRev = existingRevs.length > 0 ? Math.max(...existingRevs) + 1 : 0;
-                  const revisionString = String(nextRev).padStart(3, "0");
-
-                  const formData = new FormData();
-                  formData.append("file", file);
-                  formData.append("document_code", docCode);
-                  formData.append("policy_title", cfg.title);
-                  formData.append("policy_category", cfg.category);
-                  formData.append("revision_number", revisionString);
-                  formData.append("effectivity_note", "Upon Approval");
-                  formData.append("approval_status", "Active");
-                  formData.append("prepared_for", "FrontSteps");
-                  formData.append("remarks", `Official ${cfg.title} repository document (Rev ${revisionString})`);
-                  formData.append("uploaded_by", "Operations Leadership");
-
-                  await uploadFrontStepsPolicy(formData, (percent) => {
-                    setPolicyUploadProgress(percent);
+                  recordAuditLog({
+                    action: "Upload",
+                    module: "Data Management",
+                    description: `Uploaded policy document ${docCode} - ${cfg.title}`,
+                    recordId: docCode,
                   });
-
-                  setToast(`Policy "${code} - ${cfg.title}" successfully uploaded and saved to repository (Rev ${revisionString}).`);
-                  await fetchPolicies();
-                } catch (err) {
-                  setUploadError(err?.response?.data?.message || err.message || "Failed to upload policy document.");
-                } finally {
-                  setUploadingPolicyCode(null);
-                  setPolicyUploadProgress(0);
-                }
-              }}
-              onApprovePolicy={async (id, title, currentStatus) => {
-                const isCurrentlyApproved = (currentStatus || "").toLowerCase() === "approved";
-                const nextStatus = isCurrentlyApproved ? "Pending Approval" : "Approved";
+                } catch {}
+                await fetchPolicies();
+              } catch (err) {
+                setUploadError(err?.response?.data?.message || err.message || "Failed to upload policy document.");
+              } finally {
+                setUploadingPolicyCode(null);
+                setPolicyUploadProgress(0);
+              }
+            }}
+            onApprovePolicy={async (id, title, currentStatus) => {
+              const isCurrentlyApproved = (currentStatus || "").toLowerCase() === "approved";
+              const nextStatus = isCurrentlyApproved ? "Pending Approval" : "Approved";
+              try {
+                await approveFrontStepsPolicy(id, { approval_status: nextStatus, approved_by: isCurrentlyApproved ? null : "Operations Leadership" });
+                setToast(`Policy "${title}" is now ${nextStatus}.`);
                 try {
-                  await approveFrontStepsPolicy(id, { approval_status: nextStatus, approved_by: isCurrentlyApproved ? null : "Operations Leadership" });
-                  setToast(`Policy "${title}" is now ${nextStatus}.`);
-                  await fetchPolicies();
-                } catch (err) {
-                  setUploadError(err?.response?.data?.message || err.message || "Failed to update approval status.");
-                }
-              }}
-              onDeletePolicy={async (id, title) => {
-                if (!window.confirm(`Are you sure you want to delete policy "${title}"?`)) return;
+                  recordAuditLog({
+                    action: isCurrentlyApproved ? "Edit" : "Approve",
+                    module: "Data Management",
+                    description: `${nextStatus} policy "${title}"`,
+                    recordId: String(id),
+                  });
+                } catch {}
+                await fetchPolicies();
+              } catch (err) {
+                setUploadError(err?.response?.data?.message || err.message || "Failed to update approval status.");
+              }
+            }}
+            onDeletePolicy={async (id, title) => {
+              if (!window.confirm(`Are you sure you want to delete policy "${title}"?`)) return;
+              try {
+                await deleteFrontStepsPolicy(id);
+                setToast(`Policy "${title}" was deleted.`);
                 try {
-                  await deleteFrontStepsPolicy(id);
-                  setToast(`Policy "${title}" was deleted.`);
-                  await fetchPolicies();
-                } catch (err) {
-                  setUploadError(err?.response?.data?.message || err.message || "Failed to delete policy.");
-                }
-              }}
-              onViewPolicy={(pol) => setViewingPolicy(pol)}
-              onViewFolder={(category, title) => openViewFolder(category, title)}
-              uploadingCode={uploadingPolicyCode}
-              uploadProgress={policyUploadProgress}
-            />
-          </div>
+                  recordAuditLog({
+                    action: "Delete",
+                    module: "Data Management",
+                    description: `Deleted policy "${title}"`,
+                    recordId: String(id),
+                  });
+                } catch {}
+                await fetchPolicies();
+              } catch (err) {
+                setUploadError(err?.response?.data?.message || err.message || "Failed to delete policy.");
+              }
+            }}
+            onViewPolicy={(pol) => setViewingPolicy(pol)}
+            onViewFolder={(category, title) => openViewFolder(category, title)}
+            uploadingCode={uploadingPolicyCode}
+            uploadProgress={policyUploadProgress}
+          />
         </div>
       </section>
 
@@ -1667,7 +1698,7 @@ export default function FrontStepsDataManagement() {
           subtitle={`${chosen.id} • ${chosen.source}`}
           onClose={() => setModal(null)}
           wide
-          footer={<button className={btnPrimary} onClick={() => setModal(null)}>Done</button>}
+          footer={null}
         >
           <Section title="1. Record Information">
             <div className="grid grid-cols-2 gap-2.5 md:grid-cols-3">
@@ -1935,11 +1966,7 @@ export default function FrontStepsDataManagement() {
               : `FrontSteps repository for ${folderModal.category === "cases" ? "Cases Closed" : "Inbound Calls"} source datasets`
           }
           onClose={() => setFolderModal(null)}
-          footer={
-            <button type="button" className={btnPrimary} onClick={() => setFolderModal(null)}>
-              Close
-            </button>
-          }
+          footer={null}
         >
           {folderModal.category === "policies" ? (
             <div className="flex flex-col gap-2.5">
@@ -2059,128 +2086,15 @@ export default function FrontStepsDataManagement() {
               )}
             </div>
           ) : (
-            <div className="flex flex-col gap-7">
-            <Section
-              title="1. Repository Overview"
-              description="High-level status of all uploaded batches for this FrontSteps source."
-            >
-              <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
-                <RepositoryStatCard
-                  label="Uploaded Files"
-                  value={folderItems.length}
-                  caption={`${folderStats.completed} completed · ${folderStats.withWarnings} with warnings`}
-                  icon={FolderOpen}
-                  tone="blue"
-                />
-                <RepositoryStatCard
-                  label="Source Rows"
-                  value={folderStats.sourceRows}
-                  caption="Rows received across all batches"
-                  icon={Database}
-                  tone="emerald"
-                />
-                <RepositoryStatCard
-                  label="Unmatched Records"
-                  value={folderStats.unmatchedRecords}
-                  caption="Source rows awaiting employee mapping"
-                  icon={UserX}
-                  tone="amber"
-                />
-                <RepositoryStatCard
-                  label="Import Issues"
-                  value={folderStats.issues}
-                  caption="Validation, duplicate, or conflict findings"
-                  icon={AlertTriangle}
-                  tone="rose"
-                />
-              </div>
-            </Section>
-
-            <Section
-              title="2. Uploaded Batches"
-              description="Each upload remains traceable to its source rows, mapping findings, and batch-level status."
-            >
-              <div className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50/70 px-4 py-3">
-                <div className="flex items-center gap-2">
-                  <FileSpreadsheet className="h-4 w-4 text-[#ff5c28]" />
-                  <span className="text-xs font-bold text-slate-700">
-                    {folderItems.length.toLocaleString()} batch{folderItems.length === 1 ? "" : "es"}
-                  </span>
-                </div>
-                <span className="text-[11px] text-slate-400">
-                  {historyLoading ? "Loading server history..." : "Sorted by most recent upload"}
-                </span>
-              </div>
-
-              {folderItems.length > 0 ? (
-                <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xs">
-                  <div className="overflow-x-auto sibs-scrollbar">
-                    <table className="w-full min-w-[1180px] text-left text-xs">
-                      <thead className="border-b border-slate-200 bg-slate-50 text-[10px] font-extrabold uppercase tracking-wider text-slate-500">
-                        <tr>
-                          <th className="w-[34%] px-5 py-3.5">Source File</th>
-                          <th className="w-[18%] px-5 py-3.5">Uploaded</th>
-                          <th className="w-[27%] px-5 py-3.5">Batch Status & Records</th>
-                          <th className="w-[21%] px-5 py-3.5 text-right">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100">
-                        {folderItems.map((item) => (
-                          <tr key={item.id} className="align-top transition-colors hover:bg-slate-50/70">
-                            <td className="px-5 py-4">
-                              <div className="flex min-w-0 items-start gap-3">
-                                <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-700">
-                                  <FileSpreadsheet className="h-4 w-4" />
-                                </div>
-                                <div className="min-w-0">
-                                  <p className="break-words font-semibold leading-5 text-slate-800">{item.name}</p>
-                                  <p className="mt-1 text-[10px] font-medium text-slate-400">Batch #{item.id} · {item.size}</p>
-                                </div>
-                              </div>
-                            </td>
-                            <td className="px-5 py-4">
-                              <div className="flex items-center gap-2 text-slate-600">
-                                <Clock3 className="h-3.5 w-3.5 shrink-0 text-slate-400" />
-                                <span className="font-mono text-[11px]">{formatUtcTimestamp(item.timestamp, true)}</span>
-                              </div>
-                            </td>
-                            <td className="px-5 py-4">
-                              <div className="flex flex-col gap-2">
-                                <div>
-                                  <Badge kind={item.status === "COMPLETED" ? "success" : item.status === "COMPLETED_WITH_ERRORS" ? "warn" : "danger"}>{item.status}</Badge>
-                                </div>
-                                <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-[10px] text-slate-500">
-                                  <span><strong className="text-slate-700">{Number(item.inserted || 0).toLocaleString()}</strong> new</span>
-                                  <span><strong className="text-slate-700">{Number(item.updated || 0).toLocaleString()}</strong> updated</span>
-                                  <span><strong className="text-slate-700">{Number(item.duplicates || 0).toLocaleString()}</strong> duplicates</span>
-                                  <span><strong className="text-amber-700">{Number(item.unmatchedRecordCount ?? item.unmapped ?? 0).toLocaleString()}</strong> unmatched</span>
-                                </div>
-                                {item.issueCount > 0 && <span className="text-[10px] font-semibold text-rose-600">{Number(item.issueCount).toLocaleString()} import issue{Number(item.issueCount) === 1 ? "" : "s"}</span>}
-                              </div>
-                            </td>
-                            <td className="px-5 py-4">
-                              <div className="flex flex-wrap justify-end gap-2">
-                                <button type="button" onClick={()=>openBatchPreview(item,'raw')} className="inline-flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1.5 text-[11px] font-bold text-blue-700 transition hover:bg-blue-100"><Eye size={13}/>Rows</button>
-                                <button type="button" onClick={()=>openBatchPreview(item,'issues')} className="inline-flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-[11px] font-bold text-amber-700 transition hover:bg-amber-100"><AlertTriangle size={13}/>Issues{item.issueCount > 0 ? ` (${item.issueCount})` : ''}</button>
-                                <button type="button" onClick={()=>openBatchPreview(item,'unmatched')} className="inline-flex items-center gap-1.5 rounded-lg border border-violet-200 bg-violet-50 px-2.5 py-1.5 text-[11px] font-bold text-violet-700 transition hover:bg-violet-100"><UserX size={13}/>Unmatched{item.unmatchedRecordCount > 0 ? ` (${item.unmatchedRecordCount})` : ''}</button>
-                                <button type="button" onClick={()=>setDeleteTarget(item)} className="inline-flex items-center gap-1.5 rounded-lg border border-rose-200 bg-rose-50 px-2.5 py-1.5 text-[11px] font-bold text-rose-700 transition hover:bg-rose-100" title="Delete this import batch and all linked data"><Trash2 size={13}/>Delete</button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50/40 py-14 text-center">
-                  <FolderOpen className="mb-3 h-11 w-11 text-slate-300" />
-                  <p className="text-sm font-bold text-slate-600">No uploaded files in this repository yet</p>
-                  <p className="mt-1 text-xs text-slate-400">Use the Upload button on the source card to create the first batch.</p>
-                </div>
-              )}
-            </Section>
-          </div>
+            <CallsReportRepositoryView
+              folderItems={folderItems}
+              folderStats={folderStats}
+              historyLoading={historyLoading}
+              onOpenRaw={(item) => openBatchPreview(item, "raw")}
+              onOpenIssues={(item) => openBatchPreview(item, "issues")}
+              onOpenUnmatched={(item) => openBatchPreview(item, "unmatched")}
+              onDeleteBatch={(item) => setDeleteTarget(item)}
+            />
         )}
       </Modal>
     )}
@@ -2242,6 +2156,7 @@ export default function FrontStepsDataManagement() {
 
       {deleteTarget && (
         <Modal
+          zIndex="z-[110]"
           title="Delete Import Batch"
           subtitle={`Batch #${deleteTarget.id} · ${deleteTarget.name}`}
           onClose={()=>{if(!deletingBatchId)setDeleteTarget(null);}}
@@ -2258,7 +2173,7 @@ export default function FrontStepsDataManagement() {
       )}
 
       {batchPreview && (
-        <Modal size="full" title={`Raw Source: ${batchPreview.name}`} subtitle={`FrontSteps batch #${batchPreview.id} · ${batchPreview.status} · ${Number(batchPreview.total || 0).toLocaleString()} source records`} onClose={()=>setBatchPreview(null)} footer={<button type="button" className={btnPrimary} onClick={()=>setBatchPreview(null)}>Close</button>}>
+        <Modal size="full" zIndex="z-[110]" title={`Raw Source: ${batchPreview.name}`} subtitle={`FrontSteps batch #${batchPreview.id} · ${batchPreview.status} · ${Number(batchPreview.total || 0).toLocaleString()} source records`} onClose={()=>setBatchPreview(null)} footer={null}>
           <div className="flex flex-col gap-5">
             <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
               <Detail label="Batch ID" value={`#${batchPreview.id}`} />

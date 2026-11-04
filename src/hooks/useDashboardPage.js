@@ -1,3 +1,4 @@
+import { recordAuditLog } from "@/lib/audit-logger";
 // Manages dashboard shell state and consumes centralized access-controlled modules.
 import { useMemo, useState } from "react";
 import {
@@ -76,6 +77,17 @@ function useDashboardPage() {
   const handleLogout = () => {
     setShowLogoutModal(false);
     setIsLoggingOut(true);
+
+    try {
+      recordAuditLog({
+        action: "Logout",
+        module: "Authentication",
+        description: "Logged out of session",
+        user: authUser,
+      });
+    } catch {
+      // ignore
+    }
 
     window.setTimeout(() => {
       void handleAuthLogout(true);

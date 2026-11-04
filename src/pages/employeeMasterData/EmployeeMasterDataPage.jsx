@@ -1,3 +1,4 @@
+import { recordAuditLog } from "@/lib/audit-logger";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowUpDown,
@@ -343,6 +344,14 @@ export default function EmployeeMasterDataPage() {
         const empSibsId = editingEmployee.sibsId;
 
         // Close edit modal and open success modal
+        try {
+          recordAuditLog({
+            action: "Edit",
+            module: "Employee Ledger",
+            description: `Updated ledger record for ${empName} (${empSibsId})`,
+            recordId: empSibsId,
+          });
+        } catch {}
         setEditingEmployee(null);
         setSavedEmployeeSuccess({
           name: empName,

@@ -1,4 +1,5 @@
 import AppModal from "@/components/common/ui/AppModal";
+import DatePicker from "@/components/common/filters/DatePicker";
 
 /** Review notes and existing reporting dates before committing a US Visa upload. */
 export default function WfmReviewImportModal({
@@ -68,27 +69,23 @@ export default function WfmReviewImportModal({
       <div className="mt-5 space-y-1">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">
-              Reporting Date From{requiresDates ? " *" : ""}
-            </label>
-            <input
-              type="date"
+            <DatePicker
+              label={`Reporting Date From${requiresDates ? " *" : ""}`}
               value={reportDateFrom}
-              max={reportDateTo || undefined}
-              onChange={(event) => setReportDateFrom(event.target.value)}
-              className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-800 outline-none transition-colors focus:border-[#042c51] focus:ring-1 focus:ring-[#042c51]"
+              onChange={(val) => setReportDateFrom(val)}
+              className="w-full"
+              labelClassName="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5"
+              buttonClassName="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-800 outline-none transition-colors hover:border-slate-300 focus:border-[#042c51] focus:ring-1 focus:ring-[#042c51]"
             />
           </div>
           <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">
-              Reporting Date To{requiresDates ? " *" : ""}
-            </label>
-            <input
-              type="date"
+            <DatePicker
+              label={`Reporting Date To${requiresDates ? " *" : ""}`}
               value={reportDateTo}
-              min={reportDateFrom || undefined}
-              onChange={(event) => setReportDateTo(event.target.value)}
-              className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-800 outline-none transition-colors focus:border-[#042c51] focus:ring-1 focus:ring-[#042c51]"
+              onChange={(val) => setReportDateTo(val)}
+              className="w-full"
+              labelClassName="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5"
+              buttonClassName="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-800 outline-none transition-colors hover:border-slate-300 focus:border-[#042c51] focus:ring-1 focus:ring-[#042c51]"
             />
           </div>
         </div>

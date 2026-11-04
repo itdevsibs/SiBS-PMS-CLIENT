@@ -1,3 +1,4 @@
+import { recordAuditLog } from "@/lib/audit-logger";
 import { useState } from "react";
 import {
   Activity,
@@ -351,6 +352,23 @@ const Login = () => {
 
         expiresInMs,
       });
+
+      try {
+        recordAuditLog({
+          action: "Login",
+          module: "Authentication",
+          description: "Logged into system session",
+          user: authUser,
+        });
+      } catch {
+        // ignore
+      }
+
+      try {
+        localStorage.removeItem("frontsteps_active_tab");
+      } catch {
+        // ignore storage errors
+      }
 
       setAuthenticatedRoleLabel(
         authUser.roleLabel,

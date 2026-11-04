@@ -44,7 +44,6 @@ import FrontStepsEmployeePerformance from "./FrontStepsEmployeePerformance";
 import FrontStepsCoachingManagement from "./FrontStepsCoachingManagement";
 import FrontStepsPerformanceImprovement from "./FrontStepsPerformanceImprovement";
 import FrontStepsQuarterlyIncentives from "./FrontStepsQuarterlyIncentives";
-import FrontStepsReportsAnalytics from "./FrontStepsReportsAnalytics";
 import FrontStepsDataManagement from "./FrontStepsDataManagement";
 import FrontStepsAdministration from "./FrontStepsAdministration";
 import FrontStepsAuditTrails from "./FrontStepsAuditTrails";
@@ -104,7 +103,6 @@ const FRONTSTEPS_MODULES = [
     name: "Reporting & Data",
     icon: BarChart3,
     submodules: [
-      { id: "reports-analytics", name: "Reports & Analytics", icon: BarChart3 },
       { id: "data-management", name: "Data Management", icon: Database },
     ],
   },
@@ -794,8 +792,6 @@ export default function FrontStepsDashboard() {
         return <FrontStepsPerformanceImprovement {...commonProps} />;
       case "quarterly-incentives":
         return <FrontStepsQuarterlyIncentives {...commonProps} />;
-      case "reports-analytics":
-        return <FrontStepsReportsAnalytics {...commonProps} />;
       case "data-management":
         return <FrontStepsDataManagement {...commonProps} />;
       case "administration":

@@ -1,3 +1,4 @@
+import { recordAuditLog } from "@/lib/audit-logger";
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   CheckCircle2,
@@ -66,6 +67,14 @@ function AssignmentModal({ item, onClose, onSaved }) {
         salesforceName: draft.salesforceName.trim(),
         active: draft.active,
       });
+      try {
+        recordAuditLog({
+          action: item ? "Edit" : "Create",
+          module: "Administration",
+          description: `${item ? "Updated" : "Created"} employee mapping for ${draft.employeeName || draft.sibsId}`,
+          recordId: draft.sibsId,
+        });
+      } catch {}
       await onSaved();
       onClose();
     } catch (err) {
@@ -208,6 +217,14 @@ export default function FrontStepsUserAssignmentManagement() {
     setError('');
     try {
       await setFrontStepsEmployeeAssignmentStatus(item.sibsId, !item.active);
+      try {
+        recordAuditLog({
+          action: "Edit",
+          module: "Administration",
+          description: `${item.active ? "Deactivated" : "Activated"} mapping status for ${item.employeeName || item.sibsId}`,
+          recordId: item.sibsId,
+        });
+      } catch {}
       setNotice(`Mapping for ${item.employeeName || item.sibsId} ${item.active ? 'deactivated' : 'activated'}.`);
       await load();
     } catch (err) {
