@@ -12,7 +12,7 @@ export default function WfmImportSummaryBar({
 }) {
   return (
     <div
-      className="mb-3.5 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6 shrink-0"
+      className="mb-2 grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6 shrink-0"
       aria-label="Import summary metrics"
     >
       {IMPORT_SUMMARY_CARDS.map((card) => {
@@ -70,7 +70,7 @@ export default function WfmImportSummaryBar({
                   }
                 : undefined
             }
-            className={`min-w-0 rounded-2xl border px-4 py-2.5 shadow-2xs transition-all duration-150 flex flex-col justify-between h-[74px] ${cardStyle} ${
+            className={`min-w-0 rounded-xl border px-3 py-1.5 shadow-2xs transition-all duration-150 flex flex-col justify-between h-[52px] ${cardStyle} ${
               isClickable
                 ? "cursor-pointer hover:shadow-xs hover:border-[#062A5C]/40 active:scale-[0.99]"
                 : ""
@@ -85,7 +85,7 @@ export default function WfmImportSummaryBar({
                 : `${card.label}: ${value.toLocaleString()}`
             }
           >
-            <p className={`m-0 text-[10.5px] font-bold uppercase tracking-wider leading-none truncate ${titleColor}`}>
+            <p className={`m-0 text-[9.5px] font-bold uppercase tracking-wider leading-none truncate ${titleColor}`}>
               {card.label === "TOTAL UPLOADS"
                 ? "Total Uploads"
                 : card.label === "RECORDS PROCESSED"
@@ -102,14 +102,14 @@ export default function WfmImportSummaryBar({
             </p>
 
             <div className="flex items-baseline justify-between gap-1.5 min-w-0">
-              <span className={`text-[23px] font-black leading-none tracking-tight ${valueColor}`}>
+              <span className={`text-[17px] font-black leading-none tracking-tight ${valueColor}`}>
                 {importSummaryNumberFormatter.format(value)}
               </span>
 
               {isTotalUploadsCard && uploadsWithIssues > 0 ? (
-                <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-[#FCD34D] bg-[#FEF3C7] px-2 py-0.5 text-[9.5px] font-bold text-[#B45309] shadow-2xs">
+                <span className="inline-flex shrink-0 items-center gap-0.5 rounded-full border border-[#FCD34D] bg-[#FEF3C7] px-1.5 py-0.2 text-[8.5px] font-bold text-[#B45309] shadow-2xs">
                   <AlertTriangle
-                    className="h-2.5 w-2.5 shrink-0 text-[#B45309]"
+                    className="h-2 w-2 shrink-0 text-[#B45309]"
                     strokeWidth={2.5}
                     aria-hidden="true"
                   />

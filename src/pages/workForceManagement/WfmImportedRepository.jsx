@@ -32,6 +32,9 @@ import ConfirmationModal from "@/components/common/ui/ConfirmationModal";
 import LoadingModal from "@/components/common/ui/LoadingModal";
 import WfmBatchDetailsModal from "@/components/modules/wfm/imports/WfmBatchDetailsModal";
 import WfmImportCalendar, { manilaDateKey } from "@/components/modules/wfm/imports/WfmImportCalendar";
+import WfmImportWeekCalendar from "@/components/modules/wfm/imports/WfmImportWeekCalendar";
+import WfmImportDayCalendar from "@/components/modules/wfm/imports/WfmImportDayCalendar";
+import WfmImportYearCalendar from "@/components/modules/wfm/imports/WfmImportYearCalendar";
 import WfmCalendarDailyImports from "@/components/modules/wfm/imports/WfmCalendarDailyImports";
 import WfmRepositoryReportTypeBadge from "@/components/modules/wfm/imports/WfmRepositoryReportTypeBadge";
 import WfmErrorDetailsModal from "@/components/modules/wfm/imports/WfmErrorDetailsModal";
@@ -141,14 +144,35 @@ export default function WfmImportedRepository() {
   const [uploadedDataSearch, setUploadedDataSearch] = useState("");
   const [selectedTimeframe, setSelectedTimeframe] = useState("all");
   // Calendar is the default view; List keeps the existing repository workflow.
+  // Persist the user's choice in localStorage and URL search params across refreshes.
   const [repositoryView, setRepositoryView] = useState(() => {
     return (
       location.state?.view ||
       searchParams.get("view") ||
+      localStorage.getItem("wfm_repository_view") ||
       "calendar"
     );
   });
+
+  const handleSelectRepositoryView = (view) => {
+    setRepositoryView(view);
+    try {
+      localStorage.setItem("wfm_repository_view", view);
+    } catch {}
+  };
   const [calendarMonth, setCalendarMonth] = useState(() => manilaDateKey().slice(0, 7));
+  const [currentWeekStart, setCurrentWeekStart] = useState(() => {
+    const today = new Date();
+    const day = today.getDay();
+    const diff = today.getDate() - day;
+    const sunday = new Date(today.setDate(diff));
+    const y = sunday.getFullYear();
+    const m = String(sunday.getMonth() + 1).padStart(2, "0");
+    const d = String(sunday.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+  });
+  const [currentDayView, setCurrentDayView] = useState(() => manilaDateKey());
+  const [currentYearView, setCurrentYearView] = useState(() => Number(manilaDateKey().slice(0, 4)));
   const [selectedCalendarDay, setSelectedCalendarDay] = useState(null);
   const [isDailyDrawerOpen, setIsDailyDrawerOpen] = useState(false);
   const [calendarDays, setCalendarDays] = useState([]);
@@ -501,6 +525,58 @@ export default function WfmImportedRepository() {
     setDailyPage(1);
   };
 
+  const handleNavigateWeek = (direction) => {
+    if (direction === 0) {
+      // Today's week
+      const today = new Date();
+      const day = today.getDay();
+      const diff = today.getDate() - day;
+      const sunday = new Date(today.setDate(diff));
+      const y = sunday.getFullYear();
+      const m = String(sunday.getMonth() + 1).padStart(2, "0");
+      const d = String(sunday.getDate()).padStart(2, "0");
+      setCurrentWeekStart(`${y}-${m}-${d}`);
+      setCalendarMonth(`${y}-${m}`);
+      return;
+    }
+    const current = new Date(`${currentWeekStart}T12:00:00Z`);
+    current.setDate(current.getDate() + direction * 7);
+    const y = current.getFullYear();
+    const m = String(current.getMonth() + 1).padStart(2, "0");
+    const d = String(current.getDate()).padStart(2, "0");
+    setCurrentWeekStart(`${y}-${m}-${d}`);
+    setCalendarMonth(`${y}-${m}`);
+  };
+
+  const handleNavigateDay = (direction) => {
+    if (direction === 0) {
+      const today = manilaDateKey();
+      setCurrentDayView(today);
+      setCalendarMonth(today.slice(0, 7));
+      return;
+    }
+    const current = new Date(`${currentDayView}T12:00:00Z`);
+    current.setDate(current.getDate() + direction);
+    const y = current.getUTCFullYear();
+    const m = String(current.getUTCMonth() + 1).padStart(2, "0");
+    const d = String(current.getUTCDate()).padStart(2, "0");
+    const newDay = `${y}-${m}-${d}`;
+    setCurrentDayView(newDay);
+    setCalendarMonth(`${y}-${m}`);
+  };
+
+  const handleNavigateYear = (direction) => {
+    if (direction === 0) {
+      const todayYear = Number(manilaDateKey().slice(0, 4));
+      setCurrentYearView(todayYear);
+      setCalendarMonth(manilaDateKey().slice(0, 7));
+      return;
+    }
+    const nextYear = currentYearView + direction;
+    setCurrentYearView(nextYear);
+    setCalendarMonth(`${nextYear}-01`);
+  };
+
   const handleSelectCalendarDay = (day, dayData) => {
     setSelectedCalendarDay(day);
     // If the day has batches/imports or if clicked, open the right drawer
@@ -701,7 +777,7 @@ export default function WfmImportedRepository() {
           onLogoutClick={() => dashboard.setShowLogoutModal(true)}
         />
 
-        <div className="sibs-scrollbar flex-1 flex flex-col overflow-y-auto [scrollbar-gutter:stable] p-2 sm:p-2.5 lg:p-3">
+        <div className="flex-1 flex flex-col min-h-0 overflow-hidden p-2 sm:p-2.5 lg:p-3">
           {/* Top Filter Bar */}
           <WfmFilterBar
             selectedAccount={selectedAccount}
@@ -724,17 +800,17 @@ export default function WfmImportedRepository() {
           />
 
           {/* Main Repository Box Container - flex-1 to fill bottom space */}
-          <div className="flex-1 flex flex-col rounded-xl sm:rounded-2xl border border-slate-200/80 bg-white p-3 sm:p-4 shadow-xs">
+          <div className="flex-1 min-h-0 flex flex-col rounded-xl sm:rounded-2xl border border-slate-200/80 bg-white p-2.5 sm:p-3 shadow-xs overflow-hidden">
             {/* Header: Title/Subtitle on Left, Level dropdown & Search on Right */}
-            <div className="flex flex-col gap-2.5 lg:flex-row lg:items-center lg:justify-between border-b border-slate-100 pb-2.5 sm:pb-3 shrink-0">
-              <div className="min-w-0 flex-1">
+            <div className="flex flex-col gap-2 xl:flex-row xl:items-center xl:justify-between border-b border-slate-100 pb-2 shrink-0">
+              <div className="min-w-0 shrink-0">
                 <h2
-                  className="m-0 truncate text-base sm:text-lg md:text-xl font-bold text-sibs-primary-1"
+                  className="m-0 truncate text-sm sm:text-base md:text-lg font-bold text-sibs-primary-1"
                   title={headerTitle}
                 >
                   {headerTitle}
                 </h2>
-                <p className="mt-1 mb-0 text-xs font-semibold text-sibs-tertiary-5 truncate">
+                <p className="mt-0.5 mb-0 text-[11px] font-semibold text-sibs-tertiary-5 truncate">
                   Account:{" "}
                   <span className="font-bold text-sibs-primary-1">
                     {selectedAccount === "All Accounts" ? "US VISA" : selectedAccount}
@@ -743,47 +819,47 @@ export default function WfmImportedRepository() {
                 </p>
               </div>
 
-              <div className="inline-flex shrink-0 items-center gap-1 rounded-xl bg-slate-200/80 p-1 shadow-inner" role="group" aria-label="Repository view">
-                <button
-                  type="button"
-                  onClick={() => setRepositoryView("calendar")}
-                  aria-pressed={repositoryView === "calendar"}
-                  className={`flex h-8 items-center gap-1.5 rounded-lg px-3.5 text-xs transition-all cursor-pointer ${
-                    repositoryView === "calendar"
-                      ? "bg-[#042c51] text-white shadow-sm font-extrabold"
-                      : "text-slate-600 hover:text-slate-900 hover:bg-white/50 font-bold"
-                  }`}
-                >
-                  <CalendarDays className="h-3.5 w-3.5" />
-                  <span>Calendar</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setRepositoryView("list")}
-                  aria-pressed={repositoryView === "list"}
-                  className={`flex h-8 items-center gap-1.5 rounded-lg px-3.5 text-xs transition-all cursor-pointer ${
-                    repositoryView === "list"
-                      ? "bg-[#042c51] text-white shadow-sm font-extrabold"
-                      : "text-slate-600 hover:text-slate-900 hover:bg-white/50 font-bold"
-                  }`}
-                >
-                  <List className="h-3.5 w-3.5" />
-                  <span>List</span>
-                </button>
-              </div>
+              <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                <div className="inline-flex shrink-0 items-center gap-0.5 rounded-lg bg-slate-200/80 p-0.5 shadow-inner" role="group" aria-label="Repository view">
+                  <button
+                    type="button"
+                    onClick={() => handleSelectRepositoryView("calendar")}
+                    aria-pressed={repositoryView === "calendar"}
+                    className={`flex h-7.5 items-center gap-1 rounded-md px-2.5 text-[11px] transition-all cursor-pointer ${
+                      repositoryView === "calendar"
+                        ? "bg-[#042c51] text-white shadow-xs font-extrabold"
+                        : "text-slate-600 hover:text-slate-900 hover:bg-white/50 font-bold"
+                    }`}
+                  >
+                    <CalendarDays className="h-3 w-3" />
+                    <span>Calendar</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleSelectRepositoryView("list")}
+                    aria-pressed={repositoryView === "list"}
+                    className={`flex h-7.5 items-center gap-1 rounded-md px-2.5 text-[11px] transition-all cursor-pointer ${
+                      repositoryView === "list"
+                        ? "bg-[#042c51] text-white shadow-xs font-extrabold"
+                        : "text-slate-600 hover:text-slate-900 hover:bg-white/50 font-bold"
+                    }`}
+                  >
+                    <List className="h-3 w-3" />
+                    <span>List</span>
+                  </button>
+                </div>
 
-              {/* Controls: Search Input, Level Dropdown, Tool Dropdown, Clear Button - FIXED POSITIONS */}
-              <div className="flex flex-col sm:flex-row sm:flex-wrap xl:flex-nowrap items-stretch sm:items-center gap-2 sm:gap-2.5 lg:gap-3 w-full lg:w-auto">
+                {/* Controls: Search Input, Level Dropdown, Tool Dropdown, Clear Button */}
                 {/* Search uploaded data input */}
-                <div className="relative w-full sm:w-60 md:w-64 lg:w-56 xl:w-64 shrink-0">
+                <div className="relative w-44 sm:w-48 lg:w-52 shrink-0">
                   <Search
-                    className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-sibs-tertiary-6"
+                    className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-sibs-tertiary-6"
                     aria-hidden="true"
                   />
                   <input
                     value={uploadedDataSearch}
                     onChange={(e) => setUploadedDataSearch(e.target.value)}
-                    className="h-9 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-8 text-xs sm:text-sm outline-none transition focus:border-sibs-primary-2 shadow-2xs"
+                    className="h-8 w-full rounded-lg border border-slate-200 bg-white pl-8 pr-7 text-xs outline-none transition focus:border-sibs-primary-2 shadow-2xs"
                     placeholder="Search uploaded data..."
                     type="text"
                   />
@@ -791,62 +867,55 @@ export default function WfmImportedRepository() {
                     <button
                       type="button"
                       onClick={() => setUploadedDataSearch("")}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 hover:text-slate-600 cursor-pointer"
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 hover:text-slate-600 cursor-pointer"
                     >
                       ✕
                     </button>
                   ) : null}
                 </div>
 
-                {/* Level selector dropdown - fixed width so it never moves when changing options */}
-                <div className="w-full sm:w-60 md:w-64 shrink-0">
+                {/* Level selector dropdown */}
+                <div className="w-36 sm:w-40 shrink-0">
                   <SingleSelectDropdown
                     value={selectedLevel}
                     onChange={(e) => { setSelectedLevel(e.target.value); setSelectedTool("ALL"); }}
                     options={repositoryView === "calendar" ? levelOptions.map((option) => ({ ...option, label: option.label.replace(/ \(\d+\)$/, "") })) : levelOptions}
                     placeholder="Select Level..."
-                    buttonClassName="h-9 rounded-lg border-slate-200 px-2.5 text-xs font-semibold shadow-2xs"
+                    buttonClassName="h-8 rounded-lg border-slate-200 px-2 text-[11px] font-semibold shadow-2xs"
                   />
                 </div>
 
-                {/* Tool selector dropdown - fixed width so changing count text never resizes */}
-                <div className="w-full sm:w-40 md:w-44 shrink-0">
+                {/* Tool selector dropdown */}
+                <div className="w-28 sm:w-32 shrink-0">
                   <SingleSelectDropdown
                     value={effectiveSelectedTool}
                     onChange={(e) => setSelectedTool(e.target.value)}
                     options={repositoryView === "calendar" ? toolOptions.map((option) => ({ ...option, label: option.label.replace(/ \(\d+\)$/, "") })) : toolOptions}
                     placeholder="Select Tool..."
-                    buttonClassName="h-9 rounded-lg border-slate-200 px-2.5 text-xs font-semibold shadow-2xs"
+                    buttonClassName="h-8 rounded-lg border-slate-200 px-2 text-[11px] font-semibold shadow-2xs"
                   />
                 </div>
 
-                {/* Timeframe Filter: in Calendar view (without Per Day), in List view (all options) */}
-                <div className="w-full sm:w-36 md:w-40 shrink-0">
-                  <SingleSelectDropdown
-                    value={selectedTimeframe}
-                    onChange={(e) => setSelectedTimeframe(e.target.value)}
-                    options={
-                      repositoryView === "calendar"
-                        ? [
-                            { value: "all", label: "All Time" },
-                            { value: "week", label: "Per Week" },
-                            { value: "month", label: "Per Month" },
-                            { value: "year", label: "Per Year" },
-                          ]
-                        : [
-                            { value: "all", label: "All Time" },
-                            { value: "day", label: "Per Day" },
-                            { value: "week", label: "Per Week" },
-                            { value: "month", label: "Per Month" },
-                            { value: "year", label: "Per Year" },
-                          ]
-                    }
-                    placeholder="Timeframe..."
-                    buttonClassName="h-9 rounded-lg border-slate-200 px-2.5 text-xs font-semibold shadow-2xs"
-                  />
-                </div>
+                {/* Timeframe Filter (only in Calendar view) */}
+                {repositoryView === "calendar" && (
+                  <div className="w-28 sm:w-32 shrink-0">
+                    <SingleSelectDropdown
+                      value={selectedTimeframe}
+                      onChange={(e) => setSelectedTimeframe(e.target.value)}
+                      options={[
+                        { value: "all", label: "All Time" },
+                        { value: "day", label: "Per Day" },
+                        { value: "week", label: "Per Week" },
+                        { value: "month", label: "Per Month" },
+                        { value: "year", label: "Per Year" },
+                      ]}
+                      placeholder="Timeframe..."
+                      buttonClassName="h-8 rounded-lg border-slate-200 px-2 text-[11px] font-semibold shadow-2xs"
+                    />
+                  </div>
+                )}
 
-                {/* Clear button to reset back to All Level, All Tools, and All Time */}
+                {/* Clear button */}
                 <button
                   type="button"
                   onClick={() => {
@@ -855,7 +924,7 @@ export default function WfmImportedRepository() {
                     setSelectedTimeframe("all");
                     setUploadedDataSearch("");
                   }}
-                  className="h-9 w-full sm:w-auto shrink-0 rounded-lg border border-slate-200 bg-white px-3.5 text-xs font-semibold text-slate-600 shadow-2xs transition-colors hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900 cursor-pointer text-center"
+                  className="h-8 shrink-0 rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-semibold text-slate-600 shadow-2xs transition-colors hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900 cursor-pointer text-center"
                   title="Reset filters"
                 >
                   Clear
@@ -865,15 +934,51 @@ export default function WfmImportedRepository() {
 
             {repositoryView === "calendar" ? (
               <>
-                <WfmImportCalendar
-                  month={calendarMonth}
-                  onMonthChange={changeCalendarMonth}
-                  selectedDay={selectedCalendarDay}
-                  onSelectDay={handleSelectCalendarDay}
-                  days={calendarDays}
-                  loading={calendarLoading}
-                  error={calendarError}
-                />
+                {selectedTimeframe === "day" ? (
+                  <WfmImportDayCalendar
+                    selectedDay={selectedCalendarDay}
+                    onSelectDay={handleSelectCalendarDay}
+                    days={calendarDays}
+                    loading={calendarLoading}
+                    error={calendarError}
+                    currentDay={currentDayView}
+                    onNavigateDay={handleNavigateDay}
+                  />
+                ) : selectedTimeframe === "week" ? (
+                  <WfmImportWeekCalendar
+                    selectedDay={selectedCalendarDay}
+                    onSelectDay={handleSelectCalendarDay}
+                    days={calendarDays}
+                    loading={calendarLoading}
+                    error={calendarError}
+                    onNavigateWeek={handleNavigateWeek}
+                    currentWeekStart={currentWeekStart}
+                  />
+                ) : selectedTimeframe === "year" ? (
+                  <WfmImportYearCalendar
+                    year={currentYearView}
+                    onNavigateYear={handleNavigateYear}
+                    selectedDay={selectedCalendarDay}
+                    onSelectDay={handleSelectCalendarDay}
+                    days={calendarDays}
+                    loading={calendarLoading}
+                    error={calendarError}
+                    onSelectMonth={(monthKey) => {
+                      setCalendarMonth(monthKey);
+                      setSelectedTimeframe("month");
+                    }}
+                  />
+                ) : (
+                  <WfmImportCalendar
+                    month={calendarMonth}
+                    onMonthChange={changeCalendarMonth}
+                    selectedDay={selectedCalendarDay}
+                    onSelectDay={handleSelectCalendarDay}
+                    days={calendarDays}
+                    loading={calendarLoading}
+                    error={calendarError}
+                  />
+                )}
 
                 {/* Slide-out side drawer on the right when a day with data is clicked */}
                 <div
@@ -921,11 +1026,12 @@ export default function WfmImportedRepository() {
               </>
             ) : null}
 
-            {repositoryView === "list" ? <>
-            {/* Clean Elevated Cards Container */}
-            <div className="mt-3.5 space-y-2.5">
-              {displayedUploads.length > 0 ? (
-                  paginatedUploads.map((upload) => {
+            {repositoryView === "list" ? (
+              <div className="flex-1 min-h-0 flex flex-col mt-2.5">
+                {/* Scrollable Elevated Cards Container */}
+                <div className="sibs-scrollbar flex-1 min-h-0 overflow-y-auto pr-1 space-y-2.5">
+                  {displayedUploads.length > 0 ? (
+                    paginatedUploads.map((upload) => {
                     const display = getImportDisplayStatus(upload);
                     const isCompleted = display.tone === "success" || display.label?.toLowerCase() === "completed";
                     const isPartial = display.tone === "warning" || display.label?.toLowerCase().includes("partial");
@@ -1150,7 +1256,8 @@ export default function WfmImportedRepository() {
                   </div>
                 </div>
               )}
-            </> : null}
+              </div>
+            ) : null}
           </div>
         </div>
       </main>
