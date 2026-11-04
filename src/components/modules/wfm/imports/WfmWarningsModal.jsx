@@ -23,6 +23,7 @@ const WARNING_LEVEL_ORDER = [
   "CHAT REPORT (EOD)",
   "AGENT ACTIVITY - PRODUCTIVE BREAKS",
   "AGENT PERFORMANCE BY SKILL",
+  "SKILL STATISTICS",
   "SERVICE / QUEUE LEVEL",
   "AGENT LEVEL",
   "AGENT OCCUPANCY",
@@ -103,6 +104,7 @@ export default function WfmWarningsModal({
       "CHAT REPORT (EOD)": 0,
       "AGENT ACTIVITY - PRODUCTIVE BREAKS": 0,
       "AGENT PERFORMANCE BY SKILL": 0,
+      "SKILL STATISTICS": 0,
       "SERVICE / QUEUE LEVEL": 0,
       "AGENT LEVEL": 0,
       "AGENT OCCUPANCY": 0,
@@ -139,6 +141,10 @@ export default function WfmWarningsModal({
       {
         value: "AGENT PERFORMANCE BY SKILL",
         label: `AGENT PERFORMANCE BY SKILL (${levelCounts["AGENT PERFORMANCE BY SKILL"] || 0})`,
+      },
+      {
+        value: "SKILL STATISTICS",
+        label: `SKILL STATISTICS (${levelCounts["SKILL STATISTICS"] || 0})`,
       },
       {
         value: "SERVICE / QUEUE LEVEL",

@@ -47,7 +47,7 @@ export default function WfmRawDataCardsGrid({
 
   return (
     <div className="space-y-6">
-      {/* Grouped Level Cards: 1 Card for SERVICE / QUEUE LEVEL, 1 Card for AGENT LEVEL, 1 Card for AGENT OCCUPANCY */}
+      {/* Grouped Level Cards: a dedicated Skill Statistics group, Calls EOD, Chats and other raw sources */}
       {levelGroups.length > 0 && (
         <section className="min-w-0">
           <div className="mb-3 flex items-center gap-2">

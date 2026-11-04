@@ -6,6 +6,7 @@ const ALL_TOOLS = Object.freeze(["Fusecom", "FuseNet", "HeroDash", "MS Dynamics"
 export const REPOSITORY_TOOLS_BY_LEVEL = Object.freeze({
   ALL: ALL_TOOLS,
   "CALL REPORT (EOD)": ["Fusecom", "FuseNet", "HeroDash"],
+  "SKILL STATISTICS": ["Fusecom", "FuseNet", "HeroDash"],
   "CHAT REPORT (EOD)": ["Fusecom", "FuseNet", "HeroDash"],
   "AGENT OCCUPANCY": ["Fusecom", "FuseNet", "HeroDash"],
   "AGENT ACTIVITY - PRODUCTIVE BREAKS": ["HeroDash"],
@@ -47,8 +48,8 @@ export function getRepositoryToolForUpload(upload = {}) {
 const REPOSITORY_REPORT_TYPES = Object.freeze([
   ["PERFORMANCE_BY_SKILL", "Agent Performance By Skill"],
   ["PRODUCTIVE_BREAKS", "Agent Activity – Productive Breaks"],
-  ["SKILL_STATISTICS", "Skill Statistics (Legacy)"],
-  ["SERVICE_/_QUEUE_LEVEL", "Skill Statistics (Legacy)"],
+  ["SKILL_STATISTICS", "Skill Statistics"],
+  ["SERVICE_/_QUEUE_LEVEL", "Skill Statistics"],
   ["AGENT_LEVEL", "Agent Level (Legacy)"],
   ["CALL_REPORT", "Calls EOD"],
   ["CALL_EOD", "Calls EOD"],

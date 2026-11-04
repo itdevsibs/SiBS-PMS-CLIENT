@@ -10,9 +10,26 @@ const defaultRawDataTitles = Array.from(
 );
 
 // Account-specific cards shown on the WFM raw data upload cards.
-// Calls phase: Call Report (EOD) replaces Skill Statistics + Agent Level uploads.
+// Calls EOD and Skill Statistics are independent domains: individual calls vs queue totals.
 const accountRawDataCards = {
   "US VISA": [
+    ...[
+      ["fusecom", "FuseCom", "FUSECOM_SKILL_STATISTICS_INBOUND"],
+      ["fusenet", "FuseNet", "FUSENET_SKILL_STATISTICS_INBOUND"],
+      ["herodash", "HeroDash", "HERO_SKILL_STATISTICS_INBOUND"],
+    ].map(([id, sourceLabel, importProfileCode]) => ({
+      id: `skill-statistics-${id}`,
+      title: sourceLabel,
+      sourceLabel,
+      groupLabel: "SKILL STATISTICS",
+      description: "Queue-level reporting",
+      taskOrders: [],
+      importProfileCode,
+      fileExtension: ".xlsx",
+      acceptedFileTypes: ".xlsx",
+      requiresTaskOrderSelection: false,
+      requiresReportingPeriod: id === "herodash",
+    })),
     {
       id: "call-report-eod-fusecom",
       title: "FuseCom",

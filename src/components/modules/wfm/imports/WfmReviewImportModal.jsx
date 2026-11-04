@@ -116,19 +116,19 @@ export default function WfmReviewImportModal({
           </label>
           <span
             className={`text-xs font-semibold ${
-              Array.from(importNote).length >= 200 ? "text-amber-600" : "text-slate-400"
+              Array.from(importNote).length >= 500 ? "text-amber-600" : "text-slate-400"
             }`}
           >
-            {Array.from(importNote).length}/200
+            {Array.from(importNote).length}/500
           </span>
         </div>
         <textarea
           id="wfm-import-note"
           rows={3}
-          maxLength={200}
+          maxLength={500}
           value={importNote}
           onChange={(event) =>
-            setImportNote(Array.from(event.target.value).slice(0, 200).join(""))
+            setImportNote(Array.from(event.target.value).slice(0, 500).join(""))
           }
           placeholder="Enter notes or remarks for this import..."
           className="w-full resize-none rounded-lg border border-slate-200 bg-white p-3 text-sm text-slate-800 placeholder:text-slate-400 outline-none transition-colors focus:border-[#042c51] focus:ring-1 focus:ring-[#042c51]"

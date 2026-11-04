@@ -83,8 +83,7 @@ function normalizeLevelValue(val) {
   if (upper.includes("CHAT REPORT")) return "CHAT REPORT (EOD)";
   // Legacy Agent Level is now represented by Call Report (EOD).
   if (upper.includes("AGENT LEVEL")) return "CALL REPORT (EOD)";
-  // Service / Queue Level (legacy Skill Statistics) is retired from the repository filter.
-  if (upper.includes("SERVICE") || upper.includes("QUEUE")) return "ALL";
+  if (upper.includes("SKILL STATISTICS") || upper.includes("SERVICE") || upper.includes("QUEUE")) return "SKILL STATISTICS";
   if (upper.includes("QUALITY") || upper === "QA") return "QUALITY AUDIT";
   if (upper.includes("OCCUPANCY")) return "AGENT OCCUPANCY";
   if (upper.includes("AGENT ACTIVITY") || upper.includes("PRODUCTIVE BREAK")) return "AGENT ACTIVITY - PRODUCTIVE BREAKS";
@@ -292,7 +291,7 @@ export default function WfmImportedRepository() {
 
   // Helper to resolve level/group category for an upload.
   // Legacy Agent Level batches are grouped under Call Report (EOD);
-  // retired Service / Queue Level batches remain available only through ALL.
+  // Skill Statistics is active again; old queue-level batches share this category.
   const getUploadLevel = useCallback((upload) => {
     const rawLevel =
       upload.groupLabel ||
@@ -301,6 +300,7 @@ export default function WfmImportedRepository() {
 
     const upper = String(rawLevel || "").trim().toUpperCase();
     if (upper.includes("AGENT LEVEL")) return "CALL REPORT (EOD)";
+    if (upper.includes("SKILL STATISTICS") || upper.includes("QUEUE") || upper.includes("SERVICE")) return "SKILL STATISTICS";
     if (upper.includes("CALL REPORT")) return "CALL REPORT (EOD)";
     if (upper.includes("CHAT REPORT")) return "CHAT REPORT (EOD)";
     if (upper.includes("OCCUPANCY")) return "AGENT OCCUPANCY";
@@ -317,7 +317,7 @@ export default function WfmImportedRepository() {
   }, [selectedAccount]);
 
   // Preserve legacy import history. Agent Level batches roll into Call Report (EOD),
-  // while retired Skill Statistics / Service Level batches remain visible under ALL only.
+  // while historical Skill Statistics / Service Level batches remain grouped with new imports.
   const allUploads = useMemo(() => {
     const list = Object.values(uploadsByCard)
       .flat()
@@ -332,6 +332,7 @@ export default function WfmImportedRepository() {
   const levelCounts = useMemo(() => {
     const counts = {
       "CALL REPORT (EOD)": 0,
+      "SKILL STATISTICS": 0,
       "CHAT REPORT (EOD)": 0,
       "AGENT OCCUPANCY": 0,
       "AGENT ACTIVITY - PRODUCTIVE BREAKS": 0,
@@ -356,6 +357,10 @@ export default function WfmImportedRepository() {
       {
         value: "ALL",
         label: `ALL LEVEL (${allUploads.length})`,
+      },
+      {
+        value: "SKILL STATISTICS",
+        label: `SKILL STATISTICS (${levelCounts["SKILL STATISTICS"] || 0})`,
       },
       {
         value: "CALL REPORT (EOD)",
