@@ -571,6 +571,7 @@ export function mapBatchToUpload(batch) {
 export const WARNING_CATEGORY_LABELS = [
   "CALL REPORT (EOD)",
   "CHAT REPORT (EOD)",
+  "SKILL STATISTICS",
   "SERVICE / QUEUE LEVEL",
   "AGENT LEVEL",
   "AGENT OCCUPANCY",
@@ -613,7 +614,7 @@ export function getBatchCategory(batch) {
     text.includes("queue") ||
     text.includes("service")
   ) {
-    return "SERVICE / QUEUE LEVEL";
+    return "SKILL STATISTICS";
   }
 
   return "SERVICE / QUEUE LEVEL";
@@ -777,6 +778,7 @@ export async function executeCardImport({
 
 export function groupRawDataCards(cards = []) {
   const groupOrder = [
+    "SKILL STATISTICS",
     "CALL REPORT (EOD)",
     "CHAT REPORT (EOD)",
     "SERVICE / QUEUE LEVEL",
