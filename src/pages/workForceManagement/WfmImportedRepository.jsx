@@ -1,3 +1,4 @@
+import { recordAuditLog } from "@/lib/audit-logger";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLocation, useSearchParams } from "react-router-dom";
 import {
@@ -138,6 +139,7 @@ export default function WfmImportedRepository() {
     );
   });
   const [uploadedDataSearch, setUploadedDataSearch] = useState("");
+  const [selectedTimeframe, setSelectedTimeframe] = useState("all");
   // Calendar is the default view; List keeps the existing repository workflow.
   const [repositoryView, setRepositoryView] = useState(() => {
     return (
@@ -664,6 +666,15 @@ export default function WfmImportedRepository() {
           selectedUploadToRemove.account || "US VISA"
         } - ${selectedUploadToRemove.rawDataTitle || "Raw Data"} via Import Repository.`,
       });
+
+      try {
+        recordAuditLog({
+          action: "Delete",
+          module: "Workforce Management",
+          description: `Deleted ${selectedUploadToRemove.fileName} from repository (${selectedUploadToRemove.account || "US VISA"})`,
+          recordId: batchIdentifier || "",
+        });
+      } catch {}
     } finally {
       setIsRemovingUpload(false);
       setRemovingUploadFileName("");
@@ -684,7 +695,7 @@ export default function WfmImportedRepository() {
 
       <main className="min-w-0 flex-1 flex flex-col h-full overflow-hidden">
         <AppHeader
-          title={dashboard.authUser?.roleLabel || "Workforce Management"}
+          title="Import Repository"
           subtitle="Performance Management System"
           onMenuClick={() => dashboard.setIsMobileSidebarOpen(true)}
           onLogoutClick={() => dashboard.setShowLogoutModal(true)}
@@ -809,16 +820,43 @@ export default function WfmImportedRepository() {
                   />
                 </div>
 
-                {/* Clear button to reset back to All Level and All Tools */}
+                {/* Timeframe Filter: in Calendar view (without Per Day), in List view (all options) */}
+                <div className="w-full sm:w-36 md:w-40 shrink-0">
+                  <SingleSelectDropdown
+                    value={selectedTimeframe}
+                    onChange={(e) => setSelectedTimeframe(e.target.value)}
+                    options={
+                      repositoryView === "calendar"
+                        ? [
+                            { value: "all", label: "All Time" },
+                            { value: "week", label: "Per Week" },
+                            { value: "month", label: "Per Month" },
+                            { value: "year", label: "Per Year" },
+                          ]
+                        : [
+                            { value: "all", label: "All Time" },
+                            { value: "day", label: "Per Day" },
+                            { value: "week", label: "Per Week" },
+                            { value: "month", label: "Per Month" },
+                            { value: "year", label: "Per Year" },
+                          ]
+                    }
+                    placeholder="Timeframe..."
+                    buttonClassName="h-9 rounded-lg border-slate-200 px-2.5 text-xs font-semibold shadow-2xs"
+                  />
+                </div>
+
+                {/* Clear button to reset back to All Level, All Tools, and All Time */}
                 <button
                   type="button"
                   onClick={() => {
                     setSelectedLevel("ALL");
                     setSelectedTool("ALL");
+                    setSelectedTimeframe("all");
                     setUploadedDataSearch("");
                   }}
                   className="h-9 w-full sm:w-auto shrink-0 rounded-lg border border-slate-200 bg-white px-3.5 text-xs font-semibold text-slate-600 shadow-2xs transition-colors hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900 cursor-pointer text-center"
-                  title="Reset to All Level and All Tools"
+                  title="Reset filters"
                 >
                   Clear
                 </button>

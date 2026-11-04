@@ -1,3 +1,4 @@
+import { recordAuditLog } from "@/lib/audit-logger";
 import React, { useMemo, useState } from "react";
 import {
   Users,
@@ -596,6 +597,14 @@ export default function FrontStepsQuarterlyIncentives() {
     });
 
     setRecords(updated);
+    try {
+      recordAuditLog({
+        action: "Edit",
+        module: "Quarterly Incentives",
+        description: `Validated quarterly incentive for ${validatingRecord?.employeeName}`,
+        recordId: validatingRecord?.employeeId,
+      });
+    } catch {}
     setValidatingRecord(null);
   };
 
@@ -621,6 +630,14 @@ export default function FrontStepsQuarterlyIncentives() {
     });
 
     setRecords(updated);
+    try {
+      recordAuditLog({
+        action: approvalForm.decision === "Approved" ? "Approve" : "Reject",
+        module: "Quarterly Incentives",
+        description: `${approvalForm.decision} quarterly incentive for ${approvingRecord?.employeeName}`,
+        recordId: approvingRecord?.employeeId,
+      });
+    } catch {}
     setApprovingRecord(null);
   };
 

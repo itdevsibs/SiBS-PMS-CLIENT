@@ -35,6 +35,7 @@ export function AddedUploadSuccessModal({
   addedUpload,
   onClose,
   handleOpenUsVisaErrors,
+  handleOpenBatchDetails,
 }) {
   return (
     <AppModal
@@ -127,27 +128,22 @@ export function AddedUploadSuccessModal({
       ) : null}
 
       <div className="mt-5 flex justify-end gap-2">
-        {addedUpload?.batch &&
-        (addedUpload.batch.invalidRows > 0 ||
-          addedUpload.batch.warningRows > 0 ||
-          addedUpload.batch.duplicateRows > 0) ? (
+        {addedUpload?.batch ? (
           <Button
             type="button"
             variant="outline"
             onClick={() => {
-              const batchId = addedUpload.batch.id;
+              const batchData = addedUpload.batch;
               onClose();
-              handleOpenUsVisaErrors(batchId);
+              if (handleOpenBatchDetails) {
+                handleOpenBatchDetails(batchData);
+              } else if (handleOpenUsVisaErrors) {
+                handleOpenUsVisaErrors(batchData.id || batchData.batchId);
+              }
             }}
             className="h-10 rounded-lg border-sibs-danger/30 px-4 text-sibs-danger hover:bg-sibs-danger hover:text-white"
           >
-            View Import Events (
-            {(
-              (addedUpload.batch.invalidRows || 0) +
-              (addedUpload.batch.warningRows || 0) +
-              (addedUpload.batch.duplicateRows || 0)
-            ).toLocaleString()}
-            )
+            View Import Details
           </Button>
         ) : null}
         <Button

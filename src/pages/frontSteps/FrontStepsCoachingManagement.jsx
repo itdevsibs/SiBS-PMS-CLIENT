@@ -1,3 +1,4 @@
+import { recordAuditLog } from "@/lib/audit-logger";
 import React, { useMemo, useState } from "react";
 import {
   Users,
@@ -685,6 +686,14 @@ export default function FrontStepsCoachingManagement() {
     };
 
     setRecords([newRecord, ...records]);
+    try {
+      recordAuditLog({
+        action: "Create",
+        module: "Coaching Management",
+        description: `Created coaching session for ${newRecord.employeeName}`,
+        recordId: newRecord.id,
+      });
+    } catch {}
     setIsCreateModalOpen(false);
     // Reset createForm
     setCreateForm({
@@ -2696,6 +2705,14 @@ function ViewCoachingModal({ record, onClose, onUpdate, onAcknowledge }) {
         ...record,
         ...editForm,
       });
+      try {
+        recordAuditLog({
+          action: "Edit",
+          module: "Coaching Management",
+          description: `Updated coaching record for ${record.employeeName}`,
+          recordId: record.id,
+        });
+      } catch {}
     }
     setIsEditing(false);
   };

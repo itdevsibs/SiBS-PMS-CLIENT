@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   Activity,
   AlertTriangle,
@@ -29,407 +29,23 @@ import {
   Users,
   X,
 } from "lucide-react";
-import SingleSelectDropdown from "../../components/common/filters/SingleSelectDropdown";
 import TablePagination from "../../components/common/tables/TablePagination";
+import { getStoredAuditLogs, AUDIT_LOG_ADDED_EVENT } from "../../lib/audit-logger";
 
 // Comprehensive demonstration audit trail activity records across all FrontSteps modules
-const INITIAL_AUDIT_LOGS = [
-  {
-    id: "AUD-2026-0891",
-    timestamp: "Oct 20, 2026, 11:24:18 AM",
-    rawDate: "2026-10-20T11:24:18",
-    employeeName: "Sarah Gomez",
-    employeeId: "FS-SUP-01",
-    role: "Supervisor",
-    module: "Coaching Management",
-    action: "Create",
-    severity: "Normal",
-    description: "Created coaching session for Kristine Morales",
-    recordId: "COACH-FS-007",
-    recordType: "Coaching Session",
-    targetSubject: "Kristine Joy Morales (FS-1001)",
-    ipAddress: "10.240.12.92",
-    changes: [
-      { field: "Session Type", previous: "—", current: "Unscheduled", remarks: "Initial coaching record created" },
-      { field: "Performance Gap", previous: "—", current: "QA Empathy Call Opening", remarks: "Documented coaching gap" },
-      { field: "Target Follow-Up Date", previous: "—", current: "Oct 21, 2026", remarks: "14-day review schedule" },
-    ],
-  },
-  {
-    id: "AUD-2026-0890",
-    timestamp: "Oct 20, 2026, 10:48:05 AM",
-    rawDate: "2026-10-20T10:48:05",
-    employeeName: "Mark Ramos",
-    employeeId: "FS-SUP-02",
-    role: "Supervisor",
-    module: "Data Management",
-    action: "Update",
-    severity: "Normal",
-    description: "Submitted telephony AHT correction proposal",
-    recordId: "FS-DATA-1005",
-    recordType: "Source Record",
-    targetSubject: "John Rafael Dizon (FS-1003)",
-    ipAddress: "10.240.12.95",
-    changes: [
-      { field: "Reported AHT", previous: "860 sec", current: "845 sec", remarks: "Reconciliation with telephony queue interval data" },
-      { field: "Validation Status", previous: "Requires Review", current: "Pending Validation", remarks: "Awaiting supervisory revalidation" },
-    ],
-  },
-  {
-    id: "AUD-2026-0889",
-    timestamp: "Oct 20, 2026, 10:35:42 AM",
-    rawDate: "2026-10-20T10:35:42",
-    employeeName: "Dwight Anthony Buma-at",
-    employeeId: "FS-MGT-01",
-    role: "Operations Manager",
-    module: "Quarterly Incentives",
-    action: "Approve",
-    severity: "Critical",
-    description: "Approved Q3 $40 incentive for Maria Santos",
-    recordId: "INC-FS-2026-Q3-01",
-    recordType: "Quarterly Incentive",
-    targetSubject: "Maria Kristina Santos (FS-1002)",
-    ipAddress: "10.240.12.84",
-    changes: [
-      { field: "Approval Status", previous: "Pending Review", current: "Approved", remarks: "Validated 3 consecutive months: 91.2%, 92.5%, 92.8%" },
-      { field: "Payout Authorization", previous: "Unapproved", current: "$40 Qualified", remarks: "Approved for Q3 payout distribution" },
-    ],
-  },
-  {
-    id: "AUD-2026-0888",
-    timestamp: "Oct 20, 2026, 10:12:19 AM",
-    rawDate: "2026-10-20T10:12:19",
-    employeeName: "Kristine Joy Morales",
-    employeeId: "FS-1001",
-    role: "Customer Support Agent",
-    module: "Coaching Management",
-    action: "Update",
-    severity: "Normal",
-    description: "Acknowledged coaching action plan commitments",
-    recordId: "COACH-FS-007",
-    recordType: "Coaching Acknowledgment",
-    targetSubject: "Self (Kristine Joy Morales)",
-    ipAddress: "10.240.14.33",
-    changes: [
-      { field: "Employee Acknowledgment", previous: "Pending Acknowledgment", current: "Acknowledged (Oct 20, 2026 10:12)", remarks: "Agent confirmed review and committed to soft-skills practice" },
-    ],
-  },
-  {
-    id: "AUD-2026-0887",
-    timestamp: "Oct 20, 2026, 09:55:30 AM",
-    rawDate: "2026-10-20T09:55:30",
-    employeeName: "Alexandria Chua",
-    employeeId: "FS-WFM-01",
-    role: "WFM Analyst",
-    module: "Data Management",
-    action: "Approve",
-    severity: "Normal",
-    description: "Validated Oct 2026 telephony calls interval feed",
-    recordId: "FS-DATA-1001",
-    recordType: "Source Record",
-    targetSubject: "FrontSteps Account Feed",
-    ipAddress: "10.240.12.88",
-    changes: [
-      { field: "Validation Status", previous: "Pending Validation", current: "Validated", remarks: "Audited against raw switch logs: 1,010 offered / 970 answered" },
-      { field: "Data Quality", previous: "Unverified", current: "No Issues", remarks: "All validation checklist checks verified" },
-    ],
-  },
-  {
-    id: "AUD-2026-0886",
-    timestamp: "Oct 20, 2026, 09:30:14 AM",
-    rawDate: "2026-10-20T09:30:14",
-    employeeName: "Dwight Anthony Buma-at",
-    employeeId: "FS-MGT-01",
-    role: "Operations Manager",
-    module: "Performance Improvement",
-    action: "Create",
-    severity: "Critical",
-    description: "Initiated 30-day PIP for Patrick Reyes",
-    recordId: "PIP-FS-002",
-    recordType: "PIP Record",
-    targetSubject: "Patrick Sean Reyes (FS-1011)",
-    ipAddress: "10.240.12.84",
-    changes: [
-      { field: "PIP Status", previous: "Pending Formal Referral", current: "Active - In Progress", remarks: "Target: 140 cases/week and 80% AHT compliance" },
-      { field: "Checkpoint 1 Schedule", previous: "—", current: "Oct 27, 2026", remarks: "Day 7 formal milestone review" },
-    ],
-  },
-  {
-    id: "AUD-2026-0885",
-    timestamp: "Oct 20, 2026, 09:05:22 AM",
-    rawDate: "2026-10-20T09:05:22",
-    employeeName: "System Administrator",
-    employeeId: "FS-ADM-01",
-    role: "System Administrator",
-    module: "Administration",
-    action: "Update",
-    severity: "Critical",
-    description: "Updated permissions for WFM Analyst role",
-    recordId: "ROLE-WFM-001",
-    recordType: "Role Profile",
-    targetSubject: "Role Profile: WFM Analyst",
-    ipAddress: "10.240.12.10",
-    changes: [
-      { field: "Data Management Access", previous: "View Only", current: "Manage & Validate", remarks: "Authorized to certify source record verification" },
-      { field: "Audit Trails Access", previous: "None", current: "View Only", remarks: "Authorized compliance monitoring" },
-    ],
-  },
-  {
-    id: "AUD-2026-0884",
-    timestamp: "Oct 20, 2026, 08:32:11 AM",
-    rawDate: "2026-10-20T08:32:11",
-    employeeName: "Dwight Anthony Buma-at",
-    employeeId: "FS-MGT-01",
-    role: "Operations Manager",
-    module: "Authentication",
-    action: "Login",
-    severity: "Normal",
-    description: "Logged in via Corporate SSO",
-    recordId: "AUTH-SESS-9104",
-    recordType: "Authentication Session",
-    targetSubject: "Management User Session",
-    ipAddress: "10.240.12.84",
-    sessionDetails: {
-      clientIp: "10.240.12.84",
-      device: "Windows 11 Enterprise (Chrome 129.0)",
-      authMethod: "Corporate Single Sign-On (SSO)",
-    },
-    changes: [
-      { field: "Session State", previous: "Terminated", current: "Active", remarks: "SSO token verified via Okta" },
-    ],
-  },
-  {
-    id: "AUD-2026-0883",
-    timestamp: "Oct 20, 2026, 08:15:49 AM",
-    rawDate: "2026-10-20T08:15:49",
-    employeeName: "Sarah Gomez",
-    employeeId: "FS-SUP-01",
-    role: "Supervisor",
-    module: "Authentication",
-    action: "Login",
-    severity: "Normal",
-    description: "Logged in via Corporate SSO",
-    recordId: "AUTH-SESS-9101",
-    recordType: "Authentication Session",
-    targetSubject: "Supervisor User Session",
-    ipAddress: "10.240.12.92",
-    sessionDetails: {
-      clientIp: "10.240.12.92",
-      device: "Windows 11 Enterprise (Chrome 129.0)",
-      authMethod: "Corporate Single Sign-On (SSO)",
-    },
-    changes: [
-      { field: "Session State", previous: "Terminated", current: "Active", remarks: "SSO token verified via Okta" },
-    ],
-  },
-  {
-    id: "AUD-2026-0882",
-    timestamp: "Oct 19, 2026, 06:02:14 PM",
-    rawDate: "2026-10-19T18:02:14",
-    employeeName: "Mark Ramos",
-    employeeId: "FS-SUP-02",
-    role: "Supervisor",
-    module: "Authentication",
-    action: "Logout",
-    severity: "Normal",
-    description: "Logged out of SiBS PMS",
-    recordId: "AUTH-SESS-9088",
-    recordType: "Authentication Session",
-    targetSubject: "Supervisor User Session",
-    ipAddress: "10.240.12.95",
-    sessionDetails: {
-      clientIp: "10.240.12.95",
-      device: "Windows 11 Enterprise (Edge 129.0)",
-      sessionDuration: "8 hours 57 minutes",
-    },
-    changes: [
-      { field: "Session State", previous: "Active", current: "Terminated", remarks: "User initiated clean logout" },
-    ],
-  },
-  {
-    id: "AUD-2026-0881",
-    timestamp: "Oct 19, 2026, 05:45:10 PM",
-    rawDate: "2026-10-19T17:45:10",
-    employeeName: "Alexandria Chua",
-    employeeId: "FS-WFM-01",
-    role: "WFM Analyst",
-    module: "Reports & Analytics",
-    action: "Create",
-    severity: "Normal",
-    description: "Generated monthly performance report extract",
-    recordId: "REP-FS-2026-10-M",
-    recordType: "Published Report",
-    targetSubject: "Monthly Executive Performance Summary",
-    ipAddress: "10.240.12.88",
-    changes: [
-      { field: "Report Status", previous: "Draft Extract", current: "Published - Management", remarks: "Validated score averages and volume trends" },
-      { field: "View Scope", previous: "Restricted", current: "Internal Management", remarks: "Accessible by Operations and Supervisors" },
-    ],
-  },
-  {
-    id: "AUD-2026-0880",
-    timestamp: "Oct 19, 2026, 04:30:18 PM",
-    rawDate: "2026-10-19T16:30:18",
-    employeeName: "Dwight Anthony Buma-at",
-    employeeId: "FS-MGT-01",
-    role: "Operations Manager",
-    module: "Quarterly Incentives",
-    action: "Reject",
-    severity: "Critical",
-    description: "Rejected incentive for Gabriel Tan due to attendance deficit",
-    recordId: "INC-FS-2026-Q3-04",
-    recordType: "Quarterly Incentive",
-    targetSubject: "Gabriel Joshua Tan (FS-1007)",
-    ipAddress: "10.240.12.84",
-    changes: [
-      { field: "Approval Status", previous: "Pending Review", current: "Rejected", remarks: "October attendance record flagged as Missing / deficit" },
-      { field: "Eligibility", previous: "Under Review", current: "Disqualified", remarks: "Policy requirement of 3 validated qualifying months not met" },
-    ],
-  },
-  {
-    id: "AUD-2026-0879",
-    timestamp: "Oct 19, 2026, 03:14:02 PM",
-    rawDate: "2026-10-19T15:14:02",
-    employeeName: "Sarah Gomez",
-    employeeId: "FS-SUP-01",
-    role: "Supervisor",
-    module: "Performance Improvement",
-    action: "Approve",
-    severity: "Critical",
-    description: "Closed 30-day PIP for John Dizon (Target Met)",
-    recordId: "PIP-FS-001",
-    recordType: "PIP Record",
-    targetSubject: "John Rafael Dizon (FS-1003)",
-    ipAddress: "10.240.12.92",
-    changes: [
-      { field: "PIP Final Outcome", previous: "Active - Final Review", current: "Closed - Successfully Completed", remarks: "AHT achieved 845s (benchmark ≤ 900s) and case closure at 142/week" },
-      { field: "Account Status", previous: "Under Formal Improvement", current: "Regular Good Standing", remarks: "Approved by Operations Manager" },
-    ],
-  },
-  {
-    id: "AUD-2026-0878",
-    timestamp: "Oct 19, 2026, 01:20:55 PM",
-    rawDate: "2026-10-19T13:20:55",
-    employeeName: "System Administrator",
-    employeeId: "FS-ADM-01",
-    role: "System Administrator",
-    module: "Administration",
-    action: "Create",
-    severity: "Normal",
-    description: "Created recurring QA alert notification rule",
-    recordId: "ALERT-RULE-006",
-    recordType: "Alert Configuration",
-    targetSubject: "System Rule: QA Outlier Notification",
-    ipAddress: "10.240.12.10",
-    changes: [
-      { field: "Rule Trigger", previous: "—", current: "QA Score < 85% for 2 consecutive evaluations", remarks: "New notification rule" },
-      { field: "Recipients", previous: "—", current: "Operations Manager, Assigned Supervisor", remarks: "Automated alert distribution" },
-    ],
-  },
-  {
-    id: "AUD-2026-0877",
-    timestamp: "Oct 19, 2026, 12:45:00 PM",
-    rawDate: "2026-10-19T12:45:00",
-    employeeName: "Patrick Sean Reyes",
-    employeeId: "FS-1011",
-    role: "Customer Support Agent",
-    module: "Authentication",
-    action: "Logout",
-    severity: "Normal",
-    description: "Logged out of SiBS PMS session",
-    recordId: "AUTH-SESS-9065",
-    recordType: "Authentication Session",
-    targetSubject: "Agent User Session",
-    ipAddress: "10.240.12.102",
-    sessionDetails: {
-      clientIp: "10.240.12.102",
-      device: "Windows 11 Enterprise (Chrome 129.0)",
-      sessionDuration: "4 hours 15 minutes",
-    },
-    changes: [
-      { field: "Session State", previous: "Active", current: "Terminated", remarks: "User logout recorded" },
-    ],
-  },
-  {
-    id: "AUD-2026-0876",
-    timestamp: "Oct 18, 2026, 04:10:30 PM",
-    rawDate: "2026-10-18T16:10:30",
-    employeeName: "System Administrator",
-    employeeId: "FS-ADM-01",
-    role: "System Administrator",
-    module: "Administration",
-    action: "Delete",
-    severity: "Critical",
-    description: "Removed deprecated KPI formula configuration",
-    recordId: "KPI-CONFIG-004",
-    recordType: "KPI Formula",
-    targetSubject: "Formula: Legacy Escalation Rate 2025",
-    ipAddress: "10.240.12.10",
-    changes: [
-      { field: "Record Status", previous: "Inactive", current: "Deleted", remarks: "Purged obsolete metric formula per Q4 configuration update" },
-    ],
-  },
-  {
-    id: "AUD-2026-0875",
-    timestamp: "Oct 18, 2026, 02:15:20 PM",
-    rawDate: "2026-10-18T14:15:20",
-    employeeName: "Dwight Anthony Buma-at",
-    employeeId: "FS-MGT-01",
-    role: "Operations Manager",
-    module: "Employee Performance",
-    action: "Update",
-    severity: "Normal",
-    description: "Recalculated October scorecard weighted scores",
-    recordId: "SCORECARD-2026-10",
-    recordType: "Performance Scorecard",
-    targetSubject: "FrontSteps Scorecard Roster",
-    ipAddress: "10.240.12.84",
-    changes: [
-      { field: "Score Batch Status", previous: "Preliminary", current: "Validated Scores", remarks: "Recomputed with verified W42 attendance data" },
-    ],
-  },
-];
-
-const MODULE_OPTIONS = [
-  "All Modules",
-  "Authentication",
-  "Employee Performance",
-  "Coaching Management",
-  "Performance Improvement",
-  "Quarterly Incentives",
-  "Reports & Analytics",
-  "Data Management",
-  "Administration",
-];
+const INITIAL_AUDIT_LOGS = [];
 
 // Strict requirement #1: Create, Update, Delete, Approve, Reject, Login, and Logout
-const ACTION_OPTIONS = [
-  "All Actions",
-  "Create",
-  "Update",
-  "Delete",
-  "Approve",
-  "Reject",
-  "Login",
-  "Logout",
-];
-
-const DATE_RANGE_OPTIONS = [
-  "All Dates",
-  "Today (Oct 20, 2026)",
-  "Yesterday (Oct 19, 2026)",
-  "Last 7 Days (Oct 14 - Oct 20)",
-  "Last 30 Days (Sep 21 - Oct 20)",
-];
-
 function getActionBadge(action) {
   switch (action) {
     case "Login":
       return "bg-emerald-50 text-emerald-700 border-emerald-200";
     case "Logout":
       return "bg-slate-100 text-slate-700 border-slate-200";
+    case "Upload":
     case "Create":
       return "bg-blue-50 text-blue-700 border-blue-200";
+    case "Edit":
     case "Update":
       return "bg-amber-50 text-amber-700 border-amber-200";
     case "Delete":
@@ -449,8 +65,11 @@ function getActionIcon(action) {
       return <LogIn size={11} className="mr-1 inline text-emerald-600 shrink-0" />;
     case "Logout":
       return <LogOut size={11} className="mr-1 inline text-slate-500 shrink-0" />;
+    case "Upload":
+      return <Download size={11} className="mr-1 inline text-blue-600 shrink-0 rotate-180" />;
     case "Create":
       return <FileText size={11} className="mr-1 inline text-blue-600 shrink-0" />;
+    case "Edit":
     case "Update":
       return <FileEdit size={11} className="mr-1 inline text-amber-600 shrink-0" />;
     case "Delete":
@@ -465,50 +84,47 @@ function getActionIcon(action) {
 }
 
 export default function FrontStepsAuditTrails() {
-  const [logs] = useState(INITIAL_AUDIT_LOGS);
+  const [logs, setLogs] = useState(() => getStoredAuditLogs());
+
+  useEffect(() => {
+    const handleLogAdded = (event) => {
+      if (event?.detail) {
+        setLogs((prev) => [event.detail, ...prev.filter((l) => l.id !== event.detail.id)]);
+      } else {
+        setLogs(getStoredAuditLogs());
+      }
+    };
+
+    window.addEventListener(AUDIT_LOG_ADDED_EVENT, handleLogAdded);
+    window.addEventListener("storage", handleLogAdded);
+
+    return () => {
+      window.removeEventListener(AUDIT_LOG_ADDED_EVENT, handleLogAdded);
+      window.removeEventListener("storage", handleLogAdded);
+    };
+  }, []);
   const [search, setSearch] = useState("");
-  const [moduleFilter, setModuleFilter] = useState("All Modules");
-  const [actionFilter, setActionFilter] = useState("All Actions");
-  const [dateRange, setDateRange] = useState("All Dates");
   const [page, setPage] = useState(1);
   const [selectedAudit, setSelectedAudit] = useState(null);
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [exportNotice, setExportNotice] = useState("");
-  const pageSize = 10;
+  const pageSize = 15;
 
-  // Search & Filter Logic across employee name, ID, module, action, date range, and record ID
+  // Search filter across timestamp, employee name, kronos ID, action, and module
   const filteredLogs = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    if (!term) return logs;
     return logs.filter((log) => {
-      const term = search.trim().toLowerCase();
-      const matchesSearch =
-        !term ||
-        log.employeeName.toLowerCase().includes(term) ||
-        log.employeeId.toLowerCase().includes(term) ||
-        log.id.toLowerCase().includes(term) ||
-        (log.recordId && log.recordId.toLowerCase().includes(term)) ||
-        (log.targetSubject && log.targetSubject.toLowerCase().includes(term)) ||
-        log.description.toLowerCase().includes(term);
-
-      const matchesModule =
-        moduleFilter === "All Modules" || log.module === moduleFilter;
-
-      const matchesAction =
-        actionFilter === "All Actions" || log.action === actionFilter;
-
-      let matchesDate = true;
-      if (dateRange === "Today (Oct 20, 2026)") {
-        matchesDate = log.timestamp.includes("Oct 20, 2026");
-      } else if (dateRange === "Yesterday (Oct 19, 2026)") {
-        matchesDate = log.timestamp.includes("Oct 19, 2026");
-      } else if (dateRange === "Last 7 Days (Oct 14 - Oct 20)") {
-        matchesDate = log.rawDate >= "2026-10-14";
-      } else if (dateRange === "Last 30 Days (Sep 21 - Oct 20)") {
-        matchesDate = log.rawDate >= "2026-09-21";
-      }
-
-      return matchesSearch && matchesModule && matchesAction && matchesDate;
+      return (
+        log.employeeName?.toLowerCase().includes(term) ||
+        (log.kronosId && log.kronosId.toLowerCase().includes(term)) ||
+        (log.employeeId && log.employeeId.toLowerCase().includes(term)) ||
+        log.action?.toLowerCase().includes(term) ||
+        log.module?.toLowerCase().includes(term) ||
+        log.timestamp?.toLowerCase().includes(term)
+      );
     });
-  }, [logs, search, moduleFilter, actionFilter, dateRange]);
+  }, [logs, search]);
 
   // Pagination calculation (default newest first)
   const totalPages = Math.max(1, Math.ceil(filteredLogs.length / pageSize));
@@ -519,9 +135,6 @@ export default function FrontStepsAuditTrails() {
 
   const handleResetFilters = () => {
     setSearch("");
-    setModuleFilter("All Modules");
-    setActionFilter("All Actions");
-    setDateRange("All Dates");
     setPage(1);
   };
 
@@ -533,26 +146,18 @@ export default function FrontStepsAuditTrails() {
 
     if (format === "CSV") {
       const headers = [
-        "Audit Log ID",
         "Timestamp",
         "Employee Name",
-        "Employee ID",
-        "Role",
+        "Kronos ID",
+        "Action",
         "Module",
-        "Action Type",
-        "Affected Record ID",
-        "Activity Description",
       ];
       const rows = filteredLogs.map((log) => [
-        `"${log.id}"`,
         `"${log.timestamp}"`,
         `"${log.employeeName}"`,
-        `"${log.employeeId}"`,
-        `"${log.role}"`,
-        `"${log.module}"`,
+        `"${log.kronosId || log.employeeId || "—"}"`,
         `"${log.action}"`,
-        `"${log.recordId || "—"}"`,
-        `"${log.description.replace(/"/g, '""')}"`,
+        `"${log.module}"`,
       ]);
       const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
       const encodedUri = encodeURI(csvContent);
@@ -590,10 +195,9 @@ export default function FrontStepsAuditTrails() {
       {/* 1. Header Filter & Action Bar */}
       <div className="rounded-xl border border-slate-200/80 bg-white px-3.5 py-2.5 shadow-xs shrink-0">
         <div className="flex flex-wrap items-center justify-between gap-2.5">
-          {/* Left: Search and Dropdown Filters */}
-          <div className="flex flex-1 flex-wrap items-center gap-2 min-w-[280px]">
-            {/* Search Input: employee name, employee ID, record ID, or description */}
-            <div className="flex-1 min-w-[200px]">
+          {/* Left: Search Input */}
+          <div className="flex flex-1 items-center gap-2 max-w-md">
+            <div className="flex-1">
               <div className="relative flex h-8 items-center rounded-lg border border-slate-200 bg-white px-2.5 transition-colors focus-within:border-[#ff5c28] focus-within:ring-1 focus-within:ring-[#ff5c28]/20">
                 <Search size={13} className="text-slate-400 shrink-0 mr-2" />
                 <input
@@ -613,7 +217,7 @@ export default function FrontStepsAuditTrails() {
                       setSearch("");
                       setPage(1);
                     }}
-                    className="text-slate-400 hover:text-slate-600 ml-1"
+                    className="text-slate-400 hover:text-slate-600 ml-1 cursor-pointer"
                   >
                     <X size={12} />
                   </button>
@@ -621,52 +225,12 @@ export default function FrontStepsAuditTrails() {
               </div>
             </div>
 
-            {/* Module Filter */}
-            <div className="w-[165px]">
-              <SingleSelectDropdown
-                value={moduleFilter}
-                onChange={(e) => {
-                  setModuleFilter(e.target.value);
-                  setPage(1);
-                }}
-                options={MODULE_OPTIONS.map((m) => ({ value: m, label: m }))}
-                buttonClassName="h-8 rounded-lg border-slate-200 px-3 text-xs"
-              />
-            </div>
-
-            {/* Action Type Filter: Create, Update, Delete, Approve, Reject, Login, Logout */}
-            <div className="w-[145px]">
-              <SingleSelectDropdown
-                value={actionFilter}
-                onChange={(e) => {
-                  setActionFilter(e.target.value);
-                  setPage(1);
-                }}
-                options={ACTION_OPTIONS.map((a) => ({ value: a, label: a }))}
-                buttonClassName="h-8 rounded-lg border-slate-200 px-3 text-xs"
-              />
-            </div>
-
-            {/* Date Range Filter */}
-            <div className="w-[170px]">
-              <SingleSelectDropdown
-                value={dateRange}
-                onChange={(e) => {
-                  setDateRange(e.target.value);
-                  setPage(1);
-                }}
-                options={DATE_RANGE_OPTIONS.map((d) => ({ value: d, label: d }))}
-                buttonClassName="h-8 rounded-lg border-slate-200 px-3 text-xs"
-              />
-            </div>
-
-            {/* Reset Filters Button */}
-            {(search || moduleFilter !== "All Modules" || actionFilter !== "All Actions" || dateRange !== "All Dates") && (
+            {search && (
               <button
                 type="button"
                 onClick={handleResetFilters}
                 className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-2.5 text-xs font-medium text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
-                title="Reset all filters"
+                title="Clear search"
               >
                 <RotateCcw size={12} />
                 <span>Reset</span>
@@ -674,12 +238,8 @@ export default function FrontStepsAuditTrails() {
             )}
           </div>
 
-          {/* Right: Read-only badge and Export button */}
+          {/* Right: Export button */}
           <div className="flex items-center gap-2">
-            <span className="hidden sm:inline-flex items-center gap-1.5 rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-semibold text-slate-600">
-              <ShieldCheck size={12} className="text-emerald-600" />
-              100% Read-Only
-            </span>
 
             {/* Export Logs Dropdown */}
             <div className="relative">
@@ -734,13 +294,10 @@ export default function FrontStepsAuditTrails() {
           <table className="w-full table-fixed text-left text-xs border-collapse">
             <thead className="sticky top-0 z-10">
               <tr className="border-b border-[#042c51] bg-[#042c51] text-[11px] font-bold uppercase tracking-wider text-white select-none shadow-xs">
-                <th className="py-3 px-4 w-[16%]">Timestamp</th>
-                <th className="py-3 px-4 w-[18%]">Employee</th>
-                <th className="py-3 px-4 w-[16%]">Module</th>
-                <th className="py-3 px-4 w-[11%]">Action</th>
-                <th className="py-3 px-4 w-[14%]">Affected Record ID</th>
-                <th className="py-3 px-4 w-[19%]">Activity</th>
-                <th className="py-3 px-4 w-[6%] text-center">Action</th>
+                <th className="py-3 px-4 w-[25%]">Timestamp</th>
+                <th className="py-3 px-4 w-[35%]">Employee Name & Kronos ID</th>
+                <th className="py-3 px-4 w-[20%]">Action</th>
+                <th className="py-3 px-4 w-[20%]">Module</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
@@ -753,31 +310,25 @@ export default function FrontStepsAuditTrails() {
                     {/* Timestamp */}
                     <td className="py-3 px-4 whitespace-nowrap">
                       <span className="text-[12px] font-semibold text-slate-800">
-                        {`${log.timestamp.split(",")[0]}, ${log.timestamp.split(",")[1]?.trim()} - ${log.timestamp.split(",")[2]?.trim()}`}
+                        {log.timestamp}
                       </span>
                     </td>
 
-                    {/* Employee Name & ID */}
+                    {/* Employee Name & Kronos ID */}
                     <td className="py-3 px-4">
-                      <div className="font-semibold text-slate-900 text-[12.5px] truncate" title={log.employeeName}>
-                        {log.employeeName}
-                      </div>
-                      <div className="flex items-center gap-1.5 text-[11px] text-slate-400">
-                        <span className="font-mono font-medium text-slate-600">{log.employeeId}</span>
-                        <span>•</span>
-                        <span className="truncate">{log.role}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-slate-900 text-[12.5px] truncate" title={log.employeeName}>
+                          {log.employeeName}
+                        </span>
+                        {(log.kronosId || log.employeeId) && (
+                          <span className="font-mono text-[11px] font-medium text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200/70">
+                            ({log.kronosId || log.employeeId})
+                          </span>
+                        )}
                       </div>
                     </td>
 
-                    {/* Module */}
-                    <td className="py-3 px-4">
-                      <span className="inline-flex items-center gap-1.5 text-[12px] font-medium text-slate-800 truncate max-w-full">
-                        <span className="h-1.5 w-1.5 rounded-full bg-[#042c51] shrink-0" />
-                        <span className="truncate">{log.module}</span>
-                      </span>
-                    </td>
-
-                    {/* Action Type Badge (Create, Update, Delete, Approve, Reject, Login, Logout) */}
+                    {/* Action */}
                     <td className="py-3 px-4 whitespace-nowrap">
                       <span
                         className={`inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] font-semibold ${getActionBadge(
@@ -789,56 +340,33 @@ export default function FrontStepsAuditTrails() {
                       </span>
                     </td>
 
-                    {/* Affected Record ID */}
-                    <td className="py-3 px-4 whitespace-nowrap">
-                      {log.recordId ? (
-                        <span className="inline-flex items-center font-mono text-[11.5px] font-semibold text-slate-700 bg-slate-50 px-2 py-0.5 rounded border border-slate-200/80">
-                          {log.recordId}
-                        </span>
-                      ) : (
-                        <span className="text-slate-400">—</span>
-                      )}
-                    </td>
-
-                    {/* Activity (Shortened description) */}
+                    {/* Module */}
                     <td className="py-3 px-4">
-                      <span
-                        className="text-[12px] text-slate-700 font-medium truncate block"
-                        title={log.description}
-                      >
-                        {log.description}
+                      <span className="inline-flex items-center gap-1.5 text-[12px] font-medium text-slate-800 truncate max-w-full">
+                        <span className="h-1.5 w-1.5 rounded-full bg-[#042c51] shrink-0" />
+                        <span className="truncate">{log.module}</span>
                       </span>
-                    </td>
-
-                    {/* View Details Action */}
-                    <td className="py-3 px-4 text-center">
-                      <button
-                        type="button"
-                        onClick={() => setSelectedAudit(log)}
-                        className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:border-[#042c51] hover:text-[#042c51] hover:bg-slate-50 transition-colors cursor-pointer"
-                        title="View audit event details"
-                      >
-                        <Eye size={13} />
-                      </button>
                     </td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan={7} className="py-12 text-center text-slate-500">
+                  <td colSpan={4} className="py-12 text-center text-slate-500">
                     <FilterX className="mx-auto mb-2 text-slate-400" size={24} />
                     <p className="text-xs font-bold text-slate-700">No activity records found</p>
                     <p className="text-[11px] text-slate-400 mt-0.5">
                       No audit events match your selected filters. Try adjusting your search query or reset filters.
                     </p>
-                    <button
-                      type="button"
-                      onClick={handleResetFilters}
-                      className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 bg-slate-50 text-xs font-semibold text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
-                    >
-                      <RotateCcw size={12} />
-                      <span>Reset Filters</span>
-                    </button>
+                    {search && (
+                      <button
+                        type="button"
+                        onClick={handleResetFilters}
+                        className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 bg-slate-50 text-xs font-semibold text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
+                      >
+                        <RotateCcw size={12} />
+                        <span>Clear Search</span>
+                      </button>
+                    )}
                   </td>
                 </tr>
               )}

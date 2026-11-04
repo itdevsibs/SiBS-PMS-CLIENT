@@ -173,7 +173,7 @@ function WfmHistoryLogs() {
 
       <main className="min-w-0 flex-1 flex flex-col h-full overflow-hidden">
         <AppHeader
-          title={dashboard.authUser?.roleLabel || "Workforce Management"}
+          title="History Logs"
           subtitle="Performance Management System"
           onMenuClick={() => dashboard.setIsMobileSidebarOpen(true)}
           onLogoutClick={() => dashboard.setShowLogoutModal(true)}

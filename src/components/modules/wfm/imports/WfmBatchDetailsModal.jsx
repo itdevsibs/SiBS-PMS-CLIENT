@@ -189,6 +189,7 @@ export default function WfmBatchDetailsModal({ selectedUploadDetails: batch, act
                       <th className="px-3.5 py-2.5 whitespace-nowrap">Severity</th>
                       <th className="px-3.5 py-2.5 whitespace-nowrap">Code</th>
                       <th className="px-3.5 py-2.5 whitespace-nowrap">Column</th>
+                      <th className="px-3.5 py-2.5 whitespace-nowrap">Value</th>
                       <th className="px-4 py-2.5 min-w-[280px]">Message</th>
                     </tr>
                   </thead>
@@ -227,6 +228,9 @@ export default function WfmBatchDetailsModal({ selectedUploadDetails: batch, act
                           <td className="px-3.5 py-2.5 whitespace-nowrap font-mono text-[10.5px] text-slate-600">
                             {issue.columnName || "-"}
                           </td>
+                          <td className="px-3.5 py-2.5 whitespace-nowrap font-mono text-[10.5px] text-slate-700 max-w-[160px] truncate" title={String(issue.rawValue ?? "-")}>
+                            {issue.rawValue != null && String(issue.rawValue).trim() !== "" ? String(issue.rawValue) : "-"}
+                          </td>
                           <td className="px-4 py-2.5 text-[11.5px] leading-relaxed text-slate-600">
                             {issue.errorMessage}
                           </td>
@@ -237,7 +241,16 @@ export default function WfmBatchDetailsModal({ selectedUploadDetails: batch, act
                 </table>
               </div>
             )}
-            <div className="flex items-center justify-between gap-2 text-xs text-slate-500"><span>{issueTotal.toLocaleString()} issue event{issueTotal === 1 ? "" : "s"}</span><div className="flex items-center gap-2"><Button variant="outline" type="button" disabled={page <= 1 || loading} onClick={() => setPage((p) => p - 1)}>Back</Button><span>{page} / {totalPages}</span><Button variant="outline" type="button" disabled={page >= totalPages || loading} onClick={() => setPage((p) => p + 1)}>Next</Button></div></div>
+            <div className="flex items-center justify-between gap-2 text-xs text-slate-500">
+              <span>{issueTotal.toLocaleString()} issue event{issueTotal === 1 ? "" : "s"}</span>
+              {issueTotal > 0 ? (
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" type="button" disabled={page <= 1 || loading} onClick={() => setPage((p) => p - 1)}>Back</Button>
+                  <span>{page} / {totalPages}</span>
+                  <Button variant="outline" type="button" disabled={page >= totalPages || loading} onClick={() => setPage((p) => p + 1)}>Next</Button>
+                </div>
+              ) : null}
+            </div>
           </div>}
           {tab === "raw" && <div className="space-y-3 rounded-xl border border-slate-200 p-5"><p className="m-0 text-sm font-bold text-sibs-primary-1">Original imported rows</p><p className="m-0 text-xs text-slate-500">Open the read-only raw-data preview to inspect and filter the source records. Imported rows and matching issues remain preserved for audit.</p><Button type="button" disabled={!batchId || !onOpenRawData} onClick={() => onOpenRawData?.(batch)} className="text-xs"><FileSpreadsheet className="h-4 w-4"/> Open Raw Data</Button></div>}
         </div>

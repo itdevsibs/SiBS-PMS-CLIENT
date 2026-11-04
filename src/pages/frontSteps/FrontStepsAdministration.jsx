@@ -1,3 +1,4 @@
+import { recordAuditLog } from "@/lib/audit-logger";
 import React, { useMemo, useState } from "react";
 import {
   Settings2,
@@ -28,7 +29,6 @@ const MODULES = [
   "Coaching Management",
   "Performance Improvement",
   "Quarterly Incentives",
-  "Reports & Analytics",
   "Data Management",
   "Administration",
   "Audit Trails",
@@ -78,7 +78,7 @@ const INITIAL_ROLES = [
     permissions: Object.fromEntries(
       MODULES.map((m) => [
         m,
-        ["Reports & Analytics", "Data Management"].includes(m)
+        ["Data Management"].includes(m)
           ? "Manage"
           : ["Dashboard", "Employee Performance"].includes(m)
           ? "View"
@@ -95,7 +95,7 @@ const INITIAL_ROLES = [
     permissions: Object.fromEntries(
       MODULES.map((m) => [
         m,
-        ["Employee Performance", "Coaching Management", "Reports & Analytics"].includes(m)
+        ["Employee Performance", "Coaching Management"].includes(m)
           ? "Manage"
           : ["Dashboard"].includes(m)
           ? "View"
@@ -114,7 +114,7 @@ const INITIAL_ROLES = [
         m,
         ["Performance Improvement", "Coaching Management"].includes(m)
           ? "Manage"
-          : ["Employee Performance", "Reports & Analytics", "Audit Trails"].includes(m)
+          : ["Employee Performance", "Audit Trails"].includes(m)
           ? "View"
           : "None",
       ])
@@ -129,7 +129,7 @@ const INITIAL_ROLES = [
     permissions: Object.fromEntries(
       MODULES.map((m) => [
         m,
-        m === "Reports & Analytics" ? "Client Only" : "None",
+        "None",
       ])
     ),
   },
@@ -449,6 +449,14 @@ export default function FrontStepsAdministration() {
         : [...prev, { ...draft, id: `USR-${String(prev.length + 1).padStart(3, "0")}` }]
     );
     showNotice("User account and assignment saved.");
+    try {
+      recordAuditLog({
+        action: userModal.user ? "Edit" : "Create",
+        module: "Administration",
+        description: `${userModal.user ? "Updated" : "Created"} user ${userForm.name} (${userForm.role})`,
+        recordId: userForm.id || userForm.email,
+      });
+    } catch {}
     closeModal();
   };
 
@@ -460,6 +468,14 @@ export default function FrontStepsAdministration() {
         : [...prev, { ...draft, id: `role-${Date.now()}`, users: 0 }]
     );
     showNotice("Role configuration saved.");
+    try {
+      recordAuditLog({
+        action: "Edit",
+        module: "Administration",
+        description: `Updated role configuration for ${roleModal.role?.name}`,
+        recordId: roleModal.role?.id,
+      });
+    } catch {}
     closeModal();
   };
 
@@ -468,6 +484,14 @@ export default function FrontStepsAdministration() {
       prev.map((k) => (k.id === draft.id ? { ...draft, status: "For Review" } : k))
     );
     showNotice("KPI configuration saved for review.");
+    try {
+      recordAuditLog({
+        action: "Edit",
+        module: "Administration",
+        description: `Updated KPI parameter ${kpiModal.kpi?.name}`,
+        recordId: kpiModal.kpi?.id,
+      });
+    } catch {}
     closeModal();
   };
 
@@ -479,6 +503,14 @@ export default function FrontStepsAdministration() {
         : [...prev, { ...draft, id: `alert-${Date.now()}` }]
     );
     showNotice("Alert configuration saved.");
+    try {
+      recordAuditLog({
+        action: "Edit",
+        module: "Administration",
+        description: `Updated alert configuration for ${alertModal.alert?.type}`,
+        recordId: alertModal.alert?.id,
+      });
+    } catch {}
     closeModal();
   };
 

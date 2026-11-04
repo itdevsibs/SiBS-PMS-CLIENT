@@ -1,3 +1,4 @@
+import { recordAuditLog } from "@/lib/audit-logger";
 import React, { useMemo, useState } from "react";
 import {
   Users,
@@ -694,6 +695,14 @@ export default function FrontStepsPerformanceImprovement() {
     };
 
     setRecords([newRecord, ...records]);
+    try {
+      recordAuditLog({
+        action: "Create",
+        module: "Performance Improvement",
+        description: `Created 30-day PIP referral for ${newRecord.employeeName}`,
+        recordId: newRecord.id,
+      });
+    } catch {}
     setIsCreateModalOpen(false);
     setCreateForm({
       employeeName: "",
@@ -810,6 +819,14 @@ export default function FrontStepsPerformanceImprovement() {
     });
 
     setRecords(updated);
+    try {
+      recordAuditLog({
+        action: "Edit",
+        module: "Performance Improvement",
+        description: `Updated PIP progress for ${evaluatingRecord?.employeeName}`,
+        recordId: evaluatingRecord?.id,
+      });
+    } catch {}
     setEvaluatingRecord(null);
   };
 

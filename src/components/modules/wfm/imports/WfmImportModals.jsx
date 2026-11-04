@@ -218,6 +218,7 @@ export default function WfmImportModals({
         addedUpload={addedUpload}
         onClose={onCloseAddedUpload}
         handleOpenUsVisaErrors={handleOpenUsVisaErrors}
+        handleOpenBatchDetails={handleOpenBatchDetails}
       />
 
       <RemovedUploadSuccessModal

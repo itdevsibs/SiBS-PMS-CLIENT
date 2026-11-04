@@ -1,3 +1,4 @@
+import { recordAuditLog } from "@/lib/audit-logger";
 // WFM page for uploading and managing raw data files.
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -8,6 +9,8 @@ import WfmAccountWorkspacesGrid from "@/components/modules/wfm/imports/WfmAccoun
 import WfmFilterBar from "@/components/modules/wfm/imports/WfmFilterBar";
 import WfmImportModals from "@/components/modules/wfm/imports/WfmImportModals";
 import WfmImportSummaryBar from "@/components/modules/wfm/imports/WfmImportSummaryBar";
+import WfmImportPageHeader from "@/components/modules/wfm/imports/WfmImportPageHeader";
+import WfmImportTwoColumnWorkspace from "@/components/modules/wfm/imports/WfmImportTwoColumnWorkspace";
 import WfmRawDataCardsGrid from "@/components/modules/wfm/imports/WfmRawDataCardsGrid";
 import useDashboardPage from "@/hooks/useDashboardPage";
 import { getAuthDisplayName } from "@/lib/auth";
@@ -82,7 +85,7 @@ function WfmImportDataPage() {
   const [isDuplicatesModalOpen, setIsDuplicatesModalOpen] = useState(false);
   const [rawDataSearch, setRawDataSearch] = useState("");
   const [uploadedDataSearch, setUploadedDataSearch] = useState("");
-  const [selectedAccount, setSelectedAccount] = useState("All Accounts");
+  const [selectedAccount, setSelectedAccount] = useState("US VISA");
   const [pendingTaskOrderUpload, setPendingTaskOrderUpload] = useState(null);
   const [selectedTaskOrderId, setSelectedTaskOrderId] = useState("");
   const [pendingReviewUpload, setPendingReviewUpload] = useState(null);
@@ -358,6 +361,15 @@ function WfmImportDataPage() {
         fileName: file.name,
         message: `Imported ${file.name} to ${card.account} - ${card.title}.`,
       });
+
+      try {
+        recordAuditLog({
+          action: "Upload",
+          module: "Workforce Management",
+          description: `Uploaded ${file.name} to ${card.account} - ${card.title}`,
+          recordId: batchResult?.batchCode || batchResult?.id || "",
+        });
+      } catch {}
     } catch (error) {
       if (isUsVisa && error?.response?.data?.code === "DUPLICATE_FILE") {
         setDuplicateUploadAlert({
@@ -545,6 +557,15 @@ function WfmImportDataPage() {
         "Raw Data"
       }.`,
     });
+
+    try {
+      recordAuditLog({
+        action: "Delete",
+        module: "Workforce Management",
+        description: `Deleted ${selectedUploadToRemove.fileName} from ${selectedUploadToRemove.account || activeOpenCard?.account || "WFM"} - ${selectedUploadToRemove.rawDataTitle || activeOpenCard?.title || "Raw Data"}`,
+        recordId: batchIdentifier || "",
+      });
+    } catch {}
   };
 
   const handleRefreshCard = (cardId, groupCards = []) => {
@@ -610,13 +631,13 @@ function WfmImportDataPage() {
 
       <main className="min-w-0 flex-1 flex flex-col h-full overflow-hidden">
         <AppHeader
-          title={dashboard.authUser?.roleLabel || "Workforce Management"}
+          title="Import Data"
           subtitle="Performance Management System"
           onMenuClick={() => dashboard.setIsMobileSidebarOpen(true)}
           onLogoutClick={() => dashboard.setShowLogoutModal(true)}
         />
 
-        <div className="sibs-scrollbar flex-1 overflow-y-auto p-3 sm:p-4 lg:p-5">
+        <div className="sibs-scrollbar flex-1 overflow-hidden p-3.5 sm:p-4 bg-white flex flex-col justify-between">
           <WfmFilterBar
             selectedAccount={selectedAccount}
             onSelectAccount={(account) => {
@@ -646,18 +667,12 @@ function WfmImportDataPage() {
               }}
             />
           ) : (
-            <WfmRawDataCardsGrid
+            <WfmImportTwoColumnWorkspace
               groupedCards={groupedRawDataCards}
-              hasCards={filteredRawDataCards.length > 0}
-              uploadsByCard={newlyImportedByCard}
+              uploadsByCard={uploadsByCard}
               isUploading={isUploading}
-              onBackToAll={() => {
-                setSelectedAccount("All Accounts");
-                setRawDataSearch("");
-              }}
               onFileSelect={handleCardFileSelect}
               onOpenCard={handleOpenCard}
-              onRefreshCard={handleRefreshCard}
               onOpenErrorDetails={handleOpenUsVisaErrors}
             />
           )}
