@@ -79,6 +79,7 @@ function normalizeLevelValue(val) {
   if (!val) return "ALL";
   const upper = String(val).trim().toUpperCase();
   if (upper === "ALL" || upper === "ALL LEVEL") return "ALL";
+  if (upper.includes("DOCUMENTED CALL")) return "DOCUMENTED CALLS";
   if (upper.includes("CALL REPORT")) return "CALL REPORT (EOD)";
   if (upper.includes("CHAT REPORT")) return "CHAT REPORT (EOD)";
   // Legacy Agent Level is now represented by Call Report (EOD).
@@ -301,6 +302,7 @@ export default function WfmImportedRepository() {
     const upper = String(rawLevel || "").trim().toUpperCase();
     if (upper.includes("AGENT LEVEL")) return "CALL REPORT (EOD)";
     if (upper.includes("SKILL STATISTICS") || upper.includes("QUEUE") || upper.includes("SERVICE")) return "SKILL STATISTICS";
+    if (upper.includes("DOCUMENTED CALL")) return "DOCUMENTED CALLS";
     if (upper.includes("CALL REPORT")) return "CALL REPORT (EOD)";
     if (upper.includes("CHAT REPORT")) return "CHAT REPORT (EOD)";
     if (upper.includes("OCCUPANCY")) return "AGENT OCCUPANCY";
@@ -333,6 +335,7 @@ export default function WfmImportedRepository() {
     const counts = {
       "CALL REPORT (EOD)": 0,
       "SKILL STATISTICS": 0,
+      "DOCUMENTED CALLS": 0,
       "CHAT REPORT (EOD)": 0,
       "AGENT OCCUPANCY": 0,
       "AGENT ACTIVITY - PRODUCTIVE BREAKS": 0,
@@ -361,6 +364,10 @@ export default function WfmImportedRepository() {
       {
         value: "SKILL STATISTICS",
         label: `SKILL STATISTICS (${levelCounts["SKILL STATISTICS"] || 0})`,
+      },
+      {
+        value: "DOCUMENTED CALLS",
+        label: `DOCUMENTED CALLS (${levelCounts["DOCUMENTED CALLS"] || 0})`,
       },
       {
         value: "CALL REPORT (EOD)",

@@ -13,6 +13,19 @@ const defaultRawDataTitles = Array.from(
 // Calls EOD and Skill Statistics are independent domains: individual calls vs queue totals.
 const accountRawDataCards = {
   "US VISA": [
+    {
+      id: "documented-calls-ms-dynamics",
+      title: "MS Dynamics",
+      sourceLabel: "MS Dynamics",
+      groupLabel: "DOCUMENTED CALLS",
+      description: "Call Logs · AHT source for WoW",
+      taskOrders: [],
+      importProfileCode: "US_VISA_DOCUMENTED_CALLS",
+      fileExtension: ".xlsx",
+      acceptedFileTypes: ".xlsx",
+      requiresTaskOrderSelection: false,
+      requiresReportingPeriod: false,
+    },
     ...[
       ["fusecom", "FuseCom", "FUSECOM_SKILL_STATISTICS_INBOUND"],
       ["fusenet", "FuseNet", "FUSENET_SKILL_STATISTICS_INBOUND"],

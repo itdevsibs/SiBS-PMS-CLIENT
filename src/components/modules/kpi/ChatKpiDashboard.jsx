@@ -1301,14 +1301,14 @@ export default function CallKpiDashboard({
                 <KpiCard
                   icon={Clock3}
                   label="Call AHT"
-                  value={summaryAhtSeconds > 0 ? `${formatNumber(summaryAhtSeconds)}s` : "--"}
+                  value={Number(summary.ahtCalls || 0) > 0 ? `${formatNumber(summaryAhtSeconds)}s` : "--"}
                   hint={
-                    summaryAhtSeconds > 0
-                      ? `Target ${formatNumber(targetAhtSeconds)}s`
-                      : "Pending Documented Calls (AHT) source"
+                    Number(summary.ahtCalls || 0) > 0
+                      ? `Documented Calls · ${formatNumber(summary.ahtCalls || 0)} records · Target ${formatNumber(targetAhtSeconds)}s`
+                      : data?.ahtCoverage?.note || "Missing Documented Calls (AHT) source"
                   }
                   status={
-                    summaryAhtSeconds > 0
+                    Number(summary.ahtCalls || 0) > 0
                       ? {
                           label: ahtMet ? "Target met" : "Above target",
                           className: ahtMet
