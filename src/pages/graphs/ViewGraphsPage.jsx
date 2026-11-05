@@ -1080,8 +1080,19 @@ export default function ViewGraphsPage() {
                     showFilters ? "border-b border-sibs-tertiary-10" : ""
                   }`}
                 >
-                  {/* Left: Mobile menu trigger, Icon, and Title */}
+                  {/* Left: Sidebar Toggle, Mobile menu trigger, Icon, and Title */}
                   <div className="flex items-center gap-2 min-w-0">
+                    {dashboard.isSidebarHidden && (
+                      <button
+                        type="button"
+                        aria-label="Expand sidebar"
+                        title="Expand sidebar"
+                        onClick={() => dashboard.setIsSidebarHidden(false)}
+                        className="hidden md:inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-[#042c51] hover:border-[#ff5c28] hover:bg-[#ff5c28] hover:text-white transition-all duration-150 cursor-pointer shadow-2xs active:scale-95 shrink-0"
+                      >
+                        <Menu size={16} aria-hidden="true" />
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={() => dashboard.setIsMobileSidebarOpen(true)}
