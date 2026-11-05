@@ -24,6 +24,8 @@ export const PERMISSIONS = Object.freeze({
   WFM_IMPORT_REPOSITORY: "WFM_IMPORT_REPOSITORY",
   WFM_HISTORY_LOGS: "WFM_HISTORY_LOGS",
   WFM_TASK_ORDER_LEDGER: "WFM_TASK_ORDER_LEDGER",
+  WFM_STAFFING_CALENDAR: "WFM_STAFFING_CALENDAR",
+  WFM_EDIT_STAFFING: "WFM_EDIT_STAFFING",
   VIEW_EMPLOYEE_LEDGER: "VIEW_EMPLOYEE_LEDGER",
   VIEW_OCCUPANCY: "VIEW_OCCUPANCY",
   VIEW_ATTENDANCE_SHEET: "VIEW_ATTENDANCE_SHEET",
@@ -111,6 +113,12 @@ const PERMISSION_RULES = Object.freeze({
     access: [ACCESS.WFM],
   },
   [PERMISSIONS.WFM_TASK_ORDER_LEDGER]: {
+    access: [ACCESS.WFM],
+  },
+  [PERMISSIONS.WFM_STAFFING_CALENDAR]: {
+    access: [ACCESS.WFM, ACCESS.SUPER_ADMIN, ACCESS.BOD, ACCESS.OM, ACCESS.SOM],
+  },
+  [PERMISSIONS.WFM_EDIT_STAFFING]: {
     access: [ACCESS.WFM],
   },
   [PERMISSIONS.VIEW_EMPLOYEE_LEDGER]: {
@@ -242,6 +250,13 @@ export const DASHBOARD_MODULES = Object.freeze([
         permission: PERMISSIONS.VIEW_EMPLOYEE_LEDGER,
       },
       {
+        key: "staffing-calendar",
+        name: "Staffing Requirements",
+        iconKey: "clipboard-list",
+        path: "/staffing-requirements",
+        permission: PERMISSIONS.WFM_STAFFING_CALENDAR,
+      },
+      {
         key: "task-order-ledger",
         name: "Task-Order Ledger",
         iconKey: "award",
@@ -340,6 +355,7 @@ const ROUTE_PERMISSION_RULES = Object.freeze([
   { paths: ["/import-repository"], permission: PERMISSIONS.WFM_IMPORT_REPOSITORY },
   { paths: ["/history"], permission: PERMISSIONS.WFM_HISTORY_LOGS },
   { paths: ["/task-order-ledger"], permission: PERMISSIONS.WFM_TASK_ORDER_LEDGER },
+  { paths: ["/staffing-requirements"], permission: PERMISSIONS.WFM_STAFFING_CALENDAR },
   { paths: ["/employee-master-data"], permission: PERMISSIONS.VIEW_EMPLOYEE_LEDGER },
   { paths: ["/occupancy"], permission: PERMISSIONS.VIEW_OCCUPANCY },
   { paths: ["/attendance-sheet"], permission: PERMISSIONS.VIEW_ATTENDANCE_SHEET },
@@ -457,6 +473,7 @@ export function normalizeDashboardPath(path) {
     "/dashboard/wfm/import-data": "/import-data",
     "/dashboard/wfm/import-repository": "/import-repository",
     "/dashboard/wfm/task-order-ledger": "/task-order-ledger",
+    "/dashboard/wfm/staffing-requirements": "/staffing-requirements",
     "/dashboard/wfm/skills-ledger": "/task-order-ledger",
     "/dashboard/wfm/history": "/history",
     "/dashboard/wfm/history-logs": "/history",

@@ -797,9 +797,22 @@ export function getTaskOrderLabel(sourceSystem, value) {
     .join(", ");
 }
 
+function normalizeReportingCountry(country) {
+  const normalized = String(country || "").toLowerCase().trim()
+    .replace(/&/g, " and ").replace(/[^a-z0-9]+/g, " ")
+    .replace(/\s+/g, " ").trim();
+  const aliases = {
+    "south korea": "korea", "republic of korea": "korea",
+    "viet nam": "vietnam", "lao pdr": "laos", czechia: "czech republic",
+    turkey: "turkiye", "northern macedonia": "north macedonia",
+    "bosnia herzegovina": "bosnia and herzegovina",
+  };
+  return aliases[normalized] || normalized;
+}
+
 export function getSkillsForCountries(countryList = [], skillsMap = SKILLS_BY_COUNTRY) {
   const normalizedSelected = countryList
-    .map((c) => String(c || "").trim().toLowerCase())
+    .map(normalizeReportingCountry)
     .filter(Boolean);
 
   if (!normalizedSelected.length) return [];
@@ -807,7 +820,7 @@ export function getSkillsForCountries(countryList = [], skillsMap = SKILLS_BY_CO
   const matchedSkills = [];
   const mapToUse = skillsMap || SKILLS_BY_COUNTRY;
   for (const [countryName, skills] of Object.entries(mapToUse)) {
-    if (normalizedSelected.includes(countryName.toLowerCase())) {
+    if (normalizedSelected.includes(normalizeReportingCountry(countryName))) {
       for (const s of skills) {
         if (!matchedSkills.includes(s)) {
           matchedSkills.push(s);
@@ -819,7 +832,7 @@ export function getSkillsForCountries(countryList = [], skillsMap = SKILLS_BY_CO
   return matchedSkills;
 }
 
-export function getSkillOptions(sourceSystem, selectedCountries, selectedTaskOrders, skillsMap = SKILLS_BY_COUNTRY) {
+export function getSkillOptions(sourceSystem, selectedCountries, selectedTaskOrders, skillsMap = SKILLS_BY_COUNTRY, countryScopesByTaskOrder = {}) {
   const genericOptions = GENERIC_SKILL_OPTIONS;
 
   const countryList = Array.isArray(selectedCountries)
@@ -841,7 +854,10 @@ export function getSkillOptions(sourceSystem, selectedCountries, selectedTaskOrd
       : [];
 
   if (toList.length > 0) {
-    const toCountries = getCountryOptions(sourceSystem, toList).map((c) => c.value);
+    const toCountries = [
+      ...getCountryOptions(sourceSystem, toList).map((c) => c.value),
+      ...toList.flatMap((to) => countryScopesByTaskOrder[to] || []),
+    ];
     const toSkills = getSkillsForCountries(toCountries, skillsMap);
     const specificOptions = toSkills.map((s) => ({ value: s, label: s }));
     return [...genericOptions, ...specificOptions];

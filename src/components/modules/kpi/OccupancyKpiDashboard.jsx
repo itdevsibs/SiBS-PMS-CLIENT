@@ -64,10 +64,10 @@ export function OccupancySummaryCards({
     {
       label: "Actual Headcount",
       value: summary?.actualHeadcount != null ? formatNumber(summary.actualHeadcount, 0) : "—",
-      hint: "Present agents from Kronos attendance",
+      hint: "Active employees scheduled on each day",
       icon: Users,
       status: {
-        label: "Present",
+        label: "Scheduled",
         className: "bg-slate-100 text-slate-700",
       },
     },
@@ -77,7 +77,7 @@ export function OccupancySummaryCards({
         summary?.absenteeismPct != null
           ? `${formatNumber(summary.absenteeismPct, 2)}%`
           : "—",
-      hint: "Absent HC ÷ Actual HC",
+      hint: "Absent scheduled employee-days ÷ scheduled employee-days",
       icon: UserMinus,
       status: null,
     },
@@ -165,6 +165,9 @@ function ChartCanvasGrid({
   secondaryBarKey = null,
   secondaryBarColor = "bg-[#557da4]",
   secondaryTooltipLabel = "",
+  extraBarKey = null,
+  extraBarColor = "bg-[#8faecb]",
+  extraTooltipLabel = "",
   maxAxisValue = 100,
   formatValue = null,
   tooltipLabel = "",
@@ -263,6 +266,7 @@ function ChartCanvasGrid({
                       },
                     ]
                     : []),
+                  ...(extraBarKey ? [{ key: extraBarKey, color: extraBarColor, label: extraTooltipLabel || 'Value' }] : []),
                 ];
 
                 return (
@@ -358,6 +362,11 @@ function ChartCanvasGrid({
                                     {formatValue ? formatValue(value) : value}
                                   </span>
                                 </div>
+                                {barKey === 'requiredHeadcount' && item.buffer != null ? (
+                                  <div className="mt-1 border-t pt-1 text-[10px] font-bold text-slate-600">
+                                    Buffer / Shortfall: {item.buffer > 0 ? '+' : ''}{item.buffer}
+                                  </div>
+                                ) : null}
                               </div>
                             ) : null}
                           </div>
@@ -444,9 +453,9 @@ export default function OccupancyKpiDashboard({
   );
 
   // Dynamic Headcount axis ticks if data exists
-  const hasHcData = series.some((item) => Number(item.actualHeadcount || 0) > 0);
+  const hasHcData = series.some((item) => [item.requiredHeadcount, item.actualHeadcount, item.attritedHeadcount].some(v => v !== null && v !== undefined && Number.isFinite(Number(v))));
   const maxHc = hasHcData
-    ? Math.max(1, ...series.map((item) => Number(item.actualHeadcount || 0)))
+    ? Math.max(1, ...series.flatMap((item) => [item.requiredHeadcount, item.actualHeadcount, item.attritedHeadcount].map(v => Number(v || 0))))
     : 100;
   const hcTicks = hasHcData
     ? getCallAxisTicks(maxHc, 4).map(String)
@@ -558,15 +567,11 @@ export default function OccupancyKpiDashboard({
                 <>
                   <span className="inline-flex items-center gap-1 font-bold text-[#0b3b68]">
                     <i className="h-2 w-2 rounded-full bg-[#0b3b68]" />
-                    Required FTE
+                    Required HC
                   </span>
                   <span className="inline-flex items-center gap-1 font-bold text-[#2f6f9f]">
                     <i className="h-2 w-2 rounded-full bg-[#2f6f9f]" />
                     Actual HC
-                  </span>
-                  <span className="inline-flex items-center gap-1 font-bold text-[#557da4]">
-                    <i className="h-2 w-2 rounded-full bg-[#557da4]" />
-                    Buffer
                   </span>
                   <span className="inline-flex items-center gap-1 font-bold text-[#8faecb]">
                     <i className="h-2 w-2 rounded-full bg-[#8faecb]" />
@@ -578,15 +583,21 @@ export default function OccupancyKpiDashboard({
               <ChartCanvasGrid
                 yAxisLabels={hcTicks}
                 xAxisLabels={xAxisLabels}
-                footerNotes={[]}
+                footerNotes={["Buffer = Actual HC − Required HC · Negative means shortfall"]}
                 isSubmodule={isSubmodule}
                 showFilters={showFilters}
                 series={series}
-                barKey="actualHeadcount"
-                barColor="bg-[#2f6f9f]"
+                barKey="requiredHeadcount"
+                barColor="bg-[#0b3b68]"
+                secondaryBarKey="actualHeadcount"
+                secondaryBarColor="bg-[#2f6f9f]"
+                secondaryTooltipLabel="Scheduled HC"
+                extraBarKey="attritedHeadcount"
+                extraBarColor="bg-[#8faecb]"
+                extraTooltipLabel="Attrited HC"
                 maxAxisValue={hcMax}
                 formatValue={(val) => `${formatNumber(val, 0)}`}
-                tooltipLabel="Actual HC"
+                tooltipLabel="Required HC"
               />
             </ChartShell>
           </div>
@@ -622,6 +633,9 @@ export default function OccupancyKpiDashboard({
                 series={series}
                 barKey="absenteeismPct"
                 barColor="bg-[#0b3b68]"
+                secondaryBarKey="attritionPct"
+                secondaryBarColor="bg-[#2f6f9f]"
+                secondaryTooltipLabel="Attrition"
                 maxAxisValue={peopleMetricMax}
                 formatValue={(val) => `${formatNumber(val, 2)}%`}
                 tooltipLabel="Absenteeism"
@@ -694,15 +708,11 @@ export default function OccupancyKpiDashboard({
                 <>
                   <span className="inline-flex items-center gap-1 font-bold text-[#0b3b68]">
                     <i className="h-2 w-2 rounded-full bg-[#0b3b68]" />
-                    Required FTE
+                    Required HC
                   </span>
                   <span className="inline-flex items-center gap-1 font-bold text-[#2f6f9f]">
                     <i className="h-2 w-2 rounded-full bg-[#2f6f9f]" />
                     Actual HC
-                  </span>
-                  <span className="inline-flex items-center gap-1 font-bold text-[#557da4]">
-                    <i className="h-2 w-2 rounded-full bg-[#557da4]" />
-                    Buffer
                   </span>
                   <span className="inline-flex items-center gap-1 font-bold text-[#8faecb]">
                     <i className="h-2 w-2 rounded-full bg-[#8faecb]" />
@@ -714,15 +724,21 @@ export default function OccupancyKpiDashboard({
               <ChartCanvasGrid
                 yAxisLabels={hcTicks}
                 xAxisLabels={xAxisLabels}
-                footerNotes={[]}
+                footerNotes={["Buffer = Actual HC − Required HC · Negative means shortfall"]}
                 isSubmodule={false}
                 showFilters={showFilters}
                 series={series}
-                barKey="actualHeadcount"
-                barColor="bg-[#2f6f9f]"
+                barKey="requiredHeadcount"
+                barColor="bg-[#0b3b68]"
+                secondaryBarKey="actualHeadcount"
+                secondaryBarColor="bg-[#2f6f9f]"
+                secondaryTooltipLabel="Scheduled HC"
+                extraBarKey="attritedHeadcount"
+                extraBarColor="bg-[#8faecb]"
+                extraTooltipLabel="Attrited HC"
                 maxAxisValue={hcMax}
                 formatValue={(val) => `${formatNumber(val, 0)}`}
-                tooltipLabel="Actual HC"
+                tooltipLabel="Required HC"
               />
             </ChartShell>
           </div>
@@ -759,6 +775,9 @@ export default function OccupancyKpiDashboard({
                 series={series}
                 barKey="absenteeismPct"
                 barColor="bg-[#0b3b68]"
+                secondaryBarKey="attritionPct"
+                secondaryBarColor="bg-[#2f6f9f]"
+                secondaryTooltipLabel="Attrition"
                 maxAxisValue={peopleMetricMax}
                 formatValue={(val) => `${formatNumber(val, 2)}%`}
                 tooltipLabel="Absenteeism"

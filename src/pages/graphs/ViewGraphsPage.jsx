@@ -22,9 +22,15 @@ import AppHeader from "@/components/common/layout/AppHeader";
 import ConfirmationModal from "@/components/common/ui/ConfirmationModal";
 import LoadingModal from "@/components/common/ui/LoadingModal";
 import CallKpiDashboard from "@/components/modules/kpi/CallKpiDashboard";
-import EmailKpiDashboard from "@/components/modules/kpi/EmailKpiDashboard";
-import QualityAuditKpiDashboard from "@/components/modules/kpi/QualityAuditKpiDashboard";
-import OccupancyKpiDashboard from "@/components/modules/kpi/OccupancyKpiDashboard";
+import EmailKpiDashboard, {
+  EmailSummaryCards,
+} from "@/components/modules/kpi/EmailKpiDashboard";
+import QualityAuditKpiDashboard, {
+  QualityAuditSummaryCards,
+} from "@/components/modules/kpi/QualityAuditKpiDashboard";
+import OccupancyKpiDashboard, {
+  OccupancySummaryCards,
+} from "@/components/modules/kpi/OccupancyKpiDashboard";
 import DownloadPdfModal from "@/components/modules/kpi/DownloadPdfModal";
 import AllReportsExecutivePdfView from "@/components/modules/kpi/AllReportsExecutivePdfView";
 import {
@@ -50,7 +56,6 @@ import {
   SOURCE_OPTIONS,
   LOB_OPTIONS,
   DEFAULT_FILTERS,
-  SKILLS_BY_COUNTRY,
   getTaskOrderOptions,
   getTaskOrderLabel,
   getSkillOptions,
@@ -370,7 +375,9 @@ export default function ViewGraphsPage() {
   const [occupancyError, setOccupancyError] = useState("");
   const [utilizationError, setUtilizationError] = useState("");
   const [absenteeismError, setAbsenteeismError] = useState("");
-  const [skillsByCountryState, setSkillsByCountryState] = useState(SKILLS_BY_COUNTRY);
+  const [skillsByCountryState, setSkillsByCountryState] = useState({});
+  const [skillCountryScopes, setSkillCountryScopes] = useState({});
+  const [liveTaskOrderOptions, setLiveTaskOrderOptions] = useState([]);
   const [showFilters, setShowFilters] = useState(true);
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
   const [showDownloadPdfModal, setShowDownloadPdfModal] = useState(false);
@@ -505,28 +512,16 @@ export default function ViewGraphsPage() {
 
   useEffect(() => {
     let isMounted = true;
-    getCallSkills()
+    getCallSkills({ onlySkillStatistics: true })
       .then((res) => {
         if (!isMounted || !res?.data) return;
-        const serverMap = res.data;
-        setSkillsByCountryState((prev) => {
-          const merged = { ...prev };
-          for (const [country, skills] of Object.entries(serverMap)) {
-            if (!merged[country]) {
-              merged[country] = skills;
-            } else {
-              const current = [...merged[country]];
-              for (const s of skills) {
-                const key = s.toLowerCase().replace(/[^a-z0-9]/g, "");
-                if (!current.some((c) => c.toLowerCase().replace(/[^a-z0-9]/g, "") === key)) {
-                  current.push(s);
-                }
-              }
-              merged[country] = current;
-            }
-          }
-          return merged;
-        });
+        // Use the canonical Skill Statistics list only; mixing static/Chat
+        // skills can show selectable options that have no Calls data.
+        setSkillsByCountryState(res.data);
+        if (res.countryScopes && typeof res.countryScopes === 'object') {
+          setSkillCountryScopes(res.countryScopes);
+        }
+        if (Array.isArray(res.taskOrders)) setLiveTaskOrderOptions(res.taskOrders);
       })
       .catch((err) => {
         console.warn("Could not load dynamic source skills:", err?.message);
@@ -775,22 +770,26 @@ export default function ViewGraphsPage() {
     setFilters((current) => {
       const nextSource = Array.isArray(newSources) ? newSources : [newSources];
       const validTaskOrders = new Set(
-        getTaskOrderOptions(nextSource).map((to) => to.value),
+        (liveTaskOrderOptions.length ? liveTaskOrderOptions : getTaskOrderOptions(nextSource))
+          .map((to) => to.value),
       );
       const nextTaskOrder = Array.isArray(current.taskOrder)
         ? current.taskOrder.filter((to) => validTaskOrders.has(to))
         : [];
-      const validCountries = new Set(
-        getCountryOptions(nextSource, nextTaskOrder).map((c) => c.value),
-      );
+      const validCountries = new Set([
+        ...getCountryOptions(nextSource, nextTaskOrder).map((c) => c.value),
+        ...nextTaskOrder.flatMap((to) => skillCountryScopes[to] || []),
+      ].map((value) => String(value).toLowerCase()));
       const nextCountry = Array.isArray(current.country)
-        ? current.country.filter((c) => validCountries.has(c))
+        ? current.country.filter((c) => validCountries.has(String(c).toLowerCase()))
         : [];
 
       const newSkillOptions = getSkillOptions(
         nextSource,
         nextCountry,
         nextTaskOrder,
+        skillsByCountryState,
+        skillCountryScopes,
       );
       const validSkills = new Set(
         newSkillOptions.map((s) => s.value.toLowerCase()),
@@ -818,11 +817,12 @@ export default function ViewGraphsPage() {
         current.sourceSystem,
         nextTaskOrders,
       );
-      const validCountryValues = new Set(
-        newCountryOptions.map((c) => c.value),
-      );
+      const validCountryValues = new Set([
+        ...newCountryOptions.map((c) => c.value),
+        ...nextTaskOrders.flatMap((to) => skillCountryScopes[to] || []),
+      ].map((value) => String(value).toLowerCase()));
       const nextCountry = Array.isArray(current.country)
-        ? current.country.filter((c) => validCountryValues.has(c))
+        ? current.country.filter((c) => validCountryValues.has(String(c).toLowerCase()))
         : [];
 
       const newSkillOptions = getSkillOptions(
@@ -830,6 +830,7 @@ export default function ViewGraphsPage() {
         nextCountry,
         nextTaskOrders,
         skillsByCountryState,
+        skillCountryScopes,
       );
       const validSkills = new Set(
         newSkillOptions.map((s) => s.value.toLowerCase()),
@@ -857,6 +858,7 @@ export default function ViewGraphsPage() {
         nextCountries,
         current.taskOrder,
         skillsByCountryState,
+        skillCountryScopes,
       );
       const validSkills = new Set(
         newSkillOptions.map((s) => s.value.toLowerCase()),
@@ -958,13 +960,26 @@ export default function ViewGraphsPage() {
       ? dashboardData.series
       : [];
 
-  const taskOrderOptions = getTaskOrderOptions(
-    filters.sourceSystem,
-  );
+  const taskOrderOptions = liveTaskOrderOptions.length
+    ? liveTaskOrderOptions
+    : getTaskOrderOptions(filters.sourceSystem);
 
   const baseCountryOptions = getCountryOptions(
     filters.sourceSystem,
     filters.taskOrder,
+  );
+  // Add countries from the actual active Country -> Task Order ledger. A static
+  // list alone can hide legitimate countries when the ledger changes.
+  const selectedTaskOrders = Array.isArray(filters.taskOrder)
+    ? filters.taskOrder.filter((to) => to && to !== '__NONE__')
+    : String(filters.taskOrder || '').split(',').filter(Boolean);
+  const selectedScopes = selectedTaskOrders.length
+    ? selectedTaskOrders : Object.keys(skillCountryScopes);
+  const liveCountryOptions = selectedScopes.flatMap((to) =>
+    (skillCountryScopes[to] || []).map((name) => ({
+      value: name.toLowerCase(),
+      label: name.replace(/\b\w/g, (letter) => letter.toUpperCase()),
+    })),
   );
   const emailCountryOptions = Array.isArray(emailDashboardData.availableCountries)
     ? emailDashboardData.availableCountries
@@ -973,7 +988,7 @@ export default function ViewGraphsPage() {
     ? qualityAuditDashboardData.availableCountries
     : [];
   const countryOptions = Array.from(
-    [...baseCountryOptions, ...emailCountryOptions, ...qualityAuditCountryOptions].reduce((map, option) => {
+    [...baseCountryOptions, ...liveCountryOptions, ...emailCountryOptions, ...qualityAuditCountryOptions].reduce((map, option) => {
       const key = String(option?.value || "").trim().toLowerCase();
       if (key && !map.has(key)) map.set(key, option);
       return map;
@@ -985,6 +1000,7 @@ export default function ViewGraphsPage() {
     filters.country,
     filters.taskOrder,
     skillsByCountryState,
+    skillCountryScopes,
   );
 
   const activeTaskOrder =
@@ -1074,19 +1090,8 @@ export default function ViewGraphsPage() {
                     showFilters ? "border-b border-sibs-tertiary-10" : ""
                   }`}
                 >
-                  {/* Left: Sidebar Toggle, Mobile menu trigger, Icon, and Title */}
+                  {/* Left: Mobile menu trigger, Icon, and Title */}
                   <div className="flex items-center gap-2 min-w-0">
-                    {dashboard.isSidebarHidden && (
-                      <button
-                        type="button"
-                        aria-label="Expand sidebar"
-                        title="Expand sidebar"
-                        onClick={() => dashboard.setIsSidebarHidden(false)}
-                        className="hidden md:inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-[#042c51] hover:border-[#ff5c28] hover:bg-[#ff5c28] hover:text-white transition-all duration-150 cursor-pointer shadow-2xs active:scale-95 shrink-0"
-                      >
-                        <Menu size={16} aria-hidden="true" />
-                      </button>
-                    )}
                     <button
                       type="button"
                       onClick={() => dashboard.setIsMobileSidebarOpen(true)}
@@ -1141,26 +1146,10 @@ export default function ViewGraphsPage() {
                         setShowFilters((prev) => !prev);
                       }}
                       className="inline-flex cursor-pointer items-center gap-1.5 rounded-md px-2 py-1 text-xs font-semibold text-sibs-primary-1 hover:bg-sibs-primary-1/10 transition-colors"
-                      title={
-                        showFilters
-                          ? !currentSection
-                            ? "Hide filters to conserve space"
-                            : "Hide filters and KPI cards to conserve space"
-                          : !currentSection
-                            ? "Show filters"
-                            : "Show filters and KPI cards"
-                      }
+                      title={showFilters ? "Hide filters and KPI cards to conserve space" : "Show filters and KPI cards"}
                     >
                       <Filter size={12} className="shrink-0" />
-                      <span>
-                        {showFilters
-                          ? !currentSection
-                            ? "Hide Filters"
-                            : "Hide Filters & KPIs"
-                          : !currentSection
-                            ? "Show Filters"
-                            : "Show Filters & KPIs"}
-                      </span>
+                      <span>{showFilters ? "Hide Filters & KPIs" : "Show Filters & KPIs"}</span>
                       <ChevronDown
                         size={14}
                         className={`shrink-0 transition-transform duration-200 ${showFilters ? "rotate-180" : ""
@@ -1353,11 +1342,29 @@ export default function ViewGraphsPage() {
                         <CallKpiDashboard
                           data={dashboardData || {}}
                           period={filters.period}
-                          showSummaryCards={isCallsOnly ? showFilters : false}
+                          showSummaryCards={showFilters}
                           isSubmodule={isCallsOnly}
                           showFilters={showFilters}
                           isLoading={isCallsOnly ? isCallsLoading : isUnifiedLoading}
                           onSectionClick={!currentSection ? () => handleNavigateToSection("calls") : null}
+                          afterCards={
+                            !currentSection ? (
+                              <div className="space-y-1.5 sm:space-y-2">
+                                <EmailSummaryCards
+                                  summary={emailDashboardData?.summary || {}}
+                                  onCardClick={() => handleNavigateToSection("emails")}
+                                />
+                                <QualityAuditSummaryCards
+                                  summary={qualityAuditDashboardData?.summary || {}}
+                                  onCardClick={() => handleNavigateToSection("qa")}
+                                />
+                                <OccupancySummaryCards
+                                  summary={occupancyDashboardData?.summary || {}}
+                                  onCardClick={() => handleNavigateToSection("occupancy")}
+                                />
+                              </div>
+                            ) : null
+                          }
                         />
                       </div>
                     )}
