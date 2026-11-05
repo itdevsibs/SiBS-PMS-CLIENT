@@ -233,7 +233,7 @@ export default function ChatReportsPage() {
           onLogoutClick={() => dashboard.setShowLogoutModal(true)}
         />
 
-        <main className="flex min-h-0 flex-1 flex-col gap-2.5 overflow-hidden px-2.5 pb-2.5 pt-2.5 sm:gap-3 sm:px-4 sm:pt-3 lg:px-5">
+        <main className="sibs-scrollbar flex min-h-0 flex-1 flex-col gap-2.5 overflow-y-auto px-2.5 pb-2.5 pt-2.5 sm:gap-3 sm:px-4 sm:pt-3 lg:px-5">
           <div className="sibs-card relative z-40 shrink-0 overflow-visible bg-white p-2 shadow-xs sm:p-2.5">
             <div className="grid grid-cols-1 items-end gap-2 sm:grid-cols-2 sm:gap-2.5 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7">
               <MultiSelectDropdown
@@ -330,7 +330,7 @@ export default function ChatReportsPage() {
 
           <div className="flex min-h-[360px] flex-1 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs lg:min-h-0">
             <div className="min-h-0 flex-1 overflow-auto sibs-scrollbar">
-              <table className="w-full border-collapse text-left text-xs">
+              <table className="w-full min-w-[720px] border-collapse text-left text-xs">
                 <thead className="sticky top-0 z-10 border-b border-[#0d3b66] bg-[#042c51] text-white shadow-2xs">
                   <tr>
                     {["Country", "Chats Received", "Chats Answered", "No Response", "Chats Abandoned", "AHT", "SLA"].map((column, index) => (

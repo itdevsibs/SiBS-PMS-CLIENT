@@ -28,7 +28,7 @@ const AdminSidebar = ({
   userRole,
   brandBadge = "S",
   brandTitle = "SiBS PMS",
-  brandSubtitle = "PERFORMANCE MANAGEMENT SYSTEM",
+  brandSubtitle = "US VISA",
   hideToggleTooltip = "Hide sidebar totally",
 }) => {
   const location = useLocation();

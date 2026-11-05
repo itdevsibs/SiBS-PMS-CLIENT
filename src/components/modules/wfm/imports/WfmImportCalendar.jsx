@@ -56,7 +56,7 @@ export default function WfmImportCalendar({
         <div className="flex items-center gap-1.5">
           <button
             type="button"
-            className="flex h-7.5 w-7.5 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 transition"
+            className="flex h-7.5 w-7.5 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 transition cursor-pointer"
             onClick={() => onMonthChange(calendarMonthShift(month, -1))}
             aria-label="Previous month"
           >
@@ -64,14 +64,14 @@ export default function WfmImportCalendar({
           </button>
           <button
             type="button"
-            className="h-7.5 rounded-lg border border-slate-200 px-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition"
+            className="h-7.5 rounded-lg border border-slate-200 px-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition cursor-pointer"
             onClick={() => onMonthChange(today.slice(0, 7))}
           >
             Today
           </button>
           <button
             type="button"
-            className="flex h-7.5 w-7.5 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 transition"
+            className="flex h-7.5 w-7.5 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 transition cursor-pointer"
             onClick={() => onMonthChange(calendarMonthShift(month, 1))}
             aria-label="Next month"
           >
@@ -80,67 +80,143 @@ export default function WfmImportCalendar({
         </div>
       </div>
       {error ? <p role="alert" className="mx-3.5 mt-2 text-xs text-rose-700 shrink-0">{error}</p> : null}
-      <div className="grid grid-cols-7 border-b border-slate-100 bg-slate-50 shrink-0">
-        {WEEKDAYS.map((day) => (
-          <div key={day} className="py-1.5 text-center text-[10px] font-bold uppercase tracking-wide text-slate-500">
-            {day}
-          </div>
-        ))}
-      </div>
-      <div
-        className="flex-1 grid grid-cols-7 auto-rows-fr gap-px bg-slate-100 min-h-0"
-        aria-label={`${title} import calendar`}
-      >
-        {cells.map((day, index) => {
-          const data = counts.get(day);
-          const active = day === selectedDay;
-          return day ? (
-            <button
-              type="button"
-              key={day}
-              onClick={() => onSelectDay(day, data)}
-              aria-pressed={active}
-              aria-label={`${day}: ${data?.batchCount || 0} imported batches, ${data?.failedCount || 0} failed`}
-              className={`relative flex h-full flex-col items-start gap-0.5 bg-white p-1.5 text-left transition-colors hover:bg-sky-50 focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-sky-500 sm:p-2 ${
-                active ? "!bg-sky-50 ring-2 ring-inset ring-sky-500" : ""
-              } ${data?.batchCount > 0 ? "cursor-pointer" : "cursor-default"}`}
-            >
-              <div className="flex w-full items-center justify-between gap-1">
-                <span
-                  className={`inline-flex h-5.5 w-5.5 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
-                    day === today ? "bg-sibs-primary-1 text-white shadow-xs" : "text-slate-700"
-                  }`}
-                >
-                  {Number(day.slice(-2))}
-                </span>
-                {data?.batchCount > 0 ? (
-                  <span className="inline-flex items-center gap-1.5 rounded-md bg-emerald-50 border border-emerald-200/80 px-2 py-0.5 text-emerald-700 shadow-2xs">
-                    <FileCheck2 className="h-3 w-3 shrink-0 text-emerald-600"/>
-                    <span className="text-[10px] sm:text-[11px] font-bold leading-none">
-                      {data.batchCount} {data.batchCount === 1 ? "file imported" : "files imported"}
+      
+      {/* Calendar Grid Container: Vertical agenda on small screens (<sm), 7-day grid on sm and larger */}
+      {/* Mobile Vertical Day-by-Day Agenda View */}
+      <div className="flex-1 min-h-[300px] overflow-y-auto sibs-scrollbar divide-y divide-slate-100 sm:hidden">
+        {cells
+          .filter(Boolean)
+          .map((day) => {
+            const data = counts.get(day);
+            const active = day === selectedDay;
+            const dayNum = Number(day.slice(-2));
+            const dayDate = new Date(`${day}T12:00:00Z`);
+            const weekdayName = WEEKDAYS[dayDate.getUTCDay()];
+            const hasData = data?.batchCount > 0;
+
+            return (
+              <button
+                type="button"
+                key={`mobile-${day}`}
+                onClick={() => onSelectDay(day, data)}
+                className={`w-full flex items-center justify-between px-3 py-2.5 text-left transition ${
+                  active ? "bg-sky-50 ring-1 ring-inset ring-sky-500" : "bg-white hover:bg-slate-50"
+                } ${hasData ? "cursor-pointer" : "cursor-default"}`}
+              >
+                <div className="flex items-center gap-3">
+                  <div
+                    className={`flex h-8 w-8 shrink-0 flex-col items-center justify-center rounded-lg font-bold ${
+                      day === today
+                        ? "bg-sibs-primary-1 text-white shadow-xs"
+                        : "bg-slate-100 text-slate-700"
+                    }`}
+                  >
+                    <span className="text-[9px] uppercase leading-none font-semibold text-slate-400">
+                      {weekdayName}
                     </span>
-                  </span>
-                ) : null}
-              </div>
-              {(data?.failedCount > 0 || data?.issueCount > 0 || data?.duplicateCount > 0) ? (
-                <div className="mt-auto flex w-full justify-end">
-                  <span className="inline-flex items-center gap-1 rounded bg-amber-50 border border-amber-200/60 px-1.5 py-0.5 text-[8.5px] font-medium text-amber-700 sm:text-[9px]">
-                    <AlertCircle className="h-2.5 w-2.5 shrink-0 text-amber-600"/>
-                    <span>
-                      {data.failedCount > 0
-                        ? `${data.failedCount} failed`
-                        : data.issueCount > 0
-                        ? `${data.issueCount} issues`
-                        : `${data.duplicateCount} dup`}
+                    <span className="text-xs leading-none mt-0.5">
+                      {dayNum}
                     </span>
-                  </span>
+                  </div>
+                  <div>
+                    <p className="m-0 text-xs font-bold text-slate-800">
+                      {weekdayName}, {day}
+                    </p>
+                    <p className="m-0 text-[11px] text-slate-500">
+                      {hasData ? (
+                        <span className="text-emerald-700 font-semibold">
+                          {data.batchCount} {data.batchCount === 1 ? "file imported" : "files imported"}
+                        </span>
+                      ) : (
+                        <span className="text-slate-400">No imports</span>
+                      )}
+                    </p>
+                  </div>
                 </div>
-              ) : null}
-            </button>
-          ) : (
-            <div key={`empty-${index}`} className="h-full bg-slate-50/80" aria-hidden="true"/>
-          );
-        })}
+
+                {hasData ? (
+                  <div className="flex items-center gap-1.5">
+                    <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 border border-emerald-200/80 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
+                      <FileCheck2 className="h-3 w-3 text-emerald-600" />
+                      <span>{data.batchCount}</span>
+                    </span>
+                    {(data?.failedCount > 0 || data?.issueCount > 0 || data?.duplicateCount > 0) && (
+                      <span className="inline-flex items-center gap-1 rounded bg-amber-50 border border-amber-200/60 px-1.5 py-0.5 text-[9px] font-medium text-amber-700">
+                        <AlertCircle className="h-2.5 w-2.5 text-amber-600" />
+                        <span>{data.failedCount || data.issueCount || data.duplicateCount}</span>
+                      </span>
+                    )}
+                  </div>
+                ) : null}
+              </button>
+            );
+          })}
+      </div>
+
+      {/* Desktop/Tablet 7-Day Grid View (sm and larger) */}
+      <div className="hidden sm:flex flex-1 min-h-0 flex-col overflow-hidden">
+        <div className="grid grid-cols-7 border-b border-slate-100 bg-slate-50 shrink-0">
+          {WEEKDAYS.map((day) => (
+            <div key={day} className="py-1.5 text-center text-[10px] font-bold uppercase tracking-wide text-slate-500">
+              {day}
+            </div>
+          ))}
+        </div>
+        <div
+          className="flex-1 grid grid-cols-7 auto-rows-fr gap-px bg-slate-100 min-h-0"
+          aria-label={`${title} import calendar`}
+        >
+          {cells.map((day, index) => {
+            const data = counts.get(day);
+            const active = day === selectedDay;
+            return day ? (
+              <button
+                type="button"
+                key={day}
+                onClick={() => onSelectDay(day, data)}
+                aria-pressed={active}
+                aria-label={`${day}: ${data?.batchCount || 0} imported batches, ${data?.failedCount || 0} failed`}
+                className={`relative flex h-full flex-col items-start gap-0.5 bg-white p-1.5 text-left transition-colors hover:bg-sky-50 focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-sky-500 sm:p-2 ${
+                  active ? "!bg-sky-50 ring-2 ring-inset ring-sky-500" : ""
+                } ${data?.batchCount > 0 ? "cursor-pointer" : "cursor-default"}`}
+              >
+                <div className="flex w-full items-center justify-between gap-1">
+                  <span
+                    className={`inline-flex h-5.5 w-5.5 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
+                      day === today ? "bg-sibs-primary-1 text-white shadow-xs" : "text-slate-700"
+                    }`}
+                  >
+                    {Number(day.slice(-2))}
+                  </span>
+                  {data?.batchCount > 0 ? (
+                    <span className="inline-flex items-center gap-1.5 rounded-md bg-emerald-50 border border-emerald-200/80 px-2 py-0.5 text-emerald-700 shadow-2xs">
+                      <FileCheck2 className="h-3 w-3 shrink-0 text-emerald-600"/>
+                      <span className="text-[10px] sm:text-[11px] font-bold leading-none">
+                        {data.batchCount} {data.batchCount === 1 ? "file imported" : "files imported"}
+                      </span>
+                    </span>
+                  ) : null}
+                </div>
+                {(data?.failedCount > 0 || data?.issueCount > 0 || data?.duplicateCount > 0) ? (
+                  <div className="mt-auto flex w-full justify-end">
+                    <span className="inline-flex items-center gap-1 rounded bg-amber-50 border border-amber-200/60 px-1.5 py-0.5 text-[8.5px] font-medium text-amber-700 sm:text-[9px]">
+                      <AlertCircle className="h-2.5 w-2.5 shrink-0 text-amber-600"/>
+                      <span>
+                        {data.failedCount > 0
+                          ? `${data.failedCount} failed`
+                          : data.issueCount > 0
+                          ? `${data.issueCount} issues`
+                          : `${data.duplicateCount} dup`}
+                      </span>
+                    </span>
+                  </div>
+                ) : null}
+              </button>
+            ) : (
+              <div key={`empty-${index}`} className="h-full bg-slate-50/80" aria-hidden="true"/>
+            );
+          })}
+        </div>
       </div>
       
     </div>

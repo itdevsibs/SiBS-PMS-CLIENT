@@ -8,6 +8,7 @@ import {
   EyeOff,
   Lock,
   User,
+  X,
   XCircle,
 } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -172,6 +173,10 @@ const Login = () => {
     authenticatedRoleLabel,
     setAuthenticatedRoleLabel,
   ] = useState("");
+
+  const [interfaceChoiceData, setInterfaceChoiceData] = useState(null);
+  const [isTransitioningInterface, setIsTransitioningInterface] = useState(false);
+  const [selectedInterfaceTarget, setSelectedInterfaceTarget] = useState("");
 
   const isLoading =
     loginStatus === "loading";
@@ -374,6 +379,21 @@ const Login = () => {
         authUser.roleLabel,
       );
 
+      // Check if user has accessible interfaces assigned in database
+      const userAccessibleInterfaces = Array.isArray(authUser.accessibleInterfaces)
+        ? authUser.accessibleInterfaces
+        : [];
+
+      if (userAccessibleInterfaces.length > 0) {
+        setLoginStatus("idle");
+        setInterfaceChoiceData({
+          authUser,
+          interfaces: userAccessibleInterfaces,
+          defaultDashboardPath: dashboardPath,
+        });
+        return;
+      }
+
       setLoginStatus(
         "success",
       );
@@ -418,6 +438,60 @@ const Login = () => {
         "invalid",
       );
     }
+  };
+
+  const handleCancelInterfaceChoice = () => {
+    clearAuthenticationStorage();
+    setInterfaceChoiceData(null);
+    setSelectedInterfaceTarget("");
+    setIsTransitioningInterface(false);
+    setLoginStatus("idle");
+    setPassword("");
+  };
+
+  const handleSelectInterface = (interfaceName) => {
+    if (!interfaceChoiceData) return;
+
+    setSelectedInterfaceTarget(interfaceName);
+    setIsTransitioningInterface(true);
+
+    let destinationPath = interfaceChoiceData.defaultDashboardPath;
+    let chosenRole = interfaceChoiceData.authUser?.role || "employee";
+    let chosenAdminAccess = interfaceChoiceData.authUser?.adminAccess;
+    const lower = interfaceName.toLowerCase();
+
+    if (lower.includes("visa") || lower.includes("workforce") || lower.includes("wfm")) {
+      destinationPath = "/dashboard/wfm/view-graphs";
+    } else if (lower.includes("front") || lower.includes("frontstep")) {
+      destinationPath = "/frontsteps";
+      chosenRole = "frontsteps";
+      chosenAdminAccess = 11;
+    }
+
+    window.setTimeout(() => {
+      setIsTransitioningInterface(false);
+      const chosenUser = {
+        ...interfaceChoiceData.authUser,
+        chosenInterface: interfaceName,
+        dashboardPath: destinationPath,
+        dashboard: destinationPath,
+        redirectTo: destinationPath,
+        role: chosenRole,
+        resolvedRole: chosenRole,
+        adminAccess: chosenAdminAccess,
+      };
+
+      saveAuthSession({
+        user: chosenUser,
+      });
+
+      navigate(destinationPath, {
+        replace: true,
+        state: {
+          authenticatedUser: chosenUser,
+        },
+      });
+    }, 1000);
   };
 
   return (
@@ -694,6 +768,57 @@ const Login = () => {
         }
         title="Signing in"
         message="Please wait while we verify your account."
+      />
+
+      {/* Interface Choice Modal for users with assigned Accessible Interfaces */}
+      <AppModal
+        isOpen={Boolean(interfaceChoiceData) && !isTransitioningInterface}
+        className="max-w-md"
+      >
+        <div className="flex items-center justify-between pb-3 border-b border-sibs-tertiary-10">
+          <p className="m-0 text-lg font-bold text-sibs-primary-1">
+            Select Interface
+          </p>
+          <button
+            type="button"
+            onClick={handleCancelInterfaceChoice}
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-sibs-tertiary-5 hover:bg-sibs-tertiary-10 hover:text-sibs-primary-1 transition cursor-pointer"
+            aria-label="Cancel interface selection"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <p className="mt-4 mb-2 text-sm text-sibs-tertiary-5">
+          Welcome, <span className="font-bold text-sibs-primary-1">{interfaceChoiceData?.authUser?.name}</span>! Which interface would you like to enter?
+        </p>
+
+        <div className="mt-4 space-y-3">
+          {interfaceChoiceData?.interfaces?.map((iface) => {
+            return (
+              <button
+                key={iface}
+                type="button"
+                onClick={() => handleSelectInterface(iface)}
+                className="w-full flex items-center justify-between p-4 rounded-xl border border-sibs-tertiary-10 bg-[#f8fbfd] hover:border-sibs-primary-1 hover:bg-sibs-primary-3/50 transition cursor-pointer text-left group"
+              >
+                <p className="m-0 text-sm font-bold text-sibs-primary-1 group-hover:text-sibs-primary-1">
+                  {iface}
+                </p>
+                <span className="text-xs font-bold text-sibs-primary-1 group-hover:translate-x-1 transition-transform">
+                  &rarr;
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </AppModal>
+
+      {/* Loading Modal while entering selected interface */}
+      <LoadingModal
+        isOpen={isTransitioningInterface}
+        title={`Entering ${selectedInterfaceTarget || "Interface"}`}
+        message="Please wait while we prepare your dashboard..."
       />
     </section>
   );

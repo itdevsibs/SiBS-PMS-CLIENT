@@ -286,7 +286,7 @@ export default function CallsReportPage() {
           onLogoutClick={() => dashboard.setShowLogoutModal(true)}
         />
 
-        <main className="flex min-h-0 flex-1 flex-col gap-2.5 overflow-hidden px-2.5 pb-2.5 pt-2.5 sm:gap-3 sm:px-4 sm:pt-3 lg:px-5">
+        <main className="sibs-scrollbar flex min-h-0 flex-1 flex-col gap-2.5 overflow-y-auto px-2.5 pb-2.5 pt-2.5 sm:gap-3 sm:px-4 sm:pt-3 lg:px-5">
           {/* Search & Filter Toolbar (Matching WOW Report Filter Design) */}
           <div className="sibs-card relative z-40 overflow-visible shadow-xs shrink-0 p-2 sm:p-2.5 bg-white">
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-2 sm:gap-2.5 items-end">
@@ -557,8 +557,8 @@ export default function CallsReportPage() {
 
           {/* Table Container */}
           <div className="flex min-h-[360px] lg:min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs">
-            <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden sibs-scrollbar">
-              <table className="w-full table-auto border-collapse text-left text-xs">
+            <div className="min-h-0 flex-1 overflow-y-auto overflow-x-auto lg:overflow-x-hidden sibs-scrollbar">
+              <table className="w-full min-w-[980px] lg:min-w-0 table-auto border-collapse text-left text-xs">
                 <thead className="sticky top-0 z-10 border-b border-[#0d3b66] bg-[#042c51] text-white shadow-2xs">
                   <tr>
                     <th className="whitespace-nowrap px-4 py-3 text-[11px] font-extrabold uppercase tracking-wider text-white">
