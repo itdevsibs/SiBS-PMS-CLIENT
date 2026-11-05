@@ -637,7 +637,7 @@ function WfmImportDataPage() {
           onLogoutClick={() => dashboard.setShowLogoutModal(true)}
         />
 
-        <div className="sibs-scrollbar flex-1 overflow-hidden p-3.5 sm:p-4 bg-white flex flex-col justify-between">
+        <div className="sibs-scrollbar flex-1 overflow-y-auto min-h-0 p-3.5 sm:p-4 bg-white flex flex-col gap-3">
           <WfmFilterBar
             selectedAccount={selectedAccount}
             onSelectAccount={(account) => {

@@ -353,9 +353,9 @@ export default function WfmImportTwoColumnWorkspace({
   }, [recentImports]);
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-[minmax(270px,0.29fr)_minmax(0,1fr)] gap-4 items-stretch flex-1 min-h-0">
+    <div className="grid grid-cols-1 lg:grid-cols-[minmax(270px,0.29fr)_minmax(0,1fr)] gap-4 items-stretch shrink-0 lg:flex-1 lg:min-h-0">
       {/* ================= LEFT PANEL: REPORT LEVELS ================= */}
-      <section className="bg-white rounded-2xl border border-[#D7E1EE] p-3.5 sm:p-4 shadow-2xs flex flex-col h-full min-h-0 overflow-hidden">
+      <section className="bg-white rounded-2xl border border-[#D7E1EE] p-3.5 sm:p-4 shadow-2xs flex flex-col h-[280px] sm:h-[340px] lg:h-full min-h-0 overflow-hidden shrink-0">
         <div className="mb-3 shrink-0">
           <h2 className="text-[16px] font-black text-[#102448] tracking-tight leading-none m-0">
             Report Levels
@@ -425,7 +425,7 @@ export default function WfmImportTwoColumnWorkspace({
       </section>
 
       {/* ================= RIGHT PANEL: DYNAMIC IMPORT WORKSPACE ================= */}
-      <section className="bg-white rounded-2xl border border-[#D7E1EE] overflow-hidden shadow-2xs flex flex-col justify-between h-full">
+      <section className="bg-white rounded-2xl border border-[#D7E1EE] overflow-hidden shadow-2xs flex flex-col justify-between shrink-0 lg:h-full">
         {/* Dark Navy Header Bar */}
         <div className="bg-[#062A5C] px-5 py-3 text-white rounded-t-2xl shrink-0 flex items-center min-h-[48px]">
           <h2 className="text-[16px] font-black text-white tracking-tight leading-none m-0">

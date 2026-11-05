@@ -777,7 +777,7 @@ export default function WfmImportedRepository() {
           onLogoutClick={() => dashboard.setShowLogoutModal(true)}
         />
 
-        <div className="flex-1 flex flex-col min-h-0 overflow-hidden p-2 sm:p-2.5 lg:p-3">
+        <div className="sibs-scrollbar flex-1 flex flex-col min-h-0 overflow-y-auto p-2 sm:p-2.5 lg:p-3 gap-2 sm:gap-2.5">
           {/* Top Filter Bar */}
           <WfmFilterBar
             selectedAccount={selectedAccount}

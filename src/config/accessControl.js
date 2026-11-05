@@ -379,6 +379,12 @@ function normalizeRoleName(value) {
 }
 
 export function getUserAdminAccess(user) {
+  // If user explicitly selected an interface on login
+  const chosen = String(user?.chosenInterface || "").toLowerCase();
+  if (chosen.includes("front") || chosen.includes("frontstep")) {
+    return ACCESS.FRONTSTEPS;
+  }
+
   const directValue = Number(
     user?.adminAccess ??
       user?.admin_access ??
@@ -415,6 +421,11 @@ export function getUserAdminAccess(user) {
 }
 
 export function resolveUserRole(user) {
+  const chosen = String(user?.chosenInterface || "").toLowerCase();
+  if (chosen.includes("front") || chosen.includes("frontstep")) {
+    return "frontsteps";
+  }
+
   const access = getUserAdminAccess(user);
 
   if (ROLE_BY_ACCESS[access]) {
@@ -489,6 +500,12 @@ export function normalizeDashboardPath(path) {
 
 export function hasPermissionForUser(user, permission) {
   if (!permission || !user) return false;
+
+  // If user selected Front Steps Account interface, grant frontsteps permission
+  const chosen = String(user?.chosenInterface || "").toLowerCase();
+  if (chosen.includes("front") || chosen.includes("frontstep")) {
+    if (permission === PERMISSIONS.VIEW_FRONTSTEPS) return true;
+  }
 
   const rule = PERMISSION_RULES[permission];
   if (!rule) return false;

@@ -934,7 +934,7 @@ export default function OccupancyTable({
           onPointerCancel={handlePointerUp}
           className="flex-1 min-h-0 w-full overflow-y-auto overflow-x-auto sibs-scrollbar"
         >
-          <table className="w-full table-fixed border-collapse text-left">
+          <table className="w-full min-w-[1100px] table-fixed border-collapse text-left">
             <colgroup>
               {OCCUPANCY_COLUMNS.map((col) => (
                 <col

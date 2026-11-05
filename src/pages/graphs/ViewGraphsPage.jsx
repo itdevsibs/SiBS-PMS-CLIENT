@@ -1146,10 +1146,10 @@ export default function ViewGraphsPage() {
                         setShowFilters((prev) => !prev);
                       }}
                       className="inline-flex cursor-pointer items-center gap-1.5 rounded-md px-2 py-1 text-xs font-semibold text-sibs-primary-1 hover:bg-sibs-primary-1/10 transition-colors"
-                      title={showFilters ? "Hide filters and KPI cards to conserve space" : "Show filters and KPI cards"}
+                      title={showFilters ? "Hide filters" : "Show filters"}
                     >
                       <Filter size={12} className="shrink-0" />
-                      <span>{showFilters ? "Hide Filters & KPIs" : "Show Filters & KPIs"}</span>
+                      <span>{showFilters ? "Hide Filters" : "Show Filters"}</span>
                       <ChevronDown
                         size={14}
                         className={`shrink-0 transition-transform duration-200 ${showFilters ? "rotate-180" : ""
@@ -1342,29 +1342,12 @@ export default function ViewGraphsPage() {
                         <CallKpiDashboard
                           data={dashboardData || {}}
                           period={filters.period}
-                          showSummaryCards={showFilters}
+                          showSummaryCards={false}
                           isSubmodule={isCallsOnly}
                           showFilters={showFilters}
                           isLoading={isCallsOnly ? isCallsLoading : isUnifiedLoading}
                           onSectionClick={!currentSection ? () => handleNavigateToSection("calls") : null}
-                          afterCards={
-                            !currentSection ? (
-                              <div className="space-y-1.5 sm:space-y-2">
-                                <EmailSummaryCards
-                                  summary={emailDashboardData?.summary || {}}
-                                  onCardClick={() => handleNavigateToSection("emails")}
-                                />
-                                <QualityAuditSummaryCards
-                                  summary={qualityAuditDashboardData?.summary || {}}
-                                  onCardClick={() => handleNavigateToSection("qa")}
-                                />
-                                <OccupancySummaryCards
-                                  summary={occupancyDashboardData?.summary || {}}
-                                  onCardClick={() => handleNavigateToSection("occupancy")}
-                                />
-                              </div>
-                            ) : null
-                          }
+                          afterCards={null}
                         />
                       </div>
                     )}
