@@ -7,10 +7,9 @@ import TablePagination from "@/components/common/tables/TablePagination";
 import DatePicker from "@/components/common/filters/DatePicker";
 import MultiSelectDropdown from "@/components/common/filters/MultiSelectDropdown";
 import useDashboardPage from "@/hooks/useDashboardPage";
-import { getCallsReport, getCallSkills } from "@/lib/axios/kpis";
+import { getCallsReport, getCallsReportSkills } from "@/lib/axios/kpis";
 import {
   SOURCE_OPTIONS,
-  SKILLS_BY_COUNTRY,
   getTaskOrderOptions,
   getCountryOptions,
   getSkillOptions,
@@ -55,6 +54,16 @@ function formatDisplayDate(dateStr) {
   });
 }
 
+function formatSourceAht(seconds) {
+  if (seconds === null || seconds === undefined || !Number.isFinite(Number(seconds)) || Number(seconds) < 0) return "--";
+  const rounded = Math.round(Number(seconds));
+  const hours = Math.floor(rounded / 3600);
+  const minutes = Math.floor((rounded % 3600) / 60);
+  const secondsPart = rounded % 60;
+  const pad = (n) => String(n).padStart(2, "0");
+  return hours ? `${pad(hours)}:${pad(minutes)}:${pad(secondsPart)}` : `${pad(minutes)}:${pad(secondsPart)}`;
+}
+
 export default function CallsReportPage() {
   const dashboard = useDashboardPage();
 
@@ -79,13 +88,14 @@ export default function CallsReportPage() {
   const [reportData, setReportData] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [fetchError, setFetchError] = useState(null);
+  const [reportCoverage, setReportCoverage] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedDate, setSelectedDate] = useState(() => formatManilaDate()); // Default to today's date
   const [selectedSources, setSelectedSources] = useState([]); // Empty means all sources
   const [selectedTaskOrders, setSelectedTaskOrders] = useState([]); // Empty means all task orders
   const [selectedCountries, setSelectedCountries] = useState([]); // Empty means all countries
   const [selectedSkills, setSelectedSkills] = useState([]); // Empty means all skills
-  const [skillsByCountry, setSkillsByCountry] = useState(SKILLS_BY_COUNTRY);
+  const [skillsByCountry, setSkillsByCountry] = useState({});
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -110,11 +120,13 @@ export default function CallsReportPage() {
       ]);
       const rows = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
       setReportData(rows);
+      setReportCoverage(res?.coverage || null);
       if (res?.resolvedDate && res.resolvedDate !== selectedDate) {
         setSelectedDate(res.resolvedDate);
       }
     } catch (err) {
       console.error("Failed to load calls report:", err);
+      setReportCoverage(null);
       setFetchError(
         err?.response?.data?.message || err?.message || "Failed to load calls report from server.",
       );
@@ -129,23 +141,12 @@ export default function CallsReportPage() {
 
   useEffect(() => {
     let isMounted = true;
-    getCallSkills()
+    getCallsReportSkills()
       .then((res) => {
         if (!isMounted || !res?.data) return;
-        setSkillsByCountry((prev) => {
-          const merged = { ...prev };
-          for (const [country, skills] of Object.entries(res.data)) {
-            const current = [...(merged[country] || [])];
-            for (const skill of skills || []) {
-              const key = String(skill).toLowerCase().replace(/[^a-z0-9]/g, "");
-              if (!current.some((item) => String(item).toLowerCase().replace(/[^a-z0-9]/g, "") === key)) {
-                current.push(skill);
-              }
-            }
-            merged[country] = current;
-          }
-          return merged;
-        });
+        // The standalone Calls Report offers only skills present in imported
+        // Skill Statistics; never merge the legacy Calls EOD/static list.
+        setSkillsByCountry(res.data);
       })
       .catch((err) => console.warn("Could not load dynamic source skills:", err?.message));
 
@@ -235,46 +236,30 @@ export default function CallsReportPage() {
     return filteredData.slice(start, start + pageSize);
   }, [filteredData, safeCurrentPage, pageSize]);
 
-  // Summary Totals
+  // Source-native metrics stay unavailable when any contributing Skill
+  // Statistics group lacks the column; never treat NULL as zero.
   const totals = useMemo(() => {
-    let callsReceived = 0;
-    let callsAnswered = 0;
-    let callsAbandoned = 0;
-    let callsAbandonedAfterSl = 0;
-    let callsAnsweredWithinSl = 0;
-    let totalSeconds = 0;
-
-    filteredData.forEach((r) => {
-      callsReceived += Number(r.callsReceived || 0);
-      callsAnswered += Number(r.callsAnswered || 0);
-      callsAbandoned += Number(r.callsAbandoned || 0);
-      callsAbandonedAfterSl += Number(r.callsAbandonedAfterSl || 0);
-      callsAnsweredWithinSl += Number(r.callsAnsweredWithinSl || 0);
-      totalSeconds += Number(r.ahtSeconds || 0) * Number(r.callsAnswered || 0);
-    });
-
-    const avgAhtSec = callsAnswered > 0 ? Math.round(totalSeconds / callsAnswered) : 0;
-    const ahtMin = Math.floor(avgAhtSec / 60);
-    const ahtRem = avgAhtSec % 60;
-    const ahtStr = totalSeconds > 0
-      ? `${String(ahtMin).padStart(2, "0")}:${String(ahtRem).padStart(2, "0")}`
-      : "--";
-
-    const abandonedRate =
-      callsReceived > 0 ? ((callsAbandoned / callsReceived) * 100).toFixed(2) + "%" : "0.00%";
-    const sl =
-      callsAnswered > 0 ? ((callsAnsweredWithinSl / callsAnswered) * 100).toFixed(2) + "%" : "0.00%";
-
-    return {
-      callsReceived,
-      callsAnswered,
-      callsAbandoned,
-      callsAbandonedAfterSl,
-      callsAnsweredWithinSl,
-      aht: ahtStr,
-      abandonedRate,
-      sl,
-    };
+    const sumRequired = (key) => filteredData.reduce((sum, r) => sum + Number(r[key] || 0), 0);
+    const sumNullable = (key) => filteredData.length && filteredData.every((r) => r[key] !== null && r[key] !== undefined)
+      ? filteredData.reduce((sum, r) => sum + Number(r[key]), 0) : null;
+    const callsReceived = sumRequired("callsReceived");
+    const callsAnswered = sumRequired("callsAnswered");
+    const callsAbandoned = sumNullable("callsAbandoned");
+    const callsAbandonedAfterSl = sumNullable("callsAbandonedAfterSl");
+    const callsAnsweredWithinSl = sumNullable("callsAnsweredWithinSl");
+    const abandonedRate = callsAbandoned === null ? "--" :
+      callsReceived > 0 ? `${(callsAbandoned / callsReceived * 100).toFixed(2)}%` : "0.00%";
+    const sl = callsAnsweredWithinSl === null ? "--" :
+      callsAnswered > 0 ? `${(callsAnsweredWithinSl / callsAnswered * 100).toFixed(2)}%` : "0.00%";
+    const ahtAvailable = filteredData.length > 0 && filteredData.every((r) =>
+      Number(r.callsAnswered || 0) === 0 ||
+      (r.ahtHandleSecondsNumerator !== null && r.ahtHandleSecondsNumerator !== undefined &&
+       Number(r.ahtHandledCalls) === Number(r.callsAnswered)));
+    const ahtCalls = ahtAvailable ? filteredData.reduce((sum,r) => sum + Number(r.ahtHandledCalls || 0), 0) : 0;
+    const ahtNumerator = ahtAvailable ? filteredData.reduce((sum,r) => sum + Number(r.ahtHandleSecondsNumerator || 0), 0) : 0;
+    const aht = ahtCalls > 0 ? formatSourceAht(ahtNumerator / ahtCalls) : "--";
+    return { callsReceived, callsAnswered, callsAbandoned, callsAbandonedAfterSl,
+      callsAnsweredWithinSl, aht, abandonedRate, sl };
   }, [filteredData]);
 
   return (
@@ -488,7 +473,7 @@ export default function CallsReportPage() {
                 {isLoading ? (
                   <div className="h-6 w-14 rounded bg-slate-200 animate-pulse my-0.5" />
                 ) : (
-                  totals.callsAbandoned.toLocaleString()
+                  totals.callsAbandoned === null ? "—" : totals.callsAbandoned.toLocaleString()
                 )}
               </div>
             </div>
@@ -560,6 +545,11 @@ export default function CallsReportPage() {
             </div>
           </div>
 
+          {reportCoverage && (reportCoverage.status !== "COMPLETE" || reportCoverage.abandonedAfterSltUnverifiedRows > 0) && !fetchError && (
+            <div className="shrink-0 rounded-lg bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800">
+              Skill Statistics coverage: {reportCoverage.status}. {reportCoverage.note}
+            </div>
+          )}
           {fetchError && (
             <div className="shrink-0 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2.5 text-xs text-rose-700">
               <div className="flex items-start gap-2">
@@ -651,8 +641,8 @@ export default function CallsReportPage() {
                     ))
                   ) : paginatedData.length > 0 ? (
                     paginatedData.map((row, idx) => {
-                      const isAbandonedZero = Number(row.callsAbandoned || 0) === 0;
-                      const isAbandonedAfterSlZero = Number(row.callsAbandonedAfterSl || 0) === 0;
+                      const isAbandonedZero = row.callsAbandoned === 0;
+                      const isAbandonedAfterSlZero = row.callsAbandonedAfterSl === 0;
                       const slNumber = parseFloat(row.sl) || 0;
                       const isHighSL = slNumber >= 80;
 
@@ -688,7 +678,7 @@ export default function CallsReportPage() {
                                   : "text-rose-600 font-bold"
                               }`}
                             >
-                              {(row.callsAbandoned ?? 0).toLocaleString()}
+                              {row.callsAbandoned === null ? "—" : (row.callsAbandoned ?? 0).toLocaleString()}
                             </span>
                           </td>
                           <td className="whitespace-nowrap px-4 py-3 text-right">
@@ -699,14 +689,14 @@ export default function CallsReportPage() {
                                   : "text-amber-600 font-bold"
                               }`}
                             >
-                              {(row.callsAbandonedAfterSl ?? 0).toLocaleString()}
+                              {row.callsAbandonedAfterSl === null ? "—" : (row.callsAbandonedAfterSl ?? 0).toLocaleString()}
                             </span>
                           </td>
                           <td className="whitespace-nowrap px-4 py-3 text-right font-semibold text-[#0b3b68]">
-                            {(row.callsAnsweredWithinSl ?? 0).toLocaleString()}
+                            {row.callsAnsweredWithinSl === null ? "—" : (row.callsAnsweredWithinSl ?? 0).toLocaleString()}
                           </td>
                           <td className="whitespace-nowrap px-4 py-3 text-right font-mono font-semibold text-slate-800">
-                            {row.aht || "00:00"}
+                            {row.aht || "--"}
                           </td>
                           <td className="whitespace-nowrap px-4 py-3 text-right">
                             <span

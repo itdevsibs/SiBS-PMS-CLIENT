@@ -1164,6 +1164,8 @@ export default function CallKpiDashboard({
 }) {
   const isFiltersVisible = showFilters !== undefined ? showFilters : showSummaryCards;
   const summary = data?.summary || {};
+  const queueUnavailable = data?.queueCoverage && data.queueCoverage.status !== "COMPLETE";
+  const serviceLevelUnavailable = data?.queueCoverage?.metricAvailability?.handledWithinSlt === false;
   const series = Array.isArray(data?.series)
     ? data.series
     : [];
@@ -1174,7 +1176,7 @@ export default function CallKpiDashboard({
   };
 
   const serviceLevelMet =
-    Number(summary.serviceLevelPct || 0) >=
+    summary.serviceLevelPct != null && Number(summary.serviceLevelPct) >=
     Number(targets.serviceLevelPct || 0);
 
   const summaryAhtSeconds = convertDurationToSeconds(
@@ -1232,7 +1234,7 @@ export default function CallKpiDashboard({
                 <KpiCard
                   icon={PhoneCall}
                   label="Call Volume"
-                  value={formatNumber(summary.callsOffered)}
+                  value={summary.callsOffered == null ? "--" : formatNumber(summary.callsOffered)}
                   hint="Total calls offered"
                   {...cardClickProps}
                 />
@@ -1240,7 +1242,7 @@ export default function CallKpiDashboard({
                 <KpiCard
                   icon={PhoneCall}
                   label="Handled"
-                  value={formatNumber(summary.callsHandled)}
+                  value={summary.callsHandled == null ? "--" : formatNumber(summary.callsHandled)}
                   hint="Total handled calls"
                   {...cardClickProps}
                 />
@@ -1248,7 +1250,7 @@ export default function CallKpiDashboard({
                 <KpiCard
                   icon={CheckCircle2}
                   label="Handled w/SLA"
-                  value={formatNumber(summary.handledWithinSla)}
+                  value={summary.handledWithinSla == null ? "--" : formatNumber(summary.handledWithinSla)}
                   hint="Handled within SLT"
                   {...cardClickProps}
                 />
@@ -1256,7 +1258,7 @@ export default function CallKpiDashboard({
                 <KpiCard
                   icon={Gauge}
                   label="Answer %"
-                  value={formatPercent(summary.answerRatePct)}
+                  value={summary.answerRatePct == null ? "--" : formatPercent(summary.answerRatePct)}
                   hint="Handled ÷ offered"
                   {...cardClickProps}
                 />
@@ -1264,11 +1266,11 @@ export default function CallKpiDashboard({
                 <KpiCard
                   icon={Gauge}
                   label="Service Level"
-                  value={formatPercent(summary.serviceLevelPct)}
+                  value={summary.serviceLevelPct == null ? "--" : formatPercent(summary.serviceLevelPct)}
                   hint={`Target ${formatPercent(
                     targets.serviceLevelPct,
                   )}`}
-                  status={{
+                  status={summary.serviceLevelPct == null ? null : {
                     label: serviceLevelMet
                       ? "Target met"
                       : "Below target",
@@ -1403,11 +1405,7 @@ export default function CallKpiDashboard({
             }
           >
             <VolumeChart
-              series={
-                series.length
-                  ? series
-                  : data?.data?.series || []
-              }
+              series={queueUnavailable ? [] : series.length ? series : data?.data?.series || []}
               period={currentPeriod}
               hideLegend={true}
               isSubmodule={isSubmodule}
@@ -1444,11 +1442,7 @@ export default function CallKpiDashboard({
             }
           >
             <LineChart
-              series={
-                series.length
-                  ? series
-                  : data?.data?.series || []
-              }
+              series={queueUnavailable || serviceLevelUnavailable ? [] : series.length ? series : data?.data?.series || []}
               target={
                 targets.serviceLevelPct ||
                 data?.data?.targets?.serviceLevelPct

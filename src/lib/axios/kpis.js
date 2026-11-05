@@ -6,6 +6,11 @@ export async function getCallKpis(params = {}) {
   return response;
 }
 
+export async function getCallsReportSkills() {
+  const response = await api.get("/kpis/calls-report/skills");
+  return response?.data || response;
+}
+
 export async function getCallSkills() {
   const response = await api.get("/kpis/skills");
   return response?.data || response;
