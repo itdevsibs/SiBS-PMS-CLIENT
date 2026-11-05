@@ -11,8 +11,10 @@ export async function getCallsReportSkills() {
   return response?.data || response;
 }
 
-export async function getCallSkills() {
-  const response = await api.get("/kpis/skills");
+export async function getCallSkills({ onlySkillStatistics = false } = {}) {
+  const response = await api.get("/kpis/skills", {
+    params: onlySkillStatistics ? { reportType: "SKILL_STATISTICS" } : {},
+  });
   return response?.data || response;
 }
 

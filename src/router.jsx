@@ -20,6 +20,7 @@ import Login from "./pages/login/Login";
 import OccupancyPage from "./pages/occupancy/OccupancyPage";
 import OperationsManagementPage from "./pages/operationsManager/OperationsManagementPage";
 import TaskOrderLedger from "./pages/TaskOrderLedger/TaskOrderLedger";
+import StaffingRequirementsPage from "./pages/workForceManagement/StaffingRequirementsPage";
 import TeamLeaderPage from "./pages/teamLeader/TeamLeaderPage";
 import WfmHistoryLogs from "./pages/workForceManagement/WfmHistoryLogs";
 import WfmImportDataPage from "./pages/workForceManagement/WfmImportDataPage";
@@ -76,6 +77,14 @@ const Router = () => {
         element={(
           <Protected permission={PERMISSIONS.WFM_TASK_ORDER_LEDGER}>
             <TaskOrderLedger />
+          </Protected>
+        )}
+      />
+      <Route
+        path="/staffing-requirements"
+        element={(
+          <Protected permission={PERMISSIONS.WFM_STAFFING_CALENDAR}>
+            <StaffingRequirementsPage />
           </Protected>
         )}
       />
@@ -234,6 +243,7 @@ const Router = () => {
       <Route path="/dashboard/wfm/import-repository" element={<LegacyRedirect to="/import-repository" />} />
       <Route path="/dashboard/wfm/history" element={<LegacyRedirect to="/history" />} />
       <Route path="/dashboard/wfm/history-logs" element={<LegacyRedirect to="/history" />} />
+      <Route path="/dashboard/wfm/staffing-requirements" element={<LegacyRedirect to="/staffing-requirements" />} />
       <Route path="/dashboard/wfm/task-order-ledger" element={<LegacyRedirect to="/task-order-ledger" />} />
       <Route path="/dashboard/wfm/skills-ledger" element={<LegacyRedirect to="/task-order-ledger" />} />
       <Route path="/dashboard/employee-master-data" element={<LegacyRedirect to="/employee-master-data" />} />

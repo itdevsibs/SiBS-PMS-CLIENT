@@ -157,20 +157,25 @@ export default function AllReportsExecutivePdfView({
       label: lbl || item.label || `Week ${idx + 1}`,
       occupancyPct: Number(item.occupancyPct || 0),
       utilizationPct: Number(item.utilizationPct || 0),
-      actualHeadcount: Number(item.actualHeadcount || 0),
+      actualHeadcount: item.actualHeadcount == null ? null : Number(item.actualHeadcount),
+      requiredHeadcount: item.requiredHeadcount == null ? null : Number(item.requiredHeadcount),
+      attritedHeadcount: item.attritedHeadcount == null ? null : Number(item.attritedHeadcount),
+      buffer: item.buffer == null ? null : Number(item.buffer),
       absenteeismPct:
         item.absenteeismPct == null ? null : Number(item.absenteeismPct),
+      attritionPct: item.attritionPct == null ? null : Number(item.attritionPct),
     };
   });
 
   // Calculate scales for Headcount
-  const maxHc = Math.max(10, ...occSeries.map((d) => d.actualHeadcount));
+  const maxHc = Math.max(10, ...occSeries.flatMap(d => [d.requiredHeadcount || 0, d.actualHeadcount || 0, d.attritedHeadcount || 0]));
   const hcTicks = getCallAxisTicks(maxHc, 4);
   const hcAxisMax = Math.max(10, hcTicks[0] || maxHc);
 
   const maxPeopleMetric = Math.max(
     20,
     ...occSeries.map((item) => Number(item.absenteeismPct || 0)),
+    ...occSeries.map((item) => Number(item.attritionPct || 0)),
   );
   const peopleMetricTicks =
     maxPeopleMetric > 20
@@ -598,19 +603,16 @@ export default function AllReportsExecutivePdfView({
               <div style={{ display: "flex", justifyContent: "center", gap: "14px", fontSize: "12px", fontWeight: "700", marginBottom: "4px" }}>
                 <span style={{ display: "flex", alignItems: "center", gap: "5px" }}>
                   <span style={{ width: "9px", height: "9px", borderRadius: "50%", backgroundColor: blueDark, display: "inline-block" }} />
-                  Required FTE
+                  Required HC
                 </span>
                 <span style={{ display: "flex", alignItems: "center", gap: "5px" }}>
                   <span style={{ width: "9px", height: "9px", borderRadius: "50%", backgroundColor: blueMid, display: "inline-block" }} />
                   Actual HC
                 </span>
-                <span style={{ display: "flex", alignItems: "center", gap: "5px" }}>
-                  <span style={{ width: "9px", height: "9px", borderRadius: "50%", backgroundColor: "#7b9ebc", display: "inline-block" }} />
-                  Buffer
-                </span>
+
                 <span style={{ display: "flex", alignItems: "center", gap: "5px" }}>
                   <span style={{ width: "9px", height: "9px", borderRadius: "50%", backgroundColor: "#b0c4de", display: "inline-block" }} />
-                  Attrited
+                  Attrited HC
                 </span>
               </div>
 
@@ -630,16 +632,18 @@ export default function AllReportsExecutivePdfView({
                     ))}
 
                     {occSeries.map((item, idx) => {
-                      const h = item.actualHeadcount > 0 ? Math.min(100, Math.max(9, (item.actualHeadcount / hcAxisMax) * 100)) : 0;
+                      const bars = [
+                        { key: 'required', value: item.requiredHeadcount, color: blueDark },
+                        { key: 'actual', value: item.actualHeadcount, color: blueMid },
+                        { key: 'attrited', value: item.attritedHeadcount, color: '#b0c4de' },
+                      ];
                       return (
-                        <div key={idx} style={{ flex: 1, display: "flex", alignItems: "flex-end", justifyContent: "center", position: "relative", zIndex: 1 }}>
-                          {item.actualHeadcount > 0 && (
-                            <div style={{ width: "38px", height: `${h}%`, backgroundColor: blueMid, position: "relative", display: "flex", justifyContent: "center", borderRadius: "2px 2px 0 0" }}>
-                              <span style={{ position: "absolute", top: "4px", color: "#ffffff", fontSize: "8.5px", fontWeight: "800" }}>
-                                {item.actualHeadcount}
-                              </span>
+                        <div key={idx} title={item.buffer == null ? 'Buffer unavailable' : `Buffer / Shortfall: ${item.buffer}`} style={{ flex: 1, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', gap: '2px', position: 'relative', zIndex: 1 }}>
+                          {bars.map(bar => bar.value != null && bar.value > 0 ? (
+                            <div key={bar.key} style={{ width: '28%', maxWidth: '21px', height: `${Math.min(100, Math.max(4, (bar.value / hcAxisMax) * 100))}%`, backgroundColor: bar.color, position: 'relative', display: 'flex', justifyContent: 'center', borderRadius: '2px 2px 0 0' }}>
+                              <span style={{ position: 'absolute', top: '3px', color: '#ffffff', fontSize: '7px', fontWeight: '800' }}>{bar.value}</span>
                             </div>
-                          )}
+                          ) : null)}
                         </div>
                       );
                     })}
@@ -653,6 +657,13 @@ export default function AllReportsExecutivePdfView({
                     ))}
                   </div>
                 </div>
+              </div>
+              <div style={{ display: 'flex', gap: '2px', marginTop: '3px', fontSize: '8px', fontWeight: 700, color: blueDark }}>
+                {occSeries.map((item, idx) => (
+                  <span key={idx} style={{ flex: 1, textAlign: 'center' }}>
+                    {item.buffer == null ? 'Δ —' : `Δ ${item.buffer > 0 ? '+' : ''}${item.buffer}`}
+                  </span>
+                ))}
               </div>
             </div>
 
@@ -697,20 +708,19 @@ export default function AllReportsExecutivePdfView({
                     ))}
 
                     {occSeries.map((item, idx) => {
-                      const value = item.absenteeismPct;
-                      const h =
-                        value != null && peopleMetricAxisMax > 0
-                          ? Math.min(100, Math.max(0, (value / peopleMetricAxisMax) * 100))
-                          : 0;
+                      const bars = [
+                        { key: 'absence', value: item.absenteeismPct, color: blueDark },
+                        { key: 'attrition', value: item.attritionPct, color: blueMid },
+                      ];
                       return (
-                        <div key={idx} style={{ flex: 1, display: "flex", alignItems: "flex-end", justifyContent: "center", position: "relative", zIndex: 1 }}>
-                          {value != null && (
-                            <div style={{ width: "38px", height: `${h}%`, backgroundColor: blueDark, position: "relative", display: "flex", justifyContent: "center", borderRadius: "2px 2px 0 0" }}>
-                              <span style={{ position: "absolute", top: h > 10 ? "4px" : "-13px", color: h > 10 ? "#ffffff" : blueDark, fontSize: "8.5px", fontWeight: "800", whiteSpace: "nowrap" }}>
-                                {value.toFixed(2)}%
+                        <div key={idx} style={{ flex: 1, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', gap: '2px', position: 'relative', zIndex: 1 }}>
+                          {bars.map(bar => bar.value != null ? (
+                            <div key={bar.key} style={{ width: '38%', maxWidth: '26px', height: `${Math.min(100, Math.max(0, (bar.value / peopleMetricAxisMax) * 100))}%`, backgroundColor: bar.color, position: 'relative', display: 'flex', justifyContent: 'center', borderRadius: '2px 2px 0 0' }}>
+                              <span style={{ position: 'absolute', top: bar.value > 3 ? '3px' : '-12px', color: bar.value > 3 ? '#fff' : bar.color, fontSize: '7px', fontWeight: '800', whiteSpace: 'nowrap' }}>
+                                {bar.value.toFixed(2)}%
                               </span>
                             </div>
-                          )}
+                          ) : null)}
                         </div>
                       );
                     })}
@@ -1648,19 +1658,16 @@ export default function AllReportsExecutivePdfView({
               <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: "6px", fontSize: "8.5px", fontWeight: "700", marginTop: "1px", marginBottom: "4px" }}>
                 <span style={{ display: "flex", alignItems: "center", gap: "3px" }}>
                   <span style={{ width: "7px", height: "7px", borderRadius: "50%", backgroundColor: blueDark, display: "inline-block" }} />
-                  Req FTE
+                  Req HC
                 </span>
                 <span style={{ display: "flex", alignItems: "center", gap: "3px" }}>
                   <span style={{ width: "7px", height: "7px", borderRadius: "50%", backgroundColor: blueMid, display: "inline-block" }} />
                   Actual HC
                 </span>
-                <span style={{ display: "flex", alignItems: "center", gap: "3px" }}>
-                  <span style={{ width: "7px", height: "7px", borderRadius: "50%", backgroundColor: "#7b9ebc", display: "inline-block" }} />
-                  Buffer
-                </span>
+
                 <span style={{ display: "flex", alignItems: "center", gap: "3px" }}>
                   <span style={{ width: "7px", height: "7px", borderRadius: "50%", backgroundColor: "#b0c4de", display: "inline-block" }} />
-                  Attrited
+                  Attrited HC
                 </span>
               </div>
 
@@ -1682,16 +1689,18 @@ export default function AllReportsExecutivePdfView({
                     ))}
 
                     {occSeries.map((item, idx) => {
-                      const h = item.actualHeadcount > 0 ? Math.min(100, Math.max(7, (item.actualHeadcount / hcAxisMax) * 100)) : 0;
+                      const bars = [
+                        { key: 'required', value: item.requiredHeadcount, color: blueDark },
+                        { key: 'actual', value: item.actualHeadcount, color: blueMid },
+                        { key: 'attrited', value: item.attritedHeadcount, color: '#b0c4de' },
+                      ];
                       return (
-                        <div key={idx} style={{ flex: 1, display: "flex", alignItems: "flex-end", justifyContent: "center", position: "relative", zIndex: 1 }}>
-                          {item.actualHeadcount > 0 && (
-                            <div style={{ width: isSingleSection ? "36px" : "24px", height: `${h}%`, backgroundColor: blueMid, position: "relative", display: "flex", justifyContent: "center", borderRadius: "2px 2px 0 0" }}>
-                              <span style={{ position: "absolute", top: "3px", color: "#ffffff", fontSize: isSingleSection ? "8px" : "6.5px", fontWeight: "800", letterSpacing: "-0.03em" }}>
-                                {item.actualHeadcount}
-                              </span>
+                        <div key={idx} title={item.buffer == null ? 'Buffer unavailable' : `Buffer / Shortfall: ${item.buffer}`} style={{ flex: 1, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', gap: '2px', position: 'relative', zIndex: 1 }}>
+                          {bars.map(bar => bar.value != null && bar.value > 0 ? (
+                            <div key={bar.key} style={{ width: '28%', maxWidth: '21px', height: `${Math.min(100, Math.max(4, (bar.value / hcAxisMax) * 100))}%`, backgroundColor: bar.color, position: 'relative', display: 'flex', justifyContent: 'center', borderRadius: '2px 2px 0 0' }}>
+                              <span style={{ position: 'absolute', top: '3px', color: '#ffffff', fontSize: '7px', fontWeight: '800' }}>{bar.value}</span>
                             </div>
-                          )}
+                          ) : null)}
                         </div>
                       );
                     })}
@@ -1708,9 +1717,17 @@ export default function AllReportsExecutivePdfView({
                 </div>
               </div>
 
+              <div style={{ display: 'flex', gap: '2px', marginTop: '2px', fontSize: '7px', fontWeight: 700, color: blueDark }}>
+                {occSeries.map((item, idx) => (
+                  <span key={idx} style={{ flex: 1, textAlign: 'center' }}>
+                    {item.buffer == null ? 'Δ —' : `Δ ${item.buffer > 0 ? '+' : ''}${item.buffer}`}
+                  </span>
+                ))}
+              </div>
+
               {/* Subtitle to match baseline with left card */}
               <div style={{ textAlign: "center", color: redAlert, fontSize: "8px", fontWeight: "800", marginTop: "3px", whiteSpace: "nowrap" }}>
-                HEADCOUNT : ACTUAL ACTIVE EMPLOYEES
+                HEADCOUNT : SCHEDULED ACTIVE AGENTS · BUFFER = ACTUAL − REQUIRED
               </div>
             </div>
 
@@ -1749,20 +1766,19 @@ export default function AllReportsExecutivePdfView({
                     ))}
 
                     {occSeries.map((item, idx) => {
-                      const value = item.absenteeismPct;
-                      const h =
-                        value != null && peopleMetricAxisMax > 0
-                          ? Math.min(100, Math.max(0, (value / peopleMetricAxisMax) * 100))
-                          : 0;
+                      const bars = [
+                        { key: 'absence', value: item.absenteeismPct, color: blueDark },
+                        { key: 'attrition', value: item.attritionPct, color: blueMid },
+                      ];
                       return (
-                        <div key={idx} style={{ flex: 1, display: "flex", alignItems: "flex-end", justifyContent: "center", position: "relative", zIndex: 1 }}>
-                          {value != null && (
-                            <div style={{ width: isSingleSection ? "36px" : "24px", height: `${h}%`, backgroundColor: blueDark, position: "relative", display: "flex", justifyContent: "center", borderRadius: "2px 2px 0 0" }}>
-                              <span style={{ position: "absolute", top: h > 15 ? "3px" : "-12px", color: h > 15 ? "#ffffff" : blueDark, fontSize: isSingleSection ? "8px" : "6.5px", fontWeight: "800", whiteSpace: "nowrap", letterSpacing: "-0.03em" }}>
-                                {value.toFixed(2)}%
+                        <div key={idx} style={{ flex: 1, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', gap: '2px', position: 'relative', zIndex: 1 }}>
+                          {bars.map(bar => bar.value != null ? (
+                            <div key={bar.key} style={{ width: '38%', maxWidth: '26px', height: `${Math.min(100, Math.max(0, (bar.value / peopleMetricAxisMax) * 100))}%`, backgroundColor: bar.color, position: 'relative', display: 'flex', justifyContent: 'center', borderRadius: '2px 2px 0 0' }}>
+                              <span style={{ position: 'absolute', top: bar.value > 3 ? '3px' : '-12px', color: bar.value > 3 ? '#fff' : bar.color, fontSize: '7px', fontWeight: '800', whiteSpace: 'nowrap' }}>
+                                {bar.value.toFixed(2)}%
                               </span>
                             </div>
-                          )}
+                          ) : null)}
                         </div>
                       );
                     })}
