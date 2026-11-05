@@ -142,10 +142,7 @@ export default function WfmImportCalendar({
           );
         })}
       </div>
-      <div className="flex flex-wrap items-center justify-between gap-2 px-3.5 py-2 text-[10.5px] text-slate-500 sm:px-4 shrink-0 border-t border-slate-100">
-        <span>A blank day means no uploads were recorded — not necessarily a missed report.</span>
-        <span>Dates use Philippine time (UTC+8).</span>
-      </div>
+      
     </div>
   );
 }

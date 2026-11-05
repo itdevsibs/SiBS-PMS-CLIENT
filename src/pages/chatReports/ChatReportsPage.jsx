@@ -309,9 +309,15 @@ export default function ChatReportsPage() {
                   <span className="truncate text-[10px] font-bold uppercase tracking-wider text-slate-500" title={label}>{label}</span>
                   <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-slate-100 text-slate-600"><Icon size={11} /></div>
                 </div>
-                <div className="mt-0.5 text-base font-bold leading-snug text-slate-900 sm:text-lg">
-                  {isLoading ? <div className="my-0.5 h-6 w-16 animate-pulse rounded bg-slate-200" /> : value}
-                </div>
+                {label === "Date" ? (
+                  <div className="mt-0.5 text-xs sm:text-sm font-extrabold text-sibs-primary-1 leading-snug truncate" title={value}>
+                    {value}
+                  </div>
+                ) : (
+                  <div className="mt-0.5 text-base sm:text-lg font-bold text-slate-900 leading-snug">
+                    {isLoading ? <div className="my-0.5 h-6 w-16 animate-pulse rounded bg-slate-200" /> : value}
+                  </div>
+                )}
               </div>
             ))}
           </div>

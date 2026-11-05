@@ -545,11 +545,7 @@ export default function CallsReportPage() {
             </div>
           </div>
 
-          {reportCoverage && (reportCoverage.status !== "COMPLETE" || reportCoverage.abandonedAfterSltUnverifiedRows > 0) && !fetchError && (
-            <div className="shrink-0 rounded-lg bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800">
-              Skill Statistics coverage: {reportCoverage.status}. {reportCoverage.note}
-            </div>
-          )}
+          
           {fetchError && (
             <div className="shrink-0 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2.5 text-xs text-rose-700">
               <div className="flex items-start gap-2">

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Bell, Calendar, Menu } from "lucide-react";
+import { useSidebar } from "@/context/SidebarContext";
 
 function formatHeaderDateTime() {
   const now = new Date();
@@ -23,15 +24,25 @@ function formatHeaderDateTime() {
 
 const AppHeader = ({
   onMenuClick,
-  onSidebarToggle,
-  isSidebarHidden,
+  onSidebarToggle: propOnSidebarToggle,
+  isSidebarHidden: propIsSidebarHidden,
   subtitle,
   title,
 }) => {
+  const sidebar = useSidebar();
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const notificationRef = useRef(null);
 
   const [currentDateTime, setCurrentDateTime] = useState(formatHeaderDateTime);
+
+  // Read from prop if explicitly passed, otherwise fallback to global SidebarContext
+  const isHidden =
+    typeof propIsSidebarHidden === "boolean"
+      ? propIsSidebarHidden
+      : sidebar.isSidebarHidden;
+
+  const handleSidebarToggle = propOnSidebarToggle || sidebar.toggleHidden;
+  const handleMobileMenuClick = onMenuClick || sidebar.openMobile;
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -63,32 +74,28 @@ const AppHeader = ({
       <header className="app-header fixed top-0 left-0 right-0 z-[90] bg-white md:sticky md:top-0 md:left-auto md:right-auto md:w-full">
         <div className="app-header-inner justify-between gap-3 px-4 sm:px-6">
         <div className="flex min-w-0 items-center gap-3">
-          {onSidebarToggle && (
+          {/* Desktop/Tablet Toggle Button: ONLY visible when sidebar is closed/hidden */}
+          {isHidden && (
             <button
               type="button"
-              aria-label={isSidebarHidden ? "Show sidebar" : "Hide sidebar"}
-              title={isSidebarHidden ? "Show sidebar" : "Hide sidebar"}
-              onClick={onSidebarToggle}
-              className={`hidden md:inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border transition-all duration-200 cursor-pointer shadow-xs ${
-                isSidebarHidden
-                  ? "border-[#ff5c28]/40 bg-[#ff5c28]/10 text-[#ff5c28] hover:bg-[#ff5c28] hover:text-white hover:border-[#ff5c28]"
-                  : "border-slate-200 bg-white text-slate-700 hover:border-[#042c51] hover:bg-slate-50 hover:text-[#042c51]"
-              }`}
+              aria-label="Expand sidebar"
+              title="Expand sidebar"
+              onClick={handleSidebarToggle}
+              className="hidden md:inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 hover:border-[#ff5c28] hover:bg-[#ff5c28] hover:text-white transition-all duration-150 cursor-pointer shadow-2xs active:scale-95"
             >
               <Menu className="h-4.5 w-4.5" aria-hidden="true" />
             </button>
           )}
 
-          {onMenuClick && (
-            <button
-              type="button"
-              aria-label="Open sidebar"
-              onClick={onMenuClick}
-              className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-sibs-tertiary-9 bg-white text-sibs-primary-1 shadow-sm transition hover:border-sibs-primary-2 hover:bg-sibs-primary-2 hover:text-white md:hidden"
-            >
-              <Menu className="h-5 w-5" aria-hidden="true" />
-            </button>
-          )}
+          {/* Mobile Drawer Toggle */}
+          <button
+            type="button"
+            aria-label="Open sidebar"
+            onClick={handleMobileMenuClick}
+            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-sibs-tertiary-9 bg-white text-sibs-primary-1 shadow-sm transition hover:border-sibs-primary-2 hover:bg-sibs-primary-2 hover:text-white md:hidden"
+          >
+            <Menu className="h-5 w-5" aria-hidden="true" />
+          </button>
 
           <div className="min-w-0">
             <p className="m-0 truncate text-base font-bold text-sibs-primary-1">
@@ -120,7 +127,6 @@ const AppHeader = ({
               aria-expanded={isNotificationOpen}
               onClick={() => {
                 setIsNotificationOpen((prev) => !prev);
-                setIsUserMenuOpen(false);
               }}
               className={`relative flex h-9 w-9 cursor-pointer items-center justify-center rounded-xl text-slate-500 transition ${
                 isNotificationOpen

@@ -203,7 +203,7 @@ export default function WfmImportYearCalendar({
       {/* Footer info */}
       <div className="flex flex-wrap items-center justify-between gap-2 px-3.5 py-2 text-[10.5px] text-slate-500 sm:px-4 shrink-0 border-t border-slate-100 bg-white">
         <span>Click on any month title or day number to view import details.</span>
-        <span>Dates use Philippine time (UTC+8).</span>
+        
       </div>
     </div>
   );
