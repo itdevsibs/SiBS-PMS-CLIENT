@@ -1,5 +1,5 @@
 // Renders the collapsible dashboard sidebar navigation.
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ChevronDown,
   ChevronLeft,
@@ -122,6 +122,8 @@ const AdminSidebar = ({
     void handleAuthLogout(true);
   };
 
+  const getModuleKey = (m) => m?.key || m?.name;
+
   // Persist expanded modules in localStorage so navigating to any module keeps all open dropdowns open
   const [expandedModules, setExpandedModules] = useState(() => {
     try {
@@ -137,7 +139,7 @@ const AdminSidebar = ({
     if (Array.isArray(modules)) {
       return modules
         .filter((m) => Array.isArray(m.submodules) && m.submodules.length > 0)
-        .map((m) => m.name || m.key);
+        .map(getModuleKey);
     }
     return [];
   });
@@ -151,8 +153,12 @@ const AdminSidebar = ({
     }
   }, [expandedModules]);
 
-  // Ensure the active route's parent is always included without collapsing any others
+  // When user navigates to a new route, ensure the destination module is expanded
+  const lastPathnameRef = useRef(location.pathname);
   useEffect(() => {
+    if (lastPathnameRef.current === location.pathname) return;
+    lastPathnameRef.current = location.pathname;
+
     if (!Array.isArray(modules)) return;
     const currentPath = location.pathname;
     const matchingModule = modules.find((m) =>
@@ -160,19 +166,36 @@ const AdminSidebar = ({
       m.submodules.some((s) => (s.path ? s.path.split("?")[0] === currentPath : s.id === currentPath)),
     );
     if (matchingModule) {
-      const modKey = matchingModule.name || matchingModule.key;
+      const key = getModuleKey(matchingModule);
       setExpandedModules((prev) =>
-        prev.includes(modKey) ? prev : [...prev, modKey],
+        prev.some((k) => k === key || k === matchingModule.name)
+          ? prev
+          : [...prev, key],
       );
     }
   }, [location.pathname, modules]);
 
-  const toggleExpand = (moduleName) => {
-    setExpandedModules((prev) =>
-      prev.includes(moduleName)
-        ? prev.filter((name) => name !== moduleName)
-        : [...prev, moduleName]
-    );
+  const isModuleExpanded = (item) => {
+    if (!item) return false;
+    const key = item.key;
+    const name = item.name;
+    return expandedModules.some((k) => (key && k === key) || (name && k === name));
+  };
+
+  const toggleExpand = (item) => {
+    const key = typeof item === "string" ? item : (item?.key || item?.name);
+    const name = typeof item === "object" ? item?.name : null;
+
+    setExpandedModules((prev) => {
+      const isCurrentlyExpanded = prev.some((k) => (key && k === key) || (name && k === name));
+      if (isCurrentlyExpanded) {
+        // Collapse: remove both key and name to ensure clean state even with legacy localStorage values
+        return prev.filter((k) => k !== key && k !== name);
+      } else {
+        // Expand: add clean canonical key
+        return [...prev.filter((k) => k !== key && k !== name), key];
+      }
+    });
   };
 
   const renderContent = ({ collapsed = false, mobile = false }) => (
@@ -251,8 +274,8 @@ const AdminSidebar = ({
             {modules.map((item) => {
               const Icon = item.icon;
               const hasSubmodules = Array.isArray(item.submodules) && item.submodules.length > 0;
-              const modKey = item.key || item.name;
-              const isExpanded = expandedModules.includes(modKey) || expandedModules.includes(item.name);
+              const modKey = getModuleKey(item);
+              const isExpanded = isModuleExpanded(item);
               
               const activePaths = [
                 item.path,
@@ -286,11 +309,17 @@ const AdminSidebar = ({
                         title={item.name}
                         onClick={() => {
                           if (item.path && item.key === "wow-report") {
-                            navigate(item.path);
-                            if (mobile) handleMobileClose();
-                            if (!isExpanded) toggleExpand(modKey);
+                            // If navigating to /view-graphs from elsewhere, go there and ensure open;
+                            // if already on /view-graphs, toggle collapse/expand
+                            if (location.pathname !== item.path || location.search) {
+                              navigate(item.path);
+                              if (mobile) handleMobileClose();
+                              if (!isExpanded) toggleExpand(item);
+                            } else {
+                              toggleExpand(item);
+                            }
                           } else {
-                            toggleExpand(modKey);
+                            toggleExpand(item);
                           }
                         }}
                         className={`flex flex-1 min-w-0 cursor-pointer items-center gap-3 border-0 bg-transparent p-0 text-left font-semibold text-inherit outline-none ${
@@ -320,7 +349,7 @@ const AdminSidebar = ({
                           onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
-                            toggleExpand(modKey);
+                            toggleExpand(item);
                           }}
                           className="flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-lg border-0 bg-transparent p-0 transition-all hover:bg-white/10 outline-none text-[#90a1b9] hover:text-white"
                         >
