@@ -5,12 +5,15 @@ import "./index.css";
 import App from "./App.jsx";
 import { BrowserRouter } from "react-router-dom";
 import { AuthAccessProvider } from "./context/AuthAccessContext.jsx";
+import { SidebarProvider } from "./context/SidebarContext.jsx";
 
 createRoot(document.getElementById("root")).render(
   <StrictMode>
     <BrowserRouter>
       <AuthAccessProvider>
-        <App />
+        <SidebarProvider>
+          <App />
+        </SidebarProvider>
       </AuthAccessProvider>
     </BrowserRouter>
   </StrictMode>,

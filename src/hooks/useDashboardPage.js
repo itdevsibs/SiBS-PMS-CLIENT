@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 
 import { useAuthAccess } from "@/context/AuthAccessContext";
+import { useSidebar } from "@/context/SidebarContext";
 import { getAuthDisplayName } from "@/lib/auth";
 import { handleLogout as handleAuthLogout } from "@/lib/axios/api-template";
 
@@ -65,7 +66,7 @@ function useDashboardPage() {
     roleLabel,
   } = useAuthAccess();
 
-  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const sidebar = useSidebar();
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
@@ -99,11 +100,18 @@ function useDashboardPage() {
     handleLogout,
     hasPermission,
     isLoggingOut,
-    isMobileSidebarOpen,
+    // Sidebar state shared across PMS pages
+    isMobileSidebarOpen: sidebar.isMobileOpen,
+    setIsMobileSidebarOpen: sidebar.setIsMobileOpen,
+    isSidebarHidden: sidebar.isSidebarHidden,
+    setIsSidebarHidden: sidebar.setIsSidebarHidden,
+    isCollapsed: sidebar.isCollapsed,
+    setIsCollapsed: sidebar.setIsCollapsed,
+    toggleSidebarHidden: sidebar.toggleHidden,
+    toggleCollapsed: sidebar.toggleCollapsed,
     modules,
     role,
     roleLabel,
-    setIsMobileSidebarOpen,
     setShowLogoutModal,
     showLogoutModal,
     userName: getAuthDisplayName(authUser),
