@@ -173,7 +173,7 @@ export default function StaffingRequirementsPage() {
         <AppHeader title="Staffing Requirements" subtitle="Workforce Management · Daily Client-Required Headcount"
           onMenuClick={() => dashboard.setIsMobileSidebarOpen(true)} />
         <main className="min-h-0 flex-1 overflow-auto px-3 pb-6 pt-3 sm:px-5">
-          <div className="mx-auto flex max-w-[1500px] flex-col gap-3">
+          <div className="mx-auto flex w-full flex-col gap-3">
             <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-3 shadow-xs">
               <div className="flex items-center gap-2"><CalendarDays className="h-5 w-5 text-[#0b3b68]" /><div>
                 <h1 className="text-sm font-black">Staffing Requirements Calendar</h1>
