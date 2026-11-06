@@ -1336,4 +1336,14 @@
   scrollbar-color: #cbd5e1 #f1f5f9;
 }
 
+@media (min-width: 1024px) and (min-height: 800px) {
+  #guide-section-interval-details {
+    position: relative;
+    top: -90px;
+    height: calc(100% + 90px);
+    z-index: 10;
+  }
+}
+
+
 

@@ -1,9 +1,10 @@
 // Client-approved daily Required HC, one target per Task Order. No schedule or
 // attendance records are edited here; scheduled Actual HC comes from Kronos.
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { CalendarDays, ChevronLeft, ChevronRight, ClipboardList, History, Loader2, RefreshCw, Save, Users } from 'lucide-react';
+import { CalendarDays, X, Layers, Copy, ChevronLeft, ChevronRight, ClipboardList, History, Loader2, RefreshCw, Save, Users } from 'lucide-react';
 import AdminSidebar from '@/components/common/layout/AdminSidebar';
 import AppHeader from '@/components/common/layout/AppHeader';
+import SingleSelectDropdown from '@/components/common/filters/SingleSelectDropdown';
 import ConfirmationModal from '@/components/common/ui/ConfirmationModal';
 import LoadingModal from '@/components/common/ui/LoadingModal';
 import useDashboardPage from '@/hooks/useDashboardPage';
@@ -54,8 +55,9 @@ export default function StaffingRequirementsPage() {
   const [taskOrders, setTaskOrders] = useState([]);
   const [taskOrderId, setTaskOrderId] = useState('');
   const [month, setMonth] = useState(thisMonth);
-  const [selected, setSelected] = useState(todayManila);
+  const [selected, setSelected] = useState(null);
   const [view, setView] = useState('month');
+  const [entryMode, setEntryMode] = useState('single');
   const [records, setRecords] = useState([]);
   const [coverage, setCoverage] = useState(null);
   const [history, setHistory] = useState([]);
@@ -172,50 +174,58 @@ export default function StaffingRequirementsPage() {
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         <AppHeader title="Staffing Requirements" subtitle="Workforce Management · Daily Client-Required Headcount"
           onMenuClick={() => dashboard.setIsMobileSidebarOpen(true)} />
-        <main className="min-h-0 flex-1 overflow-auto px-3 pb-6 pt-3 sm:px-5">
-          <div className="mx-auto flex w-full flex-col gap-3">
-            <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-3 shadow-xs">
-              <div className="flex items-center gap-2"><CalendarDays className="h-5 w-5 text-[#0b3b68]" /><div>
-                <h1 className="text-sm font-black">Staffing Requirements Calendar</h1>
-                <p className="text-[11px] text-slate-500">One client-required headcount per Task Order and date · Sunday–Saturday</p>
-              </div></div>
-              <div className="flex flex-wrap items-center gap-2">
-                <label className="text-[11px] font-bold text-slate-600" htmlFor="staffing-to">Task Order</label>
-                <select id="staffing-to" className={`${field} min-w-[200px]`} value={taskOrderId}
-                  onChange={event => setTaskOrderId(event.target.value)} disabled={!taskOrders.length}>
-                  {!taskOrders.length && <option value="">No Task Orders</option>}
-                  {taskOrders.map(row => <option key={row.value} value={row.value}>{row.label}</option>)}
-                </select>
-                <button type="button" className={`${button} border-slate-200 bg-white hover:bg-slate-50`} aria-label="Refresh" onClick={() => setReload(v => v + 1)}><RefreshCw size={14} /></button>
-              </div>
-            </div>
-
+        <main className="min-h-0 flex-1 overflow-y-auto px-3 pb-10 pt-3 sm:px-5">
+          <div className="mx-auto flex w-full flex-col gap-4">
             {(error || notice) && <div role="status" className={`rounded-lg border px-3 py-2 text-xs font-semibold ${error ? 'border-rose-200 bg-rose-50 text-rose-700' : 'border-emerald-200 bg-emerald-50 text-emerald-700'}`}>{error || notice}</div>}
-            <div className="grid grid-cols-1 gap-3 xl:grid-cols-[minmax(0,1fr)_330px]">
-              <div className="min-w-0 rounded-xl border border-slate-200 bg-white p-3 shadow-xs">
-                <div className="flex flex-wrap items-center justify-between gap-3 pb-3">
-                  <div><h2 className="text-base font-black">{monthTitle}</h2>
-                    <p className="text-[11px] text-slate-500">{publishedDays} dates with published requirements</p></div>
-                  <div className="flex items-center gap-2">
+            <div className={`grid grid-cols-1 gap-3 min-h-[calc(100vh-140px)] transition-all duration-300 ${selected ? 'xl:grid-cols-[minmax(0,1fr)_340px]' : 'xl:grid-cols-1'}`}>
+              <div className="flex flex-col min-w-0 h-full rounded-xl border border-slate-200 bg-white p-3.5 shadow-xs">
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3">
+                  <div>
+                    <h2 className="text-base font-black">{monthTitle}</h2>
+                    <p className="text-[11px] text-slate-500">{publishedDays} dates with published requirements</p>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <div className="w-56 sm:w-64">
+                      <SingleSelectDropdown
+                        value={taskOrderId}
+                        onChange={(e) => setTaskOrderId(e.target.value)}
+                        options={taskOrders.map((to) => ({ value: to.value, label: to.label }))}
+                        placeholder={taskOrders.length ? "Select Task Order" : "No Task Orders"}
+                        disabled={!taskOrders.length}
+                        buttonClassName="h-8 rounded-lg border-slate-200 px-2.5 text-xs font-bold text-sibs-primary-1 hover:border-[#0b3b68] shadow-xs"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      title="Refresh Requirements"
+                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 shadow-xs transition hover:border-[#0b3b68] hover:bg-slate-50 hover:text-[#0b3b68] active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+                      aria-label="Refresh"
+                      onClick={() => setReload(v => v + 1)}
+                    >
+                      <RefreshCw size={13} className={loading ? "animate-spin text-[#0b3b68]" : ""} />
+                    </button>
+                    <div className="h-5 w-px bg-slate-200 mx-1 hidden sm:block" />
                     <div className="flex rounded-lg bg-slate-100 p-0.5 text-xs font-bold">
                       {['month', 'week'].map(item => <button type="button" key={item} onClick={() => setView(item)}
-                        className={`rounded-md px-3 py-1.5 capitalize ${view === item ? 'bg-white text-[#0b3b68] shadow-xs' : 'text-slate-500'}`}>{item}</button>)}
+                        className={`rounded-md px-2.5 py-1 capitalize ${view === item ? 'bg-white text-[#0b3b68] shadow-xs' : 'text-slate-500'}`}>{item}</button>)}
                     </div>
-                    <button className={`${button} border-slate-200`} type="button" onClick={() => { setMonth(changeMonth(month, -1)); setSelected(changeMonth(month, -1)); }} aria-label="Previous month"><ChevronLeft size={15}/></button>
-                    <button className={`${button} border-slate-200`} type="button" onClick={() => { setMonth(changeMonth(month, 1)); setSelected(changeMonth(month, 1)); }} aria-label="Next month"><ChevronRight size={15}/></button>
+                    <div className="flex items-center gap-1">
+                      <button className={`${button} h-8 w-8 p-0 border-slate-200`} type="button" onClick={() => { setMonth(changeMonth(month, -1)); }} aria-label="Previous month"><ChevronLeft size={15}/></button>
+                      <button className={`${button} h-8 w-8 p-0 border-slate-200`} type="button" onClick={() => { setMonth(changeMonth(month, 1)); }} aria-label="Next month"><ChevronRight size={15}/></button>
+                    </div>
                   </div>
                 </div>
                 <div className="grid grid-cols-7 gap-1.5 border-b border-slate-100 pb-1.5">
                   {weekdays.map(day => <div className="text-center text-[10px] font-black tracking-wider text-slate-500" key={day}>{day}</div>)}
                 </div>
-                <div className="mt-1.5 grid grid-cols-7 gap-1.5">
+                <div className="mt-2 grid flex-1 grid-cols-7 auto-rows-fr gap-1.5 sm:gap-2">
                   {visibleDates.map(date => {
                     const row = recordMap.get(date);
                     const actual = coverageMap.get(date);
                     const isCurrentMonth = date.slice(0, 7) === month.slice(0, 7);
                     const isSelected = selected === date;
-                    return <button type="button" key={date} onClick={() => { setSelected(date); if (!isCurrentMonth) setMonth(`${date.slice(0,7)}-01`); }}
-                      className={`min-h-[86px] rounded-lg border p-1.5 text-left transition sm:p-2 ${isSelected ? 'border-[#0b3b68] bg-blue-50 ring-1 ring-[#0b3b68]' : 'border-slate-200 hover:border-blue-300 hover:bg-blue-50/50'} ${isCurrentMonth ? '' : 'opacity-45'}`}>
+                    return <button type="button" key={date} onClick={() => { setSelected(date); setRangeFrom(date); setRangeTo(date); if (!isCurrentMonth) setMonth(`${date.slice(0,7)}-01`); }}
+                      className={`flex flex-col justify-between h-full min-h-[92px] rounded-lg border p-2 text-left transition sm:p-2.5 ${isSelected ? 'border-[#0b3b68] bg-blue-50/70 ring-2 ring-[#0b3b68]/30 shadow-xs' : 'border-slate-200 hover:border-blue-300 hover:bg-blue-50/40'} ${isCurrentMonth ? '' : 'opacity-40 bg-slate-50/40'}`}>
                       <div className="flex items-center justify-between gap-1"><span className="text-[11px] font-extrabold">{dateOf(date).getUTCDate()}</span>{date === todayManila() && <span className="h-1.5 w-1.5 rounded-full bg-[#ff622d]"/>}</div>
                       <div className="mt-2 text-[10px] font-bold text-[#0b3b68]">{row ? `${row.requiredHeadcount} Required` : '—'}</div>
                       <div className="mt-0.5 text-[9px] text-slate-500">{actual?.actualHeadcount != null ? `${actual.actualHeadcount} Scheduled` : '— Scheduled'}</div>
@@ -223,42 +233,220 @@ export default function StaffingRequirementsPage() {
                     </button>;
                   })}
                 </div>
-                <p className="mt-2 text-[10px] text-slate-500">Actual HC includes active agents scheduled to work, whether present or absent. Missing targets display —, not 0.</p>
               </div>
-              <div className="space-y-3">
-                <section className="rounded-xl border border-slate-200 bg-white p-3 shadow-xs">
-                  <h3 className="flex items-center gap-2 border-b pb-2 text-xs font-black"><ClipboardList size={15} /> Daily Requirement · {selected}</h3>
-                  <div className="grid grid-cols-2 gap-2 py-3">
-                    <div className="rounded-lg bg-slate-50 p-2"><p className="text-[10px] text-slate-500">Required HC</p><p className="text-lg font-black">{recordMap.get(selected)?.status === 'PUBLISHED' ? recordMap.get(selected).requiredHeadcount : '—'}</p></div>
-                    <div className="rounded-lg bg-slate-50 p-2"><p className="text-[10px] text-slate-500">Scheduled HC</p><p className="text-lg font-black">{selectedDay?.actualHeadcount ?? '—'}</p></div>
-                  </div>
-                  {coverage?.scheduleError && <p className="mb-2 text-[10px] text-amber-700">{coverage.scheduleError}</p>}
-                  {canEdit ? <div className="space-y-2">
-                    <label className="block text-[11px] font-bold">Client Required Headcount<input type="number" min="0" max="100000" step="1" className={`${field} mt-1`} value={value} onChange={e => setValue(e.target.value)} placeholder="Enter required HC" /></label>
-                    <label className="block text-[11px] font-bold">Status<select className={`${field} mt-1`} value={status} onChange={e => setStatus(e.target.value)}><option value="PUBLISHED">Published</option><option value="DRAFT">Draft</option></select></label>
-                    <label className="block text-[11px] font-bold">Client Reference (optional)<input className={`${field} mt-1`} maxLength={191} value={sourceReference} onChange={e => setSourceReference(e.target.value)} placeholder="Client request / email reference" /></label>
-                    <label className="block text-[11px] font-bold">Remarks (optional)<textarea rows={2} maxLength={1000} className={`${field} mt-1 h-auto py-2`} value={remarks} onChange={e => setRemarks(e.target.value)} /></label>
-                    <label className="block text-[11px] font-bold">Change Reason (optional)<input className={`${field} mt-1`} maxLength={500} value={reason} onChange={e => setReason(e.target.value)} /></label>
-                    <button type="button" disabled={saving || loading || !taskOrderId} className={`${button} w-full border-[#0b3b68] bg-[#0b3b68] text-white hover:bg-[#15558a]`} onClick={saveDay}>{saving ? <Loader2 size={14} className="animate-spin"/> : <Save size={14}/>} Save Daily Requirement</button>
-                  </div> : <p className="text-[11px] text-slate-500">Read-only view. WFM users manage client staffing targets.</p>}
-                </section>
-                {canEdit && <section className="rounded-xl border border-slate-200 bg-white p-3 shadow-xs">
-                  <h3 className="mb-2 text-xs font-black">Bulk Date-Range Entry</h3>
-                  <div className="grid grid-cols-2 gap-2">
-                    <label className="text-[10px] font-bold">Date From<input type="date" className={`${field} mt-1`} value={rangeFrom} onChange={e => setRangeFrom(e.target.value)} /></label>
-                    <label className="text-[10px] font-bold">Date To<input type="date" className={`${field} mt-1`} value={rangeTo} onChange={e => setRangeTo(e.target.value)} /></label>
-                  </div>
-                  <label className="mt-2 block text-[10px] font-bold">Required HC<input type="number" min="0" max="100000" className={`${field} mt-1`} value={bulkValue} onChange={e => setBulkValue(e.target.value)} /></label>
-                  <button type="button" disabled={saving || !taskOrderId} onClick={applyRange} className={`${button} mt-2 w-full border-slate-200 bg-slate-50 hover:bg-slate-100`}>Apply to Date Range</button>
-                  <button type="button" disabled={saving || !taskOrderId} onClick={copyPreviousWeek} className={`${button} mt-2 w-full border-slate-200 bg-white hover:bg-slate-50`}>Copy Previous Week</button>
-                </section>}
-              </div>
+              {selected && (
+                <div className="flex flex-col min-w-0 animate-in fade-in slide-in-from-right-4 duration-200">
+                  <section className="flex flex-col flex-1 rounded-xl border border-slate-200 bg-white shadow-xs overflow-hidden">
+                    {/* Header with Mode Switcher (Single Date vs Bulk Range) */}
+                    <div className="shrink-0 border-b border-slate-100 p-3 bg-gradient-to-r from-slate-50/80 to-white">
+                      <div className="flex items-center justify-between mb-2.5">
+                        <div className="flex items-center gap-2">
+                          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-sky-50 text-[#0b3b68]">
+                            <ClipboardList size={15} />
+                          </div>
+                          <div>
+                            <h3 className="text-xs font-black text-slate-800 tracking-tight">Staffing Target Entry</h3>
+                            <p className="text-[10px] text-slate-400">Selected date: <span className="font-bold text-[#0b3b68]">{selected}</span></p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setSelected(null)}
+                          className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-400 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-700 transition"
+                          title="Close panel"
+                          aria-label="Close panel"
+                        >
+                          <X size={14} />
+                        </button>
+                      </div>
+                      {canEdit && (
+                        <div className="grid grid-cols-2 p-0.5 rounded-lg bg-slate-100 text-xs font-bold">
+                          <button
+                            type="button"
+                            onClick={() => setEntryMode('single')}
+                            className={`py-1.5 rounded-md text-[11px] font-bold transition ${entryMode === 'single' ? 'bg-white text-[#0b3b68] shadow-xs' : 'text-slate-500 hover:text-slate-800'}`}
+                          >
+                            Single Day
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setEntryMode('bulk')}
+                            className={`py-1.5 rounded-md text-[11px] font-bold transition ${entryMode === 'bulk' ? 'bg-white text-[#0b3b68] shadow-xs' : 'text-slate-500 hover:text-slate-800'}`}
+                          >
+                            Bulk Date Range
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex flex-col flex-1 p-3.5">
+                      {/* Headcount KPI summary tiles */}
+                      <div className="shrink-0 grid grid-cols-2 gap-2.5 mb-3">
+                        <div className="rounded-xl border border-sky-100 bg-sky-50/50 p-2.5 transition">
+                          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Required HC</p>
+                          <p className="mt-0.5 text-xl font-black text-[#0b3b68]">
+                            {recordMap.get(selected)?.status === 'PUBLISHED' ? recordMap.get(selected).requiredHeadcount : '—'}
+                          </p>
+                        </div>
+                        <div className="rounded-xl border border-slate-100 bg-slate-50/70 p-2.5 transition">
+                          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Scheduled HC</p>
+                          <p className="mt-0.5 text-xl font-black text-slate-700">
+                            {selectedDay?.actualHeadcount ?? '—'}
+                          </p>
+                        </div>
+                      </div>
+
+                      {coverage?.scheduleError && (
+                        <div className="shrink-0 mb-3 rounded-lg border border-amber-200/80 bg-amber-50/70 p-2 text-[10px] font-medium text-amber-800">
+                          {coverage.scheduleError}
+                        </div>
+                      )}
+
+                      {canEdit ? (
+                        entryMode === 'single' ? (
+                          <div className="flex flex-col flex-1 justify-between gap-2.5">
+                            <div className="space-y-2.5">
+                              <div>
+                                <label className="block text-[11px] font-bold text-slate-700">Client Required Headcount</label>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  max="100000"
+                                  step="1"
+                                  className={`${field} mt-1`}
+                                  value={value}
+                                  onChange={e => setValue(e.target.value)}
+                                  placeholder="e.g. 5"
+                                />
+                              </div>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                <div>
+                                  <label className="block text-[11px] font-bold text-slate-700">Status</label>
+                                  <select className={`${field} mt-1`} value={status} onChange={e => setStatus(e.target.value)}>
+                                    <option value="PUBLISHED">Published</option>
+                                    <option value="DRAFT">Draft</option>
+                                  </select>
+                                </div>
+                                <div>
+                                  <label className="block text-[11px] font-bold text-slate-700 truncate" title="Client Reference (optional)">Client Reference</label>
+                                  <input className={`${field} mt-1`} maxLength={191} value={sourceReference} onChange={e => setSourceReference(e.target.value)} placeholder="Ref / email" />
+                                </div>
+                              </div>
+                              <div>
+                                <label className="block text-[11px] font-bold text-slate-700">Remarks <span className="text-slate-400 font-normal">(optional)</span></label>
+                                <textarea rows={2} maxLength={1000} className={`${field} mt-1 h-auto py-2`} value={remarks} onChange={e => setRemarks(e.target.value)} placeholder="Notes about this day..." />
+                              </div>
+                              <div>
+                                <label className="block text-[11px] font-bold text-slate-700">Change Reason <span className="text-slate-400 font-normal">(optional)</span></label>
+                                <input className={`${field} mt-1`} maxLength={500} value={reason} onChange={e => setReason(e.target.value)} placeholder="Reason for headcount update" />
+                              </div>
+                            </div>
+                            <button
+                              type="button"
+                              disabled={saving || loading || !taskOrderId}
+                              className={`${button} w-full mt-2 border-[#0b3b68] bg-[#0b3b68] text-white hover:bg-[#15558a] shadow-xs active:scale-[0.99]`}
+                              onClick={saveDay}
+                            >
+                              {saving ? <Loader2 size={14} className="animate-spin"/> : <Save size={14}/>}
+                              Save Daily Requirement
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex flex-col flex-1 justify-between gap-2.5">
+                            <div className="space-y-3">
+                              <div className="rounded-lg bg-slate-50 border border-slate-100 p-2.5 text-[11px] text-slate-600 leading-relaxed">
+                                Set requirements across consecutive dates or copy targets from the previous week.
+                              </div>
+                              <div className="grid grid-cols-2 gap-2">
+                                <div>
+                                  <label className="text-[10px] font-bold text-slate-700">Date From</label>
+                                  <input type="date" className={`${field} mt-1`} value={rangeFrom} onChange={e => setRangeFrom(e.target.value)} />
+                                </div>
+                                <div>
+                                  <label className="text-[10px] font-bold text-slate-700">Date To</label>
+                                  <input type="date" className={`${field} mt-1`} value={rangeTo} onChange={e => setRangeTo(e.target.value)} />
+                                </div>
+                              </div>
+                              <div>
+                                <label className="block text-[10px] font-bold text-slate-700">Required HC</label>
+                                <input type="number" min="0" max="100000" className={`${field} mt-1`} value={bulkValue} onChange={e => setBulkValue(e.target.value)} placeholder="Target headcount" />
+                              </div>
+                              <div>
+                                <label className="block text-[10px] font-bold text-slate-700">Change Reason <span className="text-slate-400 font-normal">(optional)</span></label>
+                                <input className={`${field} mt-1`} maxLength={500} value={reason} onChange={e => setReason(e.target.value)} placeholder="Reason for bulk update" />
+                              </div>
+                            </div>
+                            <div className="pt-2 space-y-2 mt-auto">
+                              <button
+                                type="button"
+                                disabled={saving || !taskOrderId}
+                                onClick={applyRange}
+                                className={`${button} w-full border-[#0b3b68] bg-[#0b3b68] text-white hover:bg-[#15558a] shadow-xs active:scale-[0.99]`}
+                              >
+                                {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+                                Apply to Date Range
+                              </button>
+                              <button
+                                type="button"
+                                disabled={saving || !taskOrderId}
+                                onClick={copyPreviousWeek}
+                                className={`${button} w-full border-slate-200 bg-white hover:bg-slate-50 text-slate-700 shadow-xs active:scale-[0.99]`}
+                              >
+                                <Copy size={13} className="text-slate-500" />
+                                Copy Previous Week into Selected Week
+                              </button>
+                            </div>
+                          </div>
+                        )
+                      ) : (
+                        <p className="text-[11px] text-slate-500">Read-only view. WFM users manage client staffing targets.</p>
+                      )}
+                    </div>
+                  </section>
+                </div>
+              )}
             </div>
-            <section className="rounded-xl border border-slate-200 bg-white p-3 shadow-xs">
-              <h3 className="mb-2 flex items-center gap-1.5 text-xs font-black"><History size={15}/> Recent Requirement Changes</h3>
-              <div className="overflow-x-auto"><table className="w-full text-left text-[11px]"><thead className="border-b bg-slate-50 text-slate-600"><tr>{['Date', 'Previous', 'Updated', 'Status', 'Edited By', 'Reason'].map(label => <th key={label} className="px-2 py-2 font-black">{label}</th>)}</tr></thead>
-              <tbody>{history.slice(0, 15).map(item => <tr key={item.id} className="border-b border-slate-100"><td className="px-2 py-2">{item.requirementDate}</td><td className="px-2 py-2">{item.oldRequiredHeadcount ?? '—'}</td><td className="px-2 py-2 font-bold">{item.newRequiredHeadcount}</td><td className="px-2 py-2">{item.newStatus}</td><td className="px-2 py-2">{item.changedBy}</td><td className="px-2 py-2">{item.changeReason || '—'}</td></tr>)}
-              {!history.length && <tr><td colSpan={6} className="px-3 py-5 text-center text-slate-400">No changes recorded for this date range.</td></tr>}</tbody></table></div>
+            <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-xs mt-2 clear-both">
+              <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-100">
+                <h3 className="flex items-center gap-1.5 text-xs font-black text-slate-800">
+                  <History size={15} className="text-[#0b3b68]" /> Recent Requirement Changes
+                </h3>
+                <span className="text-[10px] text-slate-400">Audit history for published targets</span>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-[11px]">
+                  <thead className="border-b bg-slate-50 text-slate-600">
+                    <tr>
+                      {['Date', 'Previous', 'Updated', 'Status', 'Edited By', 'Reason'].map(label => (
+                        <th key={label} className="px-3 py-2 font-black">{label}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {history.slice(0, 15).map(item => (
+                      <tr key={item.id} className="border-b border-slate-100 hover:bg-slate-50/50 transition">
+                        <td className="px-3 py-2 font-medium">{item.requirementDate}</td>
+                        <td className="px-3 py-2">{item.oldRequiredHeadcount ?? '—'}</td>
+                        <td className="px-3 py-2 font-bold text-[#0b3b68]">{item.newRequiredHeadcount}</td>
+                        <td className="px-3 py-2">
+                          <span className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-bold ${item.newStatus === 'PUBLISHED' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-amber-50 text-amber-700 border border-amber-200'}`}>
+                            {item.newStatus}
+                          </span>
+                        </td>
+                        <td className="px-3 py-2 text-slate-600">{item.changedBy}</td>
+                        <td className="px-3 py-2 text-slate-500">{item.changeReason || '—'}</td>
+                      </tr>
+                    ))}
+                    {!history.length && (
+                      <tr>
+                        <td colSpan={6} className="px-3 py-6 text-center text-slate-400">
+                          No changes recorded for this date range.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </section>
           </div>
         </main>
