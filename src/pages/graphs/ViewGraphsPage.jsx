@@ -790,6 +790,7 @@ export default function ViewGraphsPage() {
         nextTaskOrder,
         skillsByCountryState,
         skillCountryScopes,
+        true,
       );
       const validSkills = new Set(
         newSkillOptions.map((s) => s.value.toLowerCase()),
@@ -831,6 +832,7 @@ export default function ViewGraphsPage() {
         nextTaskOrders,
         skillsByCountryState,
         skillCountryScopes,
+        true,
       );
       const validSkills = new Set(
         newSkillOptions.map((s) => s.value.toLowerCase()),
@@ -859,6 +861,7 @@ export default function ViewGraphsPage() {
         current.taskOrder,
         skillsByCountryState,
         skillCountryScopes,
+        true,
       );
       const validSkills = new Set(
         newSkillOptions.map((s) => s.value.toLowerCase()),
@@ -1001,6 +1004,7 @@ export default function ViewGraphsPage() {
     filters.taskOrder,
     skillsByCountryState,
     skillCountryScopes,
+    true,
   );
 
   const activeTaskOrder =

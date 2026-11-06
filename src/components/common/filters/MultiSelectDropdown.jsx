@@ -2,9 +2,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Check, ChevronDown, Search } from "lucide-react";
 
 // Helper to classify skill into quick category filters
-function matchesSkillCategory(skillName, category) {
+function matchesSkillCategory(skillName, category, countries = []) {
   const s = String(skillName || "");
-  const isEnglish = /english/i.test(s);
+  const isEnglish = /\benglish\b/i.test(s) && !/\bnon[\s_-]*english\b/i.test(s);
   const hasNiv = /niv/i.test(s);
   const hasIv = /(^|[^a-zA-Z])IV($|[^a-zA-Z])/i.test(s) && !hasNiv;
   const hasAcs = /acs/i.test(s);
@@ -14,6 +14,9 @@ function matchesSkillCategory(skillName, category) {
     .toLowerCase()
     .replace(/[\s_-]+/g, "");
 
+  if (cat === "seasiaphilippines") {
+    return (countries || []).some((country) => String(country).toLowerCase() === "philippines");
+  }
   if (cat === "allenglish" || cat === "englishall" || cat === "english") {
     return isEnglish;
   }
@@ -145,7 +148,7 @@ export default function MultiSelectDropdown({
   const toggleCategory = (catValue) => {
     const isCatChecked = selectedList.includes(catValue);
     const matchingItems = itemOptions
-      .filter((item) => matchesSkillCategory(item.value, catValue))
+      .filter((item) => matchesSkillCategory(item.value, catValue, item.countries))
       .map((item) => item.value);
 
     if (isCatChecked) {
@@ -155,7 +158,7 @@ export default function MultiSelectDropdown({
         if (v === catValue) return false;
         if (matchingItems.includes(v)) {
           return otherActiveCategories.some((otherCat) =>
-            matchesSkillCategory(v, otherCat),
+            matchesSkillCategory(v, otherCat, itemOptions.find((item) => item.value === v)?.countries),
           );
         }
         return true;
@@ -176,7 +179,7 @@ export default function MultiSelectDropdown({
       const remaining = selectedList.filter((v) => v !== optValue);
       // Uncheck any category that included this item since it is no longer 100% selected
       const nextSelected = remaining.filter((v) => {
-        if (categoryOptions.some((cat) => cat.value === v && matchesSkillCategory(optValue, v))) {
+        if (categoryOptions.some((cat) => cat.value === v && matchesSkillCategory(optValue, v, itemOptions.find((item) => item.value === optValue)?.countries))) {
           return false;
         }
         return true;
@@ -198,7 +201,7 @@ export default function MultiSelectDropdown({
     let list = itemOptions;
     if (activeCategories.length > 0) {
       list = list.filter((item) =>
-        activeCategories.some((cat) => matchesSkillCategory(item.value, cat)),
+        activeCategories.some((cat) => matchesSkillCategory(item.value, cat, item.countries)),
       );
     }
     if (searchTerm) {
@@ -247,7 +250,8 @@ export default function MultiSelectDropdown({
         const matchingCount = itemOptions.filter((item) =>
           selectedList.includes(item.value),
         ).length;
-        return `${activeCategories[0]}${matchingCount > 0 ? ` (${matchingCount})` : ""}`;
+        const categoryLabel = categoryOptions.find((category) => category.value === activeCategories[0])?.label || activeCategories[0];
+        return `${categoryLabel}${matchingCount > 0 ? ` (${matchingCount})` : ""}`;
       }
       return `${activeCategories.length} Categories (${selectedList.length})`;
     }
@@ -263,7 +267,7 @@ export default function MultiSelectDropdown({
       }
     }
     return `${selectedList.length} Selected`;
-  }, [selectedList, isAllSelected, options, allOptionLabel, placeholder, hasCategories, activeCategories, itemOptions]);
+  }, [selectedList, isAllSelected, options, allOptionLabel, placeholder, hasCategories, activeCategories, categoryOptions, itemOptions]);
 
   return (
     <div className={`relative ${className}`} ref={containerRef}>

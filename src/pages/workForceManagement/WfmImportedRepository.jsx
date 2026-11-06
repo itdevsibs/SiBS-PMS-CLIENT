@@ -50,6 +50,7 @@ import { getAuthDisplayName } from "@/lib/auth";
 import { recordWfmHistoryLogQuietly } from "@/lib/axios/wfm-history-logs";
 import { removeWfmGraphReportsForUpload } from "@/lib/wfm-graph-reports";
 import { accountOptions, getRawDataCards } from "@/lib/wfm-raw-data-cards";
+import { formatWfmImportReportingDate } from "@/lib/wfm-import-reporting-dates";
 import {
   getRepositoryReportTypeForUpload,
   getRepositoryToolForUpload,
@@ -1046,6 +1047,8 @@ export default function WfmImportedRepository() {
                     const isChat = reportType?.toLowerCase().includes("chat");
                     const isCall = reportType?.toLowerCase().includes("call");
                     const isOccupancy = reportType?.toLowerCase().includes("occupancy");
+                    const reportingDateFrom = formatWfmImportReportingDate(upload.reportDateFrom);
+                    const reportingDateTo = formatWfmImportReportingDate(upload.reportDateTo);
 
                     return (
                       <article
@@ -1085,6 +1088,17 @@ export default function WfmImportedRepository() {
                                     </span>
                                   </>
                                 ) : null}
+                              </div>
+
+                              {/* Date-only raw-data coverage from the import batch (separate from uploadedAt). */}
+                              <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-slate-600">
+                                <span className="inline-flex items-center gap-1 font-semibold text-sibs-primary-1">
+                                  <CalendarDays className="h-3.5 w-3.5 shrink-0 text-sky-600" />
+                                  Reporting Date:
+                                </span>
+                                <span>From: <span className="font-semibold text-slate-700">{reportingDateFrom || "Not specified"}</span></span>
+                                <span className="text-slate-300">|</span>
+                                <span>To: <span className="font-semibold text-slate-700">{reportingDateTo || "Not specified"}</span></span>
                               </div>
                             </div>
                           </div>
