@@ -5,30 +5,31 @@ import { FolderOpen, Upload, Trash2, ChevronRight } from "lucide-react";
  * Format timestamp into "Oct 27, 2026 · 1:42 PM" matching approved design
  */
 function formatDesignTimestamp(value) {
-  if (!value) return "—";
+  if (!value) return "\u2014";
   const str = String(value).trim();
-  let dateObj = null;
-
   const sqlMatch = str.match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::(\d{2}))?/);
+  let year, month, day, hours, minutes;
+
   if (sqlMatch) {
-    dateObj = new Date(Date.UTC(+sqlMatch[1], +sqlMatch[2] - 1, +sqlMatch[3], +sqlMatch[4], +sqlMatch[5], +(sqlMatch[6] || 0)));
+    // Timezone-less MySQL DATETIME values are already Singapore local time.
+    [, year, month, day, hours, minutes] = sqlMatch;
   } else {
-    const parsed = new Date(str.endsWith("Z") ? str : str + "Z");
-    dateObj = isNaN(parsed.getTime()) ? new Date(str) : parsed;
+    const date = value instanceof Date ? value : new Date(str);
+    if (Number.isNaN(date.getTime())) return str;
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone: "Asia/Singapore", year: "numeric", month: "2-digit", day: "2-digit",
+      hour: "2-digit", minute: "2-digit", hourCycle: "h23",
+    }).formatToParts(date);
+    const part = (type) => parts.find((item) => item.type === type)?.value;
+    year = part("year"); month = part("month"); day = part("day");
+    hours = part("hour"); minutes = part("minute");
   }
 
-  if (!dateObj || isNaN(dateObj.getTime())) return str;
-
   const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-  const m = monthNames[dateObj.getMonth()];
-  const d = dateObj.getDate();
-  const y = dateObj.getFullYear();
-  let hours = dateObj.getHours();
-  const minutes = String(dateObj.getMinutes()).padStart(2, "0");
+  hours = Number(hours);
   const ampm = hours >= 12 ? "PM" : "AM";
   hours = hours % 12 || 12;
-
-  return `${m} ${d}, ${y} · ${hours}:${minutes} ${ampm}`;
+  return `${monthNames[Number(month) - 1]} ${Number(day)}, ${year} \u00b7 ${hours}:${String(minutes).padStart(2, "0")} ${ampm}`;
 }
 
 export default function CallsReportUploadPanel({

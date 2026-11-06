@@ -57,26 +57,20 @@ const qualityKind = (q) => q === "Missing" || q === "Incomplete" ? "danger" : q 
 const validationKind = (v) => v === "Validated" ? "success" : v === "Requires Review" ? "danger" : v === "Pending Validation" ? "warn" : "neutral";
 
 /**
- * Format UTC datetime string (from MySQL database) into local Philippine time (12-hour format with AM/PM).
- * @param {string|Date} value - Raw timestamp or string from MySQL
- * @param {boolean} withSeparatorSpace - If true returns "MM/DD/YYYY · h:mm AM", else "MM/DD/YYYY-h:mmAM"
+ * Format UTC datetime string from the database into the browser's local time.
  */
 function formatUtcTimestamp(value, withSeparatorSpace = false) {
-  if (!value) return "—";
+  if (!value) return "\u2014";
   const str = String(value).trim();
-  let dateObj = null;
-
   const sqlMatch = str.match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::(\d{2}))?/);
+  let dateObj = null;
   if (sqlMatch) {
-    // MySQL timestamp is in UTC
     dateObj = new Date(Date.UTC(+sqlMatch[1], +sqlMatch[2] - 1, +sqlMatch[3], +sqlMatch[4], +sqlMatch[5], +(sqlMatch[6] || 0)));
   } else {
     const parsed = new Date(str.endsWith("Z") ? str : str + "Z");
-    dateObj = isNaN(parsed.getTime()) ? new Date(str) : parsed;
+    dateObj = Number.isNaN(parsed.getTime()) ? new Date(str) : parsed;
   }
-
-  if (!dateObj || isNaN(dateObj.getTime())) return str;
-
+  if (!dateObj || Number.isNaN(dateObj.getTime())) return str;
   const m = String(dateObj.getMonth() + 1).padStart(2, "0");
   const d = String(dateObj.getDate()).padStart(2, "0");
   const y = dateObj.getFullYear();
@@ -84,11 +78,9 @@ function formatUtcTimestamp(value, withSeparatorSpace = false) {
   const minutes = String(dateObj.getMinutes()).padStart(2, "0");
   const ampm = hours >= 12 ? "PM" : "AM";
   hours = hours % 12 || 12;
-
-  if (withSeparatorSpace) {
-    return `${m}/${d}/${y} · ${hours}:${minutes} ${ampm}`;
-  }
-  return `${m}/${d}/${y}-${hours}:${minutes}${ampm}`;
+  return withSeparatorSpace
+    ? `${m}/${d}/${y} \u00b7 ${hours}:${minutes} ${ampm}`
+    : `${m}/${d}/${y}-${hours}:${minutes}${ampm}`;
 }
 
 function Modal({ title, subtitle, onClose, children, footer, wide = false, size = "default", bodyClassName = "", zIndex = "z-[100]" }) {
@@ -1092,7 +1084,7 @@ export default function FrontStepsDataManagement() {
       for (const item of items) {
         const cat=item.report_type==='CASES'?'cases':'calls';
         grouped[cat].push({
-          id:item.id,name:item.source_filename,timestamp:item.created_at,
+          id:item.id,name:item.source_filename,timestamp:item.uploaded_at || item.created_at,
           size:`${(Number(item.file_size||0)/1024).toFixed(1)} KB`,
           status:item.status,inserted:item.inserted_rows||0,updated:item.updated_rows||0,
           duplicates:item.duplicate_rows||0,invalid:item.invalid_rows||0,
@@ -1212,12 +1204,12 @@ export default function FrontStepsDataManagement() {
     setDeletingBatchId(deleteTarget.id);
     setUploadError('');
     try {
-      const response=await deleteFrontStepsBatch(deleteTarget.id);
+      await deleteFrontStepsBatch(deleteTarget.id);
       if (batchPreview?.id===deleteTarget.id) setBatchPreview(null);
       setDeleteTarget(null);
       setFolderModal(null);
       await loadHistory();
-      setToast(response?.message||'FrontSteps import batch deleted.');
+      setToast('Batch deleted.');
       try {
         recordAuditLog({
           action: "Delete",
@@ -1529,17 +1521,6 @@ export default function FrontStepsDataManagement() {
           onMouseDown={(e) => { if (e.target === e.currentTarget) setToast(""); }}
         >
           <div className="sibs-modal-pop-in relative w-full max-w-sm rounded-2xl bg-white p-6 text-center shadow-2xl border border-slate-100">
-            {/* Top-right close button */}
-            <button
-              type="button"
-              onClick={() => setToast("")}
-              className="absolute top-3.5 right-3.5 inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white hover:bg-slate-50 px-2 py-0.5 text-[11px] font-bold text-slate-600 transition-colors cursor-pointer shadow-2xs"
-              aria-label="Close dialog"
-            >
-              <X size={13} />
-              <span>Close</span>
-            </button>
-
             {/* Centered Success Icon Badge */}
             <div className="mx-auto mt-1 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-50 text-[#15803D] border border-emerald-200/80 shadow-xs ring-4 ring-emerald-50/50">
               <CheckCircle2 className="h-7 w-7 text-[#15803D]" strokeWidth={2.3} />
@@ -2163,13 +2144,23 @@ export default function FrontStepsDataManagement() {
           onClose={()=>{if(!deletingBatchId)setDeleteTarget(null);}}
           footer={<>
             <button type="button" className={btnSecondary} disabled={Boolean(deletingBatchId)} onClick={()=>setDeleteTarget(null)}>Cancel</button>
-            <button type="button" className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-rose-600 px-4 py-2 text-xs font-semibold text-white transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-50" disabled={Boolean(deletingBatchId)} onClick={handleDeleteBatch}><Trash2 size={14}/>{deletingBatchId ? "Deleting..." : "Delete Batch"}</button>
+            <button type="button" className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-rose-600 px-4 py-2 text-xs font-semibold text-white transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-50" disabled={Boolean(deletingBatchId)} aria-busy={Boolean(deletingBatchId)} onClick={handleDeleteBatch}>
+              {deletingBatchId ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+              {deletingBatchId ? "Deleting…" : "Delete batch"}
+            </button>
           </>}
         >
-          <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-900">
-            <p className="font-bold">This permanently deletes the import batch and every FrontSteps row linked to it.</p>
-            <p className="mt-1 text-xs leading-relaxed text-rose-700">Raw import rows, normalized Cases/Calls records sourced by this batch, and import issues are removed through database cascade relationships.</p>
-          </div>
+          {deletingBatchId ? (
+            <div role="status" aria-live="polite" className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-8 text-sm font-semibold text-slate-700">
+              <Loader2 size={18} className="animate-spin text-[#082B60]" />
+              <span>Deleting batch…</span>
+            </div>
+          ) : (
+            <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-900">
+              <p className="font-bold">This permanently deletes the batch and its linked rows.</p>
+              <p className="mt-1 text-xs leading-relaxed text-rose-700">This action cannot be undone.</p>
+            </div>
+          )}
         </Modal>
       )}
 

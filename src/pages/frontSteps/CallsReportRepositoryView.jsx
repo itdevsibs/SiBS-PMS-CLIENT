@@ -2,30 +2,28 @@ import React from "react";
 import { FolderOpen, FileSpreadsheet, Eye, AlertTriangle, UserX, Trash2 } from "lucide-react";
 
 function formatDesignTimestamp(value) {
-  if (!value) return "—";
+  if (!value) return "\u2014";
   const str = String(value).trim();
-  let dateObj = null;
-
   const sqlMatch = str.match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::(\d{2}))?/);
+  let year, month, day, hours, minutes;
   if (sqlMatch) {
-    dateObj = new Date(Date.UTC(+sqlMatch[1], +sqlMatch[2] - 1, +sqlMatch[3], +sqlMatch[4], +sqlMatch[5], +(sqlMatch[6] || 0)));
+    [, year, month, day, hours, minutes] = sqlMatch;
   } else {
-    const parsed = new Date(str.endsWith("Z") ? str : str + "Z");
-    dateObj = isNaN(parsed.getTime()) ? new Date(str) : parsed;
+    const date = value instanceof Date ? value : new Date(str);
+    if (Number.isNaN(date.getTime())) return str;
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone: "Asia/Singapore", year: "numeric", month: "2-digit", day: "2-digit",
+      hour: "2-digit", minute: "2-digit", hourCycle: "h23",
+    }).formatToParts(date);
+    const part = (type) => parts.find((item) => item.type === type)?.value;
+    year = part("year"); month = part("month"); day = part("day");
+    hours = part("hour"); minutes = part("minute");
   }
-
-  if (!dateObj || isNaN(dateObj.getTime())) return str;
-
   const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-  const m = monthNames[dateObj.getMonth()];
-  const d = dateObj.getDate();
-  const y = dateObj.getFullYear();
-  let hours = dateObj.getHours();
-  const minutes = String(dateObj.getMinutes()).padStart(2, "0");
+  hours = Number(hours);
   const ampm = hours >= 12 ? "PM" : "AM";
   hours = hours % 12 || 12;
-
-  return `${m} ${d}, ${y} · ${hours}:${minutes} ${ampm}`;
+  return `${monthNames[Number(month) - 1]} ${Number(day)}, ${year} \u00b7 ${hours}:${String(minutes).padStart(2, "0")} ${ampm}`;
 }
 
 export default function CallsReportRepositoryView({
@@ -218,48 +216,50 @@ export default function CallsReportRepositoryView({
                           </div>
                         </td>
 
-                        {/* 5. Actions (2x2 Grid) */}
+                        {/* 5. Actions */}
                         <td className="px-4 py-3">
-                          <div className="grid grid-cols-2 gap-1.5 w-full max-w-[280px] mx-auto">
-                            {/* Rows button */}
+                          <div className="mx-auto grid w-full max-w-[300px] grid-cols-2 gap-2">
                             <button
                               type="button"
                               onClick={() => onOpenRaw(item)}
-                              className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50/70 px-2.5 py-1.5 text-xs font-semibold text-blue-700 transition hover:bg-blue-100 cursor-pointer shadow-2xs"
+                              aria-label={`View rows for batch ${item.id}`}
+                              className="inline-flex h-9 min-w-0 items-center gap-2 rounded-lg border border-blue-200 bg-white px-2.5 text-left text-[11px] font-semibold text-blue-800 transition-colors hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300"
                             >
-                              <Eye size={13} className="shrink-0" />
-                              <span>Rows</span>
+                              <Eye size={15} className="shrink-0 text-blue-600" />
+                              <span className="truncate">Rows</span>
                             </button>
 
-                            {/* Issues button */}
                             <button
                               type="button"
                               onClick={() => onOpenIssues(item)}
-                              className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-xs font-semibold text-[#B45309] transition hover:bg-amber-100 cursor-pointer shadow-2xs"
+                              aria-label={`View ${issueCount} issues for batch ${item.id}`}
+                              className="inline-flex h-9 min-w-0 items-center gap-2 rounded-lg border border-amber-200 bg-white px-2.5 text-left text-[11px] font-semibold text-amber-800 transition-colors hover:bg-amber-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300"
                             >
-                              <AlertTriangle size={13} className="shrink-0" />
-                              <span>Issues ({issueCount})</span>
+                              <AlertTriangle size={15} className="shrink-0 text-amber-600" />
+                              <span className="truncate">Issues</span>
+                              <span className="ml-auto rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] leading-none text-amber-800">{issueCount}</span>
                             </button>
 
-                            {/* Unmatched button */}
                             <button
                               type="button"
                               onClick={() => onOpenUnmatched(item)}
-                              className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-purple-200 bg-purple-50 px-2.5 py-1.5 text-xs font-semibold text-purple-700 transition hover:bg-purple-100 cursor-pointer shadow-2xs"
+                              aria-label={`View ${unmatchedCount.toLocaleString()} unmatched records for batch ${item.id}`}
+                              className="inline-flex h-9 min-w-0 items-center gap-2 rounded-lg border border-violet-200 bg-white px-2.5 text-left text-[11px] font-semibold text-violet-800 transition-colors hover:bg-violet-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300"
                             >
-                              <UserX size={13} className="shrink-0" />
-                              <span>Unmatched ({unmatchedCount.toLocaleString()})</span>
+                              <UserX size={15} className="shrink-0 text-violet-600" />
+                              <span className="truncate">Unmatched</span>
+                              <span className="ml-auto rounded-full bg-violet-100 px-1.5 py-0.5 text-[10px] leading-none text-violet-800">{unmatchedCount.toLocaleString()}</span>
                             </button>
 
-                            {/* Delete button */}
                             <button
                               type="button"
                               onClick={() => onDeleteBatch(item)}
-                              className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-rose-200 bg-rose-50 px-2.5 py-1.5 text-xs font-semibold text-[#B91C1C] transition hover:bg-rose-100 cursor-pointer shadow-2xs"
+                              aria-label={`Delete batch ${item.id}`}
                               title="Delete this import batch and all linked data"
+                              className="inline-flex h-9 min-w-0 items-center gap-2 rounded-lg border border-rose-200 bg-white px-2.5 text-left text-[11px] font-semibold text-rose-700 transition-colors hover:bg-rose-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-300"
                             >
-                              <Trash2 size={13} className="shrink-0" />
-                              <span>Delete</span>
+                              <Trash2 size={15} className="shrink-0 text-rose-600" />
+                              <span className="truncate">Delete</span>
                             </button>
                           </div>
                         </td>
