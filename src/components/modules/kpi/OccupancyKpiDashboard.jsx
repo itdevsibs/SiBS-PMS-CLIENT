@@ -583,7 +583,7 @@ export default function OccupancyKpiDashboard({
               <ChartCanvasGrid
                 yAxisLabels={hcTicks}
                 xAxisLabels={xAxisLabels}
-                footerNotes={["Buffer = Actual HC − Required HC · Negative means shortfall"]}
+                footerNotes={[]}
                 isSubmodule={isSubmodule}
                 showFilters={showFilters}
                 series={series}
@@ -724,7 +724,7 @@ export default function OccupancyKpiDashboard({
               <ChartCanvasGrid
                 yAxisLabels={hcTicks}
                 xAxisLabels={xAxisLabels}
-                footerNotes={["Buffer = Actual HC − Required HC · Negative means shortfall"]}
+                footerNotes={[]}
                 isSubmodule={false}
                 showFilters={showFilters}
                 series={series}

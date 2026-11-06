@@ -17,6 +17,11 @@ export async function saveStaffingRequirements(entries, reason = '') {
   return response.data;
 }
 
+export async function deleteStaffingRequirements(entries, reason = '') {
+  const response = await api.delete('/wfm/staffing-requirements', { data: { entries, reason } });
+  return response.data;
+}
+
 export async function getStaffingTaskOrders() {
   const response = await api.get('/wfm/staffing-requirements/task-orders');
   return response.data?.data || [];
