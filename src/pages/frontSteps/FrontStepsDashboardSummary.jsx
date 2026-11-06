@@ -105,6 +105,26 @@ export default function FrontStepsDashboardSummary({
   const [isGuideOpen, setIsGuideOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const dashboardRef = useRef(null);
+  const chartSvgRef = useRef(null);
+  const [chartLabelYScale, setChartLabelYScale] = useState(1);
+
+  useEffect(() => {
+    const svg = chartSvgRef.current;
+    if (!svg || typeof ResizeObserver === "undefined") return;
+
+    const updateLabelScale = () => {
+      const { width, height } = svg.getBoundingClientRect();
+      if (!width || !height) return;
+      // The SVG uses preserveAspectRatio="none". Counter its vertical
+      // distortion for data labels only, preserving the font's proportions.
+      setChartLabelYScale((width / height) / (840 / 152));
+    };
+
+    const observer = new ResizeObserver(updateLabelScale);
+    observer.observe(svg);
+    updateLabelScale();
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
     setIsMounted(false);
@@ -229,8 +249,8 @@ export default function FrontStepsDashboardSummary({
       className="flex flex-col font-jakarta text-slate-800 select-none gap-3 w-full lg:h-full lg:min-h-0 lg:flex-1 lg:justify-between lg:overflow-hidden"
     >
       {/* 1. Global Filter Bar: View Mode Switcher, Report Type & Guide Button */}
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200/90 bg-white px-3.5 py-2 shadow-2xs shrink-0">
-        <div className="flex flex-wrap items-center gap-2.5">
+      <div className="grid grid-cols-1 gap-2 rounded-xl border border-slate-200/90 bg-white px-3.5 py-2 shadow-2xs shrink-0 sm:flex sm:flex-wrap sm:items-center sm:justify-between sm:gap-3">
+        <div className="flex w-full min-w-0 items-center gap-2.5 sm:w-auto">
           {isSidebarHidden && (
             <button
               type="button"
@@ -242,11 +262,11 @@ export default function FrontStepsDashboardSummary({
               <Menu className="h-4 w-4" aria-hidden="true" />
             </button>
           )}
-          <div id="guide-view-mode" className="flex items-center gap-2 rounded-lg border border-slate-200/90 bg-slate-50/70 px-2.5 py-1">
-            <span className="text-xs font-black uppercase tracking-wider text-[#042c51]">
+          <div id="guide-view-mode" className="flex min-w-0 flex-1 items-center gap-2 rounded-lg border border-slate-200/90 bg-slate-50/70 px-2.5 py-1 sm:flex-none">
+            <span className="shrink-0 text-[10px] font-black uppercase tracking-wider text-[#042c51] sm:text-xs">
               View Mode:
             </span>
-            <div className="w-[180px]">
+            <div className="w-[145px] min-w-0 sm:w-[180px]">
               <SingleSelectDropdown
                 value={selectedView}
                 onChange={(e) => handleViewChange(e.target.value)}
@@ -262,12 +282,12 @@ export default function FrontStepsDashboardSummary({
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2.5">
-          <div id="guide-report-type" className="flex items-center gap-1.5">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
+        <div className="flex w-full min-w-0 items-center gap-2 sm:w-auto sm:flex-wrap sm:gap-2.5">
+          <div id="guide-report-type" className="flex min-w-0 flex-1 items-center gap-1.5 sm:flex-none">
+            <span className="hidden text-xs font-bold uppercase tracking-wider text-slate-500 sm:inline">
               Report Type:
             </span>
-            <div className="w-[140px]">
+            <div className="w-full min-w-0 sm:w-[140px]">
               <SingleSelectDropdown
                 value={reportType}
                 onChange={(e) => setReportType(e.target.value)}
@@ -283,7 +303,7 @@ export default function FrontStepsDashboardSummary({
             type="button"
             onClick={handleExportPDF}
             disabled={isExporting}
-            className="flex items-center gap-1.5 h-8 rounded-lg bg-[#042c51] hover:bg-[#0c4a80] text-white px-3 text-xs font-bold shadow-2xs hover:shadow-xs transition-all active:scale-95 disabled:opacity-60 cursor-pointer"
+            className="flex shrink-0 items-center gap-1.5 h-8 rounded-lg bg-[#042c51] hover:bg-[#0c4a80] text-white px-3 text-xs font-bold shadow-2xs hover:shadow-xs transition-all active:scale-95 disabled:opacity-60 cursor-pointer"
             title="Export dashboard as PDF"
           >
             {isExporting ? (
@@ -303,11 +323,11 @@ export default function FrontStepsDashboardSummary({
           <button
             type="button"
             onClick={() => setIsGuideOpen(true)}
-            className="flex items-center gap-1.5 h-8 rounded-lg bg-[#042c51] hover:bg-[#0c4a80] text-white px-3 text-xs font-bold shadow-2xs hover:shadow-xs transition-all active:scale-95 cursor-pointer"
+            className="flex h-8 w-8 shrink-0 items-center justify-center gap-1.5 rounded-lg bg-[#042c51] p-0 text-xs font-bold text-white shadow-2xs transition-all hover:bg-[#0c4a80] hover:shadow-xs active:scale-95 cursor-pointer sm:w-auto sm:px-3"
             title="Open Interactive Dashboard Guide"
           >
             <Compass className="h-3.5 w-3.5 text-sky-300" />
-            <span>Dashboard Guide</span>
+            <span className="hidden sm:inline">Dashboard Guide</span>
           </button>
         </div>
       </div>
@@ -408,7 +428,7 @@ export default function FrontStepsDashboardSummary({
       {/* 4. Middle Row: Offered vs Handled Calls (Left 7 cols) & Call Performance Summary (Right 5 cols) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-2.5 flex-1 min-h-[220px] lg:min-h-0">
         {/* Left: Offered vs Handled Calls Chart with Splines & Hover Tooltip */}
-        <div id="guide-chart-offered-handled" className="lg:col-span-7 flex flex-col justify-between rounded-xl border border-slate-200/90 bg-white p-3 shadow-2xs min-h-[210px] lg:min-h-0 relative">
+        <div id="guide-chart-offered-handled" className="lg:col-span-8 lg:col-start-5 lg:row-start-1 lg:self-start lg:h-fit flex flex-col justify-start rounded-xl border border-slate-200/90 bg-white p-3 shadow-2xs min-h-[210px] lg:min-h-0 relative">
           {/* Header with Title on Left and Centered Legend */}
           <div className="flex items-center justify-between shrink-0 mb-1 px-1">
             <h3 className="text-xs font-black uppercase tracking-wider text-[#042c51]">
@@ -426,10 +446,12 @@ export default function FrontStepsDashboardSummary({
             </div>
           </div>
 
-          {/* SVG Line Chart: Smooth Bezier Splines with horizontal scroll slider so numbers are never compressed */}
-          <div className="w-full flex-1 min-h-[160px] overflow-x-auto overflow-y-hidden table-scrollbar pt-1 pb-1">
-            <div className="min-w-[780px] w-full h-full relative flex flex-col justify-end">
-              <svg viewBox="0 0 840 152" preserveAspectRatio="none" className="w-full h-full overflow-visible">
+          {/* SVG Line Chart: Smooth Bezier Splines fitted to the chart panel */}
+          <div className="w-full flex-1 min-h-[160px] overflow-x-auto overflow-y-hidden pt-1 pb-1 lg:flex-none lg:overflow-x-hidden">
+            <div
+              className="min-w-[995px] lg:min-w-0 w-full h-full relative flex flex-col justify-start"
+            >
+              <svg ref={chartSvgRef} viewBox="0 0 840 152" preserveAspectRatio="none" className="w-full h-[180px] max-h-full shrink-0 overflow-visible">
               {/* Horizontal Grid lines */}
               <line x1="42" y1="18" x2="825" y2="18" stroke="#f1f5f9" strokeWidth="1" />
               <line x1="42" y1="56" x2="825" y2="56" stroke="#f1f5f9" strokeWidth="1" />
@@ -437,10 +459,10 @@ export default function FrontStepsDashboardSummary({
               <line x1="42" y1="132" x2="825" y2="132" stroke="#9ca3af" strokeWidth="1.2" />
 
               {/* Y Axis Numeric Labels */}
-              <text x="36" y="21" className="text-[11px] fill-slate-700 font-medium" textAnchor="end">30</text>
-              <text x="36" y="59" className="text-[11px] fill-slate-700 font-medium" textAnchor="end">20</text>
-              <text x="36" y="97" className="text-[11px] fill-slate-700 font-medium" textAnchor="end">10</text>
-              <text x="36" y="135" className="text-[11px] fill-slate-700 font-medium" textAnchor="end">0</text>
+              <text x="36" y="21" transform={`translate(0 21) scale(1 ${chartLabelYScale}) translate(0 -21)`} className="text-[13px] fill-slate-700 font-medium" textAnchor="end">30</text>
+              <text x="36" y="59" transform={`translate(0 59) scale(1 ${chartLabelYScale}) translate(0 -59)`} className="text-[13px] fill-slate-700 font-medium" textAnchor="end">20</text>
+              <text x="36" y="97" transform={`translate(0 97) scale(1 ${chartLabelYScale}) translate(0 -97)`} className="text-[13px] fill-slate-700 font-medium" textAnchor="end">10</text>
+              <text x="36" y="135" transform={`translate(0 135) scale(1 ${chartLabelYScale}) translate(0 -135)`} className="text-[13px] fill-slate-700 font-medium" textAnchor="end">0</text>
 
               {/* Handled Calls Smooth Curve (Green #4cae4c / #16a34a) with slow, gentle stroke draw-in animation */}
               <path
@@ -533,7 +555,8 @@ export default function FrontStepsDashboardSummary({
                           x={cx}
                           y={yH - 7}
                           textAnchor="middle"
-                          className="text-[9.5px] font-bold fill-[#4cae4c] pointer-events-none"
+                          transform={`translate(0 ${yH - 7}) scale(1 ${chartLabelYScale}) translate(0 ${-(yH - 7)})`}
+                          className="font-sans text-[11px] font-semibold fill-[#4cae4c] pointer-events-none"
                         >
                           {pt.valH}
                         </text>
@@ -544,7 +567,8 @@ export default function FrontStepsDashboardSummary({
                             x={cx}
                             y={yO - 7}
                             textAnchor="middle"
-                            className="text-[9.5px] font-bold fill-[#1d6fa5] pointer-events-none"
+                            transform={`translate(0 ${yO - 7}) scale(1 ${chartLabelYScale}) translate(0 ${-(yO - 7)})`}
+                            className="font-sans text-[11px] font-semibold fill-[#1d6fa5] pointer-events-none"
                           >
                             {pt.valO}
                           </text>
@@ -553,7 +577,8 @@ export default function FrontStepsDashboardSummary({
                             x={cx}
                             y={yH < yO ? yH - 7 : yH + 12}
                             textAnchor="middle"
-                            className="text-[9.5px] font-bold fill-[#4cae4c] pointer-events-none"
+                            transform={`translate(0 ${yH < yO ? yH - 7 : yH + 12}) scale(1 ${chartLabelYScale}) translate(0 ${-(yH < yO ? yH - 7 : yH + 12)})`}
+                            className="font-sans text-[11px] font-semibold fill-[#4cae4c] pointer-events-none"
                           >
                             {pt.valH}
                           </text>
@@ -605,7 +630,7 @@ export default function FrontStepsDashboardSummary({
         </div>
 
         {/* Right: Call Performance Summary Grid (5 cols) with Day-to-Date Scope Label */}
-        <div id="guide-section-call-performance" className="lg:col-span-5 flex flex-col justify-between rounded-xl border border-slate-200/90 bg-white p-2.5 shadow-2xs min-h-0">
+        <div id="guide-section-call-performance" className="lg:col-span-4 lg:col-start-1 lg:row-start-1 flex flex-col justify-between rounded-xl border border-slate-200/90 bg-white p-2.5 shadow-2xs min-h-0">
           <div className="flex items-center justify-between mb-1.5 shrink-0">
             <h3 className="text-[11px] font-black uppercase tracking-wider text-[#042c51]">
               Call Performance Summary
@@ -672,10 +697,10 @@ export default function FrontStepsDashboardSummary({
         </div>
       </div>
 
-            {/* 5. Bottom Row: 30% Top Case Drivers (Left 3 cols) & 70% Interval Performance Details (Right 7 cols) */}
-      <div className="grid grid-cols-1 lg:grid-cols-10 gap-2.5 lg:flex-[1.3] min-h-0">
-        {/* Left: Top Case Drivers (~30% width: 3 of 10 cols) */}
-        <div id="guide-section-case-drivers" className="lg:col-span-3 flex flex-col justify-between rounded-xl border border-slate-200/90 bg-white p-3.5 shadow-2xs min-h-[340px] lg:min-h-0">
+      {/* 5. Bottom Row: Interval Performance Details (Left 8 cols) & Top Case Drivers (Right 4 cols) */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-2.5 lg:flex-[1.3] min-h-0">
+        {/* Right: Top Case Drivers */}
+        <div id="guide-section-case-drivers" className="lg:col-span-4 lg:col-start-1 lg:row-start-1 flex flex-col justify-between rounded-xl border border-slate-200/90 bg-white p-3.5 shadow-2xs min-h-[340px] lg:min-h-0">
           {/* Header */}
           <div className="flex items-center justify-between shrink-0 mb-1">
             <h3 className="text-xs font-black uppercase tracking-wider text-[#042c51]">
@@ -769,8 +794,8 @@ export default function FrontStepsDashboardSummary({
           </div>
         </div>
 
-        {/* Right: Interval Performance Details Table (~70% width: 7 of 10 cols) */}
-        <div id="guide-section-interval-details" className="lg:col-span-7 flex flex-col rounded-xl border border-slate-200/90 bg-white p-3 shadow-2xs min-h-[300px] lg:min-h-0">
+        {/* Left: Interval Performance Details Table, matching the chart width */}
+        <div id="guide-section-interval-details" className="lg:col-span-8 lg:col-start-5 lg:row-start-1 flex flex-col rounded-xl border border-slate-200/90 bg-white p-3 shadow-2xs min-h-[300px] lg:min-h-0">
           <div className="flex items-center justify-between mb-2 shrink-0">
             <h3 className="text-xs font-black uppercase tracking-wider text-[#042c51]">
               Interval Performance Details

@@ -169,8 +169,8 @@ export default function FrontStepsDashboardAccountBased({
   return (
     <div className="flex flex-col font-jakarta text-slate-800 select-none gap-3 w-full lg:h-full lg:min-h-0 lg:flex-1 lg:justify-between lg:overflow-hidden pb-6 lg:pb-0">
       {/* Top Filter Bar: View Mode, Employee, Period, Month, Export Button */}
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200/90 bg-white px-3.5 py-2 shadow-2xs shrink-0">
-        <div className="flex flex-wrap items-center gap-2.5">
+      <div className="grid grid-cols-1 gap-2 rounded-xl border border-slate-200/90 bg-white px-3.5 py-2 shadow-2xs shrink-0 sm:flex sm:flex-wrap sm:items-center sm:justify-between sm:gap-3">
+        <div className="flex w-full min-w-0 items-center gap-2.5 sm:w-auto">
           {isSidebarHidden && (
             <button
               type="button"
@@ -184,11 +184,11 @@ export default function FrontStepsDashboardAccountBased({
           )}
 
           {/* 1. View Mode */}
-          <div id="guide-ab-view-mode" className="flex items-center gap-2 rounded-lg border border-slate-200/90 bg-slate-50/70 px-2.5 py-1">
-            <span className="text-xs font-black uppercase tracking-wider text-[#042c51]">
+          <div id="guide-ab-view-mode" className="flex min-w-0 flex-1 items-center gap-2 rounded-lg border border-slate-200/90 bg-slate-50/70 px-2.5 py-1 sm:flex-none">
+            <span className="shrink-0 text-[10px] font-black uppercase tracking-wider text-[#042c51] sm:text-xs">
               View Mode:
             </span>
-            <div className="w-[180px]">
+            <div className="w-[145px] min-w-0 sm:w-[180px]">
               <SingleSelectDropdown
                 value={selectedView}
                 onChange={(e) => handleViewChange(e.target.value)}
@@ -201,14 +201,14 @@ export default function FrontStepsDashboardAccountBased({
         </div>
 
         {/* Filters Group: Employee, Period, Month, Export Button, and Dashboard Guide */}
-        <div className="flex flex-wrap items-center gap-2.5">
-          <div id="guide-ab-filters" className="flex flex-wrap items-center gap-2.5">
+        <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap sm:items-center sm:gap-2.5">
+          <div id="guide-ab-filters" className="col-span-2 grid grid-cols-2 items-end gap-2 sm:col-auto sm:flex sm:flex-wrap sm:items-center sm:gap-2.5">
             {/* 2. Employee Dropdown */}
-            <div className="flex items-center gap-1.5">
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
+            <div className="col-span-2 flex min-w-0 items-center gap-1.5 sm:col-auto">
+              <span className="shrink-0 text-[10px] font-bold uppercase tracking-wider text-slate-500 sm:text-xs">
                 Employee:
               </span>
-              <div className="w-[210px]">
+              <div className="w-[210px] min-w-0 max-w-full">
                 <SingleSelectDropdown
                   value={selectedEmployee}
                   onChange={(e) => setSelectedEmployee(e.target.value)}
@@ -220,11 +220,11 @@ export default function FrontStepsDashboardAccountBased({
             </div>
 
             {/* 3. Period Dropdown (daily, weekly, monthly, annually) */}
-            <div className="flex items-center gap-1.5">
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
+            <div className="flex min-w-0 flex-col items-stretch gap-1 sm:flex-row sm:items-center">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 sm:text-xs">
                 Period:
               </span>
-              <div className="w-[125px]">
+              <div className="w-full min-w-0 sm:w-[125px]">
                 <SingleSelectDropdown
                   value={selectedPeriod}
                   onChange={(e) => setSelectedPeriod(e.target.value)}
@@ -236,11 +236,11 @@ export default function FrontStepsDashboardAccountBased({
             </div>
 
             {/* 4. Month Dropdown */}
-            <div className="flex items-center gap-1.5">
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
+            <div className="flex min-w-0 flex-col items-stretch gap-1 sm:flex-row sm:items-center">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 sm:text-xs">
                 Month:
               </span>
-              <div className="w-[130px]">
+              <div className="w-full min-w-0 sm:w-[130px]">
                 <SingleSelectDropdown
                   value={selectedMonth}
                   onChange={(e) => setSelectedMonth(e.target.value)}
@@ -258,7 +258,7 @@ export default function FrontStepsDashboardAccountBased({
             type="button"
             onClick={handleExportPDF}
             disabled={isExporting}
-            className="flex items-center gap-1.5 h-8 rounded-lg bg-[#042c51] hover:bg-[#0c4a80] text-white px-3 text-xs font-bold shadow-2xs hover:shadow-xs transition-all active:scale-95 disabled:opacity-60 cursor-pointer"
+            className="col-span-1 flex h-8 w-full shrink-0 items-center justify-center gap-1.5 rounded-lg bg-[#042c51] px-3 text-xs font-bold text-white shadow-2xs transition-all hover:bg-[#0c4a80] hover:shadow-xs active:scale-95 disabled:opacity-60 cursor-pointer sm:col-auto sm:w-auto"
             title="Export dashboard as PDF"
           >
             {isExporting ? (
@@ -278,7 +278,7 @@ export default function FrontStepsDashboardAccountBased({
           <button
             type="button"
             onClick={() => setIsGuideOpen(true)}
-            className="flex items-center gap-1.5 h-8 rounded-lg bg-[#042c51] hover:bg-[#0c4a80] text-white px-3 text-xs font-bold shadow-2xs hover:shadow-xs transition-all active:scale-95 cursor-pointer"
+            className="col-span-1 flex h-8 w-full shrink-0 items-center justify-center gap-1.5 rounded-lg bg-[#042c51] px-3 text-xs font-bold text-white shadow-2xs transition-all hover:bg-[#0c4a80] hover:shadow-xs active:scale-95 cursor-pointer sm:col-auto sm:w-auto"
             title="Open Interactive Dashboard Guide"
           >
             <Compass className="h-3.5 w-3.5 text-sky-300" />

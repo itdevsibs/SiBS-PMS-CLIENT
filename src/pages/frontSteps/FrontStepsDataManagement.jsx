@@ -1412,6 +1412,7 @@ export default function FrontStepsDataManagement() {
 
       const res = await fetch("http://localhost:5003/api/frontsteps/policies/upload", {
         method: "POST",
+        credentials: "include",
         body: data,
       });
       const json = await res.json();
