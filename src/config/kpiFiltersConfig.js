@@ -832,48 +832,63 @@ export function getSkillsForCountries(countryList = [], skillsMap = SKILLS_BY_CO
   return matchedSkills;
 }
 
-export function getSkillOptions(sourceSystem, selectedCountries, selectedTaskOrders, skillsMap = SKILLS_BY_COUNTRY, countryScopesByTaskOrder = {}) {
-  const genericOptions = GENERIC_SKILL_OPTIONS;
-
+// The Philippines category is deliberately opt-in and restricted to the
+// WoW dashboard with TO10 selected. Its selection is an OR with All English:
+// users can include Philippines Tagalog queues without relabeling them English.
+export function getSkillOptions(sourceSystem, selectedCountries, selectedTaskOrders, skillsMap = SKILLS_BY_COUNTRY, countryScopesByTaskOrder = {}, enableSeasiaPhilippinesCategory = false) {
   const countryList = Array.isArray(selectedCountries)
     ? selectedCountries.filter((c) => c && c !== "__NONE__")
-    : selectedCountries
-      ? [selectedCountries]
-      : [];
-
-  if (countryList.length > 0) {
-    const countrySkills = getSkillsForCountries(countryList, skillsMap);
-    const specificOptions = countrySkills.map((s) => ({ value: s, label: s }));
-    return [...genericOptions, ...specificOptions];
-  }
-
+    : selectedCountries ? [selectedCountries] : [];
   const toList = Array.isArray(selectedTaskOrders)
     ? selectedTaskOrders.filter((to) => to && to !== "__NONE__")
-    : selectedTaskOrders
-      ? [selectedTaskOrders]
-      : [];
+    : selectedTaskOrders ? String(selectedTaskOrders).split(",").map((to) => to.trim()).filter(Boolean) : [];
 
-  if (toList.length > 0) {
+  const showPhilippines = enableSeasiaPhilippinesCategory
+    && toList.some((to) => String(to).toUpperCase() === "TO10")
+    && (!countryList.length || countryList.some((country) => normalizeReportingCountry(country) === "philippines"));
+  const genericOptions = showPhilippines
+    ? [...GENERIC_SKILL_OPTIONS, { value: "__SEASIA_PHILIPPINES__", label: "Philippines (All Languages)", isCategory: true }]
+    : GENERIC_SKILL_OPTIONS;
+
+  // This metadata is for category auto-selection only; the backend checks the
+  // canonical country for the category itself, not the text of the Skill name.
+  const countriesBySkill = new Map();
+  if (showPhilippines) {
+    for (const [country, skills] of Object.entries(skillsMap || {})) {
+      for (const skill of skills || []) {
+        const countries = countriesBySkill.get(skill) || new Set();
+        countries.add(normalizeReportingCountry(country));
+        countriesBySkill.set(skill, countries);
+      }
+    }
+  }
+  const toOption = (skill) => ({
+    value: skill,
+    label: skill,
+    ...(showPhilippines ? { countries: [...(countriesBySkill.get(skill) || [])] } : {}),
+  });
+
+  if (countryList.length) {
+    return [...genericOptions, ...getSkillsForCountries(countryList, skillsMap).map(toOption)];
+  }
+  if (toList.length) {
     const toCountries = [
       ...getCountryOptions(sourceSystem, toList).map((c) => c.value),
       ...toList.flatMap((to) => countryScopesByTaskOrder[to] || []),
     ];
-    const toSkills = getSkillsForCountries(toCountries, skillsMap);
-    const specificOptions = toSkills.map((s) => ({ value: s, label: s }));
-    return [...genericOptions, ...specificOptions];
+    return [...genericOptions, ...getSkillsForCountries(toCountries, skillsMap).map(toOption)];
   }
 
   const allCountrySkills = [];
   const seen = new Set();
   for (const skills of Object.values(skillsMap || SKILLS_BY_COUNTRY)) {
-    for (const s of skills) {
-      if (!seen.has(s)) {
-        seen.add(s);
-        allCountrySkills.push({ value: s, label: s });
+    for (const skill of skills) {
+      if (!seen.has(skill)) {
+        seen.add(skill);
+        allCountrySkills.push(toOption(skill));
       }
     }
   }
-
   return [...genericOptions, ...allCountrySkills];
 }
 
