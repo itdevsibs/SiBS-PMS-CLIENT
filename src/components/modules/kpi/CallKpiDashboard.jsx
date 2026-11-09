@@ -383,7 +383,7 @@ function VolumeChart({
     1,
   );
   const minPeriodWidth = 84;
-  const isScrollable = series.length > 6 || period === "custom";
+  const isScrollable = isSubmodule || series.length > 6 || period === "custom";
 
   const chartHeightStyle = isSubmodule
     ? {
@@ -642,7 +642,7 @@ function LineChart({
   ];
 
   const minPeriodWidth = 84;
-  const isScrollable = series.length > 6 || period === "custom";
+  const isScrollable = isSubmodule || series.length > 6 || period === "custom";
 
   const customHeightStyle = chartHeight
     ? { height: typeof chartHeight === "number" ? `${chartHeight}px` : chartHeight }
@@ -934,7 +934,7 @@ function AhtChart({
   );
 
   const minPeriodWidth = 76;
-  const isScrollable = series.length > 6 || period === "custom";
+  const isScrollable = isSubmodule || series.length > 6 || period === "custom";
 
   const customHeightStyle = chartHeight
     ? { height: typeof chartHeight === "number" ? `${chartHeight}px` : chartHeight }

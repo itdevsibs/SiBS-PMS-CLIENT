@@ -63,7 +63,7 @@ function QaTransactionsChart({
   const axisTicks = getCallAxisTicks(maxValue, 4);
   const axisMax = Math.max(1, axisTicks[0] || maxValue);
   const minPeriodWidth = 86;
-  const isScrollable = series.length > 6 || period === "custom";
+  const isScrollable = isSubmodule || series.length > 6 || period === "custom";
   const scrollContainerRef = useRef(null);
 
   useLayoutEffect(() => {
@@ -102,7 +102,7 @@ function QaTransactionsChart({
         </div>
       ) : null}
 
-      <div className={`flex w-full min-w-0 ${!isSubmodule ? "flex-1 min-h-0" : ""}`}>
+      <div className={`flex w-full min-w-0 ${isSubmodule ? "overflow-x-auto sibs-chart-scrollbar" : ""} ${!isSubmodule ? "flex-1 min-h-0" : ""}`}>
         {/* Fixed Left Y-Axis */}
         <div className={`flex flex-col shrink-0 ${!isSubmodule ? "h-full" : ""}`}>
           <div
@@ -136,11 +136,11 @@ function QaTransactionsChart({
         {/* Scrollable Bars Area */}
         <div
           ref={scrollContainerRef}
-          className={`relative min-w-0 flex-1 ${isScrollable ? "overflow-x-auto pb-1 sibs-chart-scrollbar" : "overflow-hidden"} overflow-y-hidden ${!isSubmodule ? "h-full flex flex-col" : ""}`}
+          className={`relative min-w-0 flex-1 ${isScrollable ? "overflow-x-auto pb-1 sibs-chart-scrollbar" : "overflow-hidden"} overflow-y-hidden ${isSubmodule ? "min-w-max" : ""} ${!isSubmodule ? "h-full flex flex-col" : ""}`}
         >
           <div className={`relative min-w-full ${isScrollable ? "w-max" : "w-full"} ${!isSubmodule ? "flex-1 min-h-0 flex flex-col" : ""}`}>
             <div
-              className={`relative flex min-w-0 items-end gap-1.5 border-b border-sibs-tertiary-8 px-2 sm:gap-2 transition-all duration-300 ease-in-out ${!isSubmodule ? "flex-1 min-h-0" : ""}`}
+              className={`relative flex min-w-0 items-end gap-1.5 border-b border-sibs-tertiary-8 px-2 sm:gap-2 transition-all duration-300 ease-in-out ${isSubmodule ? "min-w-max" : ""} ${!isSubmodule ? "flex-1 min-h-0" : ""}`}
               style={chartHeightStyle}
             >
               {/* Horizontal Gridlines */}
@@ -217,7 +217,7 @@ function QaTransactionsChart({
             </div>
 
             {/* Bottom Period Labels */}
-            <div className="shrink-0 flex w-full min-w-full gap-1.5 px-2">
+            <div className={`shrink-0 flex w-full min-w-full gap-1.5 px-2 ${isSubmodule ? "w-max" : ""}`}>
               {series.map((item, index) => (
                 <div
                   key={item.key || index}
@@ -257,7 +257,7 @@ function QaScoreChart({
   const [hoveredData, setHoveredData] = useState(null);
   const containerRef = useRef(null);
   const displaySeries = useMemo(() => [...series].reverse(), [series]);
-  const isScrollable = series.length > 6 || period === "custom";
+  const isScrollable = isSubmodule || series.length > 6 || period === "custom";
 
   const handleMouseEnter = (item, score, e) => {
     if (!containerRef.current) return;

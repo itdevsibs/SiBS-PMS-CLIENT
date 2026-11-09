@@ -638,18 +638,6 @@ function WfmImportDataPage() {
         />
 
         <div className="sibs-scrollbar flex-1 overflow-y-auto min-h-0 p-3.5 sm:p-4 bg-white flex flex-col gap-3">
-          <WfmFilterBar
-            selectedAccount={selectedAccount}
-            onSelectAccount={(account) => {
-              setSelectedAccount(account);
-              setRawDataSearch("");
-            }}
-            rawDataSearch={rawDataSearch}
-            onSearchChange={setRawDataSearch}
-            accountFilters={accountFilters}
-            sourceSystemCounts={sourceSystemCounts}
-          />
-
           <WfmImportSummaryBar
             importSummary={importSummary}
             onOpenWarnings={() => setIsWarningsModalOpen(true)}

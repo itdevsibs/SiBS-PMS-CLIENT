@@ -220,9 +220,9 @@ function ChartCanvasGrid({
         </div>
 
         {/* Drawing Area */}
-        <div className={`relative min-w-0 flex-1 overflow-visible ${!isSubmodule ? "h-full flex flex-col" : ""}`}>
+        <div className={`relative min-w-0 flex-1 overflow-x-auto overflow-y-visible sibs-chart-scrollbar ${!isSubmodule ? "h-full flex flex-col" : ""}`}>
           <div
-            className={`relative flex min-w-0 items-end border-b border-sibs-tertiary-8 px-1 transition-all duration-300 ease-in-out ${!isSubmodule ? "flex-1 min-h-0" : ""}`}
+            className={`relative flex min-w-0 items-end border-b border-sibs-tertiary-8 px-1 transition-all duration-300 ease-in-out ${isSubmodule ? "w-max min-w-full" : ""} ${!isSubmodule ? "flex-1 min-h-0" : ""}`}
             style={chartHeightStyle}
           >
             {/* Horizontal Gridlines */}
@@ -272,7 +272,7 @@ function ChartCanvasGrid({
                 return (
                   <div
                     key={item.key || index}
-                    className="group/period relative z-10 hover:z-50 flex h-full min-w-0 flex-1 items-end justify-center px-1"
+                    className={`group/period relative z-10 hover:z-50 flex h-full min-w-0 flex-1 items-end justify-center px-1 ${isSubmodule ? "min-w-[84px]" : ""}`}
                   >
                     <div
                       className={`relative flex h-full w-full items-end justify-center ${barSpecs.length > 1
@@ -382,7 +382,7 @@ function ChartCanvasGrid({
       </div>
 
       {/* X-Axis Labels */}
-      <div className="shrink-0 flex w-full min-w-full pl-10 sm:pl-11 gap-1 px-1 select-none h-5 pt-0.5">
+      <div className={`shrink-0 flex w-full min-w-full pl-10 sm:pl-11 gap-1 px-1 select-none h-5 pt-0.5 ${isSubmodule ? "w-max" : ""}`}>
         {xAxisLabels.map((xLabel, idx) => (
           <div
             key={`${xLabel}-${idx}`}
