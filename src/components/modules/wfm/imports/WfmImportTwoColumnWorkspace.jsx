@@ -188,7 +188,7 @@ export default function WfmImportTwoColumnWorkspace({
   onOpenCard,
   onOpenErrorDetails,
 }) {
-  const [selectedLevelId, setSelectedLevelId] = useState("call-report-eod");
+  const [selectedLevelId, setSelectedLevelId] = useState("agent-activity-productive-breaks");
   const [selectedSourceId, setSelectedSourceId] = useState("");
   const [isDragOver, setIsDragOver] = useState(false);
   const fileInputRef = useRef(null);

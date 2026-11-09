@@ -1357,7 +1357,7 @@ export default function ViewGraphsPage() {
                         <CallKpiDashboard
                           data={dashboardData || {}}
                           period={filters.period}
-                          showSummaryCards={false}
+                          showSummaryCards={isCallsOnly ? showFilters : false}
                           isSubmodule={isCallsOnly}
                           showFilters={showFilters}
                           isLoading={isCallsOnly ? isCallsLoading : isUnifiedLoading}

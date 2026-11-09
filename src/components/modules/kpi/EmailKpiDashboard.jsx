@@ -70,7 +70,7 @@ function EmailVolumeChart({
   ];
 
   const minPeriodWidth = 86;
-  const isScrollable = series.length > 6 || period === "custom";
+  const isScrollable = isSubmodule || series.length > 6 || period === "custom";
   const internalScrollRef = useRef(null);
 
   const setScrollRef = (node) => {
@@ -287,7 +287,7 @@ function EmailRateChart({
   ];
 
   const minPeriodWidth = 86;
-  const isScrollable = series.length > 6 || period === "custom";
+  const isScrollable = isSubmodule || series.length > 6 || period === "custom";
   const internalScrollRef = useRef(null);
 
   const setScrollRef = (node) => {

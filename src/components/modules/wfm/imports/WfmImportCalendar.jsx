@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { AlertCircle, CalendarDays, ChevronLeft, ChevronRight, FileCheck2 } from "lucide-react";
 
-const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const WEEKDAYS = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
 
 function dateKey(year, month, day) {
   return `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
@@ -24,6 +24,7 @@ export function manilaDateKey(date = new Date()) {
 export default function WfmImportCalendar({
   month, onMonthChange, selectedDay, onSelectDay,
   days = [], loading = false, error = "",
+  showInternalNavigation = true,
 }) {
   const { cells, title } = useMemo(() => {
     const [year, monthNumber] = month.split("-").map(Number);
@@ -40,46 +41,43 @@ export default function WfmImportCalendar({
   const monthCount = days.reduce((sum, day) => sum + (day.batchCount || 0), 0);
   const today = manilaDateKey();
   return (
-    <div className="mt-3 flex-1 flex flex-col min-h-0 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs">
-      <div className="flex flex-col gap-2 border-b border-slate-100 px-3.5 py-2.5 sm:flex-row sm:items-center sm:justify-between sm:px-4 shrink-0">
-        <div className="flex items-center gap-2.5">
-          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-sibs-primary-1/10 text-sibs-primary-1">
-            <CalendarDays className="h-4.5 w-4.5"/>
-          </span>
-          <div className="flex items-center gap-2.5 flex-wrap">
-            <h3 className="m-0 text-sm sm:text-base font-bold text-sibs-primary-1 leading-tight">{title}</h3>
-            <span className="inline-flex items-center rounded-full bg-slate-100 border border-slate-200/80 px-2.5 py-0.5 text-xs font-semibold text-slate-600">
-              {loading ? "Loading…" : `${monthCount.toLocaleString()} files imported`}
-            </span>
+    <div className="mt-3 flex-1 flex flex-col min-h-0 overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-[0_8px_28px_rgba(15,47,77,0.06)]">
+      <div className="flex flex-col gap-2 border-b border-slate-100 p-4 sm:p-5 pb-3 sm:flex-row sm:items-center sm:justify-between shrink-0">
+        <div>
+          <h3 className="m-0 text-base font-black text-sibs-primary-1 leading-tight">{title}</h3>
+          <p className="mt-0.5 text-[11px] text-slate-500 font-medium">
+            {loading ? "Loading…" : `${monthCount.toLocaleString()} files imported`}
+          </p>
+        </div>
+        {showInternalNavigation && (
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 shadow-xs hover:border-[#0b3b68] hover:bg-slate-50 hover:text-[#0b3b68] transition active:scale-95 cursor-pointer"
+              onClick={() => onMonthChange(calendarMonthShift(month, -1))}
+              aria-label="Previous month"
+            >
+              <ChevronLeft size={18} strokeWidth={2.5} />
+            </button>
+            <button
+              type="button"
+              className="h-8 rounded-lg border border-slate-200 bg-white px-3 text-xs font-bold text-slate-700 shadow-xs hover:border-[#0b3b68] hover:bg-slate-50 hover:text-[#0b3b68] transition active:scale-95 cursor-pointer"
+              onClick={() => onMonthChange(today.slice(0, 7))}
+            >
+              Today
+            </button>
+            <button
+              type="button"
+              className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 shadow-xs hover:border-[#0b3b68] hover:bg-slate-50 hover:text-[#0b3b68] transition active:scale-95 cursor-pointer"
+              onClick={() => onMonthChange(calendarMonthShift(month, 1))}
+              aria-label="Next month"
+            >
+              <ChevronRight size={18} strokeWidth={2.5} />
+            </button>
           </div>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <button
-            type="button"
-            className="flex h-7.5 w-7.5 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 transition cursor-pointer"
-            onClick={() => onMonthChange(calendarMonthShift(month, -1))}
-            aria-label="Previous month"
-          >
-            <ChevronLeft className="h-3.5 w-3.5"/>
-          </button>
-          <button
-            type="button"
-            className="h-7.5 rounded-lg border border-slate-200 px-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition cursor-pointer"
-            onClick={() => onMonthChange(today.slice(0, 7))}
-          >
-            Today
-          </button>
-          <button
-            type="button"
-            className="flex h-7.5 w-7.5 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 transition cursor-pointer"
-            onClick={() => onMonthChange(calendarMonthShift(month, 1))}
-            aria-label="Next month"
-          >
-            <ChevronRight className="h-3.5 w-3.5"/>
-          </button>
-        </div>
+        )}
       </div>
-      {error ? <p role="alert" className="mx-3.5 mt-2 text-xs text-rose-700 shrink-0">{error}</p> : null}
+      {error ? <p role="alert" className="mx-4 mt-2 text-xs text-rose-700 shrink-0">{error}</p> : null}
       
       {/* Calendar Grid Container: Vertical agenda on small screens (<sm), 7-day grid on sm and larger */}
       {/* Mobile Vertical Day-by-Day Agenda View */}
@@ -100,14 +98,14 @@ export default function WfmImportCalendar({
                 key={`mobile-${day}`}
                 onClick={() => onSelectDay(day, data)}
                 className={`w-full flex items-center justify-between px-3 py-2.5 text-left transition ${
-                  active ? "bg-sky-50 ring-1 ring-inset ring-sky-500" : "bg-white hover:bg-slate-50"
+                  active ? "bg-blue-50/90 ring-1 ring-inset ring-blue-500" : "bg-white hover:bg-blue-50/30"
                 } ${hasData ? "cursor-pointer" : "cursor-default"}`}
               >
                 <div className="flex items-center gap-3">
                   <div
                     className={`flex h-8 w-8 shrink-0 flex-col items-center justify-center rounded-lg font-bold ${
                       day === today
-                        ? "bg-sibs-primary-1 text-white shadow-xs"
+                        ? "bg-blue-600 text-white shadow-xs"
                         : "bg-slate-100 text-slate-700"
                     }`}
                   >
@@ -124,7 +122,7 @@ export default function WfmImportCalendar({
                     </p>
                     <p className="m-0 text-[11px] text-slate-500">
                       {hasData ? (
-                        <span className="text-emerald-700 font-semibold">
+                        <span className="text-[#042c51] font-bold">
                           {data.batchCount} {data.batchCount === 1 ? "file imported" : "files imported"}
                         </span>
                       ) : (
@@ -136,8 +134,8 @@ export default function WfmImportCalendar({
 
                 {hasData ? (
                   <div className="flex items-center gap-1.5">
-                    <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 border border-emerald-200/80 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
-                      <FileCheck2 className="h-3 w-3 text-emerald-600" />
+                    <span className="inline-flex items-center gap-1 rounded-md bg-blue-600 px-2 py-0.5 text-[10px] font-bold text-white shadow-xs">
+                      <FileCheck2 className="h-3 w-3 text-white" />
                       <span>{data.batchCount}</span>
                     </span>
                     {(data?.failedCount > 0 || data?.issueCount > 0 || data?.duplicateCount > 0) && (
@@ -154,21 +152,23 @@ export default function WfmImportCalendar({
       </div>
 
       {/* Desktop/Tablet 7-Day Grid View (sm and larger) */}
-      <div className="hidden sm:flex flex-1 min-h-0 flex-col overflow-hidden">
-        <div className="grid grid-cols-7 border-b border-slate-100 bg-slate-50 shrink-0">
+      <div className="hidden sm:flex flex-1 min-h-0 flex-col bg-slate-200 overflow-hidden">
+        {/* Flat dark navy header with vertical column divider lines */}
+        <div className="grid grid-cols-7 bg-[#042c51] text-white shrink-0 border-b border-[#032240] divide-x divide-blue-900/60">
           {WEEKDAYS.map((day) => (
-            <div key={day} className="py-1.5 text-center text-[10px] font-bold uppercase tracking-wide text-slate-500">
+            <div key={day} className="py-2.5 text-center text-[10px] sm:text-[11px] font-extrabold tracking-[0.14em] text-white/95">
               {day}
             </div>
           ))}
         </div>
         <div
-          className="flex-1 grid grid-cols-7 auto-rows-fr gap-px bg-slate-100 min-h-0"
+          className="flex-1 grid grid-cols-7 auto-rows-fr gap-px bg-slate-200 min-h-0 h-full"
           aria-label={`${title} import calendar`}
         >
           {cells.map((day, index) => {
             const data = counts.get(day);
             const active = day === selectedDay;
+            const isToday = day === today;
             return day ? (
               <button
                 type="button"
@@ -176,49 +176,64 @@ export default function WfmImportCalendar({
                 onClick={() => onSelectDay(day, data)}
                 aria-pressed={active}
                 aria-label={`${day}: ${data?.batchCount || 0} imported batches, ${data?.failedCount || 0} failed`}
-                className={`relative flex h-full flex-col items-start gap-0.5 bg-white p-1.5 text-left transition-colors hover:bg-sky-50 focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-sky-500 sm:p-2 ${
-                  active ? "!bg-sky-50 ring-2 ring-inset ring-sky-500" : ""
+                className={`group relative flex h-full min-h-[92px] flex-col p-2 text-left transition duration-150 sm:p-2.5 ${
+                  active
+                    ? "bg-blue-50/90 ring-2 ring-inset ring-blue-500 z-10"
+                    : "bg-white hover:bg-blue-50/30"
                 } ${data?.batchCount > 0 ? "cursor-pointer" : "cursor-default"}`}
               >
                 <div className="flex w-full items-center justify-between gap-1">
                   <span
-                    className={`inline-flex h-5.5 w-5.5 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
-                      day === today ? "bg-sibs-primary-1 text-white shadow-xs" : "text-slate-700"
+                    className={`flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[11px] font-bold ${
+                      active
+                        ? "bg-blue-600 text-white"
+                        : "text-slate-800"
                     }`}
                   >
                     {Number(day.slice(-2))}
                   </span>
-                  {data?.batchCount > 0 ? (
-                    <span className="inline-flex items-center gap-1.5 rounded-md bg-emerald-50 border border-emerald-200/80 px-2 py-0.5 text-emerald-700 shadow-2xs">
-                      <FileCheck2 className="h-3 w-3 shrink-0 text-emerald-600"/>
-                      <span className="text-[10px] sm:text-[11px] font-bold leading-none">
-                        {data.batchCount} {data.batchCount === 1 ? "file imported" : "files imported"}
+                  <div className="flex items-center gap-1">
+                    {isToday && (
+                      <span className="rounded-full bg-blue-100 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wide text-blue-700">
+                        Today
                       </span>
-                    </span>
-                  ) : null}
-                </div>
-                {(data?.failedCount > 0 || data?.issueCount > 0 || data?.duplicateCount > 0) ? (
-                  <div className="mt-auto flex w-full justify-end">
-                    <span className="inline-flex items-center gap-1 rounded bg-amber-50 border border-amber-200/60 px-1.5 py-0.5 text-[8.5px] font-medium text-amber-700 sm:text-[9px]">
-                      <AlertCircle className="h-2.5 w-2.5 shrink-0 text-amber-600"/>
-                      <span>
-                        {data.failedCount > 0
-                          ? `${data.failedCount} failed`
-                          : data.issueCount > 0
-                          ? `${data.issueCount} issues`
-                          : `${data.duplicateCount} dup`}
-                      </span>
-                    </span>
+                    )}
                   </div>
-                ) : null}
+                </div>
+
+                <div className="mt-auto w-full pt-2">
+                  <div className="flex items-center justify-between gap-1">
+                    <div className={`inline-flex rounded-md px-1.5 py-0.5 text-[9px] leading-none font-bold ${
+                      data?.batchCount > 0
+                        ? "bg-blue-600 text-white shadow-xs"
+                        : "border-transparent px-0 text-slate-400 font-semibold"
+                    }`}>
+                      {data?.batchCount > 0
+                        ? `${data.batchCount} ${data.batchCount === 1 ? "File Imported" : "Files Imported"}`
+                        : "—"}
+                    </div>
+
+                    {(data?.failedCount > 0 || data?.issueCount > 0 || data?.duplicateCount > 0) && (
+                      <span className="inline-flex items-center gap-1 rounded bg-amber-50 border border-amber-200/60 px-1.5 py-0.5 text-[8.5px] font-medium text-amber-700 sm:text-[9px]">
+                        <AlertCircle className="h-2.5 w-2.5 shrink-0 text-amber-600" />
+                        <span>
+                          {data.failedCount > 0
+                            ? `${data.failedCount} failed`
+                            : data.issueCount > 0
+                            ? `${data.issueCount} ${data.issueCount === 1 ? "issue" : "issues"}`
+                            : `${data.duplicateCount} dup`}
+                        </span>
+                      </span>
+                    )}
+                  </div>
+                </div>
               </button>
             ) : (
-              <div key={`empty-${index}`} className="h-full bg-slate-50/80" aria-hidden="true"/>
+              <div key={`empty-${index}`} className="h-full bg-slate-50/80" aria-hidden="true" />
             );
           })}
         </div>
       </div>
-      
     </div>
   );
 }
