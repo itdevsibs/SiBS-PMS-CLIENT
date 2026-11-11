@@ -1,665 +1,276 @@
-// Task-Order Ledger module for Workforce Management.
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+// Country-first Task Order management; ledger-backed options, audited transactions.
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  Check,
-  ChevronDown,
-  Loader2,
-  RefreshCw,
-  RotateCcw,
-  Search,
-  X,
-} from "lucide-react";
+  AlertCircle, ArrowRightLeft, ChevronDown, ChevronRight, ClipboardList, History,
+  Layers, Loader2, Pencil, Plus, RefreshCw, Search, ShieldCheck, X,
+} from 'lucide-react';
+import AdminSidebar from '@/components/common/layout/AdminSidebar';
+import AppHeader from '@/components/common/layout/AppHeader';
+import ConfirmationModal from '@/components/common/ui/ConfirmationModal';
+import LoadingModal from '@/components/common/ui/LoadingModal';
+import TablePagination from '@/components/common/tables/TablePagination';
+import useDashboardPage from '@/hooks/useDashboardPage';
+import { getUserAdminAccess } from '@/config/accessControl';
+import { getAuthDisplayName } from '@/lib/auth';
+import {
+  fetchTaskOrderManagement, fetchTaskOrderHistory, transferTaskOrderCountry, createTaskOrderCountry,
+  createTaskOrderSkill, updateTaskOrderSkill, createTaskOrderProfile,
+  updateTaskOrderProfile,
+} from '@/lib/axios/task-order-ledger';
+import TaskOrderEditDialog from '../../components/modules/taskorder-ledger/TaskOrderEditDialog';
 
-import AdminSidebar from "@/components/common/layout/AdminSidebar";
-import AppHeader from "@/components/common/layout/AppHeader";
-import ConfirmationModal from "@/components/common/ui/ConfirmationModal";
-import LoadingModal from "@/components/common/ui/LoadingModal";
-import TablePagination from "@/components/common/tables/TablePagination";
-import useDashboardPage from "@/hooks/useDashboardPage";
-import { getAuthDisplayName } from "@/lib/auth";
-import { fetchTaskOrderLedger } from "@/lib/axios/task-order-ledger";
-
-const TASK_ORDER_OPTIONS = [
-  "All Task Orders",
-  "GSS 2.0 TO10 - SEASIA",
-  "GSS 2.0 TO12 - NICE",
-  "GSS 2.0 TO14 - NESAMI",
-  "GSS 2.0 TO4 - PAC",
-  "GSS 2.0 TO16 - SEURECA",
+const TABS = [
+  { key: 'countries', title: 'Country Assignments', Icon: Layers },
+  { key: 'skills', title: 'Skills', Icon: ClipboardList },
+  { key: 'profiles', title: 'Task Orders', Icon: ShieldCheck },
+  { key: 'history', title: 'Change History', Icon: History },
 ];
+const PAGE_SIZE = 15;
+const control = 'h-9 rounded-lg border border-slate-200 bg-slate-50 px-3 text-xs font-semibold text-slate-700 outline-none transition hover:border-slate-300 focus:border-[#0b3b68]';
+const header = 'sticky top-0 z-10 bg-[#052e53] px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wide text-white';
+const cell = 'border-b border-slate-100 px-4 py-3 text-xs text-slate-700';
+const button = 'inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-bold text-[#0b3b68] transition hover:bg-blue-50';
+function formatHistoryDate(input, epochSeconds) {
+  if (!input && epochSeconds == null) return '—';
+  const parsed = epochSeconds != null ? new Date(Number(epochSeconds) * 1000) :
+    new Date(String(input).includes('T') ? input : `${String(input).replace(' ', 'T')}Z`);
+  if (Number.isNaN(parsed.getTime())) return String(input);
+  return new Intl.DateTimeFormat('en-PH', { timeZone: 'Asia/Manila', month: 'short', day: 'numeric', year: 'numeric',
+    hour: 'numeric', minute: '2-digit' }).format(parsed);
+}
+function parseSnapshot(value) {
+  if (value && typeof value === 'object') return value;
+  try { return JSON.parse(value || '{}'); } catch { return {}; }
+}
+function changeSummary(row) {
+  const before = parseSnapshot(row.previous_values);
+  const after = parseSnapshot(row.new_values);
+  if (row.change_type === 'COUNTRY_ADDED') return `New country assigned to ${after.taskOrderName || '—'} (${after.activeSkills || 0} initial Skills)`;
+  if (row.change_type === 'COUNTRY_TRANSFER') return `${(before.previousTaskOrders || []).join(' / ') || 'Conflicting / Unmapped'} → ${after.taskOrderName || '—'} (${after.affectedSkills || 0} Skills)`;
+  if (row.change_type === 'TASK_ORDER_UPDATED') {
+    const changes = Object.keys(after).filter((key) => String(before[key]) !== String(after[key]));
+    return changes.map((key) => `${key.replace(/_/g, ' ')}: ${String(before[key] ?? '—')} → ${String(after[key] ?? '—')}`).join(' · ') || 'Profile updated';
+  }
+  if (row.change_type === 'TASK_ORDER_ADDED') return `New profile: ${after.task_order_name || '—'}`;
+  return `${before.skill || '—'} (${before.status || '—'}) → ${after.skill || '—'} (${after.status || '—'})`;
+}
+function badge(text, tone = 'blue') {
+  const colors = { blue: 'border-blue-200 bg-blue-50 text-blue-700', green: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+    amber: 'border-amber-200 bg-amber-50 text-amber-700', grey: 'border-slate-200 bg-slate-100 text-slate-600',
+    red: 'border-rose-200 bg-rose-50 text-rose-700' };
+  return <span className={`inline-flex max-w-full rounded-lg border px-2 py-1 text-[10px] font-bold ${colors[tone]}`}>{text}</span>;
+}
+function StatCard({ label, value, Icon }) {
+  return <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-xs">
+    <div className="flex items-center justify-between text-[11px] font-semibold text-slate-500"><span>{label}</span><Icon size={16} className="text-slate-400"/></div>
+    <div className="mt-1 text-xl font-extrabold tabular-nums text-[#063b68]">{value}</div>
+  </div>;
+}
 
 export default function TaskOrderLedger() {
   const dashboard = useDashboardPage();
   const userName = dashboard.userName || getAuthDisplayName(dashboard.authUser);
+  const canEdit = [7, 9].includes(Number(getUserAdminAccess(dashboard.authUser)));
+  const [activeTab, setActiveTab] = useState('countries');
+  const [data, setData] = useState({ countries: [], skills: [], profiles: [] });
+  const [history, setHistory] = useState({ rows: [], total: 0, page: 1, pageSize: PAGE_SIZE });
+  const [loading, setLoading] = useState(true);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
+  const [search, setSearch] = useState('');
+  const [selectedProfile, setSelectedProfile] = useState('ALL');
+  const [selectedCountry, setSelectedCountry] = useState('ALL');
+  const [expanded, setExpanded] = useState({});
+  const [page, setPage] = useState(1);
+  const [historyPage, setHistoryPage] = useState(1);
+  const [action, setAction] = useState(null);
+  const [saveError, setSaveError] = useState('');
+  const [saving, setSaving] = useState(false);
 
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedTaskOrder, setSelectedTaskOrder] = useState("All Task Orders");
-  const [selectedCountry, setSelectedCountry] = useState("All Countries");
-  const [selectedSkill, setSelectedSkill] = useState("All Skills");
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [isCountryDropdownOpen, setIsCountryDropdownOpen] = useState(false);
-  const [isSkillDropdownOpen, setIsSkillDropdownOpen] = useState(false);
-  const [countrySearchTerm, setCountrySearchTerm] = useState("");
-  const [skillSearchTerm, setSkillSearchTerm] = useState("");
-  const [taskOrderAllRecords, setTaskOrderAllRecords] = useState([]);
-  const [records, setRecords] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [errorMsg, setErrorMsg] = useState("");
-  const dropdownRef = useRef(null);
-  const countryDropdownRef = useRef(null);
-  const skillDropdownRef = useRef(null);
-
-  // Close dropdowns when clicking outside
-  useEffect(() => {
-    function handleClickOutside(event) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        setIsDropdownOpen(false);
-      }
-      if (
-        countryDropdownRef.current &&
-        !countryDropdownRef.current.contains(event.target)
-      ) {
-        setIsCountryDropdownOpen(false);
-        setCountrySearchTerm("");
-      }
-      if (
-        skillDropdownRef.current &&
-        !skillDropdownRef.current.contains(event.target)
-      ) {
-        setIsSkillDropdownOpen(false);
-        setSkillSearchTerm("");
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+  const loadManagement = useCallback(async () => {
+    setLoading(true); setError('');
+    try {
+      const response = await fetchTaskOrderManagement();
+      if (!response?.success) throw new Error(response?.message || 'Unable to load Task Orders.');
+      setData(response.data || { countries: [], skills: [], profiles: [] });
+    } catch (err) { setError(err?.response?.data?.message || err?.message || 'Failed to load Task Order management.'); }
+    finally { setLoading(false); }
   }, []);
-
-  // Fetch full records for the selected Task Order to build available countries and skills
+  const loadHistory = useCallback(async (target = 1) => {
+    setHistoryLoading(true);
+    try {
+      const response = await fetchTaskOrderHistory(target);
+      if (!response?.success) throw new Error(response?.message || 'Unable to load history.');
+      setHistory(response.data || { rows: [], total: 0, page: target, pageSize: PAGE_SIZE });
+    } catch (err) { setError(err?.response?.data?.message || err?.message || 'Failed to load change history.'); }
+    finally { setHistoryLoading(false); }
+  }, []);
+  useEffect(() => { void loadManagement(); }, [loadManagement]);
+  useEffect(() => { if (activeTab === 'history') void loadHistory(historyPage); }, [activeTab, historyPage, loadHistory]);
+  useEffect(() => { setPage(1); }, [activeTab, search, selectedProfile, selectedCountry]);
+  const profiles = data.profiles || [];
+  const countries = data.countries || [];
+  const skills = data.skills || [];
+  // Country options follow the selected Task Order, using the current ledger assignment.
+  const countryNames = useMemo(() => [...new Set(countries
+    .filter((c) => selectedProfile === 'ALL' || String(c.profileId) === selectedProfile)
+    .map((c) => c.country)
+    .filter(Boolean))].sort((a, b) => a.localeCompare(b)), [countries, selectedProfile]);
+  // A transfer or refresh may move the selected country out of the active Task Order.
   useEffect(() => {
-    let isCancelled = false;
-
-    async function fetchOptionsForTaskOrder() {
-      try {
-        const response = await fetchTaskOrderLedger({
-          taskOrder:
-            selectedTaskOrder === "All Task Orders" ? null : selectedTaskOrder,
-        });
-
-        const data =
-          response?.data && Array.isArray(response.data)
-            ? response.data
-            : Array.isArray(response)
-            ? response
-            : [];
-
-        if (!isCancelled) {
-          setTaskOrderAllRecords(data);
-        }
-      } catch (err) {
-        console.error("Failed to fetch task order options:", err);
-      }
-    }
-
-    void fetchOptionsForTaskOrder();
-
-    return () => {
-      isCancelled = true;
-    };
-  }, [selectedTaskOrder]);
-
-  // Reset selected country & skill when Task Order changes
-  useEffect(() => {
-    setSelectedCountry("All Countries");
-    setSelectedSkill("All Skills");
-    setCountrySearchTerm("");
-    setSkillSearchTerm("");
-  }, [selectedTaskOrder]);
-
-  // Reset selected skill when Country changes
-  useEffect(() => {
-    setSelectedSkill("All Skills");
-    setSkillSearchTerm("");
-  }, [selectedCountry]);
-
-  // Unique country options derived from taskOrderAllRecords
-  const availableCountries = useMemo(() => {
-    const set = new Set();
-    taskOrderAllRecords.forEach((item) => {
-      const c = String(item.country || "").trim();
-      if (c) set.add(c);
+    if (selectedCountry !== 'ALL' && !countryNames.includes(selectedCountry)) setSelectedCountry('ALL');
+  }, [countryNames, selectedCountry]);
+  const filtered = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    if (activeTab === 'countries') return countries.filter((c) => {
+      return (selectedCountry === 'ALL' || c.country === selectedCountry) &&
+        (selectedProfile === 'ALL' || String(c.profileId) === selectedProfile) &&
+        (!query || [c.country, c.taskOrder, c.taskOrderCode, ...(c.aliases || []),
+          ...skills.filter((s) => c.skillIds?.includes(Number(s.id))).map((s) => s.skill)]
+          .some((x) => String(x || '').toLowerCase().includes(query)));
     });
-    return ["All Countries", ...Array.from(set).sort((a, b) => a.localeCompare(b))];
-  }, [taskOrderAllRecords]);
-
-  // Unique skill options derived from taskOrderAllRecords (filtered by selectedCountry if set)
-  const availableSkills = useMemo(() => {
-    const set = new Set();
-    taskOrderAllRecords.forEach((item) => {
-      if (
-        selectedCountry === "All Countries" ||
-        String(item.country || "").trim().toUpperCase() ===
-          selectedCountry.trim().toUpperCase()
-      ) {
-        const s = String(item.skill || "").trim();
-        if (s) set.add(s);
-      }
+    if (activeTab === 'skills') return skills.filter((s) => {
+      const owner = profiles.find((p) => Number(p.id) === Number(s.task_order_profile_id));
+      return (selectedCountry === 'ALL' || s.country === selectedCountry ||
+        countries.find((c) => c.country === selectedCountry)?.skillIds?.includes(Number(s.id))) &&
+        (selectedProfile === 'ALL' || String(s.task_order_profile_id) === selectedProfile) &&
+        (!query || [s.country, s.skill, owner?.task_order_name].some((x) => String(x || '').toLowerCase().includes(query)));
     });
-    return ["All Skills", ...Array.from(set).sort((a, b) => a.localeCompare(b))];
-  }, [taskOrderAllRecords, selectedCountry]);
-
-  // Filter countries based on user search in dropdown
-  const filteredCountryOptions = useMemo(() => {
-    const term = countrySearchTerm.trim().toLowerCase();
-    if (!term) return availableCountries;
-    return availableCountries.filter(
-      (opt) => opt === "All Countries" || opt.toLowerCase().includes(term),
-    );
-  }, [availableCountries, countrySearchTerm]);
-
-  // Filter skills based on user search in dropdown
-  const filteredSkillOptions = useMemo(() => {
-    const term = skillSearchTerm.trim().toLowerCase();
-    if (!term) return availableSkills;
-    return availableSkills.filter(
-      (opt) => opt === "All Skills" || opt.toLowerCase().includes(term),
-    );
-  }, [availableSkills, skillSearchTerm]);
-
-  // Fetch task order ledger data from API
-  const loadLedgerRecords = useCallback(
-    async (taskOrder, country, skill, search) => {
-      setIsLoading(true);
-      setErrorMsg("");
-
-      try {
-        const response = await fetchTaskOrderLedger({
-          taskOrder: taskOrder === "All Task Orders" ? null : taskOrder,
-          country: country === "All Countries" ? null : country,
-          skill: skill === "All Skills" ? null : skill,
-          search,
-        });
-
-        if (response?.data && Array.isArray(response.data)) {
-          setRecords(response.data);
-        } else if (Array.isArray(response)) {
-          setRecords(response);
-        } else {
-          setRecords([]);
-        }
-      } catch (err) {
-        console.error("Failed to load task order ledger records:", err);
-        setErrorMsg(
-          err?.response?.data?.message ||
-            err?.message ||
-            "Failed to load task order records.",
-        );
-        setRecords([]);
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    [],
-  );
-
-  // Trigger fetch whenever filter, country, skill, or search term changes
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      void loadLedgerRecords(
-        selectedTaskOrder,
-        selectedCountry,
-        selectedSkill,
-        searchTerm,
-      );
-    }, 250);
-
-    return () => clearTimeout(handler);
-  }, [
-    selectedTaskOrder,
-    selectedCountry,
-    selectedSkill,
-    searchTerm,
-    loadLedgerRecords,
-  ]);
-
-  // Pagination state (using reusable TablePagination component)
-  const PAGE_SIZE = 18;
-  const [currentPage, setCurrentPage] = useState(1);
-
-  // Reset to page 1 whenever filter or search term changes
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [selectedTaskOrder, selectedCountry, selectedSkill, searchTerm]);
-
-  const totalItems = records.length;
-  const totalPages = Math.max(1, Math.ceil(totalItems / PAGE_SIZE));
-
-  const paginatedRecords = useMemo(() => {
-    const startIndex = (currentPage - 1) * PAGE_SIZE;
-    return records.slice(startIndex, startIndex + PAGE_SIZE);
-  }, [records, currentPage, PAGE_SIZE]);
-
-  const handleReset = () => {
-    setSearchTerm("");
-    setSelectedTaskOrder("All Task Orders");
-    setSelectedCountry("All Countries");
-    setSelectedSkill("All Skills");
-    setCountrySearchTerm("");
-    setSkillSearchTerm("");
-    setIsDropdownOpen(false);
-    setIsCountryDropdownOpen(false);
-    setIsSkillDropdownOpen(false);
-    setCurrentPage(1);
+    if (activeTab === 'profiles') return profiles.filter((p) =>
+      (selectedProfile === 'ALL' || String(p.id) === selectedProfile) &&
+      (!query || [p.task_order_name, p.task_order_code, p.region, p.description]
+        .some((x) => String(x || '').toLowerCase().includes(query))));
+    return [];
+  }, [activeTab, search, selectedProfile, selectedCountry, countries, skills, profiles]);
+  const pages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const visible = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const open = (type, item = {}) => { setSaveError(''); setNotice(''); setAction({ type, item }); };
+  const close = () => { if (!saving) { setAction(null); setSaveError(''); } };
+  const save = async (current, payload) => {
+    setSaveError(''); setSaving(true);
+    try {
+      if (current.type === 'transfer') await transferTaskOrderCountry(payload);
+      else if (current.type === 'countryAdd') await createTaskOrderCountry(payload);
+      else if (current.type === 'skillAdd') await createTaskOrderSkill(payload);
+      else if (current.type === 'skillEdit') await updateTaskOrderSkill(current.item.id, payload);
+      else if (current.type === 'profileAdd') await createTaskOrderProfile(payload);
+      else if (current.type === 'profileEdit') await updateTaskOrderProfile(current.item.id, payload);
+      setAction(null);
+      setNotice('Changes saved successfully and recorded in Change History.');
+      await loadManagement();
+      if (activeTab === 'history') await loadHistory(historyPage);
+    } catch (err) { setSaveError(err?.response?.data?.message || err?.message || 'Unable to save changes.'); }
+    finally { setSaving(false); }
   };
+  const reset = () => { setSearch(''); setSelectedProfile('ALL'); setSelectedCountry('ALL'); setPage(1); };
+  const headerTitle = activeTab === 'countries' ? ['Country', 'Current Task Order', 'Active Skills', 'Status', 'Action'] :
+    activeTab === 'skills' ? ['Country', 'Skill', 'Task Order', 'Status', 'Action'] :
+    ['Task Order', 'Code', 'Assigned Countries', 'Status', 'Action'];
 
-  return (
-    <section className="font-jakarta flex h-screen max-h-[100dvh] min-h-screen bg-[#eef3f7] text-sibs-primary-1 overflow-hidden">
-      <AdminSidebar
-        isMobileOpen={dashboard.isMobileSidebarOpen}
-        modules={dashboard.modules}
-        onLogoutClick={() => dashboard.setShowLogoutModal(true)}
-        onMobileClose={() => dashboard.setIsMobileSidebarOpen(false)}
-        userName={userName}
-        userRole={
-          dashboard.authUser?.email ||
-          dashboard.authUser?.roleLabel ||
-          "Workforce Management"
-        }
-      />
-
-      <div className="flex flex-1 flex-col min-w-0 overflow-hidden">
-        <AppHeader
-          title={
-            <>
-              <span className="sm:hidden">Task-Order Ledger</span>
-              <span className="hidden sm:inline">
-                Task-Order Ledger
-              </span>
-            </>
-          }
-          subtitle="Workforce Management System"
-          userName={userName}
-          onMenuClick={() => dashboard.setIsMobileSidebarOpen(true)}
-          onLogoutClick={() => dashboard.setShowLogoutModal(true)}
-        />
-
-        <main className="flex flex-1 min-h-0 flex-col gap-2.5 sm:gap-3 overflow-hidden px-2 sm:px-4 lg:px-5 pt-2 sm:pt-3 pb-2">
-          {/* ── Toolbar ────────────────────────────────────────────── */}
-          <div className="shrink-0 flex flex-col xl:flex-row xl:items-center gap-2.5 sm:gap-3 rounded-xl border border-slate-200 bg-white p-2.5 sm:p-3 shadow-xs">
-            {/* Task Order select + Country select + Skill select + Reset (Left) */}
-            <div className="flex flex-wrap items-center gap-2 shrink-0 w-full xl:w-auto">
-              {/* Task Order Dropdown */}
-              <div className="relative flex-1 min-w-[140px] sm:min-w-0 sm:w-44 md:w-48 lg:w-52 sm:flex-none" ref={dropdownRef}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsDropdownOpen((prev) => !prev);
-                    setIsCountryDropdownOpen(false);
-                    setIsSkillDropdownOpen(false);
-                  }}
-                  title="Click to select task order"
-                  className="flex h-9 w-full sm:w-44 md:w-48 lg:w-52 cursor-pointer items-center justify-between gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 text-xs font-semibold text-slate-800 transition hover:border-slate-300 hover:bg-slate-100 focus:border-[#0b3b68] focus:outline-none"
-                >
-                  <span className="truncate">{selectedTaskOrder}</span>
-                  <ChevronDown
-                    className={`h-3.5 w-3.5 text-slate-400 transition-transform ${
-                      isDropdownOpen ? "rotate-180" : ""
-                    }`}
-                  />
-                </button>
-
-                {/* Dropdown Menu */}
-                {isDropdownOpen && (
-                  <div className="absolute left-0 top-full z-50 mt-1 max-h-96 w-full sm:w-60 md:w-64 max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-lg shadow-slate-900/10">
-                    <div className="overflow-y-auto max-h-72 sibs-scrollbar">
-                      {TASK_ORDER_OPTIONS.map((option) => {
-                        const isSelected = selectedTaskOrder === option;
-                        return (
-                          <button
-                            key={option}
-                            type="button"
-                            onClick={() => {
-                              setSelectedTaskOrder(option);
-                              setIsDropdownOpen(false);
-                            }}
-                            className={`flex w-full cursor-pointer items-center justify-between px-3 py-2 text-xs text-left transition ${
-                              isSelected
-                                ? "bg-sky-50 font-bold text-[#0b3b68]"
-                                : "text-slate-700 hover:bg-slate-50 hover:text-slate-900"
-                            }`}
-                          >
-                            <span className="truncate">{option}</span>
-                            {isSelected && (
-                              <Check className="h-3.5 w-3.5 text-[#0b3b68]" />
-                            )}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Country Dropdown (Between All Task Orders and All Skills) */}
-              <div className="relative flex-1 min-w-[130px] sm:min-w-0 sm:w-40 md:w-44 lg:w-48 sm:flex-none" ref={countryDropdownRef}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsCountryDropdownOpen((prev) => !prev);
-                    setIsDropdownOpen(false);
-                    setIsSkillDropdownOpen(false);
-                  }}
-                  title="Click to select country"
-                  className="flex h-9 w-full sm:w-40 md:w-44 lg:w-48 cursor-pointer items-center justify-between gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 text-xs font-semibold text-slate-800 transition hover:border-slate-300 hover:bg-slate-100 focus:border-[#0b3b68] focus:outline-none"
-                >
-                  <span className="truncate">{selectedCountry}</span>
-                  <ChevronDown
-                    className={`h-3.5 w-3.5 text-slate-400 transition-transform ${
-                      isCountryDropdownOpen ? "rotate-180" : ""
-                    }`}
-                  />
-                </button>
-
-                {/* Country Dropdown Menu with Search */}
-                {isCountryDropdownOpen && (
-                  <div className="absolute left-0 top-full z-50 mt-1 max-h-96 w-full sm:w-60 md:w-64 max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-lg shadow-slate-900/10">
-                    <div className="border-b border-slate-100 p-1.5">
-                      <div className="relative">
-                        <Search className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 h-3 w-3 text-slate-400" />
-                        <input
-                          type="text"
-                          value={countrySearchTerm}
-                          onChange={(e) => setCountrySearchTerm(e.target.value)}
-                          placeholder="Search countries…"
-                          className="h-7.5 w-full rounded-md border border-slate-200 bg-slate-50 pl-7 pr-7 text-xs text-slate-800 placeholder:text-slate-400 focus:border-[#0b3b68] focus:bg-white focus:outline-none"
-                        />
-                        {countrySearchTerm && (
-                          <button
-                            type="button"
-                            onClick={() => setCountrySearchTerm("")}
-                            className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
-                          >
-                            <X className="h-2.5 w-2.5" />
-                          </button>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="overflow-y-auto max-h-72 sibs-scrollbar">
-                      {filteredCountryOptions.length === 0 ? (
-                        <div className="px-3 py-4 text-center text-xs text-slate-400">
-                          No matching countries found
-                        </div>
-                      ) : (
-                        filteredCountryOptions.map((option) => {
-                          const isSelected = selectedCountry === option;
-                          return (
-                            <button
-                              key={option}
-                              type="button"
-                              onClick={() => {
-                                setSelectedCountry(option);
-                                setIsCountryDropdownOpen(false);
-                                setCountrySearchTerm("");
-                              }}
-                              className={`flex w-full cursor-pointer items-center justify-between px-3 py-2 text-xs text-left transition ${
-                                isSelected
-                                  ? "bg-sky-50 font-bold text-[#0b3b68]"
-                                  : "text-slate-700 hover:bg-slate-50 hover:text-slate-900"
-                              }`}
-                            >
-                              <span className="truncate">{option}</span>
-                              {isSelected && (
-                                <Check className="h-3.5 w-3.5 text-[#0b3b68]" />
-                              )}
-                            </button>
-                          );
-                        })
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Skill Dropdown */}
-              <div className="relative flex-1 min-w-[140px] sm:min-w-0 sm:w-44 md:w-48 lg:w-52 sm:flex-none" ref={skillDropdownRef}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsSkillDropdownOpen((prev) => !prev);
-                    setIsDropdownOpen(false);
-                    setIsCountryDropdownOpen(false);
-                  }}
-                  title="Click to select skill"
-                  className="flex h-9 w-full sm:w-44 md:w-48 lg:w-52 cursor-pointer items-center justify-between gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 text-xs font-semibold text-slate-800 transition hover:border-slate-300 hover:bg-slate-100 focus:border-[#0b3b68] focus:outline-none"
-                >
-                  <span className="truncate">{selectedSkill}</span>
-                  <ChevronDown
-                    className={`h-3.5 w-3.5 text-slate-400 transition-transform ${
-                      isSkillDropdownOpen ? "rotate-180" : ""
-                    }`}
-                  />
-                </button>
-
-                {/* Skill Dropdown Menu with Search */}
-                {isSkillDropdownOpen && (
-                  <div className="absolute left-0 sm:left-auto sm:right-0 xl:left-0 z-50 mt-1 max-h-96 w-full sm:w-64 md:w-72 max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-lg shadow-slate-900/10">
-                    <div className="border-b border-slate-100 p-1.5">
-                      <div className="relative">
-                        <Search className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 h-3 w-3 text-slate-400" />
-                        <input
-                          type="text"
-                          value={skillSearchTerm}
-                          onChange={(e) => setSkillSearchTerm(e.target.value)}
-                          placeholder="Search skills…"
-                          className="h-7.5 w-full rounded-md border border-slate-200 bg-slate-50 pl-7 pr-7 text-xs text-slate-800 placeholder:text-slate-400 focus:border-[#0b3b68] focus:bg-white focus:outline-none"
-                        />
-                        {skillSearchTerm && (
-                          <button
-                            type="button"
-                            onClick={() => setSkillSearchTerm("")}
-                            className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
-                          >
-                            <X className="h-2.5 w-2.5" />
-                          </button>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="overflow-y-auto max-h-72 sibs-scrollbar">
-                      {filteredSkillOptions.length === 0 ? (
-                        <div className="px-3 py-4 text-center text-xs text-slate-400">
-                          No matching skills found
-                        </div>
-                      ) : (
-                        filteredSkillOptions.map((option) => {
-                          const isSelected = selectedSkill === option;
-                          return (
-                            <button
-                              key={option}
-                              type="button"
-                              onClick={() => {
-                                setSelectedSkill(option);
-                                setIsSkillDropdownOpen(false);
-                                setSkillSearchTerm("");
-                              }}
-                              className={`flex w-full cursor-pointer items-center justify-between px-3 py-2 text-xs text-left transition ${
-                                isSelected
-                                  ? "bg-sky-50 font-bold text-[#0b3b68]"
-                                  : "text-slate-700 hover:bg-slate-50 hover:text-slate-900"
-                              }`}
-                            >
-                              <span className="truncate">{option}</span>
-                              {isSelected && (
-                                <Check className="h-3.5 w-3.5 text-[#0b3b68]" />
-                              )}
-                            </button>
-                          );
-                        })
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <button
-                type="button"
-                onClick={handleReset}
-                className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-3 text-xs font-medium text-slate-600 hover:bg-slate-100 transition cursor-pointer shrink-0"
-              >
-                <RotateCcw className="h-3.5 w-3.5 text-slate-400" />
-                Reset
-              </button>
-
-              <button
-                type="button"
-                onClick={() => loadLedgerRecords(selectedTaskOrder, selectedCountry, selectedSkill, searchTerm)}
-                disabled={isLoading}
-                title="Refresh task order records"
-                className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-[#042c51] bg-[#042c51] px-3 text-xs font-bold text-white shadow-2xs transition hover:bg-[#063d70] hover:border-[#063d70] disabled:cursor-not-allowed disabled:opacity-50 shrink-0"
-              >
-                <RefreshCw
-                  size={12}
-                  className={`shrink-0 ${isLoading ? "animate-spin text-white" : ""}`}
-                />
-                <span>Refresh</span>
-              </button>
-            </div>
-
-            {/* Search (Middle/Right) */}
-            <div className="relative flex-1 w-full min-w-0 sm:min-w-[200px]">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
-              <input
-                type="text"
-                placeholder="Search by skill, country, or task order…"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="h-9 w-full rounded-lg border border-slate-200 bg-slate-50 pl-9 pr-8 text-xs text-slate-800 placeholder:text-slate-400 focus:border-[#0b3b68] focus:bg-white focus:ring-2 focus:ring-[#0b3b68]/10 focus:outline-none transition"
-              />
-              {searchTerm && (
-                <button
-                  type="button"
-                  onClick={() => setSearchTerm("")}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
-                >
-                  <X className="h-3 w-3" />
-                </button>
-              )}
-            </div>
-          </div>
-
-          {/* ── Table Card ─────────────────────────────────────────── */}
-          <div className="flex-1 min-h-0 flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs">
-            {/* Table wrapper without slider/scrollbar */}
-            <div
-              className="flex-1 min-h-0 overflow-x-auto overflow-y-auto scroll-smooth sibs-scrollbar"
-              style={{ WebkitOverflowScrolling: "touch" }}
-            >
-              <table className="w-full min-w-[560px] table-fixed text-left text-xs border-collapse">
-                <colgroup>
-                  <col style={{ width: "28%" }} />
-                  <col style={{ width: "42%" }} />
-                  <col style={{ width: "30%" }} />
-                </colgroup>
-                {/* ── Table head ──────────────────────────────────── */}
-                <thead className="sticky top-0 z-10 border-b border-[#0d3b66] bg-[#042c51] text-white shadow-xs">
-                  <tr>
-                    <th className="px-3.5 sm:px-6 py-2.5 text-xs font-bold uppercase tracking-wider text-white whitespace-nowrap overflow-hidden">
-                      COUNTRY
-                    </th>
-                    <th className="px-3.5 sm:px-6 py-2.5 text-xs font-bold uppercase tracking-wider text-white whitespace-nowrap overflow-hidden">
-                      SKILLS
-                    </th>
-                    <th className="px-3.5 sm:px-6 py-2.5 text-xs font-bold uppercase tracking-wider text-white whitespace-nowrap overflow-hidden">
-                      TASK ORDER
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 text-xs font-medium text-slate-700">
-                  {isLoading ? (
-                    Array.from({ length: 12 }).map((_, i) => (
-                      <tr key={`task-order-skeleton-${i}`} className="animate-pulse">
-                        <td className="px-3.5 sm:px-6 py-3">
-                          <div className="h-4 w-28 sm:w-36 rounded-md bg-slate-200" />
-                        </td>
-                        <td className="px-3.5 sm:px-6 py-3">
-                          <div className="h-4 w-48 sm:w-64 rounded-md bg-slate-200" />
-                        </td>
-                        <td className="px-3.5 sm:px-6 py-3">
-                          <div className="h-5 w-36 sm:w-44 rounded-lg bg-slate-200" />
-                        </td>
-                      </tr>
-                    ))
-                  ) : errorMsg ? (
-                    <tr>
-                      <td colSpan={3} className="py-16 text-center text-xs text-rose-500 font-semibold">
-                        {errorMsg}
-                      </td>
+  return <section className="font-jakarta flex h-screen max-h-[100dvh] min-h-screen overflow-hidden bg-[#eef3f7] text-sibs-primary-1">
+    <AdminSidebar isMobileOpen={dashboard.isMobileSidebarOpen} modules={dashboard.modules}
+      onLogoutClick={() => dashboard.setShowLogoutModal(true)} onMobileClose={() => dashboard.setIsMobileSidebarOpen(false)}
+      userName={userName} userRole={dashboard.authUser?.email || dashboard.authUser?.roleLabel || 'Workforce Management'}/>
+    <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+      <AppHeader title="Task Order Management" subtitle="Workforce Management System" userName={userName}
+        onMenuClick={() => dashboard.setIsMobileSidebarOpen(true)} onLogoutClick={() => dashboard.setShowLogoutModal(true)}/>
+      <main className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden p-2.5 sm:p-4 lg:p-5">
+        <div className="shrink-0 flex flex-wrap items-start justify-between gap-2">
+          <div><h1 className="text-base font-extrabold text-[#052e53]">Task Order Management</h1>
+            <p className="text-xs text-slate-500">Country ownership, Skills, Task Order profiles, and change history</p></div>
+          <button type="button" onClick={() => { void loadManagement(); if (activeTab === 'history') void loadHistory(historyPage); }}
+            className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-[#0b3b68] shadow-xs hover:bg-slate-50"><RefreshCw size={14}/> Refresh</button>
+        </div>
+        <div className="grid shrink-0 grid-cols-3 gap-2 sm:gap-3">
+          <StatCard label="Task Orders" value={profiles.filter((p) => Number(p.is_active) === 1).length} Icon={ShieldCheck}/>
+          <StatCard label="Countries" value={countries.length} Icon={Layers}/>
+          <StatCard label="Skill Mappings" value={skills.length} Icon={ClipboardList}/>
+        </div>
+        <div className="shrink-0 flex gap-1 overflow-x-auto rounded-xl border border-slate-200 bg-white p-1 shadow-xs">
+          {TABS.map(({ key, title, Icon }) => <button type="button" key={key}
+            onClick={() => { setActiveTab(key); setError(''); }} className={`flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-2 text-[11px] font-bold transition sm:text-xs ${activeTab === key ? 'bg-[#052e53] text-white' : 'text-slate-600 hover:bg-slate-50'}`}>
+            <Icon size={14}/>{title}</button>)}
+        </div>
+        {notice && <div role="status" className="shrink-0 flex items-center justify-between rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-800">
+          {notice}<button type="button" onClick={() => setNotice('')} aria-label="Dismiss message"><X size={14}/></button></div>}
+        {error && <div role="alert" className="shrink-0 flex gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-800"><AlertCircle size={15}/>{error}</div>}
+        <div className="shrink-0 flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-white p-3 shadow-xs">
+          {activeTab !== 'history' && <>
+            <select value={selectedProfile} onChange={(e) => { setSelectedProfile(e.target.value); setSelectedCountry('ALL'); }} className={`${control} max-w-full flex-1 sm:flex-none sm:w-56`} aria-label="Filter Task Order">
+              <option value="ALL">All Task Orders</option>{profiles.map((p) => <option key={p.id} value={p.id}>{p.task_order_name}</option>)}
+            </select>
+            {activeTab !== 'profiles' && <select value={selectedCountry} onChange={(e) => setSelectedCountry(e.target.value)} className={`${control} max-w-full flex-1 sm:flex-none sm:w-48`} aria-label="Filter country">
+              <option value="ALL">All Countries</option>{countryNames.map((c) => <option key={c} value={c}>{c}</option>)}
+            </select>}
+            <div className="relative min-w-[180px] flex-1"><Search size={15} className="pointer-events-none absolute left-3 top-2.5 text-slate-400"/>
+              <input className={`${control} w-full pl-9 font-medium`} value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search country, Skill, Task Order..."/></div>
+            <button type="button" onClick={reset} className={button}>Reset</button>
+            {canEdit && activeTab === 'countries' && <button type="button" onClick={() => open('countryAdd')} className="flex items-center gap-1 rounded-lg bg-[#073b67] px-3 py-2 text-xs font-bold text-white hover:bg-[#082c4c]"><Plus size={14}/> Add Country</button>}
+            {canEdit && activeTab === 'skills' && <button type="button" onClick={() => open('skillAdd', { country: selectedCountry !== 'ALL' ? selectedCountry : '' })} className="flex items-center gap-1 rounded-lg bg-[#073b67] px-3 py-2 text-xs font-bold text-white hover:bg-[#082c4c]"><Plus size={14}/> Add Skill</button>}
+            {canEdit && activeTab === 'profiles' && <button type="button" onClick={() => open('profileAdd')} className="flex items-center gap-1 rounded-lg bg-[#073b67] px-3 py-2 text-xs font-bold text-white hover:bg-[#082c4c]"><Plus size={14}/> Add Task Order</button>}
+          </>}
+          {activeTab === 'history' && <div className="text-xs text-slate-500">Immutable audit trail of country transfers, Skill changes, and Task Order edits. Time displayed in Philippine time.</div>}
+        </div>
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs">
+          <div className="min-h-0 flex-1 overflow-auto sibs-scrollbar">
+            {activeTab === 'history' ? <table className="w-full min-w-[820px] border-collapse text-left"><thead><tr>
+              {['Date / Time', 'Change', 'Country / Skill', 'Previous → New', 'Changed By', 'Reason'].map((h) => <th key={h} className={header}>{h}</th>)}
+              </tr></thead><tbody>{historyLoading ? <tr><td className={`${cell} py-16 text-center`} colSpan={6}><Loader2 size={20} className="mx-auto animate-spin"/></td></tr> :
+              history.rows.length === 0 ? <tr><td className={`${cell} py-16 text-center text-slate-400`} colSpan={6}>No changes recorded yet.</td></tr> :
+              history.rows.map((row) => <tr key={row.id} className="hover:bg-slate-50">
+                <td className={`${cell} whitespace-nowrap`}>{formatHistoryDate(row.changed_at, row.changed_at_epoch)}<div className="text-[10px] text-slate-400">GMT+8</div></td>
+                <td className={cell}>{badge(String(row.change_type || '').replace(/_/g, ' '), 'blue')}</td>
+                <td className={cell}><span className="font-semibold">{row.country || 'Task Order profile'}</span><div className="max-w-40 truncate text-[10px] text-slate-500" title={row.skill || ''}>{row.skill || '—'}</div></td>
+                <td className={cell}><div className="max-w-64 whitespace-normal break-words text-[11px]">{changeSummary(row)}</div>
+                  {row.business_effective_date && <div className="mt-1 text-[10px] text-slate-500">Reference date: {String(row.business_effective_date).slice(0, 10)}</div>}
+                </td><td className={cell}>{row.changed_by}</td><td className={`${cell} max-w-64 whitespace-normal break-words`} title={row.reason}>{row.reason}</td>
+              </tr>)}</tbody></table> : <table className="w-full min-w-[680px] border-collapse text-left"><thead><tr>
+                {headerTitle.map((h) => <th key={h} className={header}>{h}</th>)}
+              </tr></thead><tbody>
+                {loading ? <tr><td colSpan={5} className={`${cell} py-16 text-center`}><Loader2 className="mx-auto animate-spin"/></td></tr> :
+                  visible.length === 0 ? <tr><td colSpan={5} className={`${cell} py-16 text-center text-slate-400`}>No records found for the selected filters.</td></tr> :
+                  activeTab === 'countries' ? visible.map((c) => <Fragment key={c.key}>
+                    <tr key={c.key} className="hover:bg-slate-50">
+                      <td className={cell}><button type="button" onClick={() => setExpanded((old) => ({ ...old, [c.key]: !old[c.key] }))} className="flex items-center gap-2 text-left font-extrabold text-[#073b67]">
+                        {expanded[c.key] ? <ChevronDown size={14}/> : <ChevronRight size={14}/>}{c.country}</button>
+                        {c.aliases?.length > 1 && <span className="ml-5 text-[10px] text-slate-400">{c.aliases.length} country labels</span>}</td>
+                      <td className={cell}>{c.taskOrder ? badge(c.taskOrder) : badge('Unmapped', 'red')}</td>
+                      <td className={`${cell} tabular-nums`}>{c.activeSkills} <span className="text-slate-400">/ {c.totalSkills} total</span></td>
+                      <td className={cell}>{badge(c.status === 'ACTIVE' ? 'Mapped' : c.status === 'CONFLICT' ? 'Conflicting' : c.status.replace(/_/g, ' '), c.status === 'ACTIVE' ? 'green' : 'red')}</td>
+                      <td className={cell}>{canEdit && c.activeSkills > 0 && <button type="button" className={button} onClick={() => open('transfer', c)}><ArrowRightLeft size={13}/> Transfer</button>}</td>
                     </tr>
-                  ) : records.length === 0 ? (
-                    <tr>
-                      <td
-                        colSpan={3}
-                        className="py-20 text-center text-xs font-semibold text-slate-400"
-                      >
-                        No task order records found for the selected filter.
-                      </td>
-                    </tr>
-                  ) : (
-                    paginatedRecords.map((item, idx) => (
-                      <tr
-                        key={item.id || idx}
-                        className="hover:bg-slate-50/70 transition-colors"
-                      >
-                        <td className="px-3.5 sm:px-6 py-1.5 sm:py-2 text-slate-900 font-semibold truncate" title={item.country}>
-                          {item.country}
-                        </td>
-                        <td className="px-3.5 sm:px-6 py-1.5 sm:py-2 text-slate-700 font-medium truncate" title={item.skill}>
-                          {item.skill}
-                        </td>
-                        <td className="px-3.5 sm:px-6 py-1.5 sm:py-2">
-                          <span className="inline-flex items-center rounded-lg border border-blue-200 bg-blue-50 px-2 sm:px-2.5 py-0.5 text-[10px] sm:text-[10.5px] font-bold text-blue-700 whitespace-nowrap">
-                            {item.task_order || "GSS 2.0 TO10 - SEASIA"}
-                          </span>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Reusable Clean Table Pagination Footer */}
-            {!isLoading && !errorMsg && totalItems > 0 && (
-              <TablePagination
-                currentPage={currentPage}
-                totalPages={totalPages}
-                totalItems={totalItems}
-                pageSize={PAGE_SIZE}
-                onPageChange={setCurrentPage}
-                itemLabel="records"
-                className="shrink-0"
-              />
-            )}
+                    {expanded[c.key] && <tr key={`${c.key}-skills`}><td colSpan={5} className="border-b border-slate-100 bg-slate-50 px-6 py-3">
+                      <div className="mb-2 text-[11px] font-bold text-slate-600">Associated Skills</div>
+                      <div className="grid gap-1 sm:grid-cols-2 xl:grid-cols-3">{skills.filter((s) => c.skillIds.includes(Number(s.id))).map((s) =>
+                        <div key={s.id} className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-[11px] text-slate-700">{s.skill} <span className="ml-1 text-slate-400">({s.status})</span></div>)}</div>
+                    </td></tr>}
+                  </Fragment>) : activeTab === 'skills' ? visible.map((s) => <tr key={s.id} className="hover:bg-slate-50">
+                    <td className={`${cell} font-bold text-slate-900`}>{s.country}</td><td className={`${cell} max-w-md break-words`}>{s.skill}</td>
+                    <td className={cell}>{s.task_order ? badge(s.task_order) : badge('Unmapped', 'red')}</td>
+                    <td className={cell}>{badge(s.status, String(s.status).toUpperCase() === 'ACTIVE' ? 'green' : 'grey')}</td>
+                    <td className={cell}>{canEdit && <button type="button" className={button} onClick={() => open('skillEdit', s)}><Pencil size={13}/> Edit</button>}</td>
+                  </tr>) : visible.map((p) => <tr key={p.id} className="hover:bg-slate-50">
+                    <td className={`${cell} font-extrabold text-[#073b67]`}>{p.task_order_name}<div className="mt-0.5 text-[10px] font-normal text-slate-400">{p.region}</div></td>
+                    <td className={`${cell} text-[11px]`}>{p.task_order_code}</td>
+                    <td className={`${cell} tabular-nums`}>{countries.filter((c) => Number(c.profileId) === Number(p.id)).length}</td>
+                    <td className={cell}>{badge(Number(p.is_active) === 1 ? 'Active' : 'Inactive', Number(p.is_active) === 1 ? 'green' : 'grey')}</td>
+                    <td className={cell}>{canEdit && <button type="button" className={button} onClick={() => open('profileEdit', p)}><Pencil size={13}/> Edit</button>}</td>
+                  </tr>)}
+              </tbody></table>}
           </div>
-        </main>
-      </div>
-
-      <ConfirmationModal
-        isOpen={dashboard.showLogoutModal}
-        title="Confirm logout"
-        message="Are you sure you want to logout?"
-        cancelText="Cancel"
-        confirmText="Logout"
-        onCancel={() => dashboard.setShowLogoutModal(false)}
-        onConfirm={dashboard.handleLogout}
-        tone="neutral"
-      />
-
-      <LoadingModal
-        isOpen={dashboard.isLoggingOut}
-        title="Logging out"
-        message="Please wait while we end your session."
-      />
-    </section>
-  );
+          <div className="shrink-0 border-t border-slate-100 bg-white">
+            {activeTab === 'history' ? <TablePagination currentPage={historyPage} totalPages={Math.max(1, Math.ceil(history.total / PAGE_SIZE))}
+              totalItems={history.total} pageSize={PAGE_SIZE} onPageChange={setHistoryPage} itemLabel="changes"/>
+              : <TablePagination currentPage={page} totalPages={pages} totalItems={filtered.length} pageSize={PAGE_SIZE}
+                onPageChange={setPage} itemLabel="records"/>}
+          </div>
+        </div>
+      </main>
+    </div>
+    <TaskOrderEditDialog action={action} profiles={profiles} countries={countries} onClose={close} onSave={save} saving={saving} error={saveError}/>
+    <ConfirmationModal isOpen={dashboard.showLogoutModal} title="Confirm logout" message="Are you sure you want to logout?"
+      cancelText="Cancel" confirmText="Logout" onCancel={() => dashboard.setShowLogoutModal(false)} onConfirm={dashboard.handleLogout} tone="neutral"/>
+    <LoadingModal isOpen={dashboard.isLoggingOut} title="Logging out" message="Please wait while we end your session."/>
+  </section>;
 }
