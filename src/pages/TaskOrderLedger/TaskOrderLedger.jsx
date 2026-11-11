@@ -17,7 +17,7 @@ import {
   createTaskOrderSkill, updateTaskOrderSkill, createTaskOrderProfile,
   updateTaskOrderProfile,
 } from '@/lib/axios/task-order-ledger';
-import TaskOrderEditDialog from '../../components/modules/taskorder-ledger/TaskOrderEditDialog';
+import TaskOrderEditDialog from '@/components/modules/taskorder-ledger/TaskOrderEditDialog';
 
 const TABS = [
   { key: 'countries', title: 'Country Assignments', Icon: Layers },
