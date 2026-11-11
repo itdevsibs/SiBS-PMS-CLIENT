@@ -113,7 +113,7 @@ const PERMISSION_RULES = Object.freeze({
     access: [ACCESS.WFM],
   },
   [PERMISSIONS.WFM_TASK_ORDER_LEDGER]: {
-    access: [ACCESS.WFM],
+    access: [ACCESS.WFM, ACCESS.SUPER_ADMIN],
   },
   [PERMISSIONS.WFM_STAFFING_CALENDAR]: {
     access: [ACCESS.WFM, ACCESS.SUPER_ADMIN, ACCESS.BOD, ACCESS.OM, ACCESS.SOM],
@@ -258,7 +258,7 @@ export const DASHBOARD_MODULES = Object.freeze([
       },
       {
         key: "task-order-ledger",
-        name: "Task-Order Ledger",
+        name: "Task Order Management",
         iconKey: "award",
         path: "/task-order-ledger",
         permission: PERMISSIONS.WFM_TASK_ORDER_LEDGER,

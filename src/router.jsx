@@ -19,7 +19,7 @@ import FrontStepsDashboard from "./pages/frontSteps/FrontStepsDashboard";
 import Login from "./pages/login/Login";
 import OccupancyPage from "./pages/occupancy/OccupancyPage";
 import OperationsManagementPage from "./pages/operationsManager/OperationsManagementPage";
-import TaskOrderLedger from "./pages/TaskOrderLedger/TaskOrderLedger";
+import TaskOrderLedger from "./pages/taskOrderLedger/TaskOrderLedger";
 import StaffingRequirementsPage from "./pages/workForceManagement/StaffingRequirementsPage";
 import TeamLeaderPage from "./pages/teamLeader/TeamLeaderPage";
 import WfmHistoryLogs from "./pages/workForceManagement/WfmHistoryLogs";

@@ -82,7 +82,7 @@ const accountRawDataCards = {
       importProfileCode: "HERODASH_CALL_REPORT_EOD",
       fileExtension: ".xlsx",
       acceptedFileTypes: ".xlsx",
-      requiresTaskOrderSelection: true,
+      requiresTaskOrderSelection: false,
     },
     {
       id: "chat-report-eod-fusecom",
@@ -123,7 +123,7 @@ const accountRawDataCards = {
       importProfileCode: "HERODASH_CHAT_REPORT_EOD",
       fileExtension: ".xlsx",
       acceptedFileTypes: ".xlsx",
-      requiresTaskOrderSelection: true,
+      requiresTaskOrderSelection: false,
     },
     {
       id: "agent-occupancy-fusecom",

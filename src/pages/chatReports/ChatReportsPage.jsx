@@ -9,10 +9,8 @@ import useDashboardPage from "@/hooks/useDashboardPage";
 import { getChatReport, getCallSkills } from "@/lib/axios/kpis";
 import {
   SOURCE_OPTIONS as KPI_SOURCE_OPTIONS,
-  SKILLS_BY_COUNTRY,
-  getTaskOrderOptions,
-  getCountryOptions,
-  getSkillOptions,
+  GENERIC_SKILL_OPTIONS,
+  getSkillsForCountries,
 } from "@/config/kpiFiltersConfig";
 import {
   AlertCircle,
@@ -71,7 +69,9 @@ export default function ChatReportsPage() {
   const [selectedTaskOrders, setSelectedTaskOrders] = useState([]); // Empty means all task orders
   const [selectedCountries, setSelectedCountries] = useState([]);
   const [selectedSkills, setSelectedSkills] = useState([]); // Empty means all skills
-  const [skillsByCountry, setSkillsByCountry] = useState(SKILLS_BY_COUNTRY);
+  const [skillsByCountry, setSkillsByCountry] = useState({});
+  const [countryScopes, setCountryScopes] = useState({});
+  const [liveTaskOrders, setLiveTaskOrders] = useState([]);
 
   const fetchReport = async () => {
     setIsLoading(true);
@@ -104,20 +104,11 @@ export default function ChatReportsPage() {
     getCallSkills()
       .then((res) => {
         if (!isMounted || !res?.data) return;
-        setSkillsByCountry((prev) => {
-          const merged = { ...prev };
-          for (const [country, skills] of Object.entries(res.data)) {
-            const current = [...(merged[country] || [])];
-            for (const skill of skills || []) {
-              const key = String(skill).toLowerCase().replace(/[^a-z0-9]/g, "");
-              if (!current.some((item) => String(item).toLowerCase().replace(/[^a-z0-9]/g, "") === key)) {
-                current.push(skill);
-              }
-            }
-            merged[country] = current;
-          }
-          return merged;
-        });
+        // Chat uses source Skill names, but current country ownership comes
+        // exclusively from the active Task Order Ledger.
+        setSkillsByCountry(res.chatSkillsByCountry || res.data || {});
+        setCountryScopes(res.chatCountryScopes || {});
+        setLiveTaskOrders(Array.isArray(res.taskOrders) ? res.taskOrders : []);
       })
       .catch((err) => console.warn("Could not load dynamic source skills:", err?.message));
 
@@ -128,25 +119,33 @@ export default function ChatReportsPage() {
 
   const sourceOptions = useMemo(() => KPI_SOURCE_OPTIONS, []);
 
-  const taskOrderOptions = useMemo(
-    () => getTaskOrderOptions(selectedSources),
-    [selectedSources],
-  );
+  const taskOrderOptions = useMemo(() => liveTaskOrders, [liveTaskOrders]);
 
-  const countryOptions = useMemo(
-    () => getCountryOptions(selectedSources, selectedTaskOrders),
-    [selectedSources, selectedTaskOrders],
-  );
+  const countryOptions = useMemo(() => {
+    const scoped = selectedTaskOrders.length
+      ? selectedTaskOrders.flatMap((to) => countryScopes[to] || [])
+      : Object.values(countryScopes).flat();
+    const list = selectedTaskOrders.length
+      ? scoped
+      : [...scoped, ...Object.keys(skillsByCountry)];
+    const unique = new Map();
+    for (const country of list) {
+      const label = String(country || '').trim();
+      const key = label.toLowerCase();
+      if (label && !unique.has(key)) unique.set(key, {value: label, label});
+    }
+    return [...unique.values()].sort((a, b) => a.label.localeCompare(b.label));
+  }, [selectedTaskOrders, countryScopes, skillsByCountry]);
 
-  const skillOptions = useMemo(
-    () => getSkillOptions(
-      selectedSources,
-      selectedCountries,
-      selectedTaskOrders,
-      skillsByCountry,
-    ),
-    [selectedSources, selectedCountries, selectedTaskOrders, skillsByCountry],
-  );
+  const skillOptions = useMemo(() => {
+    const scopedCountries = selectedCountries.length
+      ? selectedCountries
+      : selectedTaskOrders.flatMap((to) => countryScopes[to] || []);
+    const skills = scopedCountries.length
+      ? getSkillsForCountries(scopedCountries, skillsByCountry)
+      : Object.values(skillsByCountry).flat();
+    return [...GENERIC_SKILL_OPTIONS, ...[...new Set(skills)].map((skill) => ({value: skill, label: skill}))];
+  }, [selectedCountries, selectedTaskOrders, countryScopes, skillsByCountry]);
 
   useEffect(() => {
     const valid = new Set(taskOrderOptions.map((option) => option.value));
