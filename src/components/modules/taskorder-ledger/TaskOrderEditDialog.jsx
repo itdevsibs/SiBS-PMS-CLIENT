@@ -17,7 +17,7 @@ export default function TaskOrderEditDialog({ action, countries, profiles, onClo
   // populated by the effect below, which runs only after the dialog first renders.
   const [form, setForm] = useState({
     country: '', profileId: '', skillsText: '', skill: '', status: 'ACTIVE',
-    taskOrderCode: '', taskOrderName: '', region: '', description: '',
+    taskOrderCode: '', taskOrderName: '', region: '', description: '', sourceSystem: '',
     isActive: false, reason: '', businessEffectiveDate: '',
   });
   const [reviewing, setReviewing] = useState(false);
@@ -33,7 +33,7 @@ export default function TaskOrderEditDialog({ action, countries, profiles, onClo
       country: action.type === 'skillAdd' ? (row.country || countries[0]?.country || '') : row.country || '',
       profileId: '', skillsText: '', skill: row.skill || '', status: row.status || 'ACTIVE',
       taskOrderCode: '', taskOrderName: row.task_order_name || '', region: row.region || '',
-      description: row.description || '', isActive: Number(row.is_active) === 1,
+      description: row.description || '', sourceSystem: row.source_system || '', isActive: Number(row.is_active) === 1,
       reason: '', businessEffectiveDate: '',
     });
   }, [action, countries]);
@@ -49,7 +49,7 @@ export default function TaskOrderEditDialog({ action, countries, profiles, onClo
     (!isTransfer || (form.profileId && Number(form.profileId) !== Number(row.profileId))) &&
     (!isSkill || form.skill?.trim()) &&
     (!isProfile || (form.taskOrderName?.trim() && form.region?.trim() &&
-      (action.type !== 'profileAdd' || form.taskOrderCode?.trim()))) &&
+      (action.type !== 'profileAdd' || form.taskOrderCode?.trim()) && form.sourceSystem)) &&
     (action.type !== 'skillAdd' || form.country);
   const submit = () => {
     if (!canReview) return;
@@ -61,7 +61,7 @@ export default function TaskOrderEditDialog({ action, countries, profiles, onClo
     else if (isSkill) payload = { ...common, country: form.country, skill: form.skill.trim(),
       status: form.status, expectedUpdatedAt: row.updated_at || null };
     else payload = { ...common, taskOrderCode: form.taskOrderCode.trim(), taskOrderName: form.taskOrderName.trim(),
-      region: form.region.trim(), description: form.description.trim(), isActive: form.isActive,
+      region: form.region.trim(), description: form.description.trim(), sourceSystem: form.sourceSystem, isActive: form.isActive,
       expectedName: action.type === 'profileEdit' ? row.task_order_name : undefined };
     onSave(action, payload);
   };
@@ -127,6 +127,7 @@ export default function TaskOrderEditDialog({ action, countries, profiles, onClo
               <input id="profile-code" className={field} maxLength={100} value={form.taskOrderCode} onChange={(e) => change('taskOrderCode', e.target.value)} placeholder="GSS_2.0_TO18_REGION"/></div>}
             {action.type === 'profileEdit' && <div><label className={label}>Immutable code</label><div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs">{row.task_order_code}</div></div>}
             <div><label className={label} htmlFor="profile-name">Task Order name *</label><input id="profile-name" className={field} maxLength={150} value={form.taskOrderName} onChange={(e) => change('taskOrderName', e.target.value)} placeholder="GSS 2.0 TO12 - NICE"/></div>
+            <div><label className={label} htmlFor="profile-source">Source System *</label><select id="profile-source" className={field} value={form.sourceSystem} onChange={(e)=>change('sourceSystem',e.target.value)}><option value="">Select source</option><option value="FUSECOM">FuseCom</option><option value="FUSENET">FuseNet</option><option value="HERODASH">HeroDash</option></select></div>
             <div><label className={label} htmlFor="profile-region">Region *</label><input id="profile-region" className={field} maxLength={100} value={form.region} onChange={(e) => change('region', e.target.value)} placeholder="NICE"/></div>
             <div><label className={label} htmlFor="profile-description">Description</label><textarea id="profile-description" className={`${field} min-h-20 py-2`} maxLength={1000} value={form.description} onChange={(e) => change('description', e.target.value)}/></div>
             {action.type === 'profileEdit' && <label className="flex cursor-pointer items-center gap-2 text-xs font-semibold text-slate-700">
@@ -147,7 +148,7 @@ export default function TaskOrderEditDialog({ action, countries, profiles, onClo
           {reviewing && <div className="space-y-2 rounded-xl border border-blue-200 bg-blue-50 p-3 text-xs text-slate-700">
             <div className="flex items-center gap-2 font-bold text-[#052d51]"><CheckCircle2 size={15}/> Review before saving</div>
             {isCountryAdd ? <div><p><strong>{form.country}</strong> → {selected?.task_order_name} ({initialSkills.length} initial Skills)</p><ul className="mt-1 max-h-32 list-inside list-disc overflow-y-auto">{initialSkills.map((skill, index) => <li key={index}>{skill}</li>)}</ul></div> : isTransfer ? <p>{row.country}: {current?.task_order_name || 'Unmapped'} <ArrowRight size={13} className="inline"/> {selected?.task_order_name} — {row.activeSkills} active Skills</p> :
-              <p>{isSkill ? form.skill : form.taskOrderName} {action.type === 'skillEdit' ? `(${form.status})` : ''}</p>}
+              <p>{isSkill ? form.skill : form.taskOrderName} {isProfile ? `— ${form.sourceSystem}` : ''} {action.type === 'skillEdit' ? `(${form.status})` : ''}</p>}
             <p>Reason: {form.reason}</p>
             <p>Effective date: {form.businessEffectiveDate || 'Not specified (current mapping applies immediately)'}</p>
           </div>}

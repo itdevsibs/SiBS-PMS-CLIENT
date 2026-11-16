@@ -17,6 +17,8 @@ import { getAuthDisplayName } from "@/lib/auth";
 import { recordWfmHistoryLogQuietly } from "@/lib/axios/wfm-history-logs";
 import { removeWfmGraphReportsForUpload } from "@/lib/wfm-graph-reports";
 import { accountOptions, getRawDataCards } from "@/lib/wfm-raw-data-cards";
+import { getCallSkills } from "@/lib/axios/kpis";
+import { withSourceTaskOrderOptions } from "@/lib/wfm-task-order-source-options.js";
 import {
   deleteUsVisaImportBatch,
   getUsVisaImportBatchDetails,
@@ -86,6 +88,24 @@ function WfmImportDataPage() {
   const [rawDataSearch, setRawDataSearch] = useState("");
   const [uploadedDataSearch, setUploadedDataSearch] = useState("");
   const [selectedAccount, setSelectedAccount] = useState("US VISA");
+  const [publishedTaskOrders, setPublishedTaskOrders] = useState([]);
+  const [taskOrderProfilesLoaded, setTaskOrderProfilesLoaded] = useState(false);
+  const [taskOrderProfilesError, setTaskOrderProfilesError] = useState("");
+  useEffect(() => {
+    let mounted = true;
+    getCallSkills({onlyProfiles:true,taskOrderVersionId:'current'}).then((res) => {
+      if (!mounted) return;
+      if (!Array.isArray(res?.taskOrders)) throw new Error('Active Task Order profiles not returned.');
+      setPublishedTaskOrders(res.taskOrders);
+      setTaskOrderProfilesLoaded(true);
+      setTaskOrderProfilesError("");
+    }).catch((error) => {
+      if (!mounted) return;
+      setTaskOrderProfilesError(error?.message || 'Active Task Order profiles unavailable.');
+      setTaskOrderProfilesLoaded(false);
+    });
+    return () => { mounted = false; };
+  }, []);
   const [pendingTaskOrderUpload, setPendingTaskOrderUpload] = useState(null);
   const [selectedTaskOrderId, setSelectedTaskOrderId] = useState("");
   const [pendingReviewUpload, setPendingReviewUpload] = useState(null);
@@ -94,7 +114,7 @@ function WfmImportDataPage() {
   const [importNote, setImportNote] = useState("");
 
   const filteredRawDataCards = useMemo(() => {
-    const cards = getRawDataCards(selectedAccount);
+    const cards = withSourceTaskOrderOptions(getRawDataCards(selectedAccount),publishedTaskOrders,{loaded:taskOrderProfilesLoaded});
     const searchValue = rawDataSearch.trim().toLowerCase();
     if (!searchValue) return cards;
 
@@ -106,7 +126,7 @@ function WfmImportDataPage() {
           getTaskOrderSearchText(taskOrder).includes(searchValue),
         ),
     );
-  }, [rawDataSearch, selectedAccount]);
+  }, [rawDataSearch, selectedAccount, publishedTaskOrders, taskOrderProfilesLoaded]);
 
   const filteredAccountOptions = useMemo(() => {
     const searchValue = rawDataSearch.trim().toLowerCase();
@@ -410,6 +430,12 @@ function WfmImportDataPage() {
     event.target.value = "";
     if (!file) return;
 
+    // Prevent an unverified Task Order being selected while authoritative
+    // profiles are loading or unavailable; employee-derived imports remain automatic.
+    if (card.requiresTaskOrderSelection && !taskOrderProfilesLoaded) {
+      setErrorModalInfo({ title: 'Task Orders unavailable', message: taskOrderProfilesError || 'Wait for active Task Order profiles before importing.' });
+      return;
+    }
     if (!card.requiresTaskOrderSelection) {
       openReviewImport(card, file);
       return;
@@ -645,6 +671,7 @@ function WfmImportDataPage() {
             onOpenDuplicates={() => setIsDuplicatesModalOpen(true)}
           />
 
+          {selectedAccount === "US VISA" && taskOrderProfilesError ? <p role="alert" className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">Task Order profiles unavailable: {taskOrderProfilesError}. Source-specific badges and manual Task Order choices are disabled until reloaded.</p> : null}
           {selectedAccount === "All Accounts" ? (
             <WfmAccountWorkspacesGrid
               accountOptions={filteredAccountOptions}

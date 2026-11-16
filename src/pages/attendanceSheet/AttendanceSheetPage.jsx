@@ -31,6 +31,7 @@ import {
   fetchAttendanceSheetAccounts,
   fetchAttendanceSheetStatus,
 } from "@/lib/axios/attendance-sheet";
+import { getAttendanceEmployeeName } from "./attendanceSheetEmployeeName.js";
 
 const PAGE_SIZE_OPTIONS = [15, 25, 50, 100];
 
@@ -178,24 +179,6 @@ function getAttendanceEmployeeId(row, responseMeta) {
     findRowValue(row, ["gy_emp_code", "employee_id", "employee_code", "emp_code", "sibs_id"]) ??
     "—"
   );
-}
-
-function getAttendanceEmployeeName(row) {
-  const directName = findRowValue(row, [
-    "employee_name",
-    "employee_full_name",
-    "full_name",
-    "gy_emp_name",
-    "emp_name",
-    "name",
-  ]);
-  if (directName != null && directName !== "") return directName;
-
-  const firstName = findRowValue(row, ["first_name", "firstname", "gy_emp_firstname"]);
-  const middleName = findRowValue(row, ["middle_name", "middlename", "gy_emp_middlename"]);
-  const lastName = findRowValue(row, ["last_name", "lastname", "gy_emp_lastname"]);
-  const fullName = [firstName, middleName, lastName].filter(Boolean).join(" ").trim();
-  return fullName || "—";
 }
 
 function getAttendanceAccountId(row, responseMeta, selectedAccount) {
@@ -950,8 +933,8 @@ export default function AttendanceSheetPage() {
                   ) : dataRows.length > 0 ? (
                     dataRows.map((row, rowIndex) => {
                       const employeeId = getAttendanceEmployeeId(row, responseMeta);
-                      const employeeName = getAttendanceEmployeeName(row);
                       const accountName = getAttendanceAccountName(row, responseMeta, selectedAccount);
+                      const employeeName = getAttendanceEmployeeName(row, accountName);
                       const login = getAttendanceLogin(row, responseMeta);
                       const logout = getAttendanceLogout(row, responseMeta);
                       const formattedLogin = formatDateTime(login);

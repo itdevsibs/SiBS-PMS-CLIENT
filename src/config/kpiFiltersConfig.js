@@ -38,40 +38,6 @@ export const SOURCE_OPTIONS = [
   },
 ];
 
-export const TASK_ORDER_OPTIONS_BY_SOURCE = {
-  US_VISA: [
-    { value: "", label: "All Task Orders" },
-    { value: "TO4", label: "TO4 - PAC" },
-    { value: "TO10", label: "TO10 - SEASIA" },
-    { value: "TO12", label: "TO12 - NICE" },
-    { value: "TO14", label: "TO14 - NESAMI" },
-    { value: "TO16", label: "TO16 - SEURECA" },
-    { value: "TO18", label: "TO18 - NEA" },
-    { value: "TO22", label: "TO22 - SAMI" },
-    { value: "OTHER", label: "Other" },
-  ],
-  FUSECOM: [
-    { value: "", label: "All Task Orders" },
-    { value: "TO12", label: "TO12 - NICE" },
-    { value: "TO14", label: "TO14 - NESAMI" },
-    { value: "TO16", label: "TO16 - SEURECA" },
-    { value: "OTHER", label: "Other" },
-  ],
-  FUSENET: [
-    { value: "", label: "All Task Orders" },
-    { value: "TO14", label: "TO14 - NESAMI" },
-    { value: "TO18", label: "TO18 - NEA" },
-    { value: "TO22", label: "TO22 - SAMI" },
-    { value: "OTHER", label: "Other" },
-  ],
-  HERODASH: [
-    { value: "", label: "All Task Orders" },
-    { value: "TO4", label: "TO4 - PAC" },
-    { value: "TO10", label: "TO10 - SEASIA" },
-    { value: "OTHER", label: "Other" },
-  ],
-};
-
 export const GENERIC_SKILL_OPTIONS = [
   { value: "All English", label: "All English", isCategory: true },
   { value: "English NIV", label: "English NIV", isCategory: true },
@@ -764,21 +730,26 @@ export const DEFAULT_FILTERS = {
   to: "",
 };
 
-export function getTaskOrderOptions(sourceSystem) {
-  const sources = Array.isArray(sourceSystem)
-    ? sourceSystem.filter((s) => s && s !== "__NONE__")
-    : [sourceSystem].filter(Boolean);
-
-  if (!sources.length || sources.includes("US_VISA") || sources.length > 1) {
-    return (TASK_ORDER_OPTIONS_BY_SOURCE.US_VISA || []).filter(
-      (opt) => opt.value !== "",
-    );
-  }
-
-  const source = String(sources[0] || "").trim().toUpperCase();
-  return (TASK_ORDER_OPTIONS_BY_SOURCE[source] || TASK_ORDER_OPTIONS_BY_SOURCE.US_VISA || []).filter(
-    (opt) => opt.value !== "",
-  );
+// The /kpis/skills response supplies active Task Order profiles from the
+// selected published snapshot and their verified source association. Do not
+// fall back to obsolete hardcoded TO lists while profiles are loading.
+export function getTaskOrderOptions(sourceSystem, publishedTaskOrders = []) {
+  const sources = [...new Set(
+    (Array.isArray(sourceSystem) ? sourceSystem : String(sourceSystem || '').split(','))
+      .map((source) => String(source || '').trim().toUpperCase().replace(/\s+/g, '_'))
+      .filter((source) => source && source !== '__NONE__'),
+  )];
+  const isAllSources = !sources.length
+    || sources.includes('US_VISA')
+    || sources.includes('ALL')
+    || SOURCE_OPTIONS.every((option) => sources.includes(option.value));
+  const selectedSources = new Set(sources);
+  return (Array.isArray(publishedTaskOrders) ? publishedTaskOrders : []).filter((option) => {
+    const code = String(option?.value || '').trim().toUpperCase();
+    const source = String(option?.sourceSystem || '').trim().toUpperCase();
+    if (!/^TO\d+$/.test(code) || source === 'ALL' || Number(option?.active) === 0) return false;
+    return isAllSources || (source && selectedSources.has(source));
+  });
 }
 
 export function getTaskOrderLabel(sourceSystem, value) {
@@ -872,13 +843,17 @@ export function getSkillOptions(sourceSystem, selectedCountries, selectedTaskOrd
     return [...genericOptions, ...getSkillsForCountries(countryList, skillsMap).map(toOption)];
   }
   if (toList.length) {
-    const toCountries = [
-      ...getCountryOptions(sourceSystem, toList).map((c) => c.value),
-      ...toList.flatMap((to) => countryScopesByTaskOrder[to] || []),
-    ];
+    const hasPublishedScopes = Object.keys(countryScopesByTaskOrder || {}).length > 0;
+    const toCountries = hasPublishedScopes
+      ? toList.flatMap((to) => countryScopesByTaskOrder[to] || [])
+      : getCountryOptions(sourceSystem, toList).map((c) => c.value);
     return [...genericOptions, ...getSkillsForCountries(toCountries, skillsMap).map(toOption)];
   }
 
+  if (Object.keys(countryScopesByTaskOrder || {}).length) {
+    const allEligibleCountries = Object.values(countryScopesByTaskOrder).flat();
+    return [...genericOptions, ...getSkillsForCountries(allEligibleCountries, skillsMap).map(toOption)];
+  }
   const allCountrySkills = [];
   const seen = new Set();
   for (const skills of Object.values(skillsMap || SKILLS_BY_COUNTRY)) {
@@ -959,7 +934,7 @@ export function getCountryOptions(sourceSystem, taskOrder) {
   // Combine countries for all selected task orders
   const countryMap = new Map();
   for (const to of toList) {
-    const countriesForTo = sourceCountries[to] || [];
+    const countriesForTo = sourceCountries[to] || COUNTRY_OPTIONS_BY_SOURCE_AND_TO.US_VISA[to] || [];
     for (const opt of countriesForTo) {
       if (opt.value && !countryMap.has(opt.value)) {
         countryMap.set(opt.value, opt);

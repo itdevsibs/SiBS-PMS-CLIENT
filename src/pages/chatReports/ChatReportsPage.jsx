@@ -7,8 +7,10 @@ import DatePicker from "@/components/common/filters/DatePicker";
 import MultiSelectDropdown from "@/components/common/filters/MultiSelectDropdown";
 import useDashboardPage from "@/hooks/useDashboardPage";
 import { getChatReport, getCallSkills } from "@/lib/axios/kpis";
+import TaskOrderVersionReportControls from "@/components/modules/taskorder-ledger/TaskOrderVersionReportControls";
 import {
   SOURCE_OPTIONS as KPI_SOURCE_OPTIONS,
+  getTaskOrderOptions,
   GENERIC_SKILL_OPTIONS,
   getSkillsForCountries,
 } from "@/config/kpiFiltersConfig";
@@ -72,6 +74,7 @@ export default function ChatReportsPage() {
   const [skillsByCountry, setSkillsByCountry] = useState({});
   const [countryScopes, setCountryScopes] = useState({});
   const [liveTaskOrders, setLiveTaskOrders] = useState([]);
+  const [selectedVersion, setSelectedVersion] = useState("current");
 
   const fetchReport = async () => {
     setIsLoading(true);
@@ -83,6 +86,7 @@ export default function ChatReportsPage() {
         taskOrder: selectedTaskOrders.length ? selectedTaskOrders.join(",") : undefined,
         country: selectedCountries.length ? selectedCountries.join(",") : undefined,
         skill: selectedSkills.length ? selectedSkills.join(",") : undefined,
+        taskOrderVersionId: selectedVersion,
       };
       const res = await getChatReport(params);
       setReportData(Array.isArray(res?.data) ? res.data : []);
@@ -97,11 +101,11 @@ export default function ChatReportsPage() {
 
   useEffect(() => {
     void fetchReport();
-  }, [selectedDate, selectedSources, selectedTaskOrders, selectedCountries, selectedSkills]);
+  }, [selectedDate, selectedSources, selectedTaskOrders, selectedCountries, selectedSkills, selectedVersion]);
 
   useEffect(() => {
     let isMounted = true;
-    getCallSkills()
+    getCallSkills({taskOrderVersionId:selectedVersion})
       .then((res) => {
         if (!isMounted || !res?.data) return;
         // Chat uses source Skill names, but current country ownership comes
@@ -115,19 +119,20 @@ export default function ChatReportsPage() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [selectedVersion]);
 
   const sourceOptions = useMemo(() => KPI_SOURCE_OPTIONS, []);
 
-  const taskOrderOptions = useMemo(() => liveTaskOrders, [liveTaskOrders]);
+  const taskOrderOptions = useMemo(
+    () => getTaskOrderOptions(selectedSources, liveTaskOrders),
+    [selectedSources, liveTaskOrders],
+  );
 
   const countryOptions = useMemo(() => {
-    const scoped = selectedTaskOrders.length
-      ? selectedTaskOrders.flatMap((to) => countryScopes[to] || [])
-      : Object.values(countryScopes).flat();
-    const list = selectedTaskOrders.length
-      ? scoped
-      : [...scoped, ...Object.keys(skillsByCountry)];
+    const scopedOrders = selectedTaskOrders.length
+      ? selectedTaskOrders : taskOrderOptions.map((option) => option.value);
+    const scoped = scopedOrders.flatMap((to) => countryScopes[to] || []);
+    const list = scoped;
     const unique = new Map();
     for (const country of list) {
       const label = String(country || '').trim();
@@ -135,17 +140,19 @@ export default function ChatReportsPage() {
       if (label && !unique.has(key)) unique.set(key, {value: label, label});
     }
     return [...unique.values()].sort((a, b) => a.label.localeCompare(b.label));
-  }, [selectedTaskOrders, countryScopes, skillsByCountry]);
+  }, [selectedTaskOrders, taskOrderOptions, countryScopes, skillsByCountry]);
 
   const skillOptions = useMemo(() => {
+    const scopedOrders = selectedTaskOrders.length
+      ? selectedTaskOrders : taskOrderOptions.map((option) => option.value);
     const scopedCountries = selectedCountries.length
       ? selectedCountries
-      : selectedTaskOrders.flatMap((to) => countryScopes[to] || []);
+      : scopedOrders.flatMap((to) => countryScopes[to] || []);
     const skills = scopedCountries.length
       ? getSkillsForCountries(scopedCountries, skillsByCountry)
-      : Object.values(skillsByCountry).flat();
+      : [];
     return [...GENERIC_SKILL_OPTIONS, ...[...new Set(skills)].map((skill) => ({value: skill, label: skill}))];
-  }, [selectedCountries, selectedTaskOrders, countryScopes, skillsByCountry]);
+  }, [selectedCountries, selectedTaskOrders, taskOrderOptions, countryScopes, skillsByCountry]);
 
   useEffect(() => {
     const valid = new Set(taskOrderOptions.map((option) => option.value));
@@ -233,12 +240,24 @@ export default function ChatReportsPage() {
         />
 
         <main className="sibs-scrollbar flex min-h-0 flex-1 flex-col gap-2.5 overflow-y-auto px-2.5 pb-2.5 pt-2.5 sm:gap-3 sm:px-4 sm:pt-3 lg:px-5">
+          <TaskOrderVersionReportControls value={selectedVersion}
+            onChange={(version) => {setSelectedVersion(version);setSelectedTaskOrders([]);setSelectedCountries([]);setSelectedSkills([]);}}
+            reportType="CHAT_WOW" sourceSystem={selectedSources.length?selectedSources.join(','):'US_VISA'}
+            taskOrder={selectedTaskOrders} country={selectedCountries} skill={selectedSkills}
+            reportPeriod="custom" reportFrom={selectedDate} reportTo={selectedDate}/>
           <div className="sibs-card relative z-40 shrink-0 overflow-visible bg-white p-2 shadow-xs sm:p-2.5">
             <div className="grid grid-cols-1 items-end gap-2 sm:grid-cols-2 sm:gap-2.5 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7">
               <MultiSelectDropdown
                 label="Source System"
                 value={selectedSources}
-                onChange={(value) => setSelectedSources(Array.isArray(value) ? value : [])}
+                onChange={(value) => {
+                  const sources = Array.isArray(value) ? value : [];
+                  const allowed = new Set(getTaskOrderOptions(sources, liveTaskOrders).map((item) => item.value));
+                  setSelectedSources(sources);
+                  setSelectedTaskOrders((current) => current.filter((to) => allowed.has(to)));
+                  setSelectedCountries([]);
+                  setSelectedSkills([]);
+                }}
                 options={sourceOptions}
                 placeholder="All Sources"
                 allOptionLabel="All Sources"

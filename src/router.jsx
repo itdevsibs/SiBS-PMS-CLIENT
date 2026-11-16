@@ -20,6 +20,7 @@ import Login from "./pages/login/Login";
 import OccupancyPage from "./pages/occupancy/OccupancyPage";
 import OperationsManagementPage from "./pages/operationsManager/OperationsManagementPage";
 import TaskOrderLedger from "./pages/TaskOrderLedger/TaskOrderLedger";
+import UsVisaKpiTargetSettingsPage from "./pages/usVisaKpiConfig/UsVisaKpiTargetSettingsPage";
 import StaffingRequirementsPage from "./pages/workForceManagement/StaffingRequirementsPage";
 import TeamLeaderPage from "./pages/teamLeader/TeamLeaderPage";
 import WfmHistoryLogs from "./pages/workForceManagement/WfmHistoryLogs";
@@ -77,6 +78,14 @@ const Router = () => {
         element={(
           <Protected permission={PERMISSIONS.WFM_TASK_ORDER_LEDGER}>
             <TaskOrderLedger />
+          </Protected>
+        )}
+      />
+      <Route
+        path="/us-visa-kpi-configuration"
+        element={(
+          <Protected permission={PERMISSIONS.US_VISA_KPI_TARGET_SETTINGS}>
+            <UsVisaKpiTargetSettingsPage />
           </Protected>
         )}
       />

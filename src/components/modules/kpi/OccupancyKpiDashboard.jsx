@@ -63,11 +63,11 @@ export function OccupancySummaryCards({
     },
     {
       label: "Actual Headcount",
-      value: summary?.actualHeadcount != null ? formatNumber(summary.actualHeadcount, 0) : "—",
-      hint: "Active employees scheduled on each day",
+      value: summary?.actualHeadcount != null ? formatNumber(summary.actualHeadcount, Number.isInteger(Number(summary.actualHeadcount)) ? 0 : 2) : "—",
+      hint: "Active employees by join/departure date",
       icon: Users,
       status: {
-        label: "Scheduled",
+        label: "Employment snapshot",
         className: "bg-slate-100 text-slate-700",
       },
     },
@@ -289,9 +289,14 @@ function ChartCanvasGrid({
                         const hasValue = rawVal != null && Number.isFinite(Number(rawVal));
                         const value = hasValue ? Number(rawVal) : null;
                         const maxValue = maxAxisValue || 100;
+                        // A negative buffer is a shortfall: show its magnitude
+                        // but retain the signed value and a distinct warning color.
+                        const chartValue = spec.key === 'buffer' && value != null ? Math.abs(value) : value;
+                        const chartBarColor = spec.key === 'buffer' && value < 0
+                          ? 'bg-rose-500' : spec.color;
                         const height =
-                          value != null && maxValue > 0
-                            ? Math.min(100, Math.max(0, (value / maxValue) * 100))
+                          chartValue != null && maxValue > 0
+                            ? Math.min(100, Math.max(0, (chartValue / maxValue) * 100))
                             : 0;
                         const isInside = height > (isSubmodule ? 10 : 10);
 
@@ -331,7 +336,7 @@ function ChartCanvasGrid({
                                     : isSubmodule
                                       ? "max-w-[56px]"
                                       : "max-w-[42px]"
-                                  } rounded-t-[4px] ${spec.color} transition-all duration-200 ease-out group-hover/bar:-translate-y-0.5 group-hover/bar:brightness-110 shadow-xs sibs-graph-bar-rise`}
+                                  } rounded-t-[4px] ${chartBarColor} transition-all duration-200 ease-out group-hover/bar:-translate-y-0.5 group-hover/bar:brightness-110 shadow-xs sibs-graph-bar-rise`}
                                 style={{
                                   height: `${height}%`,
                                   animationDelay: `${Math.min(index * 60 + barIndex * 30, 500)}ms`,
@@ -452,10 +457,13 @@ export default function OccupancyKpiDashboard({
     (value) => `${value}%`,
   );
 
-  // Dynamic Headcount axis ticks if data exists
-  const hasHcData = series.some((item) => [item.requiredHeadcount, item.actualHeadcount, item.attritedHeadcount].some(v => v !== null && v !== undefined && Number.isFinite(Number(v))));
+  // Only Required HC, Actual HC and Buffer are charted in this phase.
+  const hcValues = series.flatMap(item => [item.requiredHeadcount, item.actualHeadcount, item.buffer]
+    .filter(value => value != null && Number.isFinite(Number(value)))
+    .map(value => Math.abs(Number(value))));
+  const hasHcData = hcValues.length > 0;
   const maxHc = hasHcData
-    ? Math.max(1, ...series.flatMap((item) => [item.requiredHeadcount, item.actualHeadcount, item.attritedHeadcount].map(v => Number(v || 0))))
+    ? Math.max(1, ...hcValues)
     : 100;
   const hcTicks = hasHcData
     ? getCallAxisTicks(maxHc, 4).map(String)
@@ -567,7 +575,7 @@ export default function OccupancyKpiDashboard({
                 <>
                   <span className="inline-flex items-center gap-1 font-bold text-[#0b3b68]">
                     <i className="h-2 w-2 rounded-full bg-[#0b3b68]" />
-                    Required HC
+                    Required FTE
                   </span>
                   <span className="inline-flex items-center gap-1 font-bold text-[#2f6f9f]">
                     <i className="h-2 w-2 rounded-full bg-[#2f6f9f]" />
@@ -575,7 +583,7 @@ export default function OccupancyKpiDashboard({
                   </span>
                   <span className="inline-flex items-center gap-1 font-bold text-[#8faecb]">
                     <i className="h-2 w-2 rounded-full bg-[#8faecb]" />
-                    Attrited
+                    Buffer
                   </span>
                 </>
               }
@@ -591,13 +599,13 @@ export default function OccupancyKpiDashboard({
                 barColor="bg-[#0b3b68]"
                 secondaryBarKey="actualHeadcount"
                 secondaryBarColor="bg-[#2f6f9f]"
-                secondaryTooltipLabel="Scheduled HC"
-                extraBarKey="attritedHeadcount"
+                secondaryTooltipLabel="Actual HC"
+                extraBarKey="buffer"
                 extraBarColor="bg-[#8faecb]"
-                extraTooltipLabel="Attrited HC"
+                extraTooltipLabel="Buffer / Shortfall"
                 maxAxisValue={hcMax}
-                formatValue={(val) => `${formatNumber(val, 0)}`}
-                tooltipLabel="Required HC"
+                formatValue={(val) => `${formatNumber(val, Number.isInteger(val) ? 0 : 2)}`}
+                tooltipLabel="Required FTE"
               />
             </ChartShell>
           </div>
@@ -708,7 +716,7 @@ export default function OccupancyKpiDashboard({
                 <>
                   <span className="inline-flex items-center gap-1 font-bold text-[#0b3b68]">
                     <i className="h-2 w-2 rounded-full bg-[#0b3b68]" />
-                    Required HC
+                    Required FTE
                   </span>
                   <span className="inline-flex items-center gap-1 font-bold text-[#2f6f9f]">
                     <i className="h-2 w-2 rounded-full bg-[#2f6f9f]" />
@@ -716,7 +724,7 @@ export default function OccupancyKpiDashboard({
                   </span>
                   <span className="inline-flex items-center gap-1 font-bold text-[#8faecb]">
                     <i className="h-2 w-2 rounded-full bg-[#8faecb]" />
-                    Attrited
+                    Buffer
                   </span>
                 </>
               }
@@ -732,13 +740,13 @@ export default function OccupancyKpiDashboard({
                 barColor="bg-[#0b3b68]"
                 secondaryBarKey="actualHeadcount"
                 secondaryBarColor="bg-[#2f6f9f]"
-                secondaryTooltipLabel="Scheduled HC"
-                extraBarKey="attritedHeadcount"
+                secondaryTooltipLabel="Actual HC"
+                extraBarKey="buffer"
                 extraBarColor="bg-[#8faecb]"
-                extraTooltipLabel="Attrited HC"
+                extraTooltipLabel="Buffer / Shortfall"
                 maxAxisValue={hcMax}
-                formatValue={(val) => `${formatNumber(val, 0)}`}
-                tooltipLabel="Required HC"
+                formatValue={(val) => `${formatNumber(val, Number.isInteger(val) ? 0 : 2)}`}
+                tooltipLabel="Required FTE"
               />
             </ChartShell>
           </div>

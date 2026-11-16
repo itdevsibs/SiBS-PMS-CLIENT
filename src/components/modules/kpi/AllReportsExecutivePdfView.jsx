@@ -17,6 +17,7 @@ export default function AllReportsExecutivePdfView({
   qualityAuditData = {},
   occupancyData = {},
   selectedSections = null,
+  callMappingVersion = null,
 }) {
   const showCalls = !selectedSections || selectedSections.includes("calls");
   const showEmails = !selectedSections || selectedSections.includes("emails");
@@ -168,7 +169,7 @@ export default function AllReportsExecutivePdfView({
   });
 
   // Calculate scales for Headcount
-  const maxHc = Math.max(10, ...occSeries.flatMap(d => [d.requiredHeadcount || 0, d.actualHeadcount || 0, d.attritedHeadcount || 0]));
+  const maxHc = Math.max(10, ...occSeries.flatMap(d => [d.requiredHeadcount || 0, d.actualHeadcount || 0, Math.abs(d.buffer || 0)]));
   const hcTicks = getCallAxisTicks(maxHc, 4);
   const hcAxisMax = Math.max(10, hcTicks[0] || maxHc);
 
@@ -603,7 +604,7 @@ export default function AllReportsExecutivePdfView({
               <div style={{ display: "flex", justifyContent: "center", gap: "14px", fontSize: "12px", fontWeight: "700", marginBottom: "4px" }}>
                 <span style={{ display: "flex", alignItems: "center", gap: "5px" }}>
                   <span style={{ width: "9px", height: "9px", borderRadius: "50%", backgroundColor: blueDark, display: "inline-block" }} />
-                  Required HC
+                  Required FTE
                 </span>
                 <span style={{ display: "flex", alignItems: "center", gap: "5px" }}>
                   <span style={{ width: "9px", height: "9px", borderRadius: "50%", backgroundColor: blueMid, display: "inline-block" }} />
@@ -612,7 +613,7 @@ export default function AllReportsExecutivePdfView({
 
                 <span style={{ display: "flex", alignItems: "center", gap: "5px" }}>
                   <span style={{ width: "9px", height: "9px", borderRadius: "50%", backgroundColor: "#b0c4de", display: "inline-block" }} />
-                  Attrited HC
+                  Buffer
                 </span>
               </div>
 
@@ -635,12 +636,12 @@ export default function AllReportsExecutivePdfView({
                       const bars = [
                         { key: 'required', value: item.requiredHeadcount, color: blueDark },
                         { key: 'actual', value: item.actualHeadcount, color: blueMid },
-                        { key: 'attrited', value: item.attritedHeadcount, color: '#b0c4de' },
+                        { key: 'buffer', value: item.buffer, color: item.buffer < 0 ? '#e11d48' : '#b0c4de' },
                       ];
                       return (
                         <div key={idx} title={item.buffer == null ? 'Buffer unavailable' : `Buffer / Shortfall: ${item.buffer}`} style={{ flex: 1, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', gap: '2px', position: 'relative', zIndex: 1 }}>
-                          {bars.map(bar => bar.value != null && bar.value > 0 ? (
-                            <div key={bar.key} style={{ width: '28%', maxWidth: '21px', height: `${Math.min(100, Math.max(4, (bar.value / hcAxisMax) * 100))}%`, backgroundColor: bar.color, position: 'relative', display: 'flex', justifyContent: 'center', borderRadius: '2px 2px 0 0' }}>
+                          {bars.map(bar => bar.value != null && Math.abs(bar.value) > 0 ? (
+                            <div key={bar.key} style={{ width: '28%', maxWidth: '21px', height: `${Math.min(100, Math.max(4, (Math.abs(bar.value) / hcAxisMax) * 100))}%`, backgroundColor: bar.color, position: 'relative', display: 'flex', justifyContent: 'center', borderRadius: '2px 2px 0 0' }}>
                               <span style={{ position: 'absolute', top: '3px', color: '#ffffff', fontSize: '7px', fontWeight: '800' }}>{bar.value}</span>
                             </div>
                           ) : null)}
@@ -658,13 +659,7 @@ export default function AllReportsExecutivePdfView({
                   </div>
                 </div>
               </div>
-              <div style={{ display: 'flex', gap: '2px', marginTop: '3px', fontSize: '8px', fontWeight: 700, color: blueDark }}>
-                {occSeries.map((item, idx) => (
-                  <span key={idx} style={{ flex: 1, textAlign: 'center' }}>
-                    {item.buffer == null ? 'Δ —' : `Δ ${item.buffer > 0 ? '+' : ''}${item.buffer}`}
-                  </span>
-                ))}
-              </div>
+
             </div>
 
             {/* Right: People Metrics */}
@@ -792,6 +787,9 @@ export default function AllReportsExecutivePdfView({
           }}
         >
           C A L L S
+          {callMappingVersion && <div style={{fontSize:"10px",fontWeight:"700",letterSpacing:"normal",textTransform:"none",marginTop:"2px"}}>
+            Task Order Mapping: {callMappingVersion}
+          </div>}
         </div>
 
         {/* Content Layout */}
@@ -1667,7 +1665,7 @@ export default function AllReportsExecutivePdfView({
 
                 <span style={{ display: "flex", alignItems: "center", gap: "3px" }}>
                   <span style={{ width: "7px", height: "7px", borderRadius: "50%", backgroundColor: "#b0c4de", display: "inline-block" }} />
-                  Attrited HC
+                  Buffer
                 </span>
               </div>
 
@@ -1692,12 +1690,12 @@ export default function AllReportsExecutivePdfView({
                       const bars = [
                         { key: 'required', value: item.requiredHeadcount, color: blueDark },
                         { key: 'actual', value: item.actualHeadcount, color: blueMid },
-                        { key: 'attrited', value: item.attritedHeadcount, color: '#b0c4de' },
+                        { key: 'buffer', value: item.buffer, color: item.buffer < 0 ? '#e11d48' : '#b0c4de' },
                       ];
                       return (
                         <div key={idx} title={item.buffer == null ? 'Buffer unavailable' : `Buffer / Shortfall: ${item.buffer}`} style={{ flex: 1, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', gap: '2px', position: 'relative', zIndex: 1 }}>
-                          {bars.map(bar => bar.value != null && bar.value > 0 ? (
-                            <div key={bar.key} style={{ width: '28%', maxWidth: '21px', height: `${Math.min(100, Math.max(4, (bar.value / hcAxisMax) * 100))}%`, backgroundColor: bar.color, position: 'relative', display: 'flex', justifyContent: 'center', borderRadius: '2px 2px 0 0' }}>
+                          {bars.map(bar => bar.value != null && Math.abs(bar.value) > 0 ? (
+                            <div key={bar.key} style={{ width: '28%', maxWidth: '21px', height: `${Math.min(100, Math.max(4, (Math.abs(bar.value) / hcAxisMax) * 100))}%`, backgroundColor: bar.color, position: 'relative', display: 'flex', justifyContent: 'center', borderRadius: '2px 2px 0 0' }}>
                               <span style={{ position: 'absolute', top: '3px', color: '#ffffff', fontSize: '7px', fontWeight: '800' }}>{bar.value}</span>
                             </div>
                           ) : null)}
@@ -1717,18 +1715,9 @@ export default function AllReportsExecutivePdfView({
                 </div>
               </div>
 
-              <div style={{ display: 'flex', gap: '2px', marginTop: '2px', fontSize: '7px', fontWeight: 700, color: blueDark }}>
-                {occSeries.map((item, idx) => (
-                  <span key={idx} style={{ flex: 1, textAlign: 'center' }}>
-                    {item.buffer == null ? 'Δ —' : `Δ ${item.buffer > 0 ? '+' : ''}${item.buffer}`}
-                  </span>
-                ))}
-              </div>
 
-              {/* Subtitle to match baseline with left card */}
-              <div style={{ textAlign: "center", color: redAlert, fontSize: "8px", fontWeight: "800", marginTop: "3px", whiteSpace: "nowrap" }}>
-                HEADCOUNT : SCHEDULED ACTIVE AGENTS · BUFFER = ACTUAL − REQUIRED
-              </div>
+
+
             </div>
 
             {/* Col 3: People Metrics */}

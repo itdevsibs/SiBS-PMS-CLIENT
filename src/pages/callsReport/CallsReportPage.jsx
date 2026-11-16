@@ -7,7 +7,8 @@ import TablePagination from "@/components/common/tables/TablePagination";
 import DatePicker from "@/components/common/filters/DatePicker";
 import MultiSelectDropdown from "@/components/common/filters/MultiSelectDropdown";
 import useDashboardPage from "@/hooks/useDashboardPage";
-import { getCallsReport, getCallsReportSkills } from "@/lib/axios/kpis";
+import { getCallsReport, getCallSkills } from "@/lib/axios/kpis";
+import TaskOrderVersionReportControls from "@/components/modules/taskorder-ledger/TaskOrderVersionReportControls";
 import {
   SOURCE_OPTIONS,
   getTaskOrderOptions,
@@ -96,6 +97,9 @@ export default function CallsReportPage() {
   const [selectedCountries, setSelectedCountries] = useState([]); // Empty means all countries
   const [selectedSkills, setSelectedSkills] = useState([]); // Empty means all skills
   const [skillsByCountry, setSkillsByCountry] = useState({});
+  const [countryScopes, setCountryScopes] = useState({});
+  const [versionTaskOrders, setVersionTaskOrders] = useState([]);
+  const [selectedVersion, setSelectedVersion] = useState("current");
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -110,6 +114,7 @@ export default function CallsReportPage() {
         taskOrder: selectedTaskOrders.length ? selectedTaskOrders.join(",") : undefined,
         country: selectedCountries.length ? selectedCountries.join(",") : undefined,
         skill: selectedSkills.length ? selectedSkills.join(",") : undefined,
+        taskOrderVersionId: selectedVersion,
       };
       if (selectedDate) {
         params.date = selectedDate;
@@ -137,44 +142,51 @@ export default function CallsReportPage() {
 
   useEffect(() => {
     void fetchCallsReport();
-  }, [selectedDate, selectedSources, selectedTaskOrders, selectedCountries, selectedSkills]);
+  }, [selectedDate, selectedSources, selectedTaskOrders, selectedCountries, selectedSkills, selectedVersion]);
 
   useEffect(() => {
     let isMounted = true;
-    getCallsReportSkills()
+    getCallSkills({onlySkillStatistics:true,taskOrderVersionId:selectedVersion})
       .then((res) => {
         if (!isMounted || !res?.data) return;
         // The standalone Calls Report offers only skills present in imported
         // Skill Statistics; never merge the legacy Calls EOD/static list.
         setSkillsByCountry(res.data);
+        setCountryScopes(res.countryScopes || {});
+        setVersionTaskOrders(res.taskOrders || []);
       })
       .catch((err) => console.warn("Could not load dynamic source skills:", err?.message));
 
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [selectedVersion]);
 
   const sourceOptions = useMemo(() => SOURCE_OPTIONS, []);
 
   const taskOrderOptions = useMemo(
-    () => getTaskOrderOptions(selectedSources),
-    [selectedSources],
+    () => getTaskOrderOptions(selectedSources, versionTaskOrders),
+    [selectedSources, versionTaskOrders],
   );
 
   const countryOptions = useMemo(
-    () => getCountryOptions(selectedSources, selectedTaskOrders),
-    [selectedSources, selectedTaskOrders],
+    () => {
+      const scopedOrders = selectedTaskOrders.length
+        ? selectedTaskOrders : taskOrderOptions.map((option) => option.value);
+      const names = scopedOrders.flatMap((order) => countryScopes[order] || []);
+      return [...new Set(names)].sort((a,b) => a.localeCompare(b)).map((country) => ({value:country,label:country}));
+    },
+    [selectedTaskOrders, taskOrderOptions, countryScopes],
   );
 
   const skillOptions = useMemo(
     () => getSkillOptions(
       selectedSources,
       selectedCountries,
-      selectedTaskOrders,
-      skillsByCountry,
+      selectedTaskOrders.length ? selectedTaskOrders : taskOrderOptions.map((option)=>option.value),
+      skillsByCountry, countryScopes,
     ),
-    [selectedSources, selectedCountries, selectedTaskOrders, skillsByCountry],
+    [selectedSources, selectedCountries, selectedTaskOrders, taskOrderOptions, skillsByCountry, countryScopes],
   );
 
   useEffect(() => {
@@ -287,6 +299,9 @@ export default function CallsReportPage() {
         />
 
         <main className="sibs-scrollbar flex min-h-0 flex-1 flex-col gap-2.5 overflow-y-auto px-2.5 pb-2.5 pt-2.5 sm:gap-3 sm:px-4 sm:pt-3 lg:px-5">
+          <TaskOrderVersionReportControls value={selectedVersion}
+            onChange={(version) => { setSelectedVersion(version);setSelectedTaskOrders([]);setSelectedCountries([]);setSelectedSkills([]); }}
+            allowCompare={false} reportType="CALLS_WOW"/>
           {/* Search & Filter Toolbar (Matching WOW Report Filter Design) */}
           <div className="sibs-card relative z-40 overflow-visible shadow-xs shrink-0 p-2 sm:p-2.5 bg-white">
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-2 sm:gap-2.5 items-end">
@@ -295,7 +310,14 @@ export default function CallsReportPage() {
                 <MultiSelectDropdown
                   label="Source System"
                   value={selectedSources}
-                  onChange={(value) => setSelectedSources(Array.isArray(value) ? value : [])}
+                  onChange={(value) => {
+                    const sources = Array.isArray(value) ? value : [];
+                    const allowed = new Set(getTaskOrderOptions(sources, versionTaskOrders).map((item) => item.value));
+                    setSelectedSources(sources);
+                    setSelectedTaskOrders((current) => current.filter((to) => allowed.has(to)));
+                    setSelectedCountries([]);
+                    setSelectedSkills([]);
+                  }}
                   options={sourceOptions}
                   placeholder="All Sources"
                   allOptionLabel="All Sources"

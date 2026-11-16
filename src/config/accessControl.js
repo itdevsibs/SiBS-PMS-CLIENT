@@ -26,6 +26,7 @@ export const PERMISSIONS = Object.freeze({
   WFM_TASK_ORDER_LEDGER: "WFM_TASK_ORDER_LEDGER",
   WFM_STAFFING_CALENDAR: "WFM_STAFFING_CALENDAR",
   WFM_EDIT_STAFFING: "WFM_EDIT_STAFFING",
+  WFM_KPI_TARGET_SETTINGS: "WFM_KPI_TARGET_SETTINGS",
   VIEW_EMPLOYEE_LEDGER: "VIEW_EMPLOYEE_LEDGER",
   VIEW_OCCUPANCY: "VIEW_OCCUPANCY",
   VIEW_ATTENDANCE_SHEET: "VIEW_ATTENDANCE_SHEET",
@@ -34,6 +35,7 @@ export const PERMISSIONS = Object.freeze({
   VIEW_FRONTSTEPS: "VIEW_FRONTSTEPS",
   SUPER_ADMIN_ACCESS: "SUPER_ADMIN_ACCESS",
   SUPER_ADMIN_HISTORY: "SUPER_ADMIN_HISTORY",
+  US_VISA_KPI_TARGET_SETTINGS: "US_VISA_KPI_TARGET_SETTINGS",
   CLIENT_DASHBOARD: "CLIENT_DASHBOARD",
 });
 
@@ -172,6 +174,14 @@ const PERMISSION_RULES = Object.freeze({
   [PERMISSIONS.SUPER_ADMIN_ACCESS]: {
     access: [ACCESS.SUPER_ADMIN],
   },
+  [PERMISSIONS.US_VISA_KPI_TARGET_SETTINGS]: {
+    // Both WFM and Super Admin can manage US Visa numerical targets.
+    access: [ACCESS.SUPER_ADMIN, ACCESS.WFM],
+  },
+  [PERMISSIONS.WFM_KPI_TARGET_SETTINGS]: {
+    // Navigation entry is limited to the WFM interface; Super Admin retains its existing entry.
+    access: [ACCESS.WFM],
+  },
   [PERMISSIONS.SUPER_ADMIN_HISTORY]: {
     access: [ACCESS.SUPER_ADMIN],
   },
@@ -263,6 +273,13 @@ export const DASHBOARD_MODULES = Object.freeze([
         path: "/task-order-ledger",
         permission: PERMISSIONS.WFM_TASK_ORDER_LEDGER,
       },
+      {
+        key: "us-visa-kpi-targets-wfm",
+        name: "US Visa KPI Configuration",
+        iconKey: "gauge",
+        path: "/us-visa-kpi-configuration",
+        permission: PERMISSIONS.WFM_KPI_TARGET_SETTINGS,
+      },
     ],
   },
   {
@@ -338,6 +355,13 @@ export const DASHBOARD_MODULES = Object.freeze([
     permission: PERMISSIONS.SUPER_ADMIN_ACCESS,
   },
   {
+    key: "us-visa-kpi-target-settings",
+    name: "US Visa KPI Configuration",
+    iconKey: "gauge",
+    path: "/us-visa-kpi-configuration",
+    permission: PERMISSIONS.SUPER_ADMIN_ACCESS,
+  },
+  {
     key: "super-admin-history",
     name: "Interface Access History",
     iconKey: "clipboard-list",
@@ -355,6 +379,7 @@ const ROUTE_PERMISSION_RULES = Object.freeze([
   { paths: ["/import-repository"], permission: PERMISSIONS.WFM_IMPORT_REPOSITORY },
   { paths: ["/history"], permission: PERMISSIONS.WFM_HISTORY_LOGS },
   { paths: ["/task-order-ledger"], permission: PERMISSIONS.WFM_TASK_ORDER_LEDGER },
+  { paths: ["/us-visa-kpi-configuration"], permission: PERMISSIONS.US_VISA_KPI_TARGET_SETTINGS },
   { paths: ["/staffing-requirements"], permission: PERMISSIONS.WFM_STAFFING_CALENDAR },
   { paths: ["/employee-master-data"], permission: PERMISSIONS.VIEW_EMPLOYEE_LEDGER },
   { paths: ["/occupancy"], permission: PERMISSIONS.VIEW_OCCUPANCY },

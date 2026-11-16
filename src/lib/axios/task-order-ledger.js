@@ -19,3 +19,8 @@ export const createTaskOrderSkill = (body) => apiPost(`${ROOT}/skills`, body);
 export const updateTaskOrderSkill = (id, body) => apiPut(`${ROOT}/skills/${id}`, body);
 export const createTaskOrderProfile = (body) => apiPost(`${ROOT}/profiles`, body);
 export const updateTaskOrderProfile = (id, body) => apiPut(`${ROOT}/profiles/${id}`, body);
+
+export const fetchTaskOrderVersions = () => apiGet(`${ROOT}/versions`);
+export const fetchTaskOrderVersion = (id) => apiGet(`${ROOT}/versions/${encodeURIComponent(id)}`);
+export const fetchTaskOrderVersionDiff = (baseVersionId, targetVersionId) => apiGet(
+  `${ROOT}/versions/diff?baseVersionId=${encodeURIComponent(baseVersionId)}&targetVersionId=${encodeURIComponent(targetVersionId)}`);
