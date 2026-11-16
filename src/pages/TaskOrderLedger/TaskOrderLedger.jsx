@@ -2,7 +2,7 @@
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import {
   AlertCircle, ArrowRightLeft, ChevronDown, ChevronRight, ClipboardList, History,
-  Layers, Loader2, Pencil, Plus, RefreshCw, Search, ShieldCheck, X,
+  Layers, Loader2, Pencil, Plus, Search, ShieldCheck, GitCompare, X,
 } from 'lucide-react';
 import AdminSidebar from '@/components/common/layout/AdminSidebar';
 import AppHeader from '@/components/common/layout/AppHeader';
@@ -18,12 +18,14 @@ import {
   updateTaskOrderProfile,
 } from '@/lib/axios/task-order-ledger';
 import TaskOrderEditDialog from '../../components/modules/taskorder-ledger/TaskOrderEditDialog';
+import TaskOrderVersionsTab from '../../components/modules/taskorder-ledger/TaskOrderVersionsTab';
 
 const TABS = [
   { key: 'countries', title: 'Country Assignments', Icon: Layers },
   { key: 'skills', title: 'Skills', Icon: ClipboardList },
   { key: 'profiles', title: 'Task Orders', Icon: ShieldCheck },
   { key: 'history', title: 'Change History', Icon: History },
+  { key: 'versions', title: 'Versions', Icon: GitCompare },
 ];
 const PAGE_SIZE = 15;
 const control = 'h-9 rounded-lg border border-slate-200 bg-slate-50 px-3 text-xs font-semibold text-slate-700 outline-none transition hover:border-slate-300 focus:border-[#0b3b68]';
@@ -139,7 +141,7 @@ export default function TaskOrderLedger() {
     });
     if (activeTab === 'profiles') return profiles.filter((p) =>
       (selectedProfile === 'ALL' || String(p.id) === selectedProfile) &&
-      (!query || [p.task_order_name, p.task_order_code, p.region, p.description]
+      (!query || [p.task_order_name, p.task_order_code, p.region, p.description, p.source_system]
         .some((x) => String(x || '').toLowerCase().includes(query))));
     return [];
   }, [activeTab, search, selectedProfile, selectedCountry, countries, skills, profiles]);
@@ -166,7 +168,7 @@ export default function TaskOrderLedger() {
   const reset = () => { setSearch(''); setSelectedProfile('ALL'); setSelectedCountry('ALL'); setPage(1); };
   const headerTitle = activeTab === 'countries' ? ['Country', 'Current Task Order', 'Active Skills', 'Status', 'Action'] :
     activeTab === 'skills' ? ['Country', 'Skill', 'Task Order', 'Status', 'Action'] :
-    ['Task Order', 'Code', 'Assigned Countries', 'Status', 'Action'];
+    ['Task Order', 'Source System', 'Code', 'Assigned Countries', 'Status', 'Action'];
 
   return <section className="font-jakarta flex h-screen max-h-[100dvh] min-h-screen overflow-hidden bg-[#eef3f7] text-sibs-primary-1">
     <AdminSidebar isMobileOpen={dashboard.isMobileSidebarOpen} modules={dashboard.modules}
@@ -176,12 +178,6 @@ export default function TaskOrderLedger() {
       <AppHeader title="Task Order Management" subtitle="Workforce Management System" userName={userName}
         onMenuClick={() => dashboard.setIsMobileSidebarOpen(true)} onLogoutClick={() => dashboard.setShowLogoutModal(true)}/>
       <main className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden p-2.5 sm:p-4 lg:p-5">
-        <div className="shrink-0 flex flex-wrap items-start justify-between gap-2">
-          <div><h1 className="text-base font-extrabold text-[#052e53]">Task Order Management</h1>
-            <p className="text-xs text-slate-500">Country ownership, Skills, Task Order profiles, and change history</p></div>
-          <button type="button" onClick={() => { void loadManagement(); if (activeTab === 'history') void loadHistory(historyPage); }}
-            className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-[#0b3b68] shadow-xs hover:bg-slate-50"><RefreshCw size={14}/> Refresh</button>
-        </div>
         <div className="grid shrink-0 grid-cols-3 gap-2 sm:gap-3">
           <StatCard label="Task Orders" value={profiles.filter((p) => Number(p.is_active) === 1).length} Icon={ShieldCheck}/>
           <StatCard label="Countries" value={countries.length} Icon={Layers}/>
@@ -196,7 +192,7 @@ export default function TaskOrderLedger() {
           {notice}<button type="button" onClick={() => setNotice('')} aria-label="Dismiss message"><X size={14}/></button></div>}
         {error && <div role="alert" className="shrink-0 flex gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-800"><AlertCircle size={15}/>{error}</div>}
         <div className="shrink-0 flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-white p-3 shadow-xs">
-          {activeTab !== 'history' && <>
+          {!['history','versions'].includes(activeTab) && <>
             <select value={selectedProfile} onChange={(e) => { setSelectedProfile(e.target.value); setSelectedCountry('ALL'); }} className={`${control} max-w-full flex-1 sm:flex-none sm:w-56`} aria-label="Filter Task Order">
               <option value="ALL">All Task Orders</option>{profiles.map((p) => <option key={p.id} value={p.id}>{p.task_order_name}</option>)}
             </select>
@@ -210,11 +206,12 @@ export default function TaskOrderLedger() {
             {canEdit && activeTab === 'skills' && <button type="button" onClick={() => open('skillAdd', { country: selectedCountry !== 'ALL' ? selectedCountry : '' })} className="flex items-center gap-1 rounded-lg bg-[#073b67] px-3 py-2 text-xs font-bold text-white hover:bg-[#082c4c]"><Plus size={14}/> Add Skill</button>}
             {canEdit && activeTab === 'profiles' && <button type="button" onClick={() => open('profileAdd')} className="flex items-center gap-1 rounded-lg bg-[#073b67] px-3 py-2 text-xs font-bold text-white hover:bg-[#082c4c]"><Plus size={14}/> Add Task Order</button>}
           </>}
+          {activeTab === 'versions' && <div className="text-xs text-slate-500">Read-only mapping snapshots. Each version preserves country ownership at publication time.</div>}
           {activeTab === 'history' && <div className="text-xs text-slate-500">Immutable audit trail of country transfers, Skill changes, and Task Order edits. Time displayed in Philippine time.</div>}
         </div>
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs">
           <div className="min-h-0 flex-1 overflow-auto sibs-scrollbar">
-            {activeTab === 'history' ? <table className="w-full min-w-[820px] border-collapse text-left"><thead><tr>
+            {activeTab === 'versions' ? <TaskOrderVersionsTab/> : activeTab === 'history' ? <table className="w-full min-w-[820px] border-collapse text-left"><thead><tr>
               {['Date / Time', 'Change', 'Country / Skill', 'Previous → New', 'Changed By', 'Reason'].map((h) => <th key={h} className={header}>{h}</th>)}
               </tr></thead><tbody>{historyLoading ? <tr><td className={`${cell} py-16 text-center`} colSpan={6}><Loader2 size={20} className="mx-auto animate-spin"/></td></tr> :
               history.rows.length === 0 ? <tr><td className={`${cell} py-16 text-center text-slate-400`} colSpan={6}>No changes recorded yet.</td></tr> :
@@ -252,6 +249,7 @@ export default function TaskOrderLedger() {
                     <td className={cell}>{canEdit && <button type="button" className={button} onClick={() => open('skillEdit', s)}><Pencil size={13}/> Edit</button>}</td>
                   </tr>) : visible.map((p) => <tr key={p.id} className="hover:bg-slate-50">
                     <td className={`${cell} font-extrabold text-[#073b67]`}>{p.task_order_name}<div className="mt-0.5 text-[10px] font-normal text-slate-400">{p.region}</div></td>
+                    <td className={cell}>{badge(p.source_system || 'Unassigned', p.source_system ? 'blue' : 'amber')}</td>
                     <td className={`${cell} text-[11px]`}>{p.task_order_code}</td>
                     <td className={`${cell} tabular-nums`}>{countries.filter((c) => Number(c.profileId) === Number(p.id)).length}</td>
                     <td className={cell}>{badge(Number(p.is_active) === 1 ? 'Active' : 'Inactive', Number(p.is_active) === 1 ? 'green' : 'grey')}</td>
@@ -260,7 +258,7 @@ export default function TaskOrderLedger() {
               </tbody></table>}
           </div>
           <div className="shrink-0 border-t border-slate-100 bg-white">
-            {activeTab === 'history' ? <TablePagination currentPage={historyPage} totalPages={Math.max(1, Math.ceil(history.total / PAGE_SIZE))}
+            {activeTab === 'versions' ? null : activeTab === 'history' ? <TablePagination currentPage={historyPage} totalPages={Math.max(1, Math.ceil(history.total / PAGE_SIZE))}
               totalItems={history.total} pageSize={PAGE_SIZE} onPageChange={setHistoryPage} itemLabel="changes"/>
               : <TablePagination currentPage={page} totalPages={pages} totalItems={filtered.length} pageSize={PAGE_SIZE}
                 onPageChange={setPage} itemLabel="records"/>}

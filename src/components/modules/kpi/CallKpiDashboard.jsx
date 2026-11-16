@@ -1436,7 +1436,7 @@ export default function CallKpiDashboard({
                 </span>
                 <span className="inline-flex items-center gap-1 font-bold text-red-500">
                   <i className="inline-block h-0.5 w-3 bg-red-500 border-t border-dashed border-red-500" />
-                  Target: {Number(targets.serviceLevelPct || data?.data?.targets?.serviceLevelPct || 90)}%
+                  Target: {Number(targets.serviceLevelPct ?? data?.data?.targets?.serviceLevelPct ?? 90)}%
                 </span>
               </>
             }
@@ -1444,7 +1444,7 @@ export default function CallKpiDashboard({
             <LineChart
               series={queueUnavailable || serviceLevelUnavailable ? [] : series.length ? series : data?.data?.series || []}
               target={
-                targets.serviceLevelPct ||
+                targets.serviceLevelPct ??
                 data?.data?.targets?.serviceLevelPct
               }
               period={currentPeriod}
@@ -1473,7 +1473,7 @@ export default function CallKpiDashboard({
                 </span>
                 <span className="inline-flex items-center gap-1 font-bold text-red-500">
                   <i className="inline-block h-0.5 w-3 bg-red-500" />
-                  Target: {formatNumber(convertDurationToSeconds(targets.ahtSeconds || data?.data?.targets?.ahtSeconds || 420))}s
+                  Target: {formatNumber(convertDurationToSeconds(targets.ahtSeconds ?? data?.data?.targets?.ahtSeconds ?? 420))}s
                 </span>
               </>
             }
@@ -1485,7 +1485,7 @@ export default function CallKpiDashboard({
                   : data?.data?.series || []
               }
               target={
-                targets.ahtSeconds ||
+                targets.ahtSeconds ??
                 data?.data?.targets?.ahtSeconds
               }
               period={currentPeriod}

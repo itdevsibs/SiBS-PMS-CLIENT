@@ -11,9 +11,9 @@ export async function getCallsReportSkills() {
   return response?.data || response;
 }
 
-export async function getCallSkills({ onlySkillStatistics = false } = {}) {
+export async function getCallSkills({ onlySkillStatistics = false, onlyProfiles = false, taskOrderVersionId = 'current' } = {}) {
   const response = await api.get("/kpis/skills", {
-    params: onlySkillStatistics ? { reportType: "SKILL_STATISTICS" } : {},
+    params: { ...(onlyProfiles ? { reportType: "PROFILE_ONLY" } : onlySkillStatistics ? { reportType: "SKILL_STATISTICS" } : {}), taskOrderVersionId },
   });
   return response?.data || response;
 }
@@ -49,5 +49,14 @@ export async function getCallsReport(params = {}) {
 }
 export async function getChatReport(params = {}) {
   const response = await api.get("/kpis/chat-report", { params });
+  return response?.data || response;
+}
+
+export async function getTaskOrderVersions() {
+  const response = await api.get('/kpis/task-order-versions');
+  return response?.data || response;
+}
+export async function compareTaskOrderVersions(body) {
+  const response = await api.post('/kpis/task-order-version-comparison', body);
   return response?.data || response;
 }

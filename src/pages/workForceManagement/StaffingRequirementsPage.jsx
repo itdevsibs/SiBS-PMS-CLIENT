@@ -1,5 +1,5 @@
 // Client-approved daily Required HC, one target per Task Order. No schedule or
-// attendance records are edited here; scheduled Actual HC comes from Kronos.
+// attendance records are edited here; Actual HC is a dated employment snapshot.
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { CalendarDays, X, Layers, Copy, ChevronLeft, ChevronRight, ClipboardList, History, Loader2, RefreshCw, Save, Users, CheckCircle2, AlertCircle, Edit3, Trash2 } from 'lucide-react';
 import AdminSidebar from '@/components/common/layout/AdminSidebar';
@@ -133,7 +133,7 @@ export default function StaffingRequirementsPage() {
     // requirements even when Kronos is offline.
     getStaffingDailyCoverage({ taskOrderId, dateFrom: calendar.dates[0], dateTo: calendar.dates[calendar.dates.length - 1] })
       .then(data => { if (active) setCoverage(data); })
-      .catch(() => { if (active) setCoverage({ days: [], scheduleError: 'Scheduled headcount is temporarily unavailable.' }); });
+      .catch(() => { if (active) setCoverage({ days: [], scheduleError: 'Headcount coverage is temporarily unavailable.' }); });
     return () => { active = false; };
   }, [taskOrderId, calendar, reload]);
 
@@ -369,7 +369,7 @@ export default function StaffingRequirementsPage() {
                           if (!isCurrentMonth) setMonth(`${date.slice(0, 7)}-01`);
                         }
                       }}
-                        aria-label={`${date}: ${row ? `${row.requiredHeadcount} required` : 'no requirement'}, ${actual?.actualHeadcount != null ? `${actual.actualHeadcount} scheduled` : 'schedule unavailable'}${row?.status === 'DRAFT' ? ', draft' : ''}`}
+                        aria-label={`${date}: ${row ? `${row.requiredHeadcount} required` : 'no requirement'}, ${actual?.actualHeadcount != null ? `${actual.actualHeadcount} active` : 'headcount unavailable'}${row?.status === 'DRAFT' ? ', draft' : ''}`}
                         aria-pressed={isSelected}
                         className={`group flex h-full min-h-[92px] flex-col p-2 text-left transition duration-150 sm:p-2.5 ${
                           isSelected
@@ -396,7 +396,7 @@ export default function StaffingRequirementsPage() {
                           </div>
                           <div className="mt-1 flex items-center gap-1 text-[9px] leading-none text-slate-500">
                             <span className={`h-1 w-1 shrink-0 rounded-full ${actual?.actualHeadcount != null ? 'bg-slate-300' : 'bg-slate-200'}`} />
-                            <span>{actual?.actualHeadcount != null ? `${actual.actualHeadcount} Scheduled` : '— Scheduled'}</span>
+                            <span>{actual?.actualHeadcount != null ? `${actual.actualHeadcount} Active` : '— Active'}</span>
                           </div>
                         </div>
                       </button>;
@@ -466,7 +466,7 @@ export default function StaffingRequirementsPage() {
                           </p>
                         </div>
                         <div className="rounded-xl border border-slate-200/80 bg-gradient-to-b from-slate-50/60 to-white p-3 transition shadow-xs">
-                          <p className="text-[10px] font-bold tracking-wider text-slate-500 uppercase">Scheduled HC</p>
+                          <p className="text-[10px] font-bold tracking-wider text-slate-500 uppercase">Actual HC</p>
                           <p className="mt-1 text-2xl font-black text-slate-700">
                             {selectedDay?.actualHeadcount ?? '—'}
                           </p>

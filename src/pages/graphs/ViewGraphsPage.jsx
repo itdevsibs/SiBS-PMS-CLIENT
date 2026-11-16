@@ -22,6 +22,7 @@ import AppHeader from "@/components/common/layout/AppHeader";
 import ConfirmationModal from "@/components/common/ui/ConfirmationModal";
 import LoadingModal from "@/components/common/ui/LoadingModal";
 import CallKpiDashboard from "@/components/modules/kpi/CallKpiDashboard";
+import TaskOrderVersionReportControls from "@/components/modules/taskorder-ledger/TaskOrderVersionReportControls";
 import EmailKpiDashboard, {
   EmailSummaryCards,
 } from "@/components/modules/kpi/EmailKpiDashboard";
@@ -356,6 +357,7 @@ export default function ViewGraphsPage() {
   );
 
   const [filters, setFilters] = useState(DEFAULT_FILTERS);
+  const [selectedVersion, setSelectedVersion] = useState("current");
   const [kpiResponse, setKpiResponse] = useState(null);
   const [emailKpiResponse, setEmailKpiResponse] = useState(null);
   const [qualityAuditKpiResponse, setQualityAuditKpiResponse] = useState(null);
@@ -403,7 +405,7 @@ export default function ViewGraphsPage() {
       const fetches = [];
       if ((isAllReports || selectedReportIds.includes("calls")) && !kpiResponse) {
         fetches.push(
-          getCallKpis(buildRequestParams(filters)).then((res) => setKpiResponse(res)),
+          getCallKpis({...buildRequestParams(filters),taskOrderVersionId:selectedVersion}).then((res) => setKpiResponse(res)),
         );
       }
       if ((isAllReports || selectedReportIds.includes("emails")) && !emailKpiResponse) {
@@ -492,7 +494,10 @@ export default function ViewGraphsPage() {
         ? "All Reports"
         : selectedReportIds.map((id) => nameMap[id] || id).join(" & ");
 
-      const rawFilename = `${reportPrefix} - ${taskOrderPart} - ${datePart}.pdf`;
+      const mappingVersion = selectedReportIds.includes('calls')
+        ? ` - Mapping ${String(kpiResponse?.data?.data?.taskOrderVersion?.label || selectedVersion).replace(/[^a-zA-Z0-9 -]/g,'')}`
+        : '';
+      const rawFilename = `${reportPrefix} - ${taskOrderPart} - ${datePart}${mappingVersion}.pdf`;
       const filename = rawFilename.replace(/[<>:"/\\|?*]/g, "-");
 
       await downloadSelectedKpiReportsAsPdf({
@@ -512,7 +517,7 @@ export default function ViewGraphsPage() {
 
   useEffect(() => {
     let isMounted = true;
-    getCallSkills({ onlySkillStatistics: true })
+    getCallSkills({ onlySkillStatistics: true, taskOrderVersionId:selectedVersion })
       .then((res) => {
         if (!isMounted || !res?.data) return;
         // Use the canonical Skill Statistics list only; mixing static/Chat
@@ -529,7 +534,7 @@ export default function ViewGraphsPage() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [selectedVersion]);
 
   const loadKpis = useCallback(async () => {
     if (!canViewGraphs) {
@@ -571,7 +576,7 @@ export default function ViewGraphsPage() {
       const promises = [];
 
       if (showCalls) {
-        const callParams = buildRequestParams(filters);
+        const callParams = {...buildRequestParams(filters),taskOrderVersionId:selectedVersion};
         promises.push(
           getCallKpis(callParams)
             .then((res) => {
@@ -725,7 +730,7 @@ export default function ViewGraphsPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [canViewGraphs, filters, showCalls, showEmails, showQa, showOccupancy]);
+  }, [canViewGraphs, filters, showCalls, showEmails, showQa, showOccupancy,selectedVersion]);
 
   useEffect(() => {
     loadKpis();
@@ -769,17 +774,14 @@ export default function ViewGraphsPage() {
   const handleSourceChange = (newSources) => {
     setFilters((current) => {
       const nextSource = Array.isArray(newSources) ? newSources : [newSources];
-      const validTaskOrders = new Set(
-        (liveTaskOrderOptions.length ? liveTaskOrderOptions : getTaskOrderOptions(nextSource))
-          .map((to) => to.value),
-      );
+      const allowedTaskOrders = getTaskOrderOptions(nextSource, liveTaskOrderOptions);
+      const validTaskOrders = new Set(allowedTaskOrders.map((to) => to.value));
       const nextTaskOrder = Array.isArray(current.taskOrder)
         ? current.taskOrder.filter((to) => validTaskOrders.has(to))
         : [];
-      const validCountries = new Set([
-        ...getCountryOptions(nextSource, nextTaskOrder).map((c) => c.value),
-        ...nextTaskOrder.flatMap((to) => skillCountryScopes[to] || []),
-      ].map((value) => String(value).toLowerCase()));
+      const scopedOrders = nextTaskOrder.length
+        ? nextTaskOrder : allowedTaskOrders.map((to) => to.value);
+      const validCountries = new Set(scopedOrders.flatMap((to) => skillCountryScopes[to] || []).map((value) => String(value).toLowerCase()));
       const nextCountry = Array.isArray(current.country)
         ? current.country.filter((c) => validCountries.has(String(c).toLowerCase()))
         : [];
@@ -787,10 +789,10 @@ export default function ViewGraphsPage() {
       const newSkillOptions = getSkillOptions(
         nextSource,
         nextCountry,
-        nextTaskOrder,
+        scopedOrders,
         skillsByCountryState,
         skillCountryScopes,
-        true,
+        nextTaskOrder.includes('TO10'),
       );
       const validSkills = new Set(
         newSkillOptions.map((s) => s.value.toLowerCase()),
@@ -814,14 +816,10 @@ export default function ViewGraphsPage() {
       const nextTaskOrders = Array.isArray(newTaskOrders)
         ? newTaskOrders
         : [newTaskOrders];
-      const newCountryOptions = getCountryOptions(
-        current.sourceSystem,
-        nextTaskOrders,
-      );
-      const validCountryValues = new Set([
-        ...newCountryOptions.map((c) => c.value),
-        ...nextTaskOrders.flatMap((to) => skillCountryScopes[to] || []),
-      ].map((value) => String(value).toLowerCase()));
+      const scopedOrders = nextTaskOrders.length
+        ? nextTaskOrders
+        : getTaskOrderOptions(current.sourceSystem, liveTaskOrderOptions).map((to) => to.value);
+      const validCountryValues = new Set(scopedOrders.flatMap((to) => skillCountryScopes[to] || []).map((value) => String(value).toLowerCase()));
       const nextCountry = Array.isArray(current.country)
         ? current.country.filter((c) => validCountryValues.has(String(c).toLowerCase()))
         : [];
@@ -829,10 +827,10 @@ export default function ViewGraphsPage() {
       const newSkillOptions = getSkillOptions(
         current.sourceSystem,
         nextCountry,
-        nextTaskOrders,
+        scopedOrders,
         skillsByCountryState,
         skillCountryScopes,
-        true,
+        nextTaskOrders.includes('TO10'),
       );
       const validSkills = new Set(
         newSkillOptions.map((s) => s.value.toLowerCase()),
@@ -855,13 +853,16 @@ export default function ViewGraphsPage() {
       const nextCountries = Array.isArray(newCountries)
         ? newCountries
         : [newCountries];
+      const scopedOrders = current.taskOrder?.length
+        ? current.taskOrder
+        : getTaskOrderOptions(current.sourceSystem, liveTaskOrderOptions).map((to)=>to.value);
       const newSkillOptions = getSkillOptions(
         current.sourceSystem,
         nextCountries,
-        current.taskOrder,
+        scopedOrders,
         skillsByCountryState,
         skillCountryScopes,
-        true,
+        current.taskOrder?.includes('TO10'),
       );
       const validSkills = new Set(
         newSkillOptions.map((s) => s.value.toLowerCase()),
@@ -963,21 +964,14 @@ export default function ViewGraphsPage() {
       ? dashboardData.series
       : [];
 
-  const taskOrderOptions = liveTaskOrderOptions.length
-    ? liveTaskOrderOptions
-    : getTaskOrderOptions(filters.sourceSystem);
-
-  const baseCountryOptions = getCountryOptions(
-    filters.sourceSystem,
-    filters.taskOrder,
-  );
-  // Add countries from the actual active Country -> Task Order ledger. A static
-  // list alone can hide legitimate countries when the ledger changes.
+  const taskOrderOptions = getTaskOrderOptions(filters.sourceSystem, liveTaskOrderOptions);
+  // Country options must follow the source-restricted Task Orders as well.
+  // Resolve against the published ledger so archived versions remain accurate.
   const selectedTaskOrders = Array.isArray(filters.taskOrder)
     ? filters.taskOrder.filter((to) => to && to !== '__NONE__')
     : String(filters.taskOrder || '').split(',').filter(Boolean);
   const selectedScopes = selectedTaskOrders.length
-    ? selectedTaskOrders : Object.keys(skillCountryScopes);
+    ? selectedTaskOrders : taskOrderOptions.map((option) => option.value);
   const liveCountryOptions = selectedScopes.flatMap((to) =>
     (skillCountryScopes[to] || []).map((name) => ({
       value: name.toLowerCase(),
@@ -991,7 +985,7 @@ export default function ViewGraphsPage() {
     ? qualityAuditDashboardData.availableCountries
     : [];
   const countryOptions = Array.from(
-    [...baseCountryOptions, ...liveCountryOptions, ...emailCountryOptions, ...qualityAuditCountryOptions].reduce((map, option) => {
+    [...liveCountryOptions].reduce((map, option) => {
       const key = String(option?.value || "").trim().toLowerCase();
       if (key && !map.has(key)) map.set(key, option);
       return map;
@@ -1001,10 +995,10 @@ export default function ViewGraphsPage() {
   const skillOptions = getSkillOptions(
     filters.sourceSystem,
     filters.country,
-    filters.taskOrder,
+    selectedScopes,
     skillsByCountryState,
     skillCountryScopes,
-    true,
+    selectedTaskOrders.includes('TO10'),
   );
 
   const activeTaskOrder =
@@ -1298,6 +1292,31 @@ export default function ViewGraphsPage() {
                         </>
                       )}
                     </div>
+                    {/* Keep reporting version and comparison controls inside Hide/Show Filters. */}
+                    {showCalls && (
+                      <div className="border-t border-sibs-tertiary-10 px-2 pb-2.5 pt-2 sm:px-2.5">
+                        <TaskOrderVersionReportControls
+                          value={selectedVersion}
+                          onChange={(version) => {
+                            setSelectedVersion(version);
+                            setFilters((old) => ({ ...old, taskOrder: [], country: [], skill: [] }));
+                          }}
+                          reportType="CALLS_WOW"
+                          sourceSystem={Array.isArray(filters.sourceSystem) && filters.sourceSystem.length
+                            ? (['FUSECOM', 'FUSENET', 'HERODASH'].every((source) => filters.sourceSystem.includes(source))
+                              && filters.sourceSystem.every((source) => ['FUSECOM', 'FUSENET', 'HERODASH'].includes(source))
+                              ? 'US_VISA' : filters.sourceSystem.join(','))
+                            : (typeof filters.sourceSystem === 'string' && filters.sourceSystem ? filters.sourceSystem : 'US_VISA')}
+                          taskOrder={filters.taskOrder || []}
+                          country={filters.country || []}
+                          skill={filters.skill || []}
+                          reportPeriod={filters.period}
+                          reportReferenceDate={filters.referenceDate || ''}
+                          reportFrom={filters.from || ''}
+                          reportTo={filters.to || ''}
+                        />
+                      </div>
+                    )}
                   </div>
                 </div>
               </section>
@@ -1542,6 +1561,7 @@ export default function ViewGraphsPage() {
           <div id="export-all-reports-dashboard" style={{ width: "1500px", background: "#ffffff" }}>
             <AllReportsExecutivePdfView
               callData={kpiResponse?.data?.data || dashboardData || {}}
+              callMappingVersion={kpiResponse?.data?.data?.taskOrderVersion?.label || selectedVersion}
               emailData={emailKpiResponse?.data?.data || emailDashboardData || {}}
               qualityAuditData={qualityAuditKpiResponse?.data?.data || qualityAuditDashboardData || {}}
               occupancyData={occupancyDashboardData || {}}
