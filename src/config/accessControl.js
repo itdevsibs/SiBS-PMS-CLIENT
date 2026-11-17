@@ -37,6 +37,8 @@ export const PERMISSIONS = Object.freeze({
   SUPER_ADMIN_HISTORY: "SUPER_ADMIN_HISTORY",
   US_VISA_KPI_TARGET_SETTINGS: "US_VISA_KPI_TARGET_SETTINGS",
   CLIENT_DASHBOARD: "CLIENT_DASHBOARD",
+  VIEW_POLICY_PROCESSING: "VIEW_POLICY_PROCESSING",
+  MANAGE_POLICY_PROCESSING: "MANAGE_POLICY_PROCESSING",
 });
 
 const ACCESS_PRIORITY = [
@@ -187,6 +189,27 @@ const PERMISSION_RULES = Object.freeze({
   },
   [PERMISSIONS.CLIENT_DASHBOARD]: {
     roles: ["client"],
+  },
+  [PERMISSIONS.VIEW_POLICY_PROCESSING]: {
+    access: [
+      ACCESS.SUPER_ADMIN,
+      ACCESS.BOD,
+      ACCESS.SOM,
+      ACCESS.OM,
+      ACCESS.WFM,
+      ACCESS.FRONTSTEPS,
+    ],
+    roles: ["admin", "superadmin", "bod", "som", "om", "wfm", "frontsteps"],
+  },
+  [PERMISSIONS.MANAGE_POLICY_PROCESSING]: {
+    access: [
+      ACCESS.SUPER_ADMIN,
+      ACCESS.BOD,
+      ACCESS.SOM,
+      ACCESS.OM,
+      ACCESS.FRONTSTEPS,
+    ],
+    roles: ["admin", "superadmin", "bod", "som", "om", "frontsteps"],
   },
 });
 
@@ -368,37 +391,195 @@ export const DASHBOARD_MODULES = Object.freeze([
     path: "/interface-access-history",
     permission: PERMISSIONS.SUPER_ADMIN_HISTORY,
   },
+  {
+    key: "ai-report",
+    name: "AI Report",
+    iconKey: "brain-circuit",
+    path: "/ai-report/view-graphs",
+    isolated: true,
+    submodules: [
+      {
+        key: "ai-wow-report",
+        name: "WoW Report",
+        iconKey: "bar-chart",
+        path: "/ai-report/view-graphs",
+        permission: PERMISSIONS.VIEW_WOW_REPORT,
+        submodules: [
+          {
+            name: "Calls",
+            key: "calls",
+            iconKey: "phone-call",
+            path: "/ai-report/view-graphs?section=calls",
+            permission: PERMISSIONS.VIEW_WOW_REPORT,
+          },
+          {
+            name: "Emails",
+            key: "emails",
+            iconKey: "mail",
+            path: "/ai-report/view-graphs?section=emails",
+            permission: PERMISSIONS.VIEW_WOW_REPORT,
+          },
+          {
+            name: "QA",
+            key: "qa",
+            iconKey: "clipboard-check",
+            path: "/ai-report/view-graphs?section=qa",
+            permission: PERMISSIONS.VIEW_WOW_REPORT,
+          },
+          {
+            name: "Occupancy & HC",
+            key: "occupancy",
+            iconKey: "users",
+            path: "/ai-report/view-graphs?section=occupancy",
+            permission: PERMISSIONS.VIEW_WOW_REPORT,
+          },
+        ],
+      },
+      {
+        key: "ai-workforce-management",
+        name: "Workforce Management",
+        iconKey: "users-round",
+        path: "/ai-report/employee-master-data",
+        submodules: [
+          {
+            key: "employee-ledger",
+            name: "Employee Ledger",
+            iconKey: "database",
+            path: "/ai-report/employee-master-data",
+            permission: PERMISSIONS.VIEW_EMPLOYEE_LEDGER,
+          },
+          {
+            key: "staffing-calendar",
+            name: "Staffing Requirements",
+            iconKey: "clipboard-list",
+            path: "/ai-report/staffing-requirements",
+            permission: PERMISSIONS.WFM_STAFFING_CALENDAR,
+          },
+        ],
+      },
+      {
+        key: "ai-operations-tracking",
+        name: "Operations Tracking",
+        iconKey: "line-chart",
+        path: "/ai-report/occupancy",
+        submodules: [
+          {
+            key: "occupancy",
+            name: "Occupancy",
+            iconKey: "users",
+            path: "/ai-report/occupancy",
+            permission: PERMISSIONS.VIEW_OCCUPANCY,
+          },
+          {
+            key: "attendance-sheet",
+            name: "Attendance Sheet",
+            iconKey: "clipboard-check",
+            path: "/ai-report/attendance-sheet",
+            permission: PERMISSIONS.VIEW_ATTENDANCE_SHEET,
+          },
+          {
+            key: "calls-report",
+            name: "Calls Report",
+            iconKey: "phone-call",
+            path: "/ai-report/calls-report",
+            permission: PERMISSIONS.VIEW_CALLS_REPORT,
+          },
+          {
+            key: "chat-reports",
+            name: "Chat Reports",
+            iconKey: "message-circle",
+            path: "/ai-report/chat-reports",
+            permission: PERMISSIONS.VIEW_CHAT_REPORT,
+          },
+        ],
+      },
+      {
+        key: "ai-policy-processing",
+        name: "Policy Processing",
+        iconKey: "file-cog",
+        path: "/ai-report/policy-processing",
+        permission: PERMISSIONS.VIEW_POLICY_PROCESSING,
+      },
+    ],
+  },
 ]);
 
 const ROUTE_PERMISSION_RULES = Object.freeze([
   { paths: ["/agent"], permission: PERMISSIONS.VIEW_OWN_PERFORMANCE },
   { paths: ["/tl"], permission: PERMISSIONS.VIEW_TEAM_PERFORMANCE },
   { paths: ["/om"], permission: PERMISSIONS.VIEW_OPERATIONS_PERFORMANCE },
-  { paths: ["/bod", "/som", "/view-graphs"], permission: PERMISSIONS.VIEW_WOW_REPORT },
+  {
+    paths: ["/bod", "/som", "/view-graphs", "/ai-report/view-graphs"],
+    permission: PERMISSIONS.VIEW_WOW_REPORT,
+  },
   { paths: ["/import-data"], permission: PERMISSIONS.WFM_IMPORT_DATA },
-  { paths: ["/import-repository"], permission: PERMISSIONS.WFM_IMPORT_REPOSITORY },
+  {
+    paths: ["/import-repository"],
+    permission: PERMISSIONS.WFM_IMPORT_REPOSITORY,
+  },
   { paths: ["/history"], permission: PERMISSIONS.WFM_HISTORY_LOGS },
-  { paths: ["/task-order-ledger"], permission: PERMISSIONS.WFM_TASK_ORDER_LEDGER },
+  {
+    paths: ["/task-order-ledger"],
+    permission: PERMISSIONS.WFM_TASK_ORDER_LEDGER,
+  },
   { paths: ["/us-visa-kpi-configuration"], permission: PERMISSIONS.US_VISA_KPI_TARGET_SETTINGS },
-  { paths: ["/staffing-requirements"], permission: PERMISSIONS.WFM_STAFFING_CALENDAR },
-  { paths: ["/employee-master-data"], permission: PERMISSIONS.VIEW_EMPLOYEE_LEDGER },
-  { paths: ["/occupancy"], permission: PERMISSIONS.VIEW_OCCUPANCY },
-  { paths: ["/attendance-sheet"], permission: PERMISSIONS.VIEW_ATTENDANCE_SHEET },
-  { paths: ["/calls-report"], permission: PERMISSIONS.VIEW_CALLS_REPORT },
-  { paths: ["/chat-reports"], permission: PERMISSIONS.VIEW_CHAT_REPORT },
-  { paths: ["/frontsteps"], permission: PERMISSIONS.VIEW_FRONTSTEPS },
+  {
+    paths: ["/staffing-requirements", "/ai-report/staffing-requirements"],
+    permission: PERMISSIONS.WFM_STAFFING_CALENDAR,
+  },
+  {
+    paths: ["/employee-master-data", "/ai-report/employee-master-data"],
+    permission: PERMISSIONS.VIEW_EMPLOYEE_LEDGER,
+  },
+  {
+    paths: ["/occupancy", "/ai-report/occupancy"],
+    permission: PERMISSIONS.VIEW_OCCUPANCY,
+  },
+  {
+    paths: ["/attendance-sheet", "/ai-report/attendance-sheet"],
+    permission: PERMISSIONS.VIEW_ATTENDANCE_SHEET,
+  },
+  {
+    paths: ["/calls-report", "/ai-report/calls-report"],
+    permission: PERMISSIONS.VIEW_CALLS_REPORT,
+  },
+  {
+    paths: ["/chat-reports", "/ai-report/chat-reports"],
+    permission: PERMISSIONS.VIEW_CHAT_REPORT,
+  },
+  {
+    paths: [
+      "/frontsteps",
+      "/frontsteps/ai-report",
+      "/frontsteps/ai-report/summary",
+      "/frontsteps/ai-report/account-kpi",
+      "/frontsteps/ai-report/pmp-pip",
+      "/frontsteps/ai-report/policy-processing",
+    ],
+    permission: PERMISSIONS.VIEW_FRONTSTEPS,
+  },
+  {
+    paths: ["/ai-report/policy-processing"],
+    permission: PERMISSIONS.VIEW_POLICY_PROCESSING,
+  },
   { paths: ["/superadmin"], permission: PERMISSIONS.SUPER_ADMIN_ACCESS },
-  { paths: ["/interface-access-history"], permission: PERMISSIONS.SUPER_ADMIN_HISTORY },
+  {
+    paths: ["/interface-access-history"],
+    permission: PERMISSIONS.SUPER_ADMIN_HISTORY,
+  },
   { paths: ["/client"], permission: PERMISSIONS.CLIENT_DASHBOARD },
 ]);
 
 function normalizeRoleName(value) {
-  const role = String(value || "").trim().toLowerCase();
+  const role = String(value || "")
+    .trim()
+    .toLowerCase();
 
   if (role === "agent") return "employee";
   if (role === "superadmin" || role === "super-admin") return "admin";
   if (role === "master-data") return "masterdata";
-  if (role === "frontstep" || role === "front-step" || role === "frontsteps") return "frontsteps";
+  if (role === "frontstep" || role === "front-step" || role === "frontsteps")
+    return "frontsteps";
 
   return ROLE_LABELS[role] ? role : "";
 }
@@ -538,21 +719,45 @@ export function hasPermissionForUser(user, permission) {
   const access = getUserAdminAccess(user);
   const role = resolveUserRole(user);
 
-  return Boolean(
-    rule.access?.includes(access) ||
-      rule.roles?.includes(role),
-  );
+  return Boolean(rule.access?.includes(access) || rule.roles?.includes(role));
+}
+
+function filterSubmodules(submodules, user) {
+  if (!Array.isArray(submodules)) return [];
+
+  return submodules
+    .map((sub) => {
+      // If this submodule has nested submodules, filter recursively
+      if (Array.isArray(sub.submodules) && sub.submodules.length > 0) {
+        const allowedChildren = filterSubmodules(sub.submodules, user);
+        if (allowedChildren.length === 0) return null;
+        if (sub.permission && !hasPermissionForUser(user, sub.permission)) {
+          return null;
+        }
+        return {
+          ...sub,
+          path: sub.path || allowedChildren[0].path,
+          submodules: allowedChildren,
+        };
+      }
+
+      // Direct submodule permission check
+      if (sub.permission && !hasPermissionForUser(user, sub.permission)) {
+        return null;
+      }
+
+      return sub;
+    })
+    .filter(Boolean);
 }
 
 export function getAllowedModules(user) {
   if (!user) return [];
 
   return DASHBOARD_MODULES.map((module) => {
-    // If the module has submodules, filter them by permission
+    // If the module has submodules, filter them by permission (including nested submodules)
     if (Array.isArray(module.submodules) && module.submodules.length > 0) {
-      const allowedSubmodules = module.submodules.filter((sub) =>
-        !sub.permission || hasPermissionForUser(user, sub.permission),
-      );
+      const allowedSubmodules = filterSubmodules(module.submodules, user);
 
       if (allowedSubmodules.length === 0) return null;
 
@@ -575,7 +780,10 @@ export function getAllowedModules(user) {
 export function canAccessDashboardPath(user, pathname) {
   if (!user) return false;
 
-  const cleanPath = String(pathname || "").split("?")[0].replace(/\/$/, "") || "/";
+  const cleanPath =
+    String(pathname || "")
+      .split("?")[0]
+      .replace(/\/$/, "") || "/";
   const rule = ROUTE_PERMISSION_RULES.find((item) =>
     item.paths.includes(cleanPath),
   );

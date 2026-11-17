@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutGrid,
   Users,
@@ -32,6 +32,8 @@ import {
   PanelLeftOpen,
   LogOut,
   Menu,
+  BrainCircuit,
+  FileCog,
 } from "lucide-react";
 
 import ConfirmationModal from "@/components/common/ui/ConfirmationModal";
@@ -69,6 +71,37 @@ const FRONTSTEPS_MODULES = [
     ],
   },
   {
+    key: "ai-report",
+    name: "AI Report",
+    icon: BrainCircuit,
+    submodules: [
+      {
+        id: "ai-summary",
+        name: "Summary",
+        icon: Activity,
+        path: "/frontsteps/ai-report/summary",
+      },
+      {
+        id: "ai-account-kpi",
+        name: "Account-based KPI",
+        icon: Target,
+        path: "/frontsteps/ai-report/account-kpi",
+      },
+      {
+        id: "ai-pmp-pip",
+        name: "KPI (PMP/PIP)",
+        icon: TrendingUp,
+        path: "/frontsteps/ai-report/pmp-pip",
+      },
+      {
+        id: "ai-policy-processing",
+        name: "Policy Processing",
+        icon: FileCog,
+        path: "/frontsteps/ai-report/policy-processing",
+      },
+    ],
+  },
+  {
     key: "system",
     name: "System",
     icon: Settings,
@@ -84,6 +117,7 @@ export default function FrontStepsDashboard() {
   const userName = dashboard.authUser?.name || dashboard.authUser?.username || "User";
 
   const location = useLocation();
+  const navigate = useNavigate();
 
   // Check URL query param, hash, or localStorage to preserve active submodule across browser refreshes
   const getInitialSubmoduleId = () => {
@@ -909,6 +943,11 @@ export default function FrontStepsDashboard() {
                                   type="button"
                                   title={sub.name}
                                   onClick={() => {
+                                    if (sub.path?.startsWith("/frontsteps/ai-report")) {
+                                      navigate(sub.path);
+                                      if (isMobile) setIsMobileOpen(false);
+                                      return;
+                                    }
                                     handleSelectSubmodule(sub.id);
                                     if (isMobile) setIsMobileOpen(false);
                                   }}

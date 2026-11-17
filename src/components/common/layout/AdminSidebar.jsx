@@ -1,15 +1,14 @@
 // Renders the collapsible dashboard sidebar navigation.
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ChevronDown,
   ChevronLeft,
-  ChevronRight,
   LogOut,
+  Sparkles,
   X,
 } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 
-import { Button } from "@/components/common/ui/Button";
 import { getAuthUser } from "@/lib/auth";
 import { handleLogout as handleAuthLogout } from "@/lib/axios/api-template";
 import { useSidebar } from "@/context/SidebarContext";
@@ -67,10 +66,6 @@ const AdminSidebar = ({
     }
   };
 
-  const handleToggleCollapsed = () => {
-    sidebarContext.toggleCollapsed();
-  };
-
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
 
   const authUser = getAuthUser();
@@ -124,6 +119,38 @@ const AdminSidebar = ({
 
   const getModuleKey = (m) => m?.key || m?.name;
 
+  const getAllCollapsibleKeys = (items) => {
+    if (!Array.isArray(items)) return [];
+    const keys = [];
+    for (const item of items) {
+      if (Array.isArray(item.submodules) && item.submodules.length > 0) {
+        keys.push(getModuleKey(item));
+        keys.push(...getAllCollapsibleKeys(item.submodules));
+      }
+    }
+    return keys;
+  };
+
+  const isRouteActive = (targetPath, targetKey) => {
+    if (!targetPath) return false;
+    const clean = targetPath.split("?")[0];
+    if (targetPath.includes("?section=")) {
+      return location.pathname === clean && location.search.includes(`section=${targetKey}`);
+    }
+    return location.pathname === clean;
+  };
+
+  const hasActiveDescendant = (item) => {
+    if (!item || !Array.isArray(item.submodules)) return false;
+    return item.submodules.some((sub) => {
+      if (isRouteActive(sub.path, sub.key)) return true;
+      if (Array.isArray(sub.submodules) && sub.submodules.length > 0) {
+        return hasActiveDescendant(sub);
+      }
+      return false;
+    });
+  };
+
   // Persist expanded modules in localStorage so navigating to any module keeps all open dropdowns open
   const [expandedModules, setExpandedModules] = useState(() => {
     try {
@@ -135,14 +162,11 @@ const AdminSidebar = ({
     } catch {
       // fallback
     }
-    // Default to keeping all module dropdowns open
-    if (Array.isArray(modules)) {
-      return modules
-        .filter((m) => Array.isArray(m.submodules) && m.submodules.length > 0)
-        .map(getModuleKey);
-    }
-    return [];
+    // Default to keeping all module and nested dropdowns open
+    return getAllCollapsibleKeys(modules);
   });
+
+  const [collapsedKeys, setCollapsedKeys] = useState([]);
 
   // Save expanded states whenever they change
   useEffect(() => {
@@ -153,49 +177,41 @@ const AdminSidebar = ({
     }
   }, [expandedModules]);
 
-  // When user navigates to a new route, ensure the destination module is expanded
-  const lastPathnameRef = useRef(location.pathname);
-  useEffect(() => {
-    if (lastPathnameRef.current === location.pathname) return;
-    lastPathnameRef.current = location.pathname;
-
-    if (!Array.isArray(modules)) return;
-    const currentPath = location.pathname;
-    const matchingModule = modules.find((m) =>
-      Array.isArray(m.submodules) &&
-      m.submodules.some((s) => (s.path ? s.path.split("?")[0] === currentPath : s.id === currentPath)),
-    );
-    if (matchingModule) {
-      const key = getModuleKey(matchingModule);
-      setExpandedModules((prev) =>
-        prev.some((k) => k === key || k === matchingModule.name)
-          ? prev
-          : [...prev, key],
-      );
-    }
-  }, [location.pathname, modules]);
-
   const isModuleExpanded = (item) => {
     if (!item) return false;
-    const key = item.key;
+    const key = getModuleKey(item);
     const name = item.name;
-    return expandedModules.some((k) => (key && k === key) || (name && k === name));
+    if (collapsedKeys.includes(key) || (name && collapsedKeys.includes(name))) {
+      return false;
+    }
+    const isExplicitlyExpanded = expandedModules.some((k) => (key && k === key) || (name && k === name));
+    // If it has an active descendant, it should expand appropriately
+    return isExplicitlyExpanded || hasActiveDescendant(item);
   };
 
   const toggleExpand = (item) => {
-    const key = typeof item === "string" ? item : (item?.key || item?.name);
+    const key = typeof item === "string" ? item : getModuleKey(item);
     const name = typeof item === "object" ? item?.name : null;
+    const isCurrentlyExpanded = isModuleExpanded(item);
 
-    setExpandedModules((prev) => {
-      const isCurrentlyExpanded = prev.some((k) => (key && k === key) || (name && k === name));
-      if (isCurrentlyExpanded) {
-        // Collapse: remove both key and name to ensure clean state even with legacy localStorage values
-        return prev.filter((k) => k !== key && k !== name);
-      } else {
-        // Expand: add clean canonical key
-        return [...prev.filter((k) => k !== key && k !== name), key];
-      }
-    });
+    if (isCurrentlyExpanded) {
+      // Collapse this module
+      setCollapsedKeys((prev) => {
+        const next = [...prev];
+        if (key && !next.includes(key)) next.push(key);
+        if (name && !next.includes(name)) next.push(name);
+        return next;
+      });
+      setExpandedModules((prev) => prev.filter((k) => k !== key && k !== name));
+    } else {
+      // Expand this module
+      setCollapsedKeys((prev) => prev.filter((k) => k !== key && k !== name));
+      setExpandedModules((prev) => {
+        const next = prev.filter((k) => k !== key && k !== name);
+        if (key) next.push(key);
+        return next;
+      });
+    }
   };
 
   const renderContent = ({ collapsed = false, mobile = false }) => (
@@ -276,28 +292,42 @@ const AdminSidebar = ({
               const hasSubmodules = Array.isArray(item.submodules) && item.submodules.length > 0;
               const modKey = getModuleKey(item);
               const isExpanded = isModuleExpanded(item);
+              const isAiIsolated = item.key === "ai-report" || item.isolated;
               
               const activePaths = [
                 item.path,
                 ...(Array.isArray(item.activePaths) ? item.activePaths : []),
                 ...(hasSubmodules ? item.submodules.map((s) => s.path?.split("?")[0] || s.id) : []),
               ];
-              const isChildRouteActive = hasSubmodules && item.submodules.some((sub) => {
-                if (!sub.path) return false;
-                const subClean = sub.path.split("?")[0];
-                if (sub.path.includes("?section=")) {
-                  return location.pathname === subClean && location.search.includes(`section=${sub.key}`);
-                }
-                return location.pathname === subClean;
-              });
+              const isChildRouteActive = hasSubmodules && (
+                hasActiveDescendant(item) ||
+                item.submodules.some((sub) => isRouteActive(sub.path, sub.key))
+              );
               const isParentActive = isChildRouteActive || (item.path && activePaths.includes(location.pathname));
 
               if (hasSubmodules) {
                 return (
                   <div key={modKey} className="flex flex-col">
+                    {/* Visual separation & header for isolated modules */}
+                    {isAiIsolated && (
+                      <div className="pt-3 pb-1.5">
+                        <div className="border-t border-white/15 mb-2" />
+                        {!collapsed && (
+                          <div className="px-2 pb-1 flex items-center justify-between">
+                            <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#90a1b9] flex items-center gap-1.5">
+                              <Sparkles size={11} className="text-[#ff5c28]" />
+                              <span>AI & Policy Modules</span>
+                            </span>
+                            <span className="text-[9px] font-extrabold px-1.5 py-0.2 rounded-full bg-[#ff5c28]/20 text-[#ff5c28] border border-[#ff5c28]/30">
+                              Isolated
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    )}
                     <div
                       className={`group flex h-[38px] w-full items-center rounded-xl transition-all duration-150 ${
-                        isParentActive && (!hasSubmodules || item.path === "/view-graphs") && !location.search
+                        isParentActive && (!hasSubmodules || item.path === "/view-graphs" || item.path === "/ai-report/view-graphs") && !location.search
                           ? "bg-[#ff5c28] text-white shadow-md shadow-orange-950/20"
                           : isParentActive
                             ? "bg-white/[0.12] text-white font-bold"
@@ -308,9 +338,9 @@ const AdminSidebar = ({
                         type="button"
                         title={item.name}
                         onClick={() => {
-                          if (item.path && item.key === "wow-report") {
-                            // If navigating to /view-graphs from elsewhere, go there and ensure open;
-                            // if already on /view-graphs, toggle collapse/expand
+                          if (item.path && (item.key === "wow-report" || item.key === "ai-wow-report")) {
+                            // If navigating to /view-graphs or /ai-report/view-graphs from elsewhere, go there and ensure open;
+                            // if already on the route, toggle collapse/expand
                             if (location.pathname !== item.path || location.search) {
                               navigate(item.path);
                               if (mobile) handleMobileClose();
@@ -378,43 +408,167 @@ const AdminSidebar = ({
                           <div className="relative ml-5 flex flex-col gap-0.5 border-l-2 border-white/20 pl-2.5 py-0.5">
                             {item.submodules.map((sub) => {
                               const SubIcon = sub.icon;
-                              const isSubActive = sub.path?.includes("?section=")
-                                ? location.pathname === sub.path.split("?")[0] &&
-                                  location.search.includes(`section=${sub.key}`)
-                                : location.pathname === sub.path?.split("?")[0];
+                              const hasSubChildren = Array.isArray(sub.submodules) && sub.submodules.length > 0;
+                              const subKey = getModuleKey(sub);
+                              const isSubExpanded = isModuleExpanded(sub);
+                              const isSubActive = hasSubChildren
+                                ? hasActiveDescendant(sub) || isRouteActive(sub.path, sub.key)
+                                : isRouteActive(sub.path, sub.key);
 
+                              // If this submodule is itself a collapsible group (nested section)
+                              if (hasSubChildren) {
+                                return (
+                                  <div key={subKey} className="flex flex-col">
+                                    <div
+                                      className={`group/nested flex h-[34px] w-full items-center rounded-lg transition-all duration-150 ${
+                                        isSubActive && sub.path?.includes("/view-graphs") && !location.search
+                                          ? "bg-[#ff5c28] text-white shadow-xs font-bold"
+                                          : isSubActive
+                                            ? "bg-white/[0.10] text-white font-bold"
+                                            : "text-[#cad5e2] hover:bg-white/[0.08] hover:text-white"
+                                      } px-2`}
+                                    >
+                                      <button
+                                        type="button"
+                                        title={sub.name}
+                                        onClick={() => {
+                                          if (sub.path && (sub.key === "wow-report" || sub.key === "ai-wow-report")) {
+                                            if (location.pathname !== sub.path || location.search) {
+                                              navigate(sub.path);
+                                              if (mobile) handleMobileClose();
+                                              if (!isSubExpanded) toggleExpand(sub);
+                                            } else {
+                                              toggleExpand(sub);
+                                            }
+                                          } else {
+                                            toggleExpand(sub);
+                                          }
+                                        }}
+                                        className="flex flex-1 min-w-0 cursor-pointer items-center gap-2 border-0 bg-transparent p-0 text-left font-semibold text-inherit outline-none"
+                                      >
+                                        {SubIcon && (
+                                          <SubIcon
+                                            className={`h-4 w-4 shrink-0 transition-colors ${
+                                              isSubActive ? "text-white" : "text-[#90a1b9] group-hover/nested:text-white"
+                                            }`}
+                                            strokeWidth={1.8}
+                                            aria-hidden="true"
+                                          />
+                                        )}
+                                        <span className="min-w-0 flex-1 truncate text-left text-[12px] font-semibold leading-5 tracking-normal">
+                                          {sub.name}
+                                        </span>
+                                      </button>
+                                      <button
+                                        type="button"
+                                        aria-label={isSubExpanded ? `Collapse ${sub.name}` : `Expand ${sub.name}`}
+                                        onClick={(e) => {
+                                          e.preventDefault();
+                                          e.stopPropagation();
+                                          toggleExpand(sub);
+                                        }}
+                                        className="flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-md border-0 bg-transparent p-0 transition-all hover:bg-white/10 outline-none text-[#90a1b9] hover:text-white"
+                                      >
+                                        <ChevronDown
+                                          size={13}
+                                          strokeWidth={2.2}
+                                          className={`transform transition-transform duration-300 ease-in-out ${
+                                            isSubExpanded ? "rotate-180" : "rotate-0"
+                                          }`}
+                                        />
+                                      </button>
+                                    </div>
+
+                                    <div
+                                      className="grid transition-all duration-300 ease-in-out"
+                                      style={{
+                                        gridTemplateRows: isSubExpanded ? "1fr" : "0fr",
+                                        opacity: isSubExpanded ? 1 : 0,
+                                        marginTop: isSubExpanded ? "0.2rem" : "0rem",
+                                        pointerEvents: isSubExpanded ? "auto" : "none",
+                                      }}
+                                    >
+                                      <div className="overflow-hidden">
+                                        <div className="relative ml-3.5 flex flex-col gap-0.5 border-l border-white/20 pl-2 py-0.5">
+                                          {sub.submodules.map((leaf) => {
+                                            const LeafIcon = leaf.icon;
+                                            const isLeafActive = isRouteActive(leaf.path, leaf.key);
+                                            return (
+                                              <button
+                                                key={leaf.name || leaf.key || leaf.id}
+                                                type="button"
+                                                title={leaf.name}
+                                                onClick={() => {
+                                                  if (leaf.path) {
+                                                    navigate(leaf.path);
+                                                  }
+                                                  if (mobile) handleMobileClose();
+                                                }}
+                                                className={`group/leaf flex h-[30px] w-full cursor-pointer items-center gap-2 rounded-md border-0 px-2 text-left text-[11.5px] font-medium transition-all duration-150 ${
+                                                  isLeafActive
+                                                    ? "bg-[#ff5c28] text-white font-bold shadow-xs hover:!bg-[#ff5c28] hover:!text-white"
+                                                    : "text-[#cad5e2] hover:bg-white/[0.08] hover:text-white"
+                                                }`}
+                                              >
+                                                {LeafIcon && (
+                                                  <LeafIcon
+                                                    className={`h-3.5 w-3.5 shrink-0 transition-colors ${
+                                                      isLeafActive ? "text-white" : "text-[#90a1b9] group-hover/leaf:text-white"
+                                                    }`}
+                                                    strokeWidth={1.8}
+                                                    aria-hidden="true"
+                                                  />
+                                                )}
+                                                <span className="min-w-0 flex-1 truncate text-left">
+                                                  {leaf.name}
+                                                </span>
+                                              </button>
+                                            );
+                                          })}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              }
+
+                              const isPolicyProcessing = sub.key === "ai-policy-processing";
                               return (
-                                <button
-                                  key={sub.name || sub.id}
-                                  type="button"
-                                  title={sub.name}
-                                  onClick={() => {
-                                    if (sub.path) {
-                                      navigate(sub.path);
-                                    }
-                                    if (mobile) handleMobileClose();
-                                  }}
-                                  className={`group/sub flex h-[32px] w-full cursor-pointer items-center gap-2.5 rounded-lg border-0 px-2.5 text-left text-[12px] font-medium transition-all duration-150 ${
-                                    isSubActive
-                                      ? "bg-[#ff5c28] text-white font-bold shadow-xs hover:!bg-[#ff5c28] hover:!text-white"
-                                      : "text-[#cad5e2] hover:bg-white/[0.08] hover:text-white"
-                                  }`}
-                                >
-                                  {SubIcon && (
-                                    <SubIcon
-                                      className={`h-3.5 w-3.5 shrink-0 transition-colors ${
-                                        isSubActive
-                                          ? "text-white"
-                                          : "text-[#90a1b9] group-hover/sub:text-white"
-                                      }`}
-                                      strokeWidth={1.8}
-                                      aria-hidden="true"
-                                    />
+                                <div key={sub.name || sub.id} className="flex flex-col">
+                                  {isPolicyProcessing && (
+                                    <div className="my-1.5 border-t border-white/10" />
                                   )}
-                                  <span className="min-w-0 flex-1 truncate text-left">
-                                    {sub.name}
-                                  </span>
-                                </button>
+                                  <button
+                                    type="button"
+                                    title={sub.name}
+                                    onClick={() => {
+                                      if (sub.path) {
+                                        navigate(sub.path);
+                                      }
+                                      if (mobile) handleMobileClose();
+                                    }}
+                                    className={`group/sub flex h-[32px] w-full cursor-pointer items-center gap-2.5 rounded-lg border-0 px-2.5 text-left text-[12px] font-medium transition-all duration-150 ${
+                                      isSubActive
+                                        ? "bg-[#ff5c28] text-white font-bold shadow-xs hover:!bg-[#ff5c28] hover:!text-white"
+                                        : "text-[#cad5e2] hover:bg-white/[0.08] hover:text-white"
+                                    }`}
+                                  >
+                                    {SubIcon && (
+                                      <SubIcon
+                                        className={`h-3.5 w-3.5 shrink-0 transition-colors ${
+                                          isSubActive
+                                            ? "text-white"
+                                            : "text-[#90a1b9] group-hover/sub:text-white"
+                                        }`}
+                                        strokeWidth={1.8}
+                                        aria-hidden="true"
+                                      />
+                                    )}
+                                    <span className="min-w-0 flex-1 truncate text-left">
+                                      {sub.name}
+                                    </span>
+                                  </button>
+                                </div>
                               );
                             })}
                           </div>

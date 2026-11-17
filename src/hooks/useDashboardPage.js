@@ -4,9 +4,11 @@ import { useMemo, useState } from "react";
 import {
   Award,
   BarChart3,
+  BrainCircuit,
   ClipboardCheck,
   ClipboardList,
   Database,
+  FileCog,
   Filter,
   FolderArchive,
   FolderDown,
@@ -16,6 +18,7 @@ import {
   MessageCircle,
   PhoneCall,
   ShieldCheck,
+  Sparkles,
   Users,
   UsersRound,
 } from "lucide-react";
@@ -28,9 +31,11 @@ import { handleLogout as handleAuthLogout } from "@/lib/axios/api-template";
 const moduleIcons = {
   award: Award,
   "bar-chart": BarChart3,
+  "brain-circuit": BrainCircuit,
   "clipboard-check": ClipboardCheck,
   "clipboard-list": ClipboardList,
   database: Database,
+  "file-cog": FileCog,
   filter: Filter,
   "folder-archive": FolderArchive,
   "folder-down": FolderDown,
@@ -40,6 +45,7 @@ const moduleIcons = {
   "message-circle": MessageCircle,
   "phone-call": PhoneCall,
   "shield-check": ShieldCheck,
+  sparkles: Sparkles,
   users: Users,
   "users-round": UsersRound,
 };
@@ -49,10 +55,7 @@ function hydrateModuleIcons(module) {
     ...module,
     icon: moduleIcons[module.iconKey] || Gauge,
     submodules: Array.isArray(module.submodules)
-      ? module.submodules.map((submodule) => ({
-          ...submodule,
-          icon: moduleIcons[submodule.iconKey] || Gauge,
-        }))
+      ? module.submodules.map(hydrateModuleIcons)
       : module.submodules,
   };
 }
