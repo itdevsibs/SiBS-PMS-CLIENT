@@ -3,7 +3,6 @@ import { useLocation } from "react-router-dom";
 import {
   LayoutGrid,
   Users,
-  ClipboardList,
   TrendingUp,
   Award,
   BarChart3,
@@ -40,11 +39,8 @@ import LoadingModal from "@/components/common/ui/LoadingModal";
 import useDashboardPage from "@/hooks/useDashboardPage";
 import { getAuthUser } from "@/lib/auth";
 
-import FrontStepsEmployeePerformance from "./FrontStepsEmployeePerformance";
-import FrontStepsCoachingManagement from "./FrontStepsCoachingManagement";
-import FrontStepsPerformanceImprovement from "./FrontStepsPerformanceImprovement";
-import FrontStepsQuarterlyIncentives from "./FrontStepsQuarterlyIncentives";
 import FrontStepsDataManagement from "./FrontStepsDataManagement";
+import FrontStepsEmployeeLedger from "./FrontStepsEmployeeLedger";
 import FrontStepsAdministration from "./FrontStepsAdministration";
 import FrontStepsAuditTrails from "./FrontStepsAuditTrails";
 import FrontStepsDashboardSummary from "./FrontStepsDashboardSummary";
@@ -64,46 +60,12 @@ const FRONTSTEPS_MODULES = [
     ],
   },
   {
-    key: "performance-management",
-    name: "Performance Management",
-    icon: Users,
-    submodules: [
-      {
-        id: "employee-performance",
-        name: "Employee Performance",
-        icon: Users,
-        isLocked: true,
-        statusBadge: "In Progress",
-      },
-      {
-        id: "coaching-management",
-        name: "Coaching Management",
-        icon: ClipboardList,
-        isLocked: true,
-        statusBadge: "In Progress",
-      },
-      {
-        id: "performance-improvement",
-        name: "Performance Improvement",
-        icon: TrendingUp,
-        isLocked: true,
-        statusBadge: "In Progress",
-      },
-      {
-        id: "quarterly-incentives",
-        name: "Quarterly Incentives",
-        icon: Award,
-        isLocked: true,
-        statusBadge: "In Progress",
-      },
-    ],
-  },
-  {
     key: "reporting-data",
     name: "Reporting & Data",
     icon: BarChart3,
     submodules: [
       { id: "data-management", name: "Data Management", icon: Database },
+      { id: "employee-ledger", name: "Employee Ledger", icon: Users },
     ],
   },
   {
@@ -784,16 +746,10 @@ export default function FrontStepsDashboard() {
         return <FrontStepsDashboardAccountBased {...commonProps} />;
       case "dashboard-kpi-indiv":
         return <FrontStepsDashboardKPIIndiv {...commonProps} />;
-      case "employee-performance":
-        return <FrontStepsEmployeePerformance {...commonProps} />;
-      case "coaching-management":
-        return <FrontStepsCoachingManagement {...commonProps} />;
-      case "performance-improvement":
-        return <FrontStepsPerformanceImprovement {...commonProps} />;
-      case "quarterly-incentives":
-        return <FrontStepsQuarterlyIncentives {...commonProps} />;
       case "data-management":
         return <FrontStepsDataManagement {...commonProps} />;
+      case "employee-ledger":
+        return <FrontStepsEmployeeLedger {...commonProps} />;
       case "administration":
         return <FrontStepsAdministration {...commonProps} />;
       case "audit-trails":
@@ -1116,6 +1072,15 @@ export default function FrontStepsDashboard() {
                     <Menu className="h-4 w-4" aria-hidden="true" />
                   </button>
                 )}
+                <button
+                  type="button"
+                  aria-label="Open navigation menu"
+                  title="Open navigation menu"
+                  onClick={() => setIsMobileOpen(true)}
+                  className="flex lg:hidden h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-[#042c51] hover:border-[#ff5c28] hover:bg-[#ff5c28] hover:text-white transition-all duration-150 cursor-pointer active:scale-95 shadow-2xs shrink-0"
+                >
+                  <Menu className="h-4 w-4" aria-hidden="true" />
+                </button>
                 {/* Module Title */}
                 <span className="text-xs font-black uppercase tracking-wider text-[#042c51]">
                   {activeTitle}
