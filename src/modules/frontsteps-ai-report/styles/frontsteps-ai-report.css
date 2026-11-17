@@ -1,0 +1,230 @@
+/**
+ * FrontSteps AI Report Scoped Stylesheet
+ * Strictly isolated: all selectors prefixed with .frontsteps-ai- or .fs-ai- or scoped to [data-fs-ai="true"]
+ */
+
+:root {
+  --fsai-sidebar-width: 260px;
+  --fsai-sidebar-collapsed-width: 72px;
+}
+
+/* ========================================================
+   1. GRID APPLICATION SHELL
+   Guarantees main.left >= sidebar.right with zero overlap
+   ======================================================== */
+.frontsteps-ai-shell {
+  --fsai-current-sidebar-width: var(--fsai-sidebar-width);
+  display: grid;
+  grid-template-columns: var(--fsai-current-sidebar-width) minmax(0, 1fr);
+  width: 100%;
+  max-width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  min-height: 100vh;
+  overflow: hidden;
+  background-color: #f4f6f9;
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  transition: grid-template-columns 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.frontsteps-ai-shell.is-collapsed {
+  --fsai-current-sidebar-width: var(--fsai-sidebar-collapsed-width);
+}
+
+.frontsteps-ai-shell.is-sidebar-hidden {
+  --fsai-current-sidebar-width: 0px;
+  grid-template-columns: 0px minmax(0, 1fr);
+}
+
+/* Mobile & tablet breakpoint: desktop sidebar disappears from grid track */
+@media (max-width: 1023px) {
+  .frontsteps-ai-shell {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+}
+
+/* ========================================================
+   2. DESKTOP SIDEBAR TRACK
+   Strictly confined to Column 1 (no horizontal overflow)
+   ======================================================== */
+.frontsteps-ai-sidebar {
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+  background-color: #042c51;
+  border-right: 1px solid #0d3b66;
+  color: #ffffff;
+  display: flex;
+  flex-direction: column;
+}
+
+@media (max-width: 1023px) {
+  .frontsteps-ai-sidebar.desktop-track {
+    display: none !important;
+  }
+}
+
+/* ========================================================
+   3. MOBILE DRAWER & BACKDROP
+   ======================================================== */
+.frontsteps-ai-drawer {
+  position: fixed;
+  inset-block: 0;
+  left: 0;
+  z-index: 100;
+  width: 260px;
+  max-width: calc(100vw - 2rem);
+  background-color: #042c51;
+  border-right: 1px solid #0d3b66;
+  color: #ffffff;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: fsAiDrawerSlideIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes fsAiDrawerSlideIn {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+.frontsteps-ai-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 95;
+  background-color: rgba(15, 23, 42, 0.65);
+  backdrop-filter: blur(2px);
+  border: 0;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+}
+
+/* ========================================================
+   4. MAIN CONTENT AREA
+   Occupies Column 2 cleanly without rendering under sidebar
+   ======================================================== */
+.frontsteps-ai-main {
+  min-width: 0;
+  min-height: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background-color: #f4f6f9;
+}
+
+.frontsteps-ai-header {
+  height: 60px;
+  min-height: 60px;
+  flex-shrink: 0;
+  border-bottom: 1px solid #e2e8f0;
+  background-color: #ffffff;
+  padding-left: 1rem;
+  padding-right: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.03);
+}
+
+@media (min-width: 640px) {
+  .frontsteps-ai-header {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+  }
+}
+
+.frontsteps-ai-content {
+  flex: 1 1 0%;
+  min-height: 0;
+  min-width: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-left: 1rem;
+  padding-right: 1rem;
+  padding-top: 1rem;
+  padding-bottom: 2rem;
+}
+
+@media (min-width: 640px) {
+  .frontsteps-ai-content {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+  }
+}
+
+/* ========================================================
+   5. UI HELPERS & COMPONENT STYLES
+   ======================================================== */
+.fs-ai-container {
+  width: 100%;
+  min-width: 0;
+  position: relative;
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+}
+
+.fs-ai-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.2rem 0.6rem;
+  border-radius: 9999px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.025em;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+
+.fs-ai-badge-neutral {
+  background-color: #f1f5f9;
+  color: #475569;
+  border: 1px solid #cbd5e1;
+}
+
+.fs-ai-badge-isolated {
+  background-color: #fff1ec;
+  color: #c4380d;
+  border: 1px solid #fed2c3;
+}
+
+.fs-ai-card {
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.75rem;
+  box-shadow: 0 1px 2px rgba(4, 44, 81, 0.04);
+  transition: all 0.2s ease;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.fs-ai-card:hover {
+  border-color: #cbd5e1;
+}
+
+.fs-ai-metric-box {
+  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+  border: 1px solid #e2e8f0;
+  border-radius: 0.75rem;
+  padding: 0.875rem 1rem;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.fs-ai-insight-box {
+  background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+  border-left: 3px solid #ff5c28;
+  border-radius: 0.5rem;
+  padding: 0.75rem 1rem;
+  min-width: 0;
+  overflow: hidden;
+}
