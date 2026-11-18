@@ -776,9 +776,9 @@ export default function EmployeeMasterDataPage() {
         <main className="flex flex-1 min-h-0 flex-col gap-2.5 sm:gap-3 overflow-hidden px-2.5 sm:px-4 lg:px-5 pt-2.5 sm:pt-3 pb-2">
 
           {/* ── Toolbar ────────────────────────────────────────────── */}
-          <div className="shrink-0 flex flex-col lg:flex-row lg:items-center gap-2.5 sm:gap-3 rounded-xl border border-slate-200 bg-white p-3 sm:px-4 sm:py-3 shadow-xs">
+          <div className="shrink-0 flex flex-col lg:flex-row lg:flex-wrap lg:items-center gap-2.5 sm:gap-3 rounded-xl border border-slate-200 bg-white p-3 sm:px-4 sm:py-3 shadow-xs">
             {/* Search (Very Left) */}
-            <div className="relative flex-1 w-full min-w-0">
+            <div className="relative flex-1 w-full min-w-[200px]">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
               <input
                 type="text"
