@@ -22,6 +22,7 @@ import { withSourceTaskOrderOptions } from "@/lib/wfm-task-order-source-options.
 import {
   deleteUsVisaImportBatch,
   getUsVisaImportBatchDetails,
+  getUsVisaImportConfig,
   getUsVisaImportBatchErrors,
   getUsVisaImportHistory,
   getUsVisaImportSummary,
@@ -89,6 +90,15 @@ function WfmImportDataPage() {
   const [uploadedDataSearch, setUploadedDataSearch] = useState("");
   const [selectedAccount, setSelectedAccount] = useState("US VISA");
   const [publishedTaskOrders, setPublishedTaskOrders] = useState([]);
+  const [maxUsVisaFileSizeMb, setMaxUsVisaFileSizeMb] = useState(50);
+  useEffect(() => {
+    let active = true;
+    getUsVisaImportConfig().then((result) => {
+      const limit = Number(result?.maxFileSizeMb);
+      if (active && Number.isFinite(limit) && limit > 0) setMaxUsVisaFileSizeMb(limit);
+    }).catch((error) => console.warn("Unable to retrieve US Visa upload limit:", error?.message));
+    return () => { active = false; };
+  }, []);
   const [taskOrderProfilesLoaded, setTaskOrderProfilesLoaded] = useState(false);
   const [taskOrderProfilesError, setTaskOrderProfilesError] = useState("");
   useEffect(() => {
@@ -285,6 +295,7 @@ function WfmImportDataPage() {
               unmappedRows: details.batch.unmappedRows ?? prev.unmappedRows,
               unassignedTaskOrderRows: details.batch.unassignedTaskOrderRows ?? prev.unassignedTaskOrderRows,
               infoRows: details.batch.infoRows ?? prev.infoRows,
+              emailMetrics: details.batch.emailMetrics ?? prev.emailMetrics,
               batchStatus: details.batch.status ?? prev.batchStatus,
               reportDateFrom: details.batch.reportDateFrom ?? prev.reportDateFrom,
               reportDateTo: details.batch.reportDateTo ?? prev.reportDateTo,
@@ -429,6 +440,10 @@ function WfmImportDataPage() {
     const file = event.target.files?.[0];
     event.target.value = "";
     if (!file) return;
+    if (card.account === "US VISA" && file.size > maxUsVisaFileSizeMb * 1024 * 1024) {
+      setErrorModalInfo({ title: "File Too Large", message: `This file exceeds the US Visa upload limit of ${maxUsVisaFileSizeMb} MB.` });
+      return;
+    }
 
     // Prevent an unverified Task Order being selected while authoritative
     // profiles are loading or unavailable; employee-derived imports remain automatic.
@@ -537,10 +552,12 @@ function WfmImportDataPage() {
         await deleteUsVisaImportBatch(batchIdentifier);
         await new Promise((resolve) => setTimeout(resolve, 400));
       } catch (error) {
-        console.warn(
-          "Backend batch removal issue:",
-          error?.response?.data || error?.message || error,
-        );
+        console.error("Unable to delete import batch:", error);
+        setErrorModalInfo({
+          title: "Unable to Remove Upload",
+          message: error?.response?.data?.message || "The import batch could not be deleted. No data was removed.",
+        });
+        return;
       }
     } else {
       await new Promise((resolve) => setTimeout(resolve, 300));
@@ -683,6 +700,7 @@ function WfmImportDataPage() {
             />
           ) : (
             <WfmImportTwoColumnWorkspace
+              maxFileSizeMb={maxUsVisaFileSizeMb}
               groupedCards={groupedRawDataCards}
               uploadsByCard={uploadsByCard}
               isUploading={isUploading}

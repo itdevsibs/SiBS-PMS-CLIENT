@@ -60,6 +60,7 @@ import {
   getTaskOrderOptions,
   getTaskOrderLabel,
   getSkillOptions,
+  shouldShowPhilippinesQuickCategory,
   getSkillLabel,
   getCountryOptions,
   getCountryLabel,
@@ -224,6 +225,16 @@ function buildEmailRequestParams(filters) {
     params.referenceDate = filters.referenceDate;
   }
 
+  return params;
+}
+
+function buildAbsenteeismRequestParams(filters, taskOrderVersionId = "current") {
+  const params = buildEmailRequestParams(filters);
+  const sources = Array.isArray(filters.sourceSystem)
+    ? filters.sourceSystem.filter((value) => value && value !== "__NONE__")
+    : String(filters.sourceSystem || "").split(",").filter(Boolean);
+  if (sources.length) params.sourceSystem = sources.join(",");
+  params.taskOrderVersionId = taskOrderVersionId;
   return params;
 }
 
@@ -410,7 +421,7 @@ export default function ViewGraphsPage() {
       }
       if ((isAllReports || selectedReportIds.includes("emails")) && !emailKpiResponse) {
         fetches.push(
-          getEmailKpis(buildEmailRequestParams(filters)).then((res) => setEmailKpiResponse(res)),
+          getEmailKpis({...buildEmailRequestParams(filters),taskOrderVersionId:selectedVersion}).then((res) => setEmailKpiResponse(res)),
         );
       }
       if ((isAllReports || selectedReportIds.includes("qa")) && !qualityAuditKpiResponse) {
@@ -430,7 +441,7 @@ export default function ViewGraphsPage() {
       }
       if ((isAllReports || selectedReportIds.includes("occupancy")) && !absenteeismKpiResponse) {
         fetches.push(
-          getAbsenteeismKpis(buildEmailRequestParams(filters)).then((res) => setAbsenteeismKpiResponse(res)),
+          getAbsenteeismKpis(buildAbsenteeismRequestParams(filters, selectedVersion)).then((res) => setAbsenteeismKpiResponse(res)),
         );
       }
 
@@ -596,7 +607,7 @@ export default function ViewGraphsPage() {
       }
 
       if (showEmails) {
-        const emailParams = buildEmailRequestParams(filters);
+        const emailParams = {...buildEmailRequestParams(filters),taskOrderVersionId:selectedVersion};
         promises.push(
           getEmailKpis(emailParams)
             .then((res) => {
@@ -695,7 +706,7 @@ export default function ViewGraphsPage() {
         setIsAbsenteeismLoading(true);
         setAbsenteeismKpiResponse(null);
         promises.push(
-          getAbsenteeismKpis(occupancyParams)
+          getAbsenteeismKpis(buildAbsenteeismRequestParams(filters, selectedVersion))
             .then((res) => {
               if (absenteeismRequestId !== absenteeismRequestRef.current) return;
               setAbsenteeismKpiResponse(res);
@@ -792,7 +803,7 @@ export default function ViewGraphsPage() {
         scopedOrders,
         skillsByCountryState,
         skillCountryScopes,
-        nextTaskOrder.includes('TO10'),
+        shouldShowPhilippinesQuickCategory(nextTaskOrder),
       );
       const validSkills = new Set(
         newSkillOptions.map((s) => s.value.toLowerCase()),
@@ -830,7 +841,7 @@ export default function ViewGraphsPage() {
         scopedOrders,
         skillsByCountryState,
         skillCountryScopes,
-        nextTaskOrders.includes('TO10'),
+        shouldShowPhilippinesQuickCategory(nextTaskOrders),
       );
       const validSkills = new Set(
         newSkillOptions.map((s) => s.value.toLowerCase()),
@@ -862,7 +873,7 @@ export default function ViewGraphsPage() {
         scopedOrders,
         skillsByCountryState,
         skillCountryScopes,
-        current.taskOrder?.includes('TO10'),
+        shouldShowPhilippinesQuickCategory(current.taskOrder),
       );
       const validSkills = new Set(
         newSkillOptions.map((s) => s.value.toLowerCase()),
@@ -998,7 +1009,7 @@ export default function ViewGraphsPage() {
     selectedScopes,
     skillsByCountryState,
     skillCountryScopes,
-    selectedTaskOrders.includes('TO10'),
+    shouldShowPhilippinesQuickCategory(selectedTaskOrders),
   );
 
   const activeTaskOrder =
@@ -1213,6 +1224,7 @@ export default function ViewGraphsPage() {
                         value={filters.skill}
                         onChange={handleSkillChange}
                         options={skillOptions}
+                        composableCategories={showCalls}
                         placeholder="All Skills"
                         allOptionLabel="All Skills"
                       />

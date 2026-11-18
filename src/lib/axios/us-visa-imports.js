@@ -198,3 +198,8 @@ export async function getUsVisaImportCalendarDay(params = {}) {
   const response = await api.get("/us-visa/imports/calendar/day", { params });
   return response.data;
 }
+
+export async function getUsVisaImportConfig() {
+  const response = await api.get("/us-visa/imports/config");
+  return response.data;
+}

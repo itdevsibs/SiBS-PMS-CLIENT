@@ -119,9 +119,24 @@ export function AddedUploadSuccessModal({
               tone="cyan"
             />
           </div>
+          {addedUpload.batch.emailMetrics && (
+            <div className="mt-3 border-t border-slate-200 pt-3 text-left">
+              <p className="mb-2 text-xs font-semibold text-slate-800">Email case reconciliation · Published TO version {addedUpload.batch.emailMetrics.taskOrderVersionId || "—"}</p>
+              <div className="grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
+                {[["New", "newCases"], ["Updated", "updatedCases"], ["Unchanged", "unchangedDuplicates"],
+                  ["Stale", "staleVersions"], ["Conflicts", "versionConflicts"], ["Unmapped Countries", "unmappedCountries"], ["Country Conflicts", "mappingConflicts"],
+                  ["Invalid", "invalidRows"]].map(([label, key]) => (
+                    <div key={key} className="rounded-lg border border-slate-200 px-3 py-2">
+                      <div className="font-bold text-slate-800">{Number(addedUpload.batch.emailMetrics[key] || 0).toLocaleString()}</div>
+                      <div className="text-slate-500">{label}</div>
+                    </div>
+                  ))}
+              </div>
+            </div>
+          )}
           {Number(addedUpload.batch.mappingRows || 0) > 0 && (
             <p className="mt-3 mb-0 text-left text-xs font-medium text-slate-600">
-              {Number(addedUpload.batch.mappingRows).toLocaleString()} imported row(s) need employee or Task Order mapping. This does not affect upload success.
+              {Number(addedUpload.batch.mappingRows).toLocaleString()} imported row(s) need {addedUpload.batch.importProfileCode === "US_VISA_EMAIL_RAW_DATA" ? "employee identity matching" : "employee or Task Order mapping"}. This does not affect upload success.
             </p>
           )}
         </div>

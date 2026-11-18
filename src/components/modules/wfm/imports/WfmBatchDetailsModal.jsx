@@ -109,12 +109,29 @@ export default function WfmBatchDetailsModal({ selectedUploadDetails: batch, act
               <BatchDetailStat label="Rejected" value={batch?.invalidRows || 0} icon={AlertCircle} tone="rose" />
               <BatchDetailStat label="Duplicates" value={batch?.duplicateRows || 0} icon={Copy} tone="orange" />
             </div>
+            {batch?.emailMetrics && (
+              <div className="rounded-xl border border-slate-200 p-4">
+                <p className="m-0 text-sm font-bold text-sibs-primary-1">Email case reconciliation</p>
+                <p className="mt-1 mb-3 text-xs text-slate-500">Published Task Order version {batch.emailMetrics.taskOrderVersionId || "—"}</p>
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                  {[["New Cases", "newCases"], ["Updated Cases", "updatedCases"],
+                    ["Unchanged Duplicates", "unchangedDuplicates"], ["Stale Versions", "staleVersions"],
+                    ["Version Conflicts", "versionConflicts"], ["Unmapped Countries", "unmappedCountries"], ["Country Conflicts", "mappingConflicts"],
+                    ["Invalid Rows", "invalidRows"]].map(([label, key]) => (
+                      <div key={key} className="rounded-lg border border-slate-200 bg-slate-50/70 p-3">
+                        <p className="m-0 text-lg font-bold text-slate-800">{Number(batch.emailMetrics[key] || 0).toLocaleString()}</p>
+                        <p className="m-0 text-xs text-slate-500">{label}</p>
+                      </div>
+                    ))}
+                </div>
+              </div>
+            )}
             <div className="rounded-xl border border-slate-200 p-4">
               <div className="flex items-center justify-between gap-3"><div><p className="m-0 text-sm font-bold text-sibs-primary-1">Employee Mapping</p><p className="mt-1 text-xs text-slate-500">Mapping is separate from import validation and does not reject stored records.</p></div><span className="text-lg font-bold text-sibs-primary-1">{(batch?.mappingRows || 0).toLocaleString()}</span></div>
-              <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-xs text-slate-600"><span>Unmapped employee rows: <b>{batch?.unmappedRows || 0}</b></span><span>Task Order mapping rows: <b>{batch?.unassignedTaskOrderRows || 0}</b></span></div>
+              <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-xs text-slate-600"><span>Unmapped employee rows: <b>{batch?.unmappedRows || 0}</b></span>{batch?.importProfileCode !== "US_VISA_EMAIL_RAW_DATA" && <span>Task Order mapping rows: <b>{batch?.unassignedTaskOrderRows || 0}</b></span>}</div>
               <button type="button" onClick={() => changeTab("mapping")} className="mt-3 text-xs font-semibold text-sibs-primary-2 hover:underline">Review mapping records</button>
             </div>
-            <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-slate-50 p-3 text-xs text-slate-600"><span>Validation warnings: <b>{batch?.warningRows || 0}</b> · Info records: <b>{batch?.infoRows || 0}</b></span><button type="button" className="font-semibold text-sibs-primary-2 hover:underline" onClick={() => changeTab("validation")}>View validation details</button></div>
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-slate-50 p-3 text-xs text-slate-600"><span>Validation warnings: <b>{batch?.warningRows || 0}</b>{batch?.importProfileCode === "US_VISA_EMAIL_RAW_DATA" && <span> · Country / Task Order issues: <b>{batch?.unassignedTaskOrderRows || 0}</b></span>} · Info records: <b>{batch?.infoRows || 0}</b></span><button type="button" className="font-semibold text-sibs-primary-2 hover:underline" onClick={() => changeTab("validation")}>View validation details</button></div>
             {(batch?.invalidRows || 0) === 0 && (batch?.duplicateRows || 0) === 0 && (batch?.warningRows || 0) === 0 ? <p className="m-0 flex items-center gap-2 text-xs font-semibold text-emerald-700"><CheckCircle2 className="h-4 w-4" />No import-validation issues were reported.</p> : null}
           </div>}
           {["mapping", "validation"].includes(tab) && <div className="space-y-3">

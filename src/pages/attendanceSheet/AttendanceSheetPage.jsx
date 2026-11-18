@@ -516,7 +516,7 @@ export default function AttendanceSheetPage() {
   }, [loadMetadata]);
 
   const loadViewerData = useCallback(
-    async (targetPage = 1) => {
+    async (targetPage = 1, { forceRefresh = false } = {}) => {
       if (!selectedAccountId) {
         setDataError({
           code: "ATTENDANCE_ACCOUNT_REQUIRED",
@@ -562,6 +562,7 @@ export default function AttendanceSheetPage() {
         dateTo: selectedDate,
         page: targetPage,
         limit: pageSize,
+        ...(forceRefresh ? { forceRefresh: true } : {}),
       };
 
       try {
@@ -838,7 +839,7 @@ export default function AttendanceSheetPage() {
 
                 <button
                   type="button"
-                  onClick={() => loadViewerData(1)}
+                  onClick={() => loadViewerData(1, { forceRefresh: true })}
                   disabled={isLoadingData || !selectedAccountId}
                   title="Refresh attendance records"
                   className="inline-flex h-8 flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-[#042c51] bg-[#042c51] px-2.5 text-xs font-bold text-white shadow-2xs transition hover:bg-[#063d70] hover:border-[#063d70] disabled:cursor-not-allowed disabled:opacity-50"
