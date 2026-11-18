@@ -233,6 +233,7 @@ export default function WfmImportedRepository() {
   const [isRemovingUpload, setIsRemovingUpload] = useState(false);
   const [removingUploadFileName, setRemovingUploadFileName] = useState("");
   const [removedUpload, setRemovedUpload] = useState(null);
+  const [removeUploadError, setRemoveUploadError] = useState(null);
   const [isLoadingUsVisaErrors, setIsLoadingUsVisaErrors] = useState(false);
   const [usVisaErrorDetails, setUsVisaErrorDetails] = useState(null);
   const [activeErrorBatchId, setActiveErrorBatchId] = useState(null);
@@ -728,18 +729,13 @@ export default function WfmImportedRepository() {
 
     const batchIdentifier =
       selectedUploadToRemove.batchId || selectedUploadToRemove.batchCode;
+    let batchDeleted = false;
 
     try {
       if (batchIdentifier) {
-        try {
-          await deleteUsVisaImportBatch(batchIdentifier);
-          await new Promise((resolve) => setTimeout(resolve, 600));
-        } catch (error) {
-          console.warn(
-            "Backend batch removal issue:",
-            error?.response?.data || error?.message || error,
-          );
-        }
+        await deleteUsVisaImportBatch(batchIdentifier);
+        batchDeleted = true;
+        await new Promise((resolve) => setTimeout(resolve, 600));
       } else {
         await new Promise((resolve) => setTimeout(resolve, 600));
       }
@@ -774,10 +770,16 @@ export default function WfmImportedRepository() {
           recordId: batchIdentifier || "",
         });
       } catch {}
+      setRemovedUpload(selectedUploadToRemove);
+    } catch (error) {
+      console.error("Unable to delete import batch:", error);
+      setRemoveUploadError(batchDeleted
+        ? "The batch was deleted, but the repository could not refresh. Reload to see the latest data."
+        : (error?.response?.data?.message || "The import batch could not be deleted. No data was removed."),
+      );
     } finally {
       setIsRemovingUpload(false);
       setRemovingUploadFileName("");
-      setRemovedUpload(selectedUploadToRemove);
     }
   };
 
@@ -1436,6 +1438,16 @@ export default function WfmImportedRepository() {
       <RemovedUploadSuccessModal
         removedUpload={removedUpload}
         onClose={() => setRemovedUpload(null)}
+      />
+
+      <ConfirmationModal
+        isOpen={Boolean(removeUploadError)}
+        title="Unable to Remove Upload"
+        message={removeUploadError || ""}
+        confirmText="Close"
+        cancelText="Cancel"
+        onConfirm={() => setRemoveUploadError(null)}
+        onCancel={() => setRemoveUploadError(null)}
       />
 
       {/* Sign Out Confirmation Modal */}

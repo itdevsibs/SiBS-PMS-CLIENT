@@ -180,6 +180,7 @@ function StatusBadge({ upload, onOpenErrors }) {
 }
 
 export default function WfmImportTwoColumnWorkspace({
+  maxFileSizeMb = 50,
   groupedCards = [],
   uploadsByCard = {},
   allUploadsList = [],
@@ -537,7 +538,7 @@ export default function WfmImportTwoColumnWorkspace({
             </button>
 
             <p className="text-[11px] text-[#587094] font-medium mt-2.5 m-0">
-              Formats: {activeLevel.supportedExtensions} | Max file size: {activeLevel.maxSize}
+              Formats: {activeLevel.supportedExtensions} | Max file size: {activeCard?.account === "US VISA" ? `${maxFileSizeMb} MB` : activeLevel.maxSize}
             </p>
           </div>
 

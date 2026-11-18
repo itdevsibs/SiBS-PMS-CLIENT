@@ -176,7 +176,9 @@ const accountRawDataCards = {
       taskOrders: [],
       importProfileCode: "US_VISA_EMAIL_RAW_DATA",
       fileExtension: ".xlsx",
-      requiresTaskOrderSelection: true,
+      acceptedFileTypes: ".xlsx,.csv",
+      // Each Email row uses its Owner country and the published ledger snapshot.
+      requiresTaskOrderSelection: false,
     },
     {
       id: "quality-audit",

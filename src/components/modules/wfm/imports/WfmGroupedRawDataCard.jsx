@@ -15,6 +15,7 @@ import { formatRelativeTime, normalizeTaskOrderOption, getImportDisplayStatus } 
 
 export default function WfmGroupedRawDataCard({
   group,
+  maxFileSizeMb = 50,
   uploadsByCard = {},
   isUploading = false,
   onFileSelect,
@@ -372,7 +373,7 @@ export default function WfmGroupedRawDataCard({
               <span>Browse Files</span>
             </span>
             <p className="m-0 mt-2 text-[10px] text-slate-400">
-              Formats: CSV, XLSX · Max file size: 25 MB
+              Formats: CSV, XLSX · Max file size: {activeCard.account === "US VISA" ? `${maxFileSizeMb} MB` : "25 MB"}
             </p>
           </label>
         )}

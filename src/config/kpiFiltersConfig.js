@@ -803,9 +803,21 @@ export function getSkillsForCountries(countryList = [], skillsMap = SKILLS_BY_CO
   return matchedSkills;
 }
 
-// The Philippines category is deliberately opt-in and restricted to the
-// WoW dashboard with TO10 selected. Its selection is an OR with All English:
-// users can include Philippines Tagalog queues without relabeling them English.
+// The Philippines category is available in the WoW dashboard when Task Order
+// is All (the default empty selection) or includes SEASIA / TO10.
+// Other reports keep their current categories unless they opt in explicitly.
+export function shouldShowPhilippinesQuickCategory(selectedTaskOrders = []) {
+  const selected = (Array.isArray(selectedTaskOrders)
+    ? selectedTaskOrders
+    : String(selectedTaskOrders || "").split(","))
+    .map((to) => String(to || "").trim().toUpperCase())
+    .filter((to) => to && to !== "__NONE__");
+  return !selected.length || selected.includes("TO10");
+}
+
+// Its selection is an OR with All English: Philippines Tagalog queues remain
+// eligible without treating them as English. Task Order controls visibility;
+// the normal Country filter still determines which records may contribute.
 export function getSkillOptions(sourceSystem, selectedCountries, selectedTaskOrders, skillsMap = SKILLS_BY_COUNTRY, countryScopesByTaskOrder = {}, enableSeasiaPhilippinesCategory = false) {
   const countryList = Array.isArray(selectedCountries)
     ? selectedCountries.filter((c) => c && c !== "__NONE__")
@@ -814,9 +826,10 @@ export function getSkillOptions(sourceSystem, selectedCountries, selectedTaskOrd
     ? selectedTaskOrders.filter((to) => to && to !== "__NONE__")
     : selectedTaskOrders ? String(selectedTaskOrders).split(",").map((to) => to.trim()).filter(Boolean) : [];
 
-  const showPhilippines = enableSeasiaPhilippinesCategory
-    && toList.some((to) => String(to).toUpperCase() === "TO10")
-    && (!countryList.length || countryList.some((country) => normalizeReportingCountry(country) === "philippines"));
+  // The caller passes the actual Task Order filter selection (not the
+  // expanded ledger scopes) to decide visibility. A country choice must not
+  // hide the quick filter while All Task Orders or TO10 remains selected.
+  const showPhilippines = Boolean(enableSeasiaPhilippinesCategory);
   const genericOptions = showPhilippines
     ? [...GENERIC_SKILL_OPTIONS, { value: "__SEASIA_PHILIPPINES__", label: "Philippines (All Languages)", isCategory: true }]
     : GENERIC_SKILL_OPTIONS;

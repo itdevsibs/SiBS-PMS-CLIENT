@@ -4,6 +4,7 @@ import WfmGroupedRawDataCard from "@/components/modules/wfm/imports/WfmGroupedRa
 import WfmRawDataCard from "@/components/modules/wfm/imports/WfmRawDataCard";
 
 export default function WfmRawDataCardsGrid({
+  maxFileSizeMb = 50,
   groupedCards = [],
   hasCards = true,
   uploadsByCard = {},
@@ -70,6 +71,7 @@ export default function WfmRawDataCardsGrid({
             {levelGroups.map((group) => (
               <WfmGroupedRawDataCard
                 key={group.label}
+                maxFileSizeMb={maxFileSizeMb}
                 group={group}
                 uploadsByCard={uploadsByCard}
                 isUploading={isUploading}

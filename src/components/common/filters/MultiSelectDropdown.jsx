@@ -1,42 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Check, ChevronDown, Search } from "lucide-react";
 
-// Helper to classify skill into quick category filters
-function matchesSkillCategory(skillName, category, countries = []) {
-  const s = String(skillName || "");
-  const isEnglish = /\benglish\b/i.test(s) && !/\bnon[\s_-]*english\b/i.test(s);
-  const hasNiv = /niv/i.test(s);
-  const hasIv = /(^|[^a-zA-Z])IV($|[^a-zA-Z])/i.test(s) && !hasNiv;
-  const hasAcs = /acs/i.test(s);
-
-  const cat = String(category || "")
-    .trim()
-    .toLowerCase()
-    .replace(/[\s_-]+/g, "");
-
-  if (cat === "seasiaphilippines") {
-    return (countries || []).some((country) => String(country).toLowerCase() === "philippines");
-  }
-  if (cat === "allenglish" || cat === "englishall" || cat === "english") {
-    return isEnglish;
-  }
-  if (cat === "englishniv") {
-    return isEnglish && hasNiv;
-  }
-  if (cat === "englishiv") {
-    return isEnglish && hasIv;
-  }
-  if (cat === "englishacs") {
-    return isEnglish && hasAcs;
-  }
-  if (cat === "nonenglish") {
-    return !isEnglish;
-  }
-  if (cat === "nonenglishiv") {
-    return !isEnglish && hasIv;
-  }
-  return false;
-}
+import {
+  expandSkillSelection,
+  getCheckedSkillCategories,
+  matchesSkillCategory,
+  toggleAllSkillItems,
+  toggleIndividualSkill,
+  toggleSkillCategory,
+} from "./skillCategorySelection";
 
 export default function MultiSelectDropdown({
   label,
@@ -50,6 +22,8 @@ export default function MultiSelectDropdown({
   buttonClassName = "",
   menuClassName = "",
   enableSearchThreshold = 8,
+  // Opt in only from Calls Performance; other dropdowns retain their behavior.
+  composableCategories = false,
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -89,18 +63,31 @@ export default function MultiSelectDropdown({
 
   const hasCategories = categoryOptions.length > 0;
 
-  // Active checked category filters
+  const selectedSkillItems = useMemo(
+    () => composableCategories
+      ? expandSkillSelection(selectedList, itemOptions, categoryOptions)
+      : new Set(selectedList),
+    [composableCategories, selectedList, itemOptions, categoryOptions],
+  );
+
+  // A checked parent automatically checks its fully selected children, and
+  // manually removing one item unchecks the affected group(s).
   const activeCategories = useMemo(() => {
+    if (composableCategories) {
+      return getCheckedSkillCategories(selectedSkillItems, itemOptions, categoryOptions);
+    }
     return categoryOptions
       .filter((cat) => selectedList.includes(cat.value))
       .map((cat) => cat.value);
-  }, [categoryOptions, selectedList]);
+  }, [composableCategories, categoryOptions, selectedList, itemOptions, selectedSkillItems]);
 
-  // All options are explicitly checked only when every valid option is in selectedList
   const isAllSelected = useMemo(() => {
+    if (composableCategories && hasCategories) {
+      return itemOptions.length > 0 && itemOptions.every((item) => selectedSkillItems.has(item.value));
+    }
     if (!validOptions.length || !selectedList.length) return false;
     return validOptions.every((opt) => selectedList.includes(opt.value));
-  }, [validOptions, selectedList]);
+  }, [composableCategories, hasCategories, itemOptions, selectedSkillItems, validOptions, selectedList]);
 
   // Close on outside click or Escape
   useEffect(() => {
@@ -136,6 +123,10 @@ export default function MultiSelectDropdown({
   }, [isOpen]);
 
   const toggleAll = () => {
+    if (composableCategories && hasCategories) {
+      onChange?.(toggleAllSkillItems(selectedList, itemOptions, categoryOptions));
+      return;
+    }
     if (isAllSelected) {
       onChange?.([]);
     } else {
@@ -146,6 +137,10 @@ export default function MultiSelectDropdown({
   // When a category filter is clicked:
   // Automatically filters the skills below AND checks all matching skills already!
   const toggleCategory = (catValue) => {
+    if (composableCategories) {
+      onChange?.(toggleSkillCategory(selectedList, catValue, itemOptions, categoryOptions));
+      return;
+    }
     const isCatChecked = selectedList.includes(catValue);
     const matchingItems = itemOptions
       .filter((item) => matchesSkillCategory(item.value, catValue, item.countries))
@@ -175,6 +170,10 @@ export default function MultiSelectDropdown({
 
   // Toggle individual item
   const toggleOption = (optValue) => {
+    if (composableCategories && hasCategories) {
+      onChange?.(toggleIndividualSkill(selectedList, optValue, itemOptions, categoryOptions));
+      return;
+    }
     if (selectedList.includes(optValue)) {
       const remaining = selectedList.filter((v) => v !== optValue);
       // Uncheck any category that included this item since it is no longer 100% selected
@@ -192,14 +191,19 @@ export default function MultiSelectDropdown({
   };
 
   const isOptionChecked = (optValue) => {
+    if (composableCategories && hasCategories) {
+      return categoryOptions.some((cat) => cat.value === optValue)
+        ? activeCategories.includes(optValue)
+        : selectedSkillItems.has(optValue);
+    }
     return selectedList.includes(optValue);
   };
 
-  // Filter individual items:
-  // When category filters are active, ONLY matching skills are displayed!
+  // Calls Performance categories control SELECTION, not list visibility.
+  // All skills in the current Source / Task Order / Country scope stay searchable.
   const visibleItemOptions = useMemo(() => {
     let list = itemOptions;
-    if (activeCategories.length > 0) {
+    if (!composableCategories && activeCategories.length > 0) {
       list = list.filter((item) =>
         activeCategories.some((cat) => matchesSkillCategory(item.value, cat, item.countries)),
       );
@@ -213,7 +217,7 @@ export default function MultiSelectDropdown({
       );
     }
     return list;
-  }, [itemOptions, activeCategories, searchTerm]);
+  }, [itemOptions, activeCategories, searchTerm, composableCategories]);
 
   // Filter category options if search is active
   const filteredCategoryOptions = useMemo(() => {
@@ -239,6 +243,19 @@ export default function MultiSelectDropdown({
 
   // Display label on trigger button
   const triggerText = useMemo(() => {
+    if (composableCategories && hasCategories) {
+      const count = selectedSkillItems.size;
+      if (count === 0) return placeholder || allOptionLabel;
+      if (isAllSelected) return allOptionLabel || placeholder;
+      const fullySelectedGroup = categoryOptions.find((cat) =>
+        activeCategories.includes(cat.value) &&
+        itemOptions.every((item) =>
+          selectedSkillItems.has(item.value) === matchesSkillCategory(item.value, cat.value, item.countries),
+        ),
+      );
+      if (fullySelectedGroup) return `${fullySelectedGroup.label} (${count})`;
+      return `${count} Selected`;
+    }
     if (selectedList.length === 0) {
       return placeholder || allOptionLabel;
     }
@@ -267,7 +284,7 @@ export default function MultiSelectDropdown({
       }
     }
     return `${selectedList.length} Selected`;
-  }, [selectedList, isAllSelected, options, allOptionLabel, placeholder, hasCategories, activeCategories, categoryOptions, itemOptions]);
+  }, [composableCategories, selectedSkillItems, selectedList, isAllSelected, options, allOptionLabel, placeholder, hasCategories, activeCategories, categoryOptions, itemOptions]);
 
   return (
     <div className={`relative ${className}`} ref={containerRef}>
@@ -301,7 +318,7 @@ export default function MultiSelectDropdown({
         <div className="flex items-center gap-1 shrink-0">
           {selectedList.length > 0 && (
             <span className="shrink-0 rounded-full bg-sibs-primary-1 px-1.5 py-0.2 text-[9px] font-extrabold text-white transition-colors">
-              {isAllSelected ? "All" : selectedList.length}
+              {isAllSelected ? "All" : (composableCategories && hasCategories ? selectedSkillItems.size : selectedList.length)}
             </span>
           )}
 
@@ -428,7 +445,7 @@ export default function MultiSelectDropdown({
                 {/* Divider & Header for Individual Skills */}
                 <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50/70 px-3 py-1 text-[9.5px] font-extrabold uppercase tracking-wider text-sibs-tertiary-5">
                   <span>
-                    {activeCategories.length > 0 ? "Filtered Skills" : "Individual Skills"}
+                    {composableCategories ? "Available Skills" : (activeCategories.length > 0 ? "Filtered Skills" : "Individual Skills")}
                   </span>
                   <span className="text-[9px] font-bold text-slate-500">
                     {visibleItemOptions.length} {visibleItemOptions.length === 1 ? "skill" : "skills"}

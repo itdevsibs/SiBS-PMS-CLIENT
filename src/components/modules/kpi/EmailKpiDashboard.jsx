@@ -561,6 +561,10 @@ export default function EmailKpiDashboard({
   const series = Array.isArray(data.series) ? data.series : [];
   const currentPeriod = period || data.filters?.period || data.data?.filters?.period;
   const isCustomPeriod = currentPeriod === "custom";
+  const ledgerScope = data.taskOrderResolution || data.data?.taskOrderResolution || {};
+  const unmappedLedgerCases = Number(ledgerScope.unmappedRows || 0);
+  const ambiguousLedgerCases = Number(ledgerScope.ambiguousRows || 0);
+  const excludedLedgerCases = unmappedLedgerCases + ambiguousLedgerCases;
 
   const registerScroll = useSyncedHorizontalScroll(isCustomPeriod);
 
@@ -574,6 +578,15 @@ export default function EmailKpiDashboard({
 
   return (
     <section className={isSubmodule ? "space-y-1.5 sm:space-y-2" : "flex-1 min-h-0 flex flex-col"}>
+      {excludedLedgerCases > 0 && (
+        <p role="status" className="px-2 py-1 text-[11px] text-sibs-tertiary-5">
+          {excludedLedgerCases.toLocaleString()} email cases excluded from KPI scope:
+          {unmappedLedgerCases > 0 ? ` ${unmappedLedgerCases.toLocaleString()} unmapped` : ""}
+          {unmappedLedgerCases > 0 && ambiguousLedgerCases > 0 ? "," : ""}
+          {ambiguousLedgerCases > 0 ? ` ${ambiguousLedgerCases.toLocaleString()} ambiguous` : ""}
+          {" "}country assignments in the published Task Order Ledger.
+        </p>
+      )}
       <div
         className={`grid transition-[grid-template-rows,opacity] duration-300 ease-in-out ${
           showSummaryCards ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0 pointer-events-none"
