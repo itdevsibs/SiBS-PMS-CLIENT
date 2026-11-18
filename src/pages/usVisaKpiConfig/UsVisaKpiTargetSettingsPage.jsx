@@ -9,6 +9,13 @@ import useDashboardPage from '@/hooks/useDashboardPage';
 import { fetchTaskOrderManagement } from '@/lib/axios/task-order-ledger';
 import { fetchUsVisaKpiTargetSettings, fetchUsVisaKpiTargetHistory, saveUsVisaKpiTarget } from '@/lib/axios/us-visa-kpi-targets';
 
+const DEFAULT_TASK_ORDERS = [
+  { value: 'TO10', label: 'GSS 2.0 TO10 - SEASIA' },
+  { value: 'TO4', label: 'GSS 2.0 TO4 - PAC' },
+  { value: 'TO12', label: 'GSS 2.0 TO12 - NICE' },
+  { value: 'TO16', label: 'GSS 2.0 TO16 - SEURECA' },
+  { value: 'TO14', label: 'GSS 2.0 TO14 - NESAMI' },
+];
 const inputStyle = 'min-h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-800 outline-none focus:border-[#0b3b68] focus:ring-2 focus:ring-blue-100';
 const buttonStyle = 'inline-flex min-h-9 items-center justify-center gap-1.5 rounded-lg px-3 text-xs font-bold transition disabled:cursor-not-allowed disabled:opacity-50';
 function manilaToday() {
@@ -62,7 +69,13 @@ export default function UsVisaKpiTargetSettingsPage() {
     }).catch(() => {});
     return () => { active = false; };
   }, []);
-  const metrics = useMemo(() => (settings?.metrics || []).filter((metric) => `${metric.name} ${metric.code}`.toLowerCase().includes(search.trim().toLowerCase())), [settings, search]);
+  const metrics = useMemo(() => (settings?.metrics || []).filter((metric) => {
+    if (!`${metric.name} ${metric.code}`.toLowerCase().includes(search.trim().toLowerCase())) return false;
+    const scope = String(metric.effectiveScope || '');
+    if (taskOrder && !scope.includes(`TO:${taskOrder}`)) return false;
+    if (sourceSystem && !scope.includes(`SOURCE:${sourceSystem}`)) return false;
+    return true;
+  }), [settings, search, taskOrder, sourceSystem]);
   function openEdit(metric) {
     setEdit(metric); setNewValue(String(metric.targetValue)); setEffectiveFrom(manilaToday());
     setReason(''); setError(''); setNotice('');
@@ -120,7 +133,7 @@ export default function UsVisaKpiTargetSettingsPage() {
               </select></label>
             <label className="w-full sm:w-56 text-[11px] font-semibold text-slate-600">Task Order
               <select value={taskOrder} onChange={(event) => { setTaskOrder(event.target.value); setHistory(null); }} className={`${inputStyle} mt-1`}>
-                <option value="">All Task Orders (default)</option>{taskOrders.map((code) => <option key={code} value={code}>{code}</option>)}
+                <option value="">All Task Orders (default)</option>{(taskOrders.length > 0 ? taskOrders.map((code) => ({ value: code, label: code })) : DEFAULT_TASK_ORDERS).map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
               </select></label>
           </div>
         </div>
@@ -136,15 +149,15 @@ export default function UsVisaKpiTargetSettingsPage() {
           </div>
 
           <div className="flex-1 min-h-0 overflow-auto">
-            <table className="w-full min-w-[760px] table-fixed border-collapse text-left">
+            <table className="w-full min-w-[970px] table-fixed border-collapse text-left">
               <thead className="sticky top-0 z-10 bg-slate-50 border-b border-slate-200">
                 <tr className="text-[11px] font-bold uppercase tracking-wide text-slate-500">
                   <th className="w-12 px-5 py-3">#</th>
-                  <th className="w-[28%] px-5 py-3">KPI metric</th>
-                  <th className="w-[18%] px-5 py-3">Performance target</th>
-                  <th className="w-[16%] px-5 py-3">Effective from</th>
-                  <th className="w-[18%] px-5 py-3">Applied scope</th>
-                  <th className="w-[20%] px-5 py-3 text-right">Actions</th>
+                  <th className="w-[220px] px-5 py-3">KPI metric</th>
+                  <th className="w-[150px] px-5 py-3">Performance target</th>
+                  <th className="w-[150px] px-5 py-3">Effective from</th>
+                  <th className="w-[190px] px-5 py-3">Applied scope</th>
+                  <th className="w-[210px] px-5 py-3 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody>{loading ? <tr><td colSpan={6} className="p-8 text-center text-xs text-slate-500"><Loader2 className="mr-2 inline animate-spin" size={16}/>Loading targets...</td></tr> : metrics.length ? metrics.map((metric, idx) => <tr key={metric.code} className="border-b border-slate-100 hover:bg-slate-50/80 transition-colors">
@@ -152,7 +165,7 @@ export default function UsVisaKpiTargetSettingsPage() {
                 <td className="px-5 py-3.5"><div className="text-xs font-bold text-slate-900">{metric.name}</div><div className="mt-0.5 font-mono text-[10px] text-slate-400">{metric.code}</div></td>
                 <td className="px-5 py-3.5"><span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold tabular-nums text-emerald-700 border border-emerald-200/70"><Target size={12} />{displayTarget(metric)}</span></td>
                 <td className="px-5 py-3.5 text-xs tabular-nums text-slate-600"><span className="inline-flex items-center gap-1.5"><Calendar size={13} className="text-slate-400" />{metric.effectiveFrom || 'Legacy baseline'}</span></td>
-                <td className="px-5 py-3.5"><span className="inline-flex items-center rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1 text-[10px] font-semibold text-slate-600">{metric.effectiveScope === 'LEGACY_DEFAULT' ? 'System default' : metric.effectiveScope}</span>
+                <td className="px-5 py-3.5"><span className="inline-flex items-center rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1 text-[10px] font-semibold text-slate-600">{taskOrder || sourceSystem ? `SOURCE:${sourceSystem || 'ALL'}|TO:${taskOrder || 'ALL'}` : metric.effectiveScope === 'LEGACY_DEFAULT' ? 'System default' : metric.effectiveScope}</span>
                   {metric.scheduled?.length > 0 && <div className="mt-1 text-[10px] text-amber-700">{metric.scheduled.length} scheduled update(s)</div>}</td>
                 <td className="px-5 py-3.5"><div className="flex justify-end gap-2">
                   <button type="button" onClick={() => openEdit(metric)} className={`${buttonStyle} border border-slate-200 bg-white text-[#052e53] hover:bg-blue-50`}><Pencil size={13}/>Configure</button>
