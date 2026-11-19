@@ -103,7 +103,7 @@ function EmailVolumeChart({
     : undefined;
 
   const maxTickCharLength = Math.max(
-    ...axisTicks.map((t) => formatNumber(t).length),
+    ...axisTicks.map((t) => (t >= 1000 ? `${Math.round(t / 1000)}k` : formatNumber(t)).length),
     1,
   );
 
@@ -126,7 +126,7 @@ function EmailVolumeChart({
             style={{
               ...chartHeightStyle,
               width: !isSubmodule
-                ? `${Math.max(22, Math.ceil(maxTickCharLength * 7.5 + 8))}px`
+                ? `${Math.max(18, Math.ceil(maxTickCharLength * 6 + 4))}px`
                 : undefined,
             }}
           >
@@ -142,7 +142,7 @@ function EmailVolumeChart({
                 } whitespace-nowrap ${isSubmodule ? "text-[10px] sm:text-[11px] font-bold" : "text-[8.5px] font-bold"} text-sibs-tertiary-5 leading-none`}
                 style={{ top: `${(index / (axisTicks.length - 1)) * 100}%` }}
               >
-                {formatNumber(tick)}
+                {tick >= 1000 ? `${Math.round(tick / 1000)}k` : formatNumber(tick)}
               </span>
             ))}
           </div>
@@ -199,7 +199,7 @@ function EmailVolumeChart({
                         >
                           {bar.value > 0 ? (
                             <span
-                              className={`pointer-events-none absolute left-1/2 z-10 -translate-x-1/2 whitespace-nowrap ${isSubmodule ? "text-[8.5px] sm:text-[9px] font-semibold" : "text-[8px] sm:text-[8.5px] 2xl:text-[9px] font-black"} tracking-tight transition-all duration-200 group-hover/bar:-translate-y-0.5 sibs-graph-number-in ${inside ? "text-white drop-shadow-xs" : "text-sibs-primary-1"}`}
+                              className={`pointer-events-none absolute left-1/2 z-10 -translate-x-1/2 whitespace-nowrap ${isSubmodule ? "text-[8.5px] sm:text-[9px] font-semibold" : "text-[6.5px] sm:text-[7px] 2xl:text-[7.5px] font-bold"} tracking-tight transition-all duration-200 group-hover/bar:-translate-y-0.5 sibs-graph-number-in ${inside ? "text-white drop-shadow-xs" : "text-sibs-primary-1"}`}
                               style={{
                                 bottom: inside ? `calc(${height}% - 17px)` : `calc(${height}% + 4px)`,
                                 animationDelay: `${Math.min(periodIndex * 80 + barIndex * 40, 650)}ms`,
@@ -337,7 +337,7 @@ function EmailRateChart({
             style={{
               ...chartHeightStyle,
               width: !isSubmodule
-                ? `${Math.max(22, Math.ceil(4 * 7.5 + 8))}px`
+                ? `${Math.max(18, Math.ceil(4 * 6 + 4))}px`
                 : undefined,
             }}
           >
@@ -405,7 +405,7 @@ function EmailRateChart({
                         >
                           {value > 0 ? (
                             <span
-                              className={`pointer-events-none absolute left-1/2 z-10 -translate-x-1/2 whitespace-nowrap ${isSubmodule ? "text-[8.5px] sm:text-[9px] font-semibold" : "text-[8px] sm:text-[8.5px] 2xl:text-[9px] font-black"} transition-all duration-200 group-hover/bar:-translate-y-0.5 sibs-graph-number-in ${
+                              className={`pointer-events-none absolute left-1/2 z-10 -translate-x-1/2 whitespace-nowrap ${isSubmodule ? "text-[8.5px] sm:text-[9px] font-semibold" : "text-[6px] sm:text-[6.5px] 2xl:text-[7px] font-bold"} transition-all duration-200 group-hover/bar:-translate-y-0.5 sibs-graph-number-in ${
                                 isInsideBar
                                    ? "text-white drop-shadow-xs"
                                    : "text-sibs-primary-1"
@@ -416,8 +416,8 @@ function EmailRateChart({
                               }}
                             >
                               {value >= 100 || value.toFixed(2) === "100.00"
-                                ? "100%"
-                                : `${value.toFixed(2)}%`}
+                                ? "100"
+                                : `${value.toFixed(2)}`}
                             </span>
                           ) : null}
 
@@ -604,7 +604,7 @@ export default function EmailKpiDashboard({
         className={`grid grid-cols-1 ${
           isSubmodule
             ? "grid-cols-1 border border-[#103B63] bg-white rounded-none overflow-hidden gap-0 divide-y divide-[#D7E0E8] [&_.sibs-card]:border-0 [&_.sibs-card]:shadow-none [&_.sibs-card]:rounded-none"
-            : "md:grid-cols-2 md:grid-rows-1 gap-0 divide-y md:divide-y-0 md:divide-x divide-[#D7E0E8] [&_.sibs-card]:border-0 [&_.sibs-card]:shadow-none [&_.sibs-card]:rounded-none"
+            : "md:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] md:grid-rows-1 gap-0 divide-y md:divide-y-0 md:divide-x divide-[#D7E0E8] [&_.sibs-card]:border-0 [&_.sibs-card]:shadow-none [&_.sibs-card]:rounded-none"
         } w-full min-w-0 flex-1 min-h-0 transition-all duration-300 ease-in-out ${
           !isSubmodule && showFilters
             ? "min-h-[200px]"

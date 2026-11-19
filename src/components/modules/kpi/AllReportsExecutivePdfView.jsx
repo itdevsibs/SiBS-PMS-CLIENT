@@ -219,7 +219,7 @@ export default function AllReportsExecutivePdfView({
         <div
           style={{
             border: `2px solid ${navyDark}`,
-            borderRadius: "6px",
+            borderRadius: "0px",
             overflow: "hidden",
             display: "flex",
             flexDirection: "column",
@@ -249,7 +249,7 @@ export default function AllReportsExecutivePdfView({
               flexDirection: "column",
               justifyContent: "space-between",
               border: "1.5px solid #cbd5e1",
-              borderRadius: "6px",
+              borderRadius: "0px",
               backgroundColor: "#ffffff",
               boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
               padding: "10px 16px 8px 16px",
@@ -286,7 +286,7 @@ export default function AllReportsExecutivePdfView({
                     return (
                       <div key={idx} style={{ flex: 1, display: "flex", alignItems: "flex-end", justifyContent: "center", position: "relative", zIndex: 1 }}>
                         {item.transactions > 0 && (
-                          <div style={{ width: "44px", height: `${h}%`, backgroundColor: blueDark, position: "relative", display: "flex", justifyContent: "center", borderRadius: "2px 2px 0 0" }}>
+                          <div style={{ width: "44px", height: `${h}%`, backgroundColor: blueDark, position: "relative", display: "flex", justifyContent: "center", borderRadius: "0px" }}>
                             <span style={{ position: "absolute", top: "4px", color: "#ffffff", fontSize: "8.5px", fontWeight: "800", whiteSpace: "nowrap" }}>
                               {item.transactions}
                             </span>
@@ -317,7 +317,7 @@ export default function AllReportsExecutivePdfView({
         <div
           style={{
             border: `2px solid ${navyDark}`,
-            borderRadius: "6px",
+            borderRadius: "0px",
             overflow: "hidden",
             display: "flex",
             flexDirection: "column",
@@ -347,7 +347,7 @@ export default function AllReportsExecutivePdfView({
               flexDirection: "column",
               justifyContent: "space-between",
               border: "1.5px solid #cbd5e1",
-              borderRadius: "6px",
+              borderRadius: "0px",
               backgroundColor: "#ffffff",
               boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
               padding: "10px 16px 8px 16px",
@@ -373,14 +373,14 @@ export default function AllReportsExecutivePdfView({
                       <span style={{ width: "86px", fontSize: "12px", fontWeight: "800", color: "#0c3b64", textAlign: "right", whiteSpace: "nowrap" }}>
                         {item.label}
                       </span>
-                      <div style={{ flex: 1, height: "26px", backgroundColor: "#f1f5f9", position: "relative", borderRadius: "5px", overflow: "hidden" }}>
+                      <div style={{ flex: 1, height: "26px", backgroundColor: "#f1f5f9", position: "relative", borderRadius: "0px", overflow: "hidden" }}>
                         {item.score > 0 && (
                           <div
                             style={{
                               width: `${widthPct}%`,
                               height: "100%",
                               backgroundColor: blueMid,
-                              borderRadius: "5px",
+                              borderRadius: "0px",
                               display: "flex",
                               alignItems: "center",
                               justifyContent: "flex-end",
@@ -444,7 +444,7 @@ export default function AllReportsExecutivePdfView({
         <div
           style={{
             border: `2px solid ${navyDark}`,
-            borderRadius: "6px",
+            borderRadius: "0px",
             overflow: "hidden",
             display: "flex",
             flexDirection: "column",
@@ -474,7 +474,7 @@ export default function AllReportsExecutivePdfView({
               flexDirection: "column",
               justifyContent: "space-between",
               border: "1.5px solid #cbd5e1",
-              borderRadius: "6px",
+              borderRadius: "0px",
               backgroundColor: "#ffffff",
               boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
               padding: "10px 16px 8px 16px",
@@ -523,14 +523,14 @@ export default function AllReportsExecutivePdfView({
                       <div key={idx} style={{ flex: 1, display: "flex", alignItems: "flex-end", justifyContent: "center", position: "relative", zIndex: 2 }}>
                         <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "center", gap: "6px", width: "100%", maxWidth: "90px", height: "100%" }}>
                           {item.occupancyPct > 0 ? (
-                            <div style={{ flex: 1, maxWidth: "42px", height: `${occH}%`, backgroundColor: blueDark, position: "relative", display: "flex", justifyContent: "center", borderRadius: "2px 2px 0 0" }}>
+                            <div style={{ flex: 1, maxWidth: "42px", height: `${occH}%`, backgroundColor: blueDark, position: "relative", display: "flex", justifyContent: "center", borderRadius: "0px" }}>
                               <span style={{ position: "absolute", top: "4px", fontSize: "8.5px", fontWeight: "800", color: "#ffffff", whiteSpace: "nowrap" }}>
                                 {item.occupancyPct.toFixed(2)}%
                               </span>
                             </div>
                           ) : null}
                           {item.utilizationPct > 0 ? (
-                            <div style={{ flex: 1, maxWidth: "42px", height: `${utiH}%`, backgroundColor: "#557da4", position: "relative", display: "flex", justifyContent: "center", borderRadius: "2px 2px 0 0" }}>
+                            <div style={{ flex: 1, maxWidth: "42px", height: `${utiH}%`, backgroundColor: "#557da4", position: "relative", display: "flex", justifyContent: "center", borderRadius: "0px" }}>
                               <span style={{ position: "absolute", top: "4px", fontSize: "8.5px", fontWeight: "800", color: "#ffffff", whiteSpace: "nowrap" }}>
                                 {item.utilizationPct.toFixed(2)}%
                               </span>
@@ -562,7 +562,7 @@ export default function AllReportsExecutivePdfView({
         <div
           style={{
             border: `2px solid ${navyDark}`,
-            borderRadius: "6px",
+            borderRadius: "0px",
             overflow: "hidden",
             display: "flex",
             flexDirection: "column",
@@ -594,7 +594,7 @@ export default function AllReportsExecutivePdfView({
                 flexDirection: "column",
                 justifyContent: "space-between",
                 border: "1.5px solid #cbd5e1",
-                borderRadius: "6px",
+                borderRadius: "0px",
                 backgroundColor: "#ffffff",
                 boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
                 padding: "10px 14px 8px 14px",
@@ -641,7 +641,7 @@ export default function AllReportsExecutivePdfView({
                       return (
                         <div key={idx} title={item.buffer == null ? 'Buffer unavailable' : `Buffer / Shortfall: ${item.buffer}`} style={{ flex: 1, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', gap: '2px', position: 'relative', zIndex: 1 }}>
                           {bars.map(bar => bar.value != null && Math.abs(bar.value) > 0 ? (
-                            <div key={bar.key} style={{ width: '28%', maxWidth: '21px', height: `${Math.min(100, Math.max(4, (Math.abs(bar.value) / hcAxisMax) * 100))}%`, backgroundColor: bar.color, position: 'relative', display: 'flex', justifyContent: 'center', borderRadius: '2px 2px 0 0' }}>
+                            <div key={bar.key} style={{ width: '28%', maxWidth: '21px', height: `${Math.min(100, Math.max(4, (Math.abs(bar.value) / hcAxisMax) * 100))}%`, backgroundColor: bar.color, position: 'relative', display: 'flex', justifyContent: 'center', borderRadius: "0px" }}>
                               <span style={{ position: 'absolute', top: '3px', color: '#ffffff', fontSize: '7px', fontWeight: '800' }}>{bar.value}</span>
                             </div>
                           ) : null)}
@@ -669,7 +669,7 @@ export default function AllReportsExecutivePdfView({
                 flexDirection: "column",
                 justifyContent: "space-between",
                 border: "1.5px solid #cbd5e1",
-                borderRadius: "6px",
+                borderRadius: "0px",
                 backgroundColor: "#ffffff",
                 boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
                 padding: "10px 14px 8px 14px",
@@ -710,7 +710,7 @@ export default function AllReportsExecutivePdfView({
                       return (
                         <div key={idx} style={{ flex: 1, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', gap: '2px', position: 'relative', zIndex: 1 }}>
                           {bars.map(bar => bar.value != null ? (
-                            <div key={bar.key} style={{ width: '38%', maxWidth: '26px', height: `${Math.min(100, Math.max(0, (bar.value / peopleMetricAxisMax) * 100))}%`, backgroundColor: bar.color, position: 'relative', display: 'flex', justifyContent: 'center', borderRadius: '2px 2px 0 0' }}>
+                            <div key={bar.key} style={{ width: '38%', maxWidth: '26px', height: `${Math.min(100, Math.max(0, (bar.value / peopleMetricAxisMax) * 100))}%`, backgroundColor: bar.color, position: 'relative', display: 'flex', justifyContent: 'center', borderRadius: "0px" }}>
                               <span style={{ position: 'absolute', top: bar.value > 3 ? '3px' : '-12px', color: bar.value > 3 ? '#fff' : bar.color, fontSize: '7px', fontWeight: '800', whiteSpace: 'nowrap' }}>
                                 {bar.value.toFixed(2)}%
                               </span>
@@ -764,7 +764,7 @@ export default function AllReportsExecutivePdfView({
       <div
         style={{
           border: `2px solid ${navyDark}`,
-          borderRadius: "6px",
+          borderRadius: "0px",
           overflow: "hidden",
           display: "flex",
           flexDirection: "column",
@@ -776,6 +776,7 @@ export default function AllReportsExecutivePdfView({
         <div
           style={{
             backgroundColor: navyDark,
+            borderBottom: "2px solid #F28C28",
             color: "#ffffff",
             textAlign: "center",
             fontWeight: "900",
@@ -885,19 +886,19 @@ export default function AllReportsExecutivePdfView({
                       <div key={idx} style={{ flex: 1, display: "flex", alignItems: "flex-end", justifyContent: "center", gap: isCallsStacked || isTwoSections ? "4px" : "2.5px", position: "relative", zIndex: 1 }}>
                         {/* Volume */}
                         {item.volume > 0 && (
-                          <div style={{ flex: 1, maxWidth: barMaxWidth, height: `${vH}%`, backgroundColor: blueDark, position: "relative", display: "flex", justifyContent: "center", borderRadius: "2px 2px 0 0" }}>
+                          <div style={{ flex: 1, maxWidth: barMaxWidth, height: `${vH}%`, backgroundColor: blueDark, position: "relative", display: "flex", justifyContent: "center", borderRadius: "0px" }}>
                             <span style={{ position: "absolute", top: "4px", left: "50%", transform: "translateX(-50%)", color: "#ffffff", fontSize: barFontSize, fontWeight: "800", whiteSpace: "nowrap", lineHeight: "1", letterSpacing: "-0.03em" }}>{item.volume}</span>
                           </div>
                         )}
                         {/* Handled */}
                         {item.handled > 0 && (
-                          <div style={{ flex: 1, maxWidth: barMaxWidth, height: `${hH}%`, backgroundColor: blueMid, position: "relative", display: "flex", justifyContent: "center", borderRadius: "2px 2px 0 0" }}>
+                          <div style={{ flex: 1, maxWidth: barMaxWidth, height: `${hH}%`, backgroundColor: blueMid, position: "relative", display: "flex", justifyContent: "center", borderRadius: "0px" }}>
                             <span style={{ position: "absolute", top: "4px", left: "50%", transform: "translateX(-50%)", color: "#ffffff", fontSize: barFontSize, fontWeight: "800", whiteSpace: "nowrap", lineHeight: "1", letterSpacing: "-0.03em" }}>{item.handled}</span>
                           </div>
                         )}
                         {/* Handled w/SLA */}
                         {item.handledWithSla > 0 && (
-                          <div style={{ flex: 1, maxWidth: barMaxWidth, height: `${sH}%`, backgroundColor: blueLight, position: "relative", display: "flex", justifyContent: "center", borderRadius: "2px 2px 0 0" }}>
+                          <div style={{ flex: 1, maxWidth: barMaxWidth, height: `${sH}%`, backgroundColor: blueLight, position: "relative", display: "flex", justifyContent: "center", borderRadius: "0px" }}>
                             <span style={{ position: "absolute", top: "4px", left: "50%", transform: "translateX(-50%)", color: "#ffffff", fontSize: barFontSize, fontWeight: "800", whiteSpace: "nowrap", lineHeight: "1", letterSpacing: "-0.03em" }}>{item.handledWithSla}</span>
                           </div>
                         )}
@@ -1004,7 +1005,7 @@ export default function AllReportsExecutivePdfView({
                         <div key={idx} style={{ flex: 1, display: "flex", alignItems: "flex-end", justifyContent: "center", gap: isCallsStacked || isTwoSections ? "4px" : "3px", position: "relative", zIndex: 2 }}>
                           {/* Answer % - only show if > 0 */}
                           {item.answerRate > 0 && (
-                            <div style={{ flex: 1, maxWidth: barMaxWidth, height: `${ansH}%`, backgroundColor: blueDark, position: "relative", display: "flex", justifyContent: "center", borderRadius: "2px 2px 0 0" }}>
+                            <div style={{ flex: 1, maxWidth: barMaxWidth, height: `${ansH}%`, backgroundColor: blueDark, position: "relative", display: "flex", justifyContent: "center", borderRadius: "0px" }}>
                               <span style={{ position: "absolute", top: "4px", left: "50%", transform: "translateX(-50%)", fontSize: barFontSize, fontWeight: "800", color: "#ffffff", whiteSpace: "nowrap", lineHeight: "1", letterSpacing: "-0.03em" }}>
                                 {item.answerRate >= 100 || item.answerRate.toFixed(1) === "100.0" ? "100%" : `${item.answerRate.toFixed(1)}%`}
                               </span>
@@ -1012,7 +1013,7 @@ export default function AllReportsExecutivePdfView({
                           )}
                           {/* SL % - only show if > 0 */}
                           {item.serviceLevel > 0 && (
-                            <div style={{ flex: 1, maxWidth: barMaxWidth, height: `${slH}%`, backgroundColor: blueMid, position: "relative", display: "flex", justifyContent: "center", borderRadius: "2px 2px 0 0" }}>
+                            <div style={{ flex: 1, maxWidth: barMaxWidth, height: `${slH}%`, backgroundColor: blueMid, position: "relative", display: "flex", justifyContent: "center", borderRadius: "0px" }}>
                               <span style={{ position: "absolute", top: "4px", left: "50%", transform: "translateX(-50%)", fontSize: barFontSize, fontWeight: "800", color: "#ffffff", whiteSpace: "nowrap", lineHeight: "1", letterSpacing: "-0.03em" }}>
                                 {item.serviceLevel >= 100 || item.serviceLevel.toFixed(1) === "100.0" ? "100%" : `${item.serviceLevel.toFixed(1)}%`}
                               </span>
@@ -1116,7 +1117,7 @@ export default function AllReportsExecutivePdfView({
 
                           {/* AHT Bar */}
                           {item.aht > 0 && (
-                            <div style={{ width: ahtBarWidth, height: `${ahtH}%`, backgroundColor: blueDark, position: "relative", display: "flex", justifyContent: "center", borderRadius: "2px 2px 0 0" }}>
+                            <div style={{ width: ahtBarWidth, height: `${ahtH}%`, backgroundColor: blueDark, position: "relative", display: "flex", justifyContent: "center", borderRadius: "0px" }}>
                               <span style={{ position: "absolute", top: "4px", left: "50%", transform: "translateX(-50%)", color: "#ffffff", fontSize: ahtFontSize, fontWeight: "800", whiteSpace: "nowrap", lineHeight: "1", letterSpacing: "-0.03em" }}>
                                 {Math.round(item.aht)}s
                               </span>
@@ -1149,13 +1150,15 @@ export default function AllReportsExecutivePdfView({
       )}
 
       {/* ========================================================================= */}
-      {/* SECTION 2: E M A I L S                                                   */}
+      {/* SECTION 2: E M A I L S  &  O C C U P A N C Y  &  U T I L I Z A T I O N   */}
       {/* ========================================================================= */}
+      {(showEmails || showOccupancy) && (
+      <div style={{ display: "grid", gridTemplateColumns: showEmails && showOccupancy ? "2fr 1fr" : "1fr", gap: "10px", flex: 1 }}>
       {showEmails && (
       <div
         style={{
           border: `2px solid ${navyDark}`,
-          borderRadius: "6px",
+          borderRadius: "0px",
           overflow: "hidden",
           display: "flex",
           flexDirection: "column",
@@ -1167,6 +1170,7 @@ export default function AllReportsExecutivePdfView({
         <div
           style={{
             backgroundColor: navyDark,
+            borderBottom: "2px solid #F28C28",
             color: "#ffffff",
             textAlign: "center",
             fontWeight: "900",
@@ -1270,19 +1274,19 @@ export default function AllReportsExecutivePdfView({
                       <div key={idx} style={{ flex: 1, display: "flex", alignItems: "flex-end", justifyContent: "center", gap: isTwoSections ? "4px" : "2.5px", position: "relative", zIndex: 1 }}>
                         {/* Volume */}
                         {item.volume > 0 && (
-                          <div style={{ flex: 1, maxWidth: barMaxWidth, height: `${vH}%`, backgroundColor: blueDark, position: "relative", display: "flex", justifyContent: "center", borderRadius: "2px 2px 0 0" }}>
+                          <div style={{ flex: 1, maxWidth: barMaxWidth, height: `${vH}%`, backgroundColor: blueDark, position: "relative", display: "flex", justifyContent: "center", borderRadius: "0px" }}>
                             <span style={{ position: "absolute", top: "4px", left: "50%", transform: "translateX(-50%)", color: "#ffffff", fontSize: barFontSize, fontWeight: "800", whiteSpace: "nowrap", lineHeight: "1", letterSpacing: "-0.03em" }}>{item.volume}</span>
                           </div>
                         )}
                         {/* Handled */}
                         {item.handled > 0 && (
-                          <div style={{ flex: 1, maxWidth: barMaxWidth, height: `${hH}%`, backgroundColor: blueMid, position: "relative", display: "flex", justifyContent: "center", borderRadius: "2px 2px 0 0" }}>
+                          <div style={{ flex: 1, maxWidth: barMaxWidth, height: `${hH}%`, backgroundColor: blueMid, position: "relative", display: "flex", justifyContent: "center", borderRadius: "0px" }}>
                             <span style={{ position: "absolute", top: "4px", left: "50%", transform: "translateX(-50%)", color: "#ffffff", fontSize: barFontSize, fontWeight: "800", whiteSpace: "nowrap", lineHeight: "1", letterSpacing: "-0.03em" }}>{item.handled}</span>
                           </div>
                         )}
                         {/* Handled w/SLA */}
                         {item.handledWithSla > 0 && (
-                          <div style={{ flex: 1, maxWidth: barMaxWidth, height: `${sH}%`, backgroundColor: blueLight, position: "relative", display: "flex", justifyContent: "center", borderRadius: "2px 2px 0 0" }}>
+                          <div style={{ flex: 1, maxWidth: barMaxWidth, height: `${sH}%`, backgroundColor: blueLight, position: "relative", display: "flex", justifyContent: "center", borderRadius: "0px" }}>
                             <span style={{ position: "absolute", top: "4px", left: "50%", transform: "translateX(-50%)", color: "#ffffff", fontSize: barFontSize, fontWeight: "800", whiteSpace: "nowrap", lineHeight: "1", letterSpacing: "-0.03em" }}>{item.handledWithSla}</span>
                           </div>
                         )}
@@ -1361,7 +1365,7 @@ export default function AllReportsExecutivePdfView({
                       <div key={idx} style={{ flex: 1, display: "flex", alignItems: "flex-end", justifyContent: "center", gap: "3.5px", position: "relative", zIndex: 2 }}>
                         {/* ERR - only show if > 0 */}
                         {item.errPct > 0 && (
-                          <div style={{ flex: 1, maxWidth: barMaxWidth, height: `${errH}%`, backgroundColor: blueDark, position: "relative", display: "flex", justifyContent: "center", borderRadius: "2px 2px 0 0" }}>
+                          <div style={{ flex: 1, maxWidth: barMaxWidth, height: `${errH}%`, backgroundColor: blueDark, position: "relative", display: "flex", justifyContent: "center", borderRadius: "0px" }}>
                             <span style={{ position: "absolute", top: "4px", left: "50%", transform: "translateX(-50%)", fontSize: barFontSize, fontWeight: "800", color: "#ffffff", whiteSpace: "nowrap", lineHeight: "1", letterSpacing: "-0.03em" }}>
                               {item.errPct.toFixed(2)}%
                             </span>
@@ -1369,7 +1373,7 @@ export default function AllReportsExecutivePdfView({
                         )}
                         {/* SL % - only show if > 0 */}
                         {item.serviceLevel > 0 && (
-                          <div style={{ flex: 1, maxWidth: barMaxWidth, height: `${slH}%`, backgroundColor: blueMid, position: "relative", display: "flex", justifyContent: "center", borderRadius: "2px 2px 0 0" }}>
+                          <div style={{ flex: 1, maxWidth: barMaxWidth, height: `${slH}%`, backgroundColor: blueMid, position: "relative", display: "flex", justifyContent: "center", borderRadius: "0px" }}>
                             <span style={{ position: "absolute", top: "4px", left: "50%", transform: "translateX(-50%)", fontSize: barFontSize, fontWeight: "800", color: "#ffffff", whiteSpace: "nowrap", lineHeight: "1", letterSpacing: "-0.03em" }}>
                               {item.serviceLevel.toFixed(2)}%
                             </span>
@@ -1400,14 +1404,103 @@ export default function AllReportsExecutivePdfView({
       </div>
       )}
 
+      {showOccupancy && (
+        <div style={{ border: `2px solid ${navyDark}`, borderRadius: "0px", overflow: "hidden", display: "flex", flexDirection: "column", flex: 1, backgroundColor: "#ffffff" }}>
+          <div
+            style={{
+              backgroundColor: navyDark,
+              borderBottom: "2px solid #F28C28",
+              color: "#ffffff",
+              textAlign: "center",
+              fontWeight: "900",
+              fontSize: "14px",
+              letterSpacing: "0.35em",
+              padding: "5px 0",
+              textTransform: "uppercase",
+            }}
+          >
+            O C C U P A N C Y &nbsp; &amp; &nbsp; U T I L I Z A T I O N
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", padding: "6px 8px 5px 8px", flex: 1 }}>
+            <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: "8px", fontSize: "9px", fontWeight: "700", marginTop: "1px", marginBottom: "4px" }}>
+              <span style={{ display: "flex", alignItems: "center", gap: "3px" }}>
+                <span style={{ width: "7px", height: "7px", borderRadius: "50%", backgroundColor: blueDark, display: "inline-block" }} />
+                Occupancy
+              </span>
+              <span style={{ display: "flex", alignItems: "center", gap: "3px" }}>
+                <span style={{ width: "7px", height: "7px", borderRadius: "50%", backgroundColor: blueMid, display: "inline-block" }} />
+                Utilization
+              </span>
+              <span style={{ display: "flex", alignItems: "center", gap: "3px", color: redAlert, fontWeight: "800" }}>
+                <span style={{ width: "10px", borderTop: `1.5px dashed ${redAlert}`, display: "inline-block" }} />
+                Target (70%)
+              </span>
+            </div>
+            <div style={{ display: "flex", height: emailChartHeight }}>
+              <div style={{ width: "28px", height: emailAxisHeight, position: "relative", borderRight: "1.5px solid #cbd5e1", fontSize: "8.5px", color: "#475569", fontWeight: "700" }}>
+                {["100%", "80%", "60%", "40%", "20%", "0%"].map((pct, idx) => (
+                  <span key={idx} style={{ position: "absolute", top: `${idx * 20}%`, transform: "translateY(-50%)", right: "2px" }}>
+                    {pct}
+                  </span>
+                ))}
+              </div>
+              <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+                <div style={{ height: emailAxisHeight, position: "relative", borderBottom: "1.5px solid #cbd5e1", display: "flex", padding: "0 4px" }}>
+                  {[0, 20, 40, 60, 80, 100].map((val, idx) => (
+                    <div key={idx} style={{ position: "absolute", left: 0, right: 0, top: `${val}%`, borderTop: "1px solid #f1f5f9" }} />
+                  ))}
+                  <div style={{ position: "absolute", left: 0, right: 0, top: "30%", borderTop: `1.5px dashed ${redAlert}`, zIndex: 3 }} />
+                  {occSeries.map((item, idx) => {
+                    const occH = item.occupancyPct > 0 ? Math.min(100, Math.max(9, item.occupancyPct)) : 0;
+                    const utiH = item.utilizationPct > 0 ? Math.min(100, Math.max(9, item.utilizationPct)) : 0;
+                    return (
+                      <div key={idx} style={{ flex: 1, display: "flex", alignItems: "flex-end", justifyContent: "center", position: "relative", zIndex: 2 }}>
+                        <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "center", gap: "2px", width: "100%", maxWidth: isSingleSection ? "70px" : "44px", height: "100%" }}>
+                          {item.occupancyPct > 0 ? (
+                            <div style={{ flex: 1, maxWidth: isSingleSection ? "32px" : "20px", height: `${occH}%`, backgroundColor: blueDark, position: "relative", display: "flex", justifyContent: "center", borderRadius: "0px" }}>
+                              <span style={{ position: "absolute", top: "3px", fontSize: isSingleSection ? "7.5px" : "6px", fontWeight: "800", color: "#ffffff", whiteSpace: "nowrap", letterSpacing: "-0.03em" }}>
+                                {item.occupancyPct.toFixed(1)}%
+                              </span>
+                            </div>
+                          ) : null}
+                          {item.utilizationPct > 0 ? (
+                            <div style={{ flex: 1, maxWidth: isSingleSection ? "32px" : "20px", height: `${utiH}%`, backgroundColor: "#557da4", position: "relative", display: "flex", justifyContent: "center", borderRadius: "0px" }}>
+                              <span style={{ position: "absolute", top: "3px", fontSize: isSingleSection ? "7.5px" : "6px", fontWeight: "800", color: "#ffffff", whiteSpace: "nowrap", letterSpacing: "-0.03em" }}>
+                                {item.utilizationPct.toFixed(1)}%
+                              </span>
+                            </div>
+                          ) : null}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div style={{ height: "26px", display: "flex", padding: "0 2px" }}>
+                  {occSeries.map((item, idx) => (
+                    <div key={idx} style={{ flex: 1, textAlign: "center", fontSize: "8.5px", fontWeight: "800", color: "#0c3b64", paddingTop: "5px", whiteSpace: "nowrap", letterSpacing: "-0.03em", overflow: "visible" }}>
+                      {item.label}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div style={{ textAlign: "center", color: redAlert, fontSize: "8px", fontWeight: "800", marginTop: "3px", whiteSpace: "nowrap" }}>
+              OCCUPANCY % : TOTAL WORK TIME / PRODUCTIVE TIME
+            </div>
+          </div>
+        </div>
+      )}
+      </div>
+      )}
+
       {/* ========================================================================= */}
-      {/* SECTION 3: QUALITY AUDIT  &  OCCUPANCY / HEADCOUNT / PEOPLE METRICS      */}
+      {/* SECTION 3: QUALITY AUDIT  &  HEADCOUNT / PEOPLE METRICS                  */}
       {/* ========================================================================= */}
       {showSection3 && (
-      <div style={{ display: "grid", gridTemplateColumns: showQa && showOccupancy ? "0.8fr 1.2fr" : "1fr", gap: "10px", flex: 1 }}>
+      <div style={{ display: "grid", gridTemplateColumns: showQa && showOccupancy ? "1fr 1fr" : "1fr", gap: "10px", flex: 1 }}>
         {/* 3A: QUALITY AUDIT */}
         {showQa && (
-        <div style={{ border: `2px solid ${navyDark}`, borderRadius: "6px", overflow: "hidden", display: "flex", flexDirection: "column", flex: 1 }}>
+        <div style={{ border: `2px solid ${navyDark}`, borderRadius: "0px", overflow: "hidden", display: "flex", flexDirection: "column", flex: 1 }}>
           {/* Banner */}
           <div
             style={{
@@ -1543,13 +1636,14 @@ export default function AllReportsExecutivePdfView({
         </div>
         )}
 
-        {/* 3B: OCCUPANCY & HEADCOUNT (with People Metrics) */}
+        {/* 3B: HEADCOUNT & PEOPLE METRICS */}
         {showOccupancy && (
-        <div style={{ border: `2px solid ${navyDark}`, borderRadius: "3px", overflow: "hidden", display: "flex", flexDirection: "column", minHeight: isSingleSection ? "380px" : "auto" }}>
+        <div style={{ border: `2px solid ${navyDark}`, borderRadius: "0px", overflow: "hidden", display: "flex", flexDirection: "column", minHeight: isSingleSection ? "380px" : "auto" }}>
           {/* Banner */}
           <div
             style={{
               backgroundColor: navyDark,
+              borderBottom: "2px solid #F28C28",
               color: "#ffffff",
               textAlign: "center",
               fontWeight: "900",
@@ -1559,94 +1653,11 @@ export default function AllReportsExecutivePdfView({
               textTransform: "uppercase",
             }}
           >
-            O C C U P A N C Y &nbsp; & &nbsp; H E A D C O U N T
+            H E A D C O U N T &nbsp; &amp; &nbsp; P E O P L E &nbsp; M E T R I C S
           </div>
 
-          {/* Sub-grid: Occupancy & Utilization (Col 1) | Headcount Metrics (Col 2) | People Metrics (Col 3) */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", backgroundColor: "#ffffff", padding: "6px 8px 5px 8px", gap: "8px", flex: 1 }}>
-            {/* Col 1: Occupancy & Utilization */}
-            <div style={{ display: "flex", flexDirection: "column", borderRight: "1.5px solid #e2e8f0", paddingRight: "8px" }}>
-              {/* Title & Legend Stacked */}
-              <div style={{ fontSize: "11px", fontWeight: "900", color: "#0c3b64", textTransform: "uppercase", textAlign: "center", letterSpacing: "0.02em" }}>
-                OCCUPANCY &amp; UTILIZATION
-              </div>
-              <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: "8px", fontSize: "9px", fontWeight: "700", marginTop: "1px", marginBottom: "4px" }}>
-                <span style={{ display: "flex", alignItems: "center", gap: "3px" }}>
-                  <span style={{ width: "7px", height: "7px", borderRadius: "50%", backgroundColor: blueDark, display: "inline-block" }} />
-                  Occupancy
-                </span>
-                <span style={{ display: "flex", alignItems: "center", gap: "3px" }}>
-                  <span style={{ width: "7px", height: "7px", borderRadius: "50%", backgroundColor: blueMid, display: "inline-block" }} />
-                  Utilization
-                </span>
-                <span style={{ display: "flex", alignItems: "center", gap: "3px", color: redAlert, fontWeight: "800" }}>
-                  <span style={{ width: "10px", borderTop: `1.5px dashed ${redAlert}`, display: "inline-block" }} />
-                  Target (70%)
-                </span>
-              </div>
-
-              {/* Chart Area */}
-              <div style={{ display: "flex", height: occChartHeight }}>
-                {/* Y Axis 0-100% */}
-                <div style={{ width: "28px", height: occAxisHeight, position: "relative", borderRight: "1.5px solid #cbd5e1", fontSize: "8.5px", color: "#475569", fontWeight: "700" }}>
-                  {["100%", "80%", "60%", "40%", "20%", "0%"].map((pct, idx) => (
-                    <span key={idx} style={{ position: "absolute", top: `${idx * 20}%`, transform: "translateY(-50%)", right: "2px" }}>
-                      {pct}
-                    </span>
-                  ))}
-                </div>
-
-                <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-                  <div style={{ height: occAxisHeight, position: "relative", borderBottom: "1.5px solid #cbd5e1", display: "flex", padding: "0 4px" }}>
-                    {[0, 20, 40, 60, 80, 100].map((val, idx) => (
-                      <div key={idx} style={{ position: "absolute", left: 0, right: 0, top: `${val}%`, borderTop: "1px solid #f1f5f9" }} />
-                    ))}
-                    {/* Red 70% Occupancy Target Line */}
-                    <div style={{ position: "absolute", left: 0, right: 0, top: "30%", borderTop: `1.5px dashed ${redAlert}`, zIndex: 3 }} />
-
-                    {occSeries.map((item, idx) => {
-                      const occH = item.occupancyPct > 0 ? Math.min(100, Math.max(9, item.occupancyPct)) : 0;
-                      const utiH = item.utilizationPct > 0 ? Math.min(100, Math.max(9, item.utilizationPct)) : 0;
-                      return (
-                        <div key={idx} style={{ flex: 1, display: "flex", alignItems: "flex-end", justifyContent: "center", position: "relative", zIndex: 2 }}>
-                          <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "center", gap: "2px", width: "100%", maxWidth: isSingleSection ? "70px" : "44px", height: "100%" }}>
-                            {item.occupancyPct > 0 ? (
-                              <div style={{ flex: 1, maxWidth: isSingleSection ? "32px" : "20px", height: `${occH}%`, backgroundColor: blueDark, position: "relative", display: "flex", justifyContent: "center", borderRadius: "2px 2px 0 0" }}>
-                                <span style={{ position: "absolute", top: "3px", fontSize: isSingleSection ? "7.5px" : "6px", fontWeight: "800", color: "#ffffff", whiteSpace: "nowrap", letterSpacing: "-0.03em" }}>
-                                  {item.occupancyPct.toFixed(1)}%
-                                </span>
-                              </div>
-                            ) : null}
-                            {item.utilizationPct > 0 ? (
-                              <div style={{ flex: 1, maxWidth: isSingleSection ? "32px" : "20px", height: `${utiH}%`, backgroundColor: "#557da4", position: "relative", display: "flex", justifyContent: "center", borderRadius: "2px 2px 0 0" }}>
-                                <span style={{ position: "absolute", top: "3px", fontSize: isSingleSection ? "7.5px" : "6px", fontWeight: "800", color: "#ffffff", whiteSpace: "nowrap", letterSpacing: "-0.03em" }}>
-                                  {item.utilizationPct.toFixed(1)}%
-                                </span>
-                              </div>
-                            ) : null}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-
-                  {/* X Labels */}
-                  <div style={{ height: "26px", display: "flex", padding: "0 2px" }}>
-                    {occSeries.map((item, idx) => (
-                      <div key={idx} style={{ flex: 1, textAlign: "center", fontSize: "8.5px", fontWeight: "800", color: "#0c3b64", paddingTop: "5px", whiteSpace: "nowrap", letterSpacing: "-0.03em", overflow: "visible" }}>
-                        {item.label}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              {/* Red Formula Subtitle */}
-              <div style={{ textAlign: "center", color: redAlert, fontSize: "8px", fontWeight: "800", marginTop: "3px", whiteSpace: "nowrap" }}>
-                OCCUPANCY % : TOTAL WORK TIME / PRODUCTIVE TIME
-              </div>
-            </div>
-
+          {/* Sub-grid: Headcount Metrics (Col 1) | People Metrics (Col 2) */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", backgroundColor: "#ffffff", padding: "6px 8px 5px 8px", gap: "8px", flex: 1 }}>
             {/* Col 2: Headcount Metrics */}
             <div style={{ display: "flex", flexDirection: "column", borderRight: "1.5px solid #e2e8f0", paddingRight: "8px" }}>
               {/* Title & Legend Stacked */}
@@ -1695,7 +1706,7 @@ export default function AllReportsExecutivePdfView({
                       return (
                         <div key={idx} title={item.buffer == null ? 'Buffer unavailable' : `Buffer / Shortfall: ${item.buffer}`} style={{ flex: 1, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', gap: '2px', position: 'relative', zIndex: 1 }}>
                           {bars.map(bar => bar.value != null && Math.abs(bar.value) > 0 ? (
-                            <div key={bar.key} style={{ width: '28%', maxWidth: '21px', height: `${Math.min(100, Math.max(4, (Math.abs(bar.value) / hcAxisMax) * 100))}%`, backgroundColor: bar.color, position: 'relative', display: 'flex', justifyContent: 'center', borderRadius: '2px 2px 0 0' }}>
+                            <div key={bar.key} style={{ width: '28%', maxWidth: '21px', height: `${Math.min(100, Math.max(4, (Math.abs(bar.value) / hcAxisMax) * 100))}%`, backgroundColor: bar.color, position: 'relative', display: 'flex', justifyContent: 'center', borderRadius: "0px" }}>
                               <span style={{ position: 'absolute', top: '3px', color: '#ffffff', fontSize: '7px', fontWeight: '800' }}>{bar.value}</span>
                             </div>
                           ) : null)}
@@ -1762,7 +1773,7 @@ export default function AllReportsExecutivePdfView({
                       return (
                         <div key={idx} style={{ flex: 1, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', gap: '2px', position: 'relative', zIndex: 1 }}>
                           {bars.map(bar => bar.value != null ? (
-                            <div key={bar.key} style={{ width: '38%', maxWidth: '26px', height: `${Math.min(100, Math.max(0, (bar.value / peopleMetricAxisMax) * 100))}%`, backgroundColor: bar.color, position: 'relative', display: 'flex', justifyContent: 'center', borderRadius: '2px 2px 0 0' }}>
+                            <div key={bar.key} style={{ width: '38%', maxWidth: '26px', height: `${Math.min(100, Math.max(0, (bar.value / peopleMetricAxisMax) * 100))}%`, backgroundColor: bar.color, position: 'relative', display: 'flex', justifyContent: 'center', borderRadius: "0px" }}>
                               <span style={{ position: 'absolute', top: bar.value > 3 ? '3px' : '-12px', color: bar.value > 3 ? '#fff' : bar.color, fontSize: '7px', fontWeight: '800', whiteSpace: 'nowrap' }}>
                                 {bar.value.toFixed(2)}%
                               </span>

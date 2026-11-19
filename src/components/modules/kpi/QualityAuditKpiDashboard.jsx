@@ -256,7 +256,7 @@ function QaScoreChart({
 
   const [hoveredData, setHoveredData] = useState(null);
   const containerRef = useRef(null);
-  const displaySeries = useMemo(() => [...series].reverse(), [series]);
+  const displaySeries = useMemo(() => [...series], [series]);
   const isScrollable = isSubmodule || series.length > 6 || period === "custom";
 
   const handleMouseEnter = (item, score, e) => {

@@ -1481,7 +1481,7 @@ export default function ViewGraphsPage() {
                       </div>
                     )}
 
-                    <div className={!currentSection ? "grid grid-cols-1 xl:grid-cols-2 gap-1.5 sm:gap-2 min-h-0 h-full" : "contents"}>
+                    <div className={!currentSection ? "grid grid-cols-1 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] gap-1.5 sm:gap-2 min-h-0 h-full" : "contents"}>
                     {showEmails && (
                       <div
                         id="emails-section"
