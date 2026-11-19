@@ -43,7 +43,7 @@ function KpiCard({ icon: Icon, label, value, hint, status, title, onClick = null
   return (
     <article
       onClick={onClick || undefined}
-      className={`sibs-card rounded-xl min-w-0 px-2.5 py-1.5 sm:px-3 sm:py-2 shadow-2xs flex flex-col justify-between gap-1 transition-all duration-150 hover:border-sibs-primary-1/30 ${
+      className={`sibs-card rounded-none min-w-0 px-2.5 py-1.5 sm:px-3 sm:py-2 shadow-2xs flex flex-col justify-between gap-1 transition-all duration-150 hover:border-sibs-primary-1/30 ${
         onClick ? "cursor-pointer" : ""
       }`}
     >
@@ -97,6 +97,7 @@ export function ChartSkeleton({
   barsPerPeriod = 1,
   isHorizontal = false,
   customChartHeightStyle = null,
+  darkHeader = false,
 }) {
   const computedHeight = customChartHeightStyle?.height
     ? customChartHeightStyle.height
@@ -212,7 +213,7 @@ export function ChartSkeleton({
                         className="flex-1 flex h-full items-end justify-center"
                       >
                         <Skeleton
-                          className={`w-full ${isSubmodule ? "max-w-[46px]" : "max-w-[42px]"} rounded-t-sm`}
+                          className={`w-full ${isSubmodule ? "max-w-[46px]" : "max-w-[42px]"} rounded-none`}
                           style={{ height: `${h}%` }}
                         />
                       </div>
@@ -220,7 +221,7 @@ export function ChartSkeleton({
                   </div>
                 ) : (
                   <Skeleton
-                    className="w-full max-w-[34px] rounded-t-sm"
+                    className="w-full max-w-[34px] rounded-none"
                     style={{ height: `${bar.height}%` }}
                   />
                 )}
@@ -267,6 +268,7 @@ function ChartShell({
   barsPerPeriod = 1,
   isHorizontal = false,
   customChartHeightStyle = null,
+  darkHeader = false,
 }) {
   const activeChartHeight = customChartHeightStyle?.height
     ? customChartHeightStyle.height
@@ -283,7 +285,7 @@ function ChartShell({
         onClick ? "cursor-pointer" : ""
       } ${className}`}
     >
-      <div className="shrink-0 border-b border-sibs-tertiary-10 bg-sibs-primary-3/30 px-2 py-0.5 rounded-t-xl">
+      <div className={darkHeader ? "shrink-0 border-b-2 border-[#F28C28] bg-[#103B63] px-3 py-1 rounded-none" : "shrink-0 border-b border-sibs-tertiary-10 bg-sibs-primary-3/30 px-2 py-0.5 rounded-t-xl"}>
         <div
           className={`flex flex-wrap items-center ${
             legendAlign === "left"
@@ -292,13 +294,13 @@ function ChartShell({
           } gap-y-0.5`}
         >
           <div className="flex items-center gap-1.5 truncate shrink-0">
-            <h3 className="m-0 text-[10px] sm:text-[10.5px] font-extrabold uppercase tracking-[0.08em] text-sibs-primary-1 truncate shrink-0">
+            <h3 className={`m-0 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider truncate shrink-0 ${darkHeader ? "text-white" : "text-sibs-primary-1 font-extrabold tracking-[0.08em]"}`}>
               {title}
             </h3>
           </div>
 
           {legend ? (
-            <div className={`inline-flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[8.5px] ${isLoading ? "opacity-40" : ""}`}>
+            <div className={`inline-flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[8.5px] ${darkHeader ? "[&>span]:!text-white/95" : ""} ${isLoading ? "opacity-40" : ""}`}>
               {legend}
             </div>
           ) : null}
@@ -423,7 +425,7 @@ function VolumeChart({
             style={{
               ...chartHeightStyle,
               width: !isSubmodule
-                ? `${Math.max(22, Math.ceil(maxTickCharLength * 7.5 + 8))}px`
+                ? `${Math.max(18, Math.ceil(maxTickCharLength * 6 + 4))}px`
                 : undefined,
             }}
           >
@@ -571,7 +573,7 @@ function VolumeChart({
                           </div>
 
                           <div
-                            className={`w-full ${isSubmodule ? "max-w-[46px]" : "max-w-[42px]"} rounded-t-[4px] ${className} transition-all duration-200 ease-out group-hover/bar:-translate-y-0.5 group-hover/bar:brightness-110 shadow-xs sibs-graph-bar-rise`}
+                            className={`w-full ${isSubmodule ? "max-w-[46px]" : "max-w-[42px]"} rounded-none ${className} transition-all duration-200 ease-out group-hover/bar:-translate-y-0.5 group-hover/bar:brightness-110 shadow-xs sibs-graph-bar-rise`}
                             style={{
                               height: `${heightPercent}%`,
                               animationDelay: `${Math.min(periodIndex * 80 + barIndex * 40, 650)}ms`,
@@ -693,7 +695,7 @@ function LineChart({
             style={{
               ...chartHeightStyle,
               width: !isSubmodule
-                ? `${Math.max(22, Math.ceil(maxTickCharLength * 7.5 + 8))}px`
+                ? `${Math.max(18, Math.ceil(maxTickCharLength * 6 + 4))}px`
                 : undefined,
             }}
           >
@@ -855,7 +857,7 @@ function LineChart({
                           {/* Bar Element */}
                           {hasData && heightPercent > 0 ? (
                             <div
-                              className={`w-full ${isSubmodule ? "max-w-[46px]" : "max-w-[42px]"} rounded-t-[4px] ${className} transition-all duration-200 ease-out group-hover/bar:-translate-y-0.5 group-hover/bar:brightness-110 shadow-xs sibs-graph-bar-rise`}
+                              className={`w-full ${isSubmodule ? "max-w-[46px]" : "max-w-[42px]"} rounded-none ${className} transition-all duration-200 ease-out group-hover/bar:-translate-y-0.5 group-hover/bar:brightness-110 shadow-xs sibs-graph-bar-rise`}
                               style={{
                                 height: `${heightPercent}%`,
                                 animationDelay: `${Math.min(periodIndex * 80 + barIndex * 40, 650)}ms`,
@@ -978,7 +980,7 @@ function AhtChart({
             style={{
               ...chartHeightStyle,
               width: !isSubmodule
-                ? `${Math.max(22, Math.ceil(maxTickCharLength * 7.5 + 8))}px`
+                ? `${Math.max(18, Math.ceil(maxTickCharLength * 6 + 4))}px`
                 : undefined,
             }}
           >
@@ -1110,7 +1112,7 @@ function AhtChart({
 
                   {hasAht && heightPct > 0 ? (
                     <div
-                      className={`w-full ${isSubmodule ? "max-w-[64px]" : "max-w-[54px]"} rounded-t-[4px] bg-[#0b3b68] transition-all duration-200 group-hover/aht:brightness-110 group-hover/aht:-translate-y-0.5 shadow-xs sibs-graph-bar-rise`}
+                      className={`w-full ${isSubmodule ? "max-w-[64px]" : "max-w-[54px]"} rounded-none bg-[#0b3b68] transition-all duration-200 group-hover/aht:brightness-110 group-hover/aht:-translate-y-0.5 shadow-xs sibs-graph-bar-rise`}
                       style={{
                         height: `${heightPct}%`,
                         animationDelay: `${Math.min(itemIndex * 60, 500)}ms`,
@@ -1335,25 +1337,27 @@ export default function CallKpiDashboard({
         </div>
       </div>
 
+      <div className="flex-1 min-h-0 flex flex-col border border-[#103B63] bg-white rounded-none overflow-hidden">
       {!isSubmodule && (
-        <div
-          onClick={onSectionClick || undefined}
-          className={`shrink-0 flex items-center justify-between rounded-md border border-sibs-tertiary-9/80 bg-gradient-to-r from-[#0b3b68]/10 via-[#0b3b68]/5 to-transparent px-2.5 py-0.5 shadow-2xs ${
-            onSectionClick ? "cursor-pointer" : ""
-          }`}
-        >
-          <div className="flex items-center gap-1.5">
-            <span className="flex h-4 w-4 items-center justify-center rounded bg-[#0b3b68] text-white shadow-xs">
-              <PhoneCall size={10} />
-            </span>
-            <span className="text-[11px] font-black uppercase tracking-wider text-[#0b3b68]">
-              1. Calls Performance
+        <>
+          <div
+            onClick={onSectionClick || undefined}
+            className={`shrink-0 flex items-center justify-between bg-[#103B63] px-3 py-1 text-white rounded-none ${
+              onSectionClick ? "cursor-pointer" : ""
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <PhoneCall size={13} className="text-white shrink-0" />
+              <span className="text-[11px] font-black uppercase tracking-wider text-white">
+                1. Calls Performance
+              </span>
+            </div>
+            <span className="text-[10px] font-semibold text-white/90 hidden sm:inline">
+              Volume &bull; Answer Rate &bull; Service Level &bull; AHT &bull; ASA
             </span>
           </div>
-          <span className="text-[10px] font-bold text-sibs-tertiary-5 hidden sm:inline">
-            Volume &bull; Answer Rate &bull; Service Level &bull; AHT &bull; ASA
-          </span>
-        </div>
+          <div className="h-[2px] w-full shrink-0 bg-[#F28C28]" />
+        </>
       )}
 
       {/* 3 Prominent Graphs:
@@ -1367,9 +1371,9 @@ export default function CallKpiDashboard({
         key={`kpi-charts-${series.map((s) => s.key || s.label).join("-")}`}
         className={`grid grid-cols-1 ${
           isSubmodule
-            ? "lg:grid-cols-2"
-            : "md:grid-cols-2 lg:grid-cols-3 md:grid-rows-1"
-        } ${isSubmodule && showFilters ? "gap-2 sm:gap-2.5" : "gap-1.5 sm:gap-1.5"} w-full min-w-0 flex-1 min-h-0 transition-all duration-300 ease-in-out ${
+            ? "lg:grid-cols-2 gap-0 divide-y lg:divide-y-0 lg:divide-x divide-[#D7E0E8] [&_.sibs-card]:border-0 [&_.sibs-card]:shadow-none [&_.sibs-card]:rounded-none"
+            : "md:grid-cols-2 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)] xl:grid-rows-1 gap-0 divide-y md:divide-y-0 md:divide-x divide-[#D7E0E8] [&_.sibs-card]:border-0 [&_.sibs-card]:shadow-none [&_.sibs-card]:rounded-none"
+        } w-full min-w-0 flex-1 min-h-0 transition-all duration-300 ease-in-out ${
           !isSubmodule && showFilters
             ? "min-h-[200px]"
             : !isSubmodule
@@ -1380,6 +1384,7 @@ export default function CallKpiDashboard({
         <div className={isSubmodule ? "col-span-1 lg:col-span-2" : "col-span-1 md:col-span-2 lg:col-span-1 min-h-[160px] md:min-h-0 md:h-full flex flex-col"}>
           <ChartShell
             title="Calls"
+            darkHeader={isSubmodule}
             tightLeft={!isSubmodule}
             isLoading={isLoading}
             isSubmodule={isSubmodule}
@@ -1418,6 +1423,7 @@ export default function CallKpiDashboard({
         <div className={isSubmodule ? "col-span-1" : "col-span-1 min-h-[160px] md:min-h-0 md:h-full flex flex-col"}>
           <ChartShell
             title="Answer Rate & Service Level"
+            darkHeader={isSubmodule}
             tightLeft={!isSubmodule}
             isLoading={isLoading}
             isSubmodule={isSubmodule}
@@ -1459,6 +1465,7 @@ export default function CallKpiDashboard({
         <div className={isSubmodule ? "col-span-1" : "col-span-1 min-h-[160px] md:min-h-0 md:h-full flex flex-col"}>
           <ChartShell
             title="Average Handling Time"
+            darkHeader={isSubmodule}
             tightLeft={!isSubmodule}
             isLoading={isLoading}
             isSubmodule={isSubmodule}
@@ -1496,6 +1503,7 @@ export default function CallKpiDashboard({
             />
           </ChartShell>
         </div>
+      </div>
       </div>
     </div>
   );

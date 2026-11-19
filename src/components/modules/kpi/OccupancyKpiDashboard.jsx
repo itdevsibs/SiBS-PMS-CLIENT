@@ -195,7 +195,7 @@ function ChartCanvasGrid({
             style={{
               ...chartHeightStyle,
               width: !isSubmodule
-                ? `${Math.max(22, Math.ceil(maxTickCharLength * 7.5 + 8))}px`
+                ? `${Math.max(18, Math.ceil(maxTickCharLength * 6 + 4))}px`
                 : undefined,
             }}
           >
@@ -336,7 +336,7 @@ function ChartCanvasGrid({
                                     : isSubmodule
                                       ? "max-w-[56px]"
                                       : "max-w-[42px]"
-                                  } rounded-t-[4px] ${chartBarColor} transition-all duration-200 ease-out group-hover/bar:-translate-y-0.5 group-hover/bar:brightness-110 shadow-xs sibs-graph-bar-rise`}
+                                  } rounded-none ${chartBarColor} transition-all duration-200 ease-out group-hover/bar:-translate-y-0.5 group-hover/bar:brightness-110 shadow-xs sibs-graph-bar-rise`}
                                 style={{
                                   height: `${height}%`,
                                   animationDelay: `${Math.min(index * 60 + barIndex * 30, 500)}ms`,
@@ -429,6 +429,7 @@ export default function OccupancyKpiDashboard({
   isLoading = false,
   isUtilizationLoading = false,
   isAbsenteeismLoading = false,
+  wowSectionPart = null,
 } = {}) {
   const summary = data?.summary || {};
   const series = data?.series || [];
@@ -518,13 +519,13 @@ export default function OccupancyKpiDashboard({
         <div
           id="occupancy-graphs-container"
           data-pdf-charts="true"
-          className={`grid grid-cols-1 lg:grid-cols-2 ${showFilters ? "gap-2 sm:gap-2.5" : "gap-1 sm:gap-1.5"
-            } w-full min-w-0 flex-1 min-h-0 transition-all duration-300 ease-in-out`}
+          className="grid grid-cols-1 lg:grid-cols-2 border border-[#103B63] bg-white rounded-none overflow-hidden gap-0 divide-y lg:divide-y-0 lg:divide-x divide-[#D7E0E8] [&_.sibs-card]:border-0 [&_.sibs-card]:shadow-none [&_.sibs-card]:rounded-none w-full min-w-0 flex-1 min-h-0 transition-all duration-300 ease-in-out"
         >
           {/* Top Block: OCCUPANCY & UTILIZATION (Full width span across 2 columns) */}
           <div className="col-span-1 lg:col-span-2">
             <ChartShell
               title="Occupancy & Utilization"
+              darkHeader={isSubmodule}
               legendAlign="between"
               isLoading={isAnyOccupancyLoading}
               isSubmodule={isSubmodule}
@@ -565,6 +566,7 @@ export default function OccupancyKpiDashboard({
           <div className="col-span-1">
             <ChartShell
               title="Headcount Metrics"
+              darkHeader={isSubmodule}
               isLoading={isLoading || (isAbsenteeismLoading && !series.some(row => row.actualHeadcount != null))}
               isSubmodule={isSubmodule}
               showFilters={showFilters}
@@ -613,6 +615,7 @@ export default function OccupancyKpiDashboard({
           <div className="col-span-1">
             <ChartShell
               title="People Metrics"
+              darkHeader={isSubmodule}
               isLoading={isLoading || (isAbsenteeismLoading && !series.some(row => row.absenteeismPct != null))}
               isSubmodule={isSubmodule}
               showFilters={showFilters}
@@ -653,7 +656,13 @@ export default function OccupancyKpiDashboard({
       ) : (
         /* Unified 3-column row for Wow Report (All 4 Modules view) */
         <div
-          className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 md:grid-rows-1 gap-1.5 sm:gap-1.5 w-full min-w-0 flex-1 min-h-0 transition-all duration-300 ease-in-out ${!isSubmodule && showFilters
+          className={`grid grid-cols-1 ${
+            wowSectionPart === "occupancy"
+              ? "grid-cols-1"
+              : wowSectionPart === "headcount"
+                ? "md:grid-cols-2 md:grid-rows-1 divide-y md:divide-y-0 md:divide-x divide-[#D7E0E8]"
+                : "md:grid-cols-2 lg:grid-cols-3 md:grid-rows-1 divide-y lg:divide-y-0 lg:divide-x divide-[#D7E0E8]"
+          } gap-0 [&_.sibs-card]:border-0 [&_.sibs-card]:shadow-none [&_.sibs-card]:rounded-none w-full min-w-0 flex-1 min-h-0 transition-all duration-300 ease-in-out ${!isSubmodule && showFilters
               ? "min-h-[200px]"
               : !isSubmodule
                 ? "min-h-[170px]"
@@ -661,9 +670,11 @@ export default function OccupancyKpiDashboard({
             }`}
         >
           {/* Chart 1: Occupancy & Utilization */}
-          <div className="col-span-1 md:col-span-2 lg:col-span-1 min-h-[160px] md:min-h-0 md:h-full flex flex-col">
+          {wowSectionPart !== "headcount" && (
+          <div className={`col-span-1 ${wowSectionPart === "occupancy" ? "" : "md:col-span-2 lg:col-span-1"} min-h-[160px] md:min-h-0 md:h-full flex flex-col`}>
             <ChartShell
               title="Occupancy & Utilization"
+              darkHeader={isSubmodule}
               tightLeft={!isSubmodule}
               onClick={!isSubmodule ? onSectionClick : undefined}
               isLoading={isLoading}
@@ -700,11 +711,15 @@ export default function OccupancyKpiDashboard({
               />
             </ChartShell>
           </div>
+          )}
 
           {/* Chart 2: Headcount Metrics */}
+          {wowSectionPart !== "occupancy" && (
+          <>
           <div className="col-span-1 min-h-[160px] md:min-h-0 md:h-full flex flex-col">
             <ChartShell
               title="Headcount Metrics"
+              darkHeader={isSubmodule}
               tightLeft={!isSubmodule}
               onClick={!isSubmodule ? onSectionClick : undefined}
               isLoading={isUtilizationLoading}
@@ -754,6 +769,7 @@ export default function OccupancyKpiDashboard({
           <div className="col-span-1 min-h-[160px] md:min-h-0 md:h-full flex flex-col">
             <ChartShell
               title="People Metrics"
+              darkHeader={isSubmodule}
               tightLeft={!isSubmodule}
               onClick={!isSubmodule ? onSectionClick : undefined}
               isLoading={isAbsenteeismLoading}
@@ -791,6 +807,8 @@ export default function OccupancyKpiDashboard({
               />
             </ChartShell>
           </div>
+          </>
+          )}
         </div>
       )}
     </div>

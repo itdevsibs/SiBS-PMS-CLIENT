@@ -1124,9 +1124,7 @@ export default function ViewGraphsPage() {
         ? "No KPI data is available for the selected reporting range."
         : "";
 
-  // Never export a partial six-week dashboard as a complete report.
-  const isPdfDisabled = isDownloadingPdf || Boolean(showOccupancy && weeklyProgress &&
-    (weeklyProgress.active || weeklyProgress.failed));
+  const isPdfDisabled = isDownloadingPdf;
 
   const isCustomPeriod =
     filters.period === "custom";
@@ -1178,7 +1176,7 @@ export default function ViewGraphsPage() {
             <div className={!showFilters ? "flex flex-col gap-1.5 xl:h-full xl:min-h-0 xl:overflow-hidden" : (!currentSection ? "space-y-3" : "space-y-1.5")}>
               <section className="sibs-card relative z-40 overflow-visible shadow-xs shrink-0">
                 <div
-                  className={`flex flex-col xl:flex-row xl:items-center justify-between gap-1.5 bg-sibs-primary-3/30 px-2.5 sm:px-3 ${
+                  className={`flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 bg-sibs-primary-3/30 px-2.5 sm:px-3 ${
                     !currentSection ? "py-1" : "py-2 sm:py-1.5"
                   } select-none ${
                     showFilters ? "border-b border-sibs-tertiary-10" : ""
@@ -1459,7 +1457,7 @@ export default function ViewGraphsPage() {
                 );
 
                 return (
-                  <div className={`relative z-0 min-w-0 w-full ${!showFilters ? "flex-1 min-h-0 flex flex-col gap-3 xl:gap-1 xl:overflow-hidden" : (!currentSection ? "space-y-2.5 pb-6" : "")}`}>
+                  <div className={`relative z-0 min-w-0 w-full ${!showFilters ? (!currentSection ? "flex-1 min-h-0 flex flex-col xl:grid xl:grid-rows-3 gap-3 xl:gap-1.5 xl:overflow-hidden" : "flex-1 min-h-0 flex flex-col gap-3 xl:gap-1 xl:overflow-hidden") : (!currentSection ? "space-y-2.5 pb-6" : "")}`}>
                     {emptyDataMessage && !error && !isUnifiedLoading ? (
                       <div className="sibs-card mb-4 p-4 text-sm font-semibold text-sibs-tertiary-5">
                         {emptyDataMessage}
@@ -1481,32 +1479,31 @@ export default function ViewGraphsPage() {
                       </div>
                     )}
 
+                    <div className={!currentSection ? "grid grid-cols-1 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] gap-1.5 sm:gap-2 min-h-0 h-full" : "contents"}>
                     {showEmails && (
-                      <div id="emails-section" className={!showFilters ? "min-h-[240px] xl:min-h-0 xl:h-full xl:flex-1 flex flex-col gap-0.5" : "space-y-1 sm:space-y-1.5"}>
+                      <div
+                        id="emails-section"
+                        className={`${!showFilters ? "min-h-[240px] xl:min-h-0 xl:h-full xl:flex-1 flex flex-col" : "flex flex-col"} ${!currentSection ? "border border-[#103B63] bg-white rounded-none overflow-hidden" : ""}`}
+                      >
                         {!currentSection && (
-                          <div
-                            onClick={() => handleNavigateToSection("emails")}
-                            className="shrink-0 flex items-center justify-between rounded-md border border-sibs-tertiary-9/80 bg-gradient-to-r from-[#174f7f]/10 via-[#174f7f]/5 to-transparent px-2.5 py-0.5 shadow-2xs cursor-pointer"
-                          >
-                            <div className="flex items-center gap-1.5">
-                              <span className="flex h-4 w-4 items-center justify-center rounded bg-[#174f7f] text-white shadow-xs">
-                                <Mail size={10} />
-                              </span>
-                              <span className="text-[11px] font-black uppercase tracking-wider text-[#174f7f]">
-                                2. Emails Performance
+                          <>
+                            <div
+                              onClick={() => handleNavigateToSection("emails")}
+                              className="shrink-0 flex items-center justify-between bg-[#103B63] px-3 py-1 text-white rounded-none cursor-pointer"
+                            >
+                              <div className="flex items-center gap-1.5">
+                                <Mail size={13} className="text-white shrink-0" />
+                                <span className="text-[11px] font-bold uppercase tracking-wider text-white">
+                                  2. Emails Performance
+                                </span>
+                              </div>
+                              <span className="text-[10px] font-semibold text-white/85 hidden sm:inline">
+                                Volume &bull; Resolved &bull; Resolved w/ SLA &bull; ERR % &bull; Service Level %
                               </span>
                             </div>
-                            <span className="text-[10px] font-bold text-sibs-tertiary-5 hidden sm:inline">
-                              Volume &bull; Resolved &bull; Resolved w/ SLA &bull; ERR % &bull; Service Level %
-                            </span>
-                          </div>
+                            <div className="h-[2px] w-full bg-[#F28C28] shrink-0" />
+                          </>
                         )}
-                        {emailError ? (
-                          <div className="sibs-card mb-1 flex items-start gap-2 border border-amber-200 bg-amber-50/70 p-2 text-xs font-semibold text-amber-800">
-                            <AlertCircle size={14} className="mt-0.5 shrink-0" />
-                            <span>{emailError}</span>
-                          </div>
-                        ) : null}
                         <EmailKpiDashboard
                           data={emailDashboardData || {}}
                           period={filters.period}
@@ -1518,26 +1515,66 @@ export default function ViewGraphsPage() {
                         />
                       </div>
                     )}
-
-                    {showQa && (
-                      <div id="qa-section" className={!showFilters ? "min-h-[220px] xl:min-h-0 xl:h-full xl:flex-1 flex flex-col gap-0.5" : "space-y-1 sm:space-y-1.5"}>
-                        {!currentSection && (
-                          <div
-                            onClick={() => handleNavigateToSection("qa")}
-                            className="shrink-0 flex items-center justify-between rounded-md border border-sibs-tertiary-9/80 bg-gradient-to-r from-[#2b6598]/10 via-[#2b6598]/5 to-transparent px-2.5 py-0.5 shadow-2xs cursor-pointer"
-                          >
-                            <div className="flex items-center gap-1.5">
-                              <span className="flex h-4 w-4 items-center justify-center rounded bg-[#2b6598] text-white shadow-xs">
-                                <ClipboardCheck size={10} />
-                              </span>
-                              <span className="text-[11px] font-black uppercase tracking-wider text-[#2b6598]">
-                                3. Quality Audit Performance
-                              </span>
-                            </div>
-                            <span className="text-[10px] font-bold text-sibs-tertiary-5 hidden sm:inline">
-                              Total Audits &bull; Call Audits &bull; Case Audits &bull; QA Score %
+                    {!currentSection && showOccupancy && (
+                      <div
+                        id="occupancy-utilization-section"
+                        className={!showFilters ? "min-h-[240px] xl:min-h-0 xl:h-full xl:flex-1 flex flex-col border border-[#103B63] bg-white rounded-none overflow-hidden" : "flex flex-col border border-[#103B63] bg-white rounded-none overflow-hidden"}
+                      >
+                        <div
+                          onClick={() => handleNavigateToSection("occupancy")}
+                          className="shrink-0 flex items-center justify-between bg-[#103B63] px-3 py-1 text-white rounded-none cursor-pointer"
+                        >
+                          <div className="flex items-center gap-1.5">
+                            <Users size={13} className="text-white shrink-0" />
+                            <span className="text-[11px] font-bold uppercase tracking-wider text-white">
+                              Occupancy & Utilization
                             </span>
                           </div>
+                          <span className="text-[10px] font-semibold text-white/85 hidden sm:inline">
+                            Occupancy % &bull; Utilization %
+                          </span>
+                        </div>
+                        <div className="h-[2px] w-full bg-[#F28C28] shrink-0" />
+                        <OccupancyKpiDashboard
+                          data={occupancyDashboardData || {}}
+                          showSummaryCards={false}
+                          period={filters.period}
+                          isSubmodule={false}
+                          showFilters={showFilters}
+                          isLoading={isUnifiedLoading}
+                          isUtilizationLoading={isUnifiedLoading}
+                          isAbsenteeismLoading={isUnifiedLoading}
+                          onSectionClick={() => handleNavigateToSection("occupancy")}
+                          wowSectionPart="occupancy"
+                        />
+                      </div>
+                    )}
+                    </div>
+
+                    <div className={!currentSection ? "grid grid-cols-1 xl:grid-cols-2 gap-1.5 sm:gap-2 min-h-0 h-full" : "contents"}>
+                    {showQa && (
+                      <div
+                        id="qa-section"
+                        className={`${!showFilters ? "min-h-[220px] xl:min-h-0 xl:h-full xl:flex-1 flex flex-col" : "flex flex-col"} ${!currentSection ? "border border-[#103B63] bg-white rounded-none overflow-hidden" : "gap-0.5"}`}
+                      >
+                        {!currentSection && (
+                          <>
+                            <div
+                              onClick={() => handleNavigateToSection("qa")}
+                              className="shrink-0 flex items-center justify-between bg-[#103B63] px-3 py-1 text-white rounded-none cursor-pointer"
+                            >
+                              <div className="flex items-center gap-1.5">
+                                <ClipboardCheck size={13} className="text-white shrink-0" />
+                                <span className="text-[11px] font-bold uppercase tracking-wider text-white">
+                                  3. Quality Audit Performance
+                                </span>
+                              </div>
+                              <span className="text-[10px] font-semibold text-white/85 hidden sm:inline">
+                                Total Audits &bull; Call Audits &bull; Case Audits &bull; QA Score %
+                              </span>
+                            </div>
+                            <div className="h-[2px] w-full bg-[#F28C28] shrink-0" />
+                          </>
                         )}
                         {qualityAuditError ? (
                           <div className="sibs-card mb-1 flex items-start gap-2 border border-amber-200 bg-amber-50/70 p-2 text-xs font-semibold text-amber-800">
@@ -1558,46 +1595,33 @@ export default function ViewGraphsPage() {
                     )}
 
                     {showOccupancy && (
-                      <div id="occupancy-section" className={!showFilters ? "min-h-[240px] xl:min-h-0 xl:h-full xl:flex-1 flex flex-col gap-0.5" : "space-y-1 sm:space-y-1.5"}>
+                      <div
+                        id="occupancy-section"
+                        className={`${!showFilters ? "min-h-[240px] xl:min-h-0 xl:h-full xl:flex-1 flex flex-col" : "flex flex-col"} ${!currentSection ? "border border-[#103B63] bg-white rounded-none overflow-hidden" : "gap-0.5"}`}
+                      >
                         {!currentSection && (
-                          <div
-                            onClick={() => handleNavigateToSection("occupancy")}
-                            className="shrink-0 flex items-center justify-between rounded-md border border-sibs-tertiary-9/80 bg-gradient-to-r from-[#3f7fb5]/10 via-[#3f7fb5]/5 to-transparent px-2.5 py-0.5 shadow-2xs cursor-pointer"
-                          >
-                            <div className="flex items-center gap-1.5">
-                              <span className="flex h-4 w-4 items-center justify-center rounded bg-[#3f7fb5] text-white shadow-xs">
-                                <Users size={10} />
-                              </span>
-                              <span className="text-[11px] font-black uppercase tracking-wider text-[#3f7fb5]">
-                                4. Occupancy & Headcount Performance
+                          <>
+                            <div
+                              onClick={() => handleNavigateToSection("occupancy")}
+                              className="shrink-0 flex items-center justify-between bg-[#103B63] px-3 py-1 text-white rounded-none cursor-pointer"
+                            >
+                              <div className="flex items-center gap-1.5">
+                                <Users size={13} className="text-white shrink-0" />
+                                <span className="text-[11px] font-bold uppercase tracking-wider text-white">
+                                  4. Occupancy & Headcount Performance
+                                </span>
+                              </div>
+                              <span className="text-[10px] font-semibold text-white/85 hidden sm:inline">
+                                Occupancy % &bull; Utilization % &bull; Headcount &bull; People Metrics
                               </span>
                             </div>
-                            <span className="text-[10px] font-bold text-sibs-tertiary-5 hidden sm:inline">
-                              Occupancy % &bull; Utilization % &bull; Headcount &bull; People Metrics
-                            </span>
-                          </div>
+                            <div className="h-[2px] w-full bg-[#F28C28] shrink-0" />
+                          </>
                         )}
                         {occupancyError ? (
                           <div className="sibs-card mb-1 flex items-start gap-2 border border-amber-200 bg-amber-50/70 p-2 text-xs font-semibold text-amber-800">
                             <AlertCircle size={14} className="mt-0.5 shrink-0" />
                             <span>{occupancyError}</span>
-                          </div>
-                        ) : null}
-                        {utilizationError || absenteeismError ? (
-                          <div className="mb-1 flex items-center gap-1.5 px-1 text-[10px] font-semibold text-amber-700">
-                            <AlertCircle size={11} />
-                            <span>{utilizationError || absenteeismError}</span>
-                          </div>
-                        ) : null}
-                        {weeklyProgress && filters.period === 'weekly' ? (
-                          <div role="status" className="mb-1 flex items-center gap-2 px-1 text-[10px] font-semibold text-sibs-tertiary-5">
-                            {weeklyProgress.active ? <Loader2 size={12} className="animate-spin" /> : null}
-                            <span>
-                              {weeklyProgress.finalizing
-                                ? 'Calculating verified six-week totals…'
-                                : `Weekly results: ${weeklyProgress.loaded}/${weeklyProgress.total} loaded (newest first)`}
-                              {weeklyProgress.failed ? ` · ${weeklyProgress.failed} unavailable` : ''}
-                            </span>
                           </div>
                         ) : null}
                         <OccupancyKpiDashboard
@@ -1610,9 +1634,11 @@ export default function ViewGraphsPage() {
                           isUtilizationLoading={isUtilizationLoading}
                           isAbsenteeismLoading={isAbsenteeismLoading}
                           onSectionClick={!currentSection ? () => handleNavigateToSection("occupancy") : null}
+                          wowSectionPart={!currentSection ? "headcount" : null}
                         />
                       </div>
                     )}
+                    </div>
                   </div>
                 );
               })()}

@@ -110,7 +110,7 @@ function QaTransactionsChart({
             style={{
               ...chartHeightStyle,
               width: !isSubmodule
-                ? `${Math.max(22, Math.ceil(maxTickCharLength * 7.5 + 8))}px`
+                ? `${Math.max(18, Math.ceil(maxTickCharLength * 6 + 4))}px`
                 : undefined,
             }}
           >
@@ -204,7 +204,7 @@ function QaTransactionsChart({
                       </div>
 
                       <div
-                        className={`w-full ${isSubmodule ? "max-w-[70px]" : "max-w-[50px]"} rounded-t-[5px] bg-[#174f7f] shadow-xs transition-all duration-200 group-hover/bar:-translate-y-0.5 group-hover/bar:brightness-110 sibs-graph-bar-rise`}
+                        className={`w-full ${isSubmodule ? "max-w-[70px]" : "max-w-[50px]"} rounded-none bg-[#174f7f] shadow-xs transition-all duration-200 group-hover/bar:-translate-y-0.5 group-hover/bar:brightness-110 sibs-graph-bar-rise`}
                         style={{
                           height: `${height}%`,
                           animationDelay: `${Math.min(index * 60, 500)}ms`,
@@ -224,7 +224,7 @@ function QaTransactionsChart({
                   className="mt-1 min-w-0 flex-1 px-0.5 text-center"
                   style={isScrollable ? { minWidth: `${minPeriodWidth}px` } : undefined}
                 >
-                  <p className={`m-0 truncate ${isSubmodule ? "text-[10px] sm:text-[11px] font-bold tracking-tight" : "text-[9px] sm:text-[9.5px] font-bold tracking-tight"} text-sibs-primary-1 leading-tight`} title={item.label}>
+                  <p className="m-0 truncate text-[11px] sm:text-[12px] font-bold tracking-tight text-sibs-primary-1 leading-tight" title={item.label}>
                     {item.label}
                   </p>
                 </div>
@@ -256,7 +256,7 @@ function QaScoreChart({
 
   const [hoveredData, setHoveredData] = useState(null);
   const containerRef = useRef(null);
-  const displaySeries = useMemo(() => [...series].reverse(), [series]);
+  const displaySeries = useMemo(() => [...series], [series]);
   const isScrollable = isSubmodule || series.length > 6 || period === "custom";
 
   const handleMouseEnter = (item, score, e) => {
@@ -318,12 +318,14 @@ function QaScoreChart({
       ? "h-12 sm:h-14"
       : series.length <= 4
       ? "h-16 sm:h-20"
+      : showFilters
+      ? "h-10 sm:h-11 2xl:h-12"
       : series.length <= 6
-      ? "h-12 sm:h-14 2xl:h-16"
-      : "h-10 sm:h-12"
+      ? "h-14 sm:h-16 2xl:h-20"
+      : "h-12 sm:h-14"
     : "h-4.5 sm:h-5";
 
-  const labelTextClass = isSubmodule ? "text-[10px] sm:text-[11px] font-bold tracking-tight" : "text-[9px] sm:text-[9.5px] font-bold tracking-tight";
+  const labelTextClass = "text-[11px] sm:text-[12px] font-bold tracking-tight";
   const scoreTextClass = isSubmodule ? "text-xs sm:text-[13px] font-extrabold" : "text-[10px] sm:text-[10.5px] font-extrabold";
 
   return (
@@ -417,9 +419,9 @@ function QaScoreChart({
                 >
                   {item.label}
                 </span>
-                <div className={`relative ${barHeightClass} overflow-hidden rounded-md bg-slate-100 border border-slate-200/70 shadow-inner`}>
+                <div className={`relative ${barHeightClass} overflow-hidden rounded-none bg-slate-100 border border-slate-200/70 shadow-inner`}>
                   <div
-                    className="flex h-full min-w-0 items-center justify-end rounded-md bg-[#42719b] px-2 transition-all duration-200 group-hover/score:brightness-110 shadow-2xs sibs-graph-bar-grow-x"
+                    className="flex h-full min-w-0 items-center justify-end rounded-none bg-[#42719b] px-2 transition-all duration-200 group-hover/score:brightness-110 shadow-2xs sibs-graph-bar-grow-x"
                     style={{
                       width: `${score}%`,
                       animationDelay: `${Math.min(index * 60, 500)}ms`,
@@ -588,7 +590,11 @@ export default function QualityAuditKpiDashboard({
       </div>
 
       <div
-        className={`grid grid-cols-1 ${!isSubmodule ? "gap-1.5 sm:gap-1.5 md:grid-rows-1" : "gap-3.5"} md:grid-cols-2 flex-1 min-h-0 w-full transition-all duration-300 ease-in-out ${
+        className={`grid grid-cols-1 ${
+          isSubmodule
+            ? "border border-[#103B63] bg-white rounded-none overflow-hidden gap-0 divide-y md:divide-y-0 md:divide-x divide-[#D7E0E8] [&_.sibs-card]:border-0 [&_.sibs-card]:shadow-none [&_.sibs-card]:rounded-none"
+            : "gap-0 divide-y md:divide-y-0 md:divide-x divide-[#D7E0E8] [&_.sibs-card]:border-0 [&_.sibs-card]:shadow-none [&_.sibs-card]:rounded-none md:grid-rows-1"
+        } md:grid-cols-2 flex-1 min-h-0 w-full transition-all duration-300 ease-in-out ${
           !isSubmodule && showFilters
             ? "min-h-[200px]"
             : !isSubmodule
@@ -599,6 +605,7 @@ export default function QualityAuditKpiDashboard({
         <div className="col-span-1 min-h-[160px] md:min-h-0 md:h-full flex flex-col">
           <ChartShell
             title="QA Transactions"
+            darkHeader={isSubmodule}
             tightLeft={!isSubmodule}
             onClick={!isSubmodule ? onSectionClick : undefined}
             isLoading={isLoading}
@@ -625,6 +632,7 @@ export default function QualityAuditKpiDashboard({
         <div className="col-span-1 min-h-[160px] md:min-h-0 md:h-full flex flex-col">
           <ChartShell
             title="QA Score"
+            darkHeader={isSubmodule}
             tightLeft={!isSubmodule}
             onClick={!isSubmodule ? onSectionClick : undefined}
             isLoading={isLoading}
