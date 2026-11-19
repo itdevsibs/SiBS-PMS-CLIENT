@@ -1124,9 +1124,7 @@ export default function ViewGraphsPage() {
         ? "No KPI data is available for the selected reporting range."
         : "";
 
-  // Never export a partial six-week dashboard as a complete report.
-  const isPdfDisabled = isDownloadingPdf || Boolean(showOccupancy && weeklyProgress &&
-    (weeklyProgress.active || weeklyProgress.failed));
+  const isPdfDisabled = isDownloadingPdf;
 
   const isCustomPeriod =
     filters.period === "custom";
@@ -1624,23 +1622,6 @@ export default function ViewGraphsPage() {
                           <div className="sibs-card mb-1 flex items-start gap-2 border border-amber-200 bg-amber-50/70 p-2 text-xs font-semibold text-amber-800">
                             <AlertCircle size={14} className="mt-0.5 shrink-0" />
                             <span>{occupancyError}</span>
-                          </div>
-                        ) : null}
-                        {utilizationError || absenteeismError ? (
-                          <div className="mb-1 flex items-center gap-1.5 px-1 text-[10px] font-semibold text-amber-700">
-                            <AlertCircle size={11} />
-                            <span>{utilizationError || absenteeismError}</span>
-                          </div>
-                        ) : null}
-                        {weeklyProgress && filters.period === 'weekly' ? (
-                          <div role="status" className="mb-1 flex items-center gap-2 px-1 text-[10px] font-semibold text-sibs-tertiary-5">
-                            {weeklyProgress.active ? <Loader2 size={12} className="animate-spin" /> : null}
-                            <span>
-                              {weeklyProgress.finalizing
-                                ? 'Calculating verified six-week totals…'
-                                : `Weekly results: ${weeklyProgress.loaded}/${weeklyProgress.total} loaded (newest first)`}
-                              {weeklyProgress.failed ? ` · ${weeklyProgress.failed} unavailable` : ''}
-                            </span>
                           </div>
                         ) : null}
                         <OccupancyKpiDashboard
