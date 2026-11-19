@@ -31,7 +31,7 @@ function EmptyChart({ message, isSubmodule = false, showFilters = true }) {
 
   return (
     <div
-      className={`flex ${!isSubmodule ? "h-[75px] sm:h-[85px]" : ""} items-center justify-center rounded-xl border border-dashed border-sibs-tertiary-8 bg-sibs-tertiary-10/30 px-3 text-center text-xs font-semibold text-sibs-tertiary-5`}
+      className={`flex ${!isSubmodule ? "h-[75px] sm:h-[85px]" : ""} items-center justify-center rounded-none border border-dashed border-sibs-tertiary-8 bg-sibs-tertiary-10/30 px-3 text-center text-xs font-semibold text-sibs-tertiary-5`}
       style={chartHeightStyle}
     >
       {message}
@@ -233,7 +233,7 @@ function EmailVolumeChart({
                             ) : null}
                           </div>
 
-                          <div className={`w-full ${isSubmodule ? "max-w-[46px]" : "max-w-[42px]"} rounded-t-[4px] ${bar.className} transition-all duration-200 group-hover/bar:brightness-110 group-hover/bar:-translate-y-0.5 shadow-xs sibs-graph-bar-rise`} style={{ height: `${height}%`, animationDelay: `${Math.min(periodIndex * 80 + barIndex * 40, 650)}ms` }} />
+                          <div className={`w-full ${isSubmodule ? "max-w-[46px]" : "max-w-[42px]"} rounded-none ${bar.className} transition-all duration-200 group-hover/bar:brightness-110 group-hover/bar:-translate-y-0.5 shadow-xs sibs-graph-bar-rise`} style={{ height: `${height}%`, animationDelay: `${Math.min(periodIndex * 80 + barIndex * 40, 650)}ms` }} />
                         </div>
                       );
                     })}
@@ -464,7 +464,7 @@ function EmailRateChart({
                             </div>
                           </div>
 
-                          <div className={`w-full ${isSubmodule ? "max-w-[46px]" : "max-w-[42px]"} rounded-t-[4px] ${bar.className} transition-all duration-200 group-hover/bar:brightness-110 group-hover/bar:-translate-y-0.5 shadow-xs sibs-graph-bar-rise`} style={{ height: `${value}%`, animationDelay: `${Math.min(periodIndex * 80 + barIndex * 40, 650)}ms` }} />
+                          <div className={`w-full ${isSubmodule ? "max-w-[46px]" : "max-w-[42px]"} rounded-none ${bar.className} transition-all duration-200 group-hover/bar:brightness-110 group-hover/bar:-translate-y-0.5 shadow-xs sibs-graph-bar-rise`} style={{ height: `${value}%`, animationDelay: `${Math.min(periodIndex * 80 + barIndex * 40, 650)}ms` }} />
                         </div>
                       );
                     })}
@@ -577,7 +577,7 @@ export default function EmailKpiDashboard({
     : undefined;
 
   return (
-    <section className={isSubmodule ? "space-y-1.5 sm:space-y-2" : "flex-1 min-h-0 flex flex-col"}>
+    <section className={isSubmodule && showSummaryCards ? "space-y-1.5 sm:space-y-2 flex-1 min-h-0 flex flex-col" : "flex-1 min-h-0 flex flex-col"}>
       {excludedLedgerCases > 0 && (
         <p role="status" className="px-2 py-1 text-[11px] text-sibs-tertiary-5">
           {excludedLedgerCases.toLocaleString()} email cases excluded from KPI scope:
@@ -592,7 +592,7 @@ export default function EmailKpiDashboard({
           showSummaryCards ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0 pointer-events-none"
         }`}
       >
-        <div className="overflow-hidden pb-1">
+        <div className={`overflow-hidden ${showSummaryCards ? "pb-1" : ""}`}>
           <EmailSummaryCards
             summary={data.summary || {}}
             onCardClick={!isSubmodule ? onSectionClick : undefined}
@@ -602,8 +602,10 @@ export default function EmailKpiDashboard({
 
       <div
         className={`grid grid-cols-1 ${
-          isSubmodule ? "grid-cols-1" : "md:grid-cols-2 md:grid-rows-1"
-        } ${isSubmodule && showFilters ? "gap-1.5 sm:gap-2" : "gap-1.5 sm:gap-1.5"} w-full min-w-0 flex-1 min-h-0 transition-all duration-300 ease-in-out ${
+          isSubmodule
+            ? "grid-cols-1 border border-[#103B63] bg-white rounded-none overflow-hidden gap-0 divide-y divide-[#D7E0E8] [&_.sibs-card]:border-0 [&_.sibs-card]:shadow-none [&_.sibs-card]:rounded-none"
+            : "md:grid-cols-2 md:grid-rows-1 gap-0 divide-y md:divide-y-0 md:divide-x divide-[#D7E0E8] [&_.sibs-card]:border-0 [&_.sibs-card]:shadow-none [&_.sibs-card]:rounded-none"
+        } w-full min-w-0 flex-1 min-h-0 transition-all duration-300 ease-in-out ${
           !isSubmodule && showFilters
             ? "min-h-[200px]"
             : !isSubmodule
@@ -614,6 +616,7 @@ export default function EmailKpiDashboard({
         <div className={isSubmodule ? "col-span-1 flex flex-col flex-1 min-h-0 h-full" : "col-span-1 min-h-[160px] md:min-h-0 md:h-full flex flex-col"}>
           <ChartShell
             title="Emails"
+            darkHeader={isSubmodule}
             tightLeft={!isSubmodule}
             onClick={!isSubmodule ? onSectionClick : undefined}
             isLoading={isLoading}
@@ -653,6 +656,7 @@ export default function EmailKpiDashboard({
         <div className={isSubmodule ? "col-span-1 flex flex-col flex-1 min-h-0 h-full" : "col-span-1 min-h-[160px] md:min-h-0 md:h-full flex flex-col"}>
           <ChartShell
             title="Email Response & Service Level"
+            darkHeader={isSubmodule}
             tightLeft={!isSubmodule}
             onClick={!isSubmodule ? onSectionClick : undefined}
             isLoading={isLoading}

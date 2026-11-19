@@ -5,7 +5,7 @@ import { GitCompare, Loader2 } from 'lucide-react';
 import { getTaskOrderVersions, compareTaskOrderVersions } from '@/lib/axios/kpis';
 import TaskOrderVersionComparisonModal from './TaskOrderVersionComparisonModal';
 
-const field = 'h-9 min-w-0 w-full rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 focus:border-[#052e53] focus:outline-none focus:ring-2 focus:ring-blue-100';
+const field = 'h-8 min-w-0 w-full rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-semibold text-slate-700 focus:border-[#052e53] focus:outline-none focus:ring-2 focus:ring-blue-100';
 const periodLabels = {
   weekly: 'Weekly', monthly: 'Monthly', quarterly: 'Quarterly', annually: 'Annually', custom: 'Custom',
 };
@@ -107,10 +107,10 @@ export default function TaskOrderVersionReportControls({
   }
 
   return (
-    <section className="rounded-xl border border-slate-200 bg-white p-3 text-xs text-slate-700 shadow-xs">
-      <div className="flex flex-wrap items-end gap-2.5">
-        <label className="flex min-w-[170px] flex-1 flex-col gap-1 font-semibold sm:max-w-64">
-          Task Order Version
+    <section className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 shadow-xs">
+      <div className="flex flex-wrap items-center gap-2.5">
+        <label className="flex min-w-[240px] flex-1 items-center gap-2 font-semibold">
+          <span className="shrink-0 text-[11px] text-slate-500">Task Order Version</span>
           <select
             className={field}
             value={value}
@@ -122,17 +122,17 @@ export default function TaskOrderVersionReportControls({
         </label>
         {allowCompare && (
           <>
-            <div className="hidden h-9 self-end border-l border-slate-200 sm:block" aria-hidden="true" />
-            <label className="flex min-w-[155px] flex-1 flex-col gap-1 font-semibold sm:max-w-60">
-              Base version
+            <div className="hidden h-6 border-l border-slate-200 sm:block" aria-hidden="true" />
+            <label className="flex min-w-[200px] flex-1 items-center gap-2 font-semibold">
+              <span className="shrink-0 text-[11px] text-slate-500">Base</span>
               <select className={field} value={base} onChange={(event) => setBase(event.target.value)} aria-label="Base mapping version">
                 {options.filter((option) => option.value !== 'current').map((option) => (
                   <option key={option.value} value={option.value}>{option.label}</option>
                 ))}
               </select>
             </label>
-            <label className="flex min-w-[155px] flex-1 flex-col gap-1 font-semibold sm:max-w-60">
-              Target version
+            <label className="flex min-w-[220px] flex-1 items-center gap-2 font-semibold">
+              <span className="shrink-0 text-[11px] text-slate-500">Target</span>
               <select className={field} value={target} onChange={(event) => setTarget(event.target.value)} aria-label="Target mapping version">
                 {options.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
               </select>
@@ -141,15 +141,15 @@ export default function TaskOrderVersionReportControls({
               type="button"
               onClick={viewComparison}
               disabled={!canCompare || busy}
-              className="inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-lg bg-[#052e53] px-3.5 text-xs font-bold text-white transition hover:bg-[#07416e] disabled:cursor-not-allowed disabled:opacity-50"
+              title="Comparison uses the active report's reporting period and filters."
+              className="inline-flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-lg bg-[#052e53] px-3 text-xs font-bold text-white transition hover:bg-[#07416e] disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {busy ? <Loader2 size={15} className="animate-spin" aria-hidden="true" /> : <GitCompare size={15} aria-hidden="true" />}
+              {busy ? <Loader2 size={14} className="animate-spin" aria-hidden="true" /> : <GitCompare size={14} aria-hidden="true" />}
               View Comparison
             </button>
           </>
         )}
       </div>
-      {allowCompare && <p className="mt-2 text-[11px] text-slate-500">Comparison uses the active report's reporting period and filters. No separate date selection.</p>}
       {optionsError && <p role="alert" className="mt-2 rounded-lg bg-rose-50 px-3 py-2 text-xs text-rose-700">{optionsError}</p>}
       {allowCompare && modalOpen && (
         <TaskOrderVersionComparisonModal
