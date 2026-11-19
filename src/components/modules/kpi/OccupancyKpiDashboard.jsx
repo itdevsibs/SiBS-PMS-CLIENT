@@ -494,10 +494,9 @@ export default function OccupancyKpiDashboard({
   );
   const peopleMetricLabels = peopleMetricTicks.map((value) => `${value}%`);
 
-  // Synchronize loading so all cards wait for each other instead of popping up individually
-  const isAnyOccupancyLoading = Boolean(
-    isLoading || isUtilizationLoading || isAbsenteeismLoading
-  );
+  // Progressive mode: do not hide the first verified week while another
+  // Kronos source or an older week is still fetching.
+  const isAnyOccupancyLoading = Boolean(isLoading || (isUtilizationLoading && !series.some(row => row.utilizationPct != null)));
 
   return (
     <div className={isSubmodule ? (showFilters ? "space-y-1.5 sm:space-y-2" : "space-y-2.5") : "flex-1 min-h-0 flex flex-col"}>
@@ -566,7 +565,7 @@ export default function OccupancyKpiDashboard({
           <div className="col-span-1">
             <ChartShell
               title="Headcount Metrics"
-              isLoading={isAnyOccupancyLoading}
+              isLoading={isLoading || (isAbsenteeismLoading && !series.some(row => row.actualHeadcount != null))}
               isSubmodule={isSubmodule}
               showFilters={showFilters}
               barsPerPeriod={1}
@@ -614,7 +613,7 @@ export default function OccupancyKpiDashboard({
           <div className="col-span-1">
             <ChartShell
               title="People Metrics"
-              isLoading={isAnyOccupancyLoading}
+              isLoading={isLoading || (isAbsenteeismLoading && !series.some(row => row.absenteeismPct != null))}
               isSubmodule={isSubmodule}
               showFilters={showFilters}
               barsPerPeriod={2}

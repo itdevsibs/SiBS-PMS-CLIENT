@@ -33,13 +33,13 @@ export async function getOccupancyKpis(params = {}) {
   return response;
 }
 
-export async function getUtilizationKpis(params = {}) {
-  const response = await api.get("/kpis/utilization", { params });
+export async function getUtilizationKpis(params = {}, config = {}) {
+  const response = await api.get("/kpis/utilization", { ...config, params });
   return response;
 }
 
-export async function getAbsenteeismKpis(params = {}) {
-  const response = await api.get("/kpis/absenteeism", { params });
+export async function getAbsenteeismKpis(params = {}, config = {}) {
+  const response = await api.get("/kpis/absenteeism", { ...config, params });
   return response;
 }
 
