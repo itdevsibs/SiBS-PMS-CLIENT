@@ -1,5 +1,8 @@
+import { useState } from "react";
 import { CheckCircle2, Clock3, Gauge, Loader2, PhoneCall } from "lucide-react";
 import { Skeleton } from "@/components/common/ui/Skeleton.jsx";
+import KpiChartModal from "./KpiChartModal.jsx";
+import CallsDrillDownModalContent from "./CallsDrillDownModalContent.jsx";
 import {
   buildVolumeBarItems,
   convertDurationToSeconds,
@@ -269,7 +272,29 @@ function ChartShell({
   isHorizontal = false,
   customChartHeightStyle = null,
   darkHeader = false,
+  renderModalContent = null,
 }) {
+  const [modalInfo, setModalInfo] = useState(null);
+  const canOpenModal = isSubmodule && !onClick;
+  const handleChartClick = onClick
+    ? onClick
+    : canOpenModal
+    ? (event) => {
+        const barEl = event.target?.closest?.(".sibs-graph-bar-rise, .sibs-graph-bar-grow-x");
+        if (!barEl) return;
+        const rect = barEl.getBoundingClientRect();
+        if (rect.height <= 0 || rect.width <= 0) return;
+        const barLabel = barEl.closest("[aria-label]")?.getAttribute("aria-label") || null;
+        const matchedIndex = Array.isArray(series)
+          ? series.findIndex((item) => item?.label && barLabel?.startsWith(item.label))
+          : -1;
+        setModalInfo({
+          subtitle: barLabel,
+          selectedIndex: matchedIndex >= 0 ? matchedIndex : 0,
+        });
+      }
+    : undefined;
+
   const activeChartHeight = customChartHeightStyle?.height
     ? customChartHeightStyle.height
     : isSubmodule
@@ -279,10 +304,11 @@ function ChartShell({
     : null;
 
   return (
+    <>
     <article
-      onClick={onClick || undefined}
+      onClick={handleChartClick}
       className={`sibs-card relative z-10 hover:z-30 focus-within:z-30 flex flex-col h-full min-h-0 shadow-xs ${
-        onClick ? "cursor-pointer" : ""
+        onClick ? "cursor-pointer" : canOpenModal ? "[&_.sibs-graph-bar-rise]:cursor-pointer [&_.sibs-graph-bar-grow-x]:cursor-pointer" : ""
       } ${className}`}
     >
       <div className={darkHeader ? "shrink-0 border-b-2 border-[#F28C28] bg-[#103B63] px-3 py-1 rounded-none" : "shrink-0 border-b border-sibs-tertiary-10 bg-sibs-primary-3/30 px-2 py-0.5 rounded-t-xl"}>
@@ -334,6 +360,35 @@ function ChartShell({
         )}
       </div>
     </article>
+    {canOpenModal ? (
+      <KpiChartModal
+        isOpen={Boolean(modalInfo)}
+        onClose={() => setModalInfo(null)}
+        title={title}
+        periodLabel={modalInfo ? series?.[modalInfo.selectedIndex]?.label || null : null}
+        subtitle={modalInfo?.subtitle || subtitle}
+        legend={legend}
+      >
+        {modalInfo && renderModalContent
+          ? renderModalContent({
+              selectedIndex: modalInfo.selectedIndex ?? 0,
+              setSelectedIndex: (nextIndex) =>
+                setModalInfo((prev) =>
+                  prev
+                    ? {
+                        ...prev,
+                        selectedIndex: nextIndex,
+                        subtitle: series?.[nextIndex]?.label || prev.subtitle,
+                      }
+                    : prev,
+                ),
+              clickedLabel: modalInfo.subtitle,
+              series: Array.isArray(series) ? series : [],
+            })
+          : null}
+      </KpiChartModal>
+    ) : null}
+    </>
   );
 }
 
@@ -1112,6 +1167,7 @@ function AhtChart({
 
                   {hasAht && heightPct > 0 ? (
                     <div
+                      aria-label={`${item.label} Call AHT: ${formatNumber(ahtSec)}s`}
                       className={`w-full ${isSubmodule ? "max-w-[64px]" : "max-w-[54px]"} rounded-none bg-[#0b3b68] transition-all duration-200 group-hover/aht:brightness-110 group-hover/aht:-translate-y-0.5 shadow-xs sibs-graph-bar-rise`}
                       style={{
                         height: `${heightPct}%`,
@@ -1391,6 +1447,14 @@ export default function CallKpiDashboard({
             showFilters={isFiltersVisible}
             barsPerPeriod={3}
             series={series.length ? series : data?.data?.series}
+            renderModalContent={({ selectedIndex, series: modalSeries }) => (
+              <CallsDrillDownModalContent
+                series={modalSeries}
+                selectedIndex={selectedIndex}
+                filters={data?.filters || data?.data?.filters}
+                targets={targets}
+              />
+            )}
             {...cardClickProps}
             legend={
               <>
@@ -1429,6 +1493,14 @@ export default function CallKpiDashboard({
             isSubmodule={isSubmodule}
             showFilters={isFiltersVisible}
             series={series.length ? series : data?.data?.series}
+            renderModalContent={({ selectedIndex, series: modalSeries }) => (
+              <CallsDrillDownModalContent
+                series={modalSeries}
+                selectedIndex={selectedIndex}
+                filters={data?.filters || data?.data?.filters}
+                targets={targets}
+              />
+            )}
             {...cardClickProps}
             legend={
               <>
@@ -1471,6 +1543,14 @@ export default function CallKpiDashboard({
             isSubmodule={isSubmodule}
             showFilters={isFiltersVisible}
             series={series.length ? series : data?.data?.series}
+            renderModalContent={({ selectedIndex, series: modalSeries }) => (
+              <CallsDrillDownModalContent
+                series={modalSeries}
+                selectedIndex={selectedIndex}
+                filters={data?.filters || data?.data?.filters}
+                targets={targets}
+              />
+            )}
             {...cardClickProps}
             legend={
               <>
