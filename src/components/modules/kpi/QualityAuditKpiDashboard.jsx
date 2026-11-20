@@ -1,6 +1,7 @@
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Award, ClipboardCheck, Mail, PhoneCall, Users } from "lucide-react";
 import { ChartShell } from "./CallKpiDashboard.jsx";
+import QaDrillDownModalContent from "./QaDrillDownModalContent.jsx";
 import { getCallAxisTicks } from "./callKpiDashboardUtils.js";
 
 function formatNumber(value, digits = 0) {
@@ -204,6 +205,7 @@ function QaTransactionsChart({
                       </div>
 
                       <div
+                        aria-label={`${item.label} Audits: ${formatNumber(item.totalAudits || 0)}`}
                         className={`w-full ${isSubmodule ? "max-w-[70px]" : "max-w-[50px]"} rounded-none bg-[#174f7f] shadow-xs transition-all duration-200 group-hover/bar:-translate-y-0.5 group-hover/bar:brightness-110 sibs-graph-bar-rise`}
                         style={{
                           height: `${height}%`,
@@ -421,6 +423,7 @@ function QaScoreChart({
                 </span>
                 <div className={`relative ${barHeightClass} overflow-hidden rounded-none bg-slate-100 border border-slate-200/70 shadow-inner`}>
                   <div
+                    aria-label={`${item.label} QA Score: ${formatNumber(score, 2)}%`}
                     className="flex h-full min-w-0 items-center justify-end rounded-none bg-[#42719b] px-2 transition-all duration-200 group-hover/score:brightness-110 shadow-2xs sibs-graph-bar-grow-x"
                     style={{
                       width: `${score}%`,
@@ -613,6 +616,14 @@ export default function QualityAuditKpiDashboard({
             showFilters={showFilters}
             series={series.length ? series : data?.data?.series}
             customChartHeightStyle={qaChartHeightStyle}
+            renderModalContent={({ selectedIndex, series: modalSeries }) => (
+              <QaDrillDownModalContent
+                series={modalSeries}
+                selectedIndex={selectedIndex}
+                filters={data?.filters || data?.data?.filters}
+                targets={data?.targets || data?.data?.targets}
+              />
+            )}
             legend={
               <span className="inline-flex items-center gap-1 font-bold text-[#174f7f]">
                 <i className="h-2 w-2 rounded-full bg-[#174f7f]" />
@@ -641,6 +652,14 @@ export default function QualityAuditKpiDashboard({
             series={series.length ? series : data?.data?.series}
             isHorizontal={true}
             customChartHeightStyle={qaChartHeightStyle}
+            renderModalContent={({ selectedIndex, series: modalSeries }) => (
+              <QaDrillDownModalContent
+                series={modalSeries}
+                selectedIndex={selectedIndex}
+                filters={data?.filters || data?.data?.filters}
+                targets={data?.targets || data?.data?.targets}
+              />
+            )}
             legend={
               <span className="inline-flex items-center gap-1 font-bold text-[#557da4]">
                 <i className="h-2 w-2 rounded-full bg-[#557da4]" />

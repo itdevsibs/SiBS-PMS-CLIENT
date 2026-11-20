@@ -6,6 +6,7 @@ import {
   BarChart3,
 } from "lucide-react";
 import { ChartShell } from "./CallKpiDashboard.jsx";
+import OccupancyDrillDownModalContent from "./OccupancyDrillDownModalContent.jsx";
 import { getCallAxisTicks } from "./callKpiDashboardUtils.js";
 
 function formatNumber(value, digits = 0) {
@@ -329,6 +330,7 @@ function ChartCanvasGrid({
 
                             {value != null ? (
                               <div
+                                aria-label={`${xAxisLabels[index] || ""} ${spec.label || ""}: ${formatValue ? formatValue(value) : value}`.trim()}
                                 className={`w-full ${barSpecs.length > 1
                                     ? isSubmodule
                                       ? "max-w-[46px]"
@@ -531,6 +533,13 @@ export default function OccupancyKpiDashboard({
               isSubmodule={isSubmodule}
               showFilters={showFilters}
               barsPerPeriod={2}
+              series={series}
+              renderModalContent={({ selectedIndex, series: modalSeries }) => (
+                <OccupancyDrillDownModalContent
+                  series={modalSeries}
+                  selectedIndex={selectedIndex}
+                />
+              )}
               legend={
                 <>
                   <span className="inline-flex items-center gap-1 font-bold text-[#0b3b68]">
@@ -572,6 +581,12 @@ export default function OccupancyKpiDashboard({
               showFilters={showFilters}
               barsPerPeriod={1}
               series={series}
+              renderModalContent={({ selectedIndex, series: modalSeries }) => (
+                <OccupancyDrillDownModalContent
+                  series={modalSeries}
+                  selectedIndex={selectedIndex}
+                />
+              )}
               legend={
                 <>
                   <span className="inline-flex items-center gap-1 font-bold text-[#0b3b68]">
@@ -620,6 +635,13 @@ export default function OccupancyKpiDashboard({
               isSubmodule={isSubmodule}
               showFilters={showFilters}
               barsPerPeriod={2}
+              series={series}
+              renderModalContent={({ selectedIndex, series: modalSeries }) => (
+                <OccupancyDrillDownModalContent
+                  series={modalSeries}
+                  selectedIndex={selectedIndex}
+                />
+              )}
               series={series}
               legend={
                 <>

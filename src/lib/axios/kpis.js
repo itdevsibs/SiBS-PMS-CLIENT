@@ -23,9 +23,24 @@ export async function getEmailKpis(params = {}) {
   return response;
 }
 
+export async function getEmailsReport(params = {}) {
+  const response = await api.get("/kpis/emails-report", { params });
+  return response?.data || response;
+}
+
 export async function getQualityAuditKpis(params = {}) {
   const response = await api.get("/kpis/quality-audit", { params });
   return response;
+}
+
+export async function getQualityAuditReport(params = {}) {
+  const response = await api.get("/kpis/quality-audit-report", { params });
+  return response?.data || response;
+}
+
+export async function getQualityAuditRowDetail(auditId) {
+  const response = await api.get(`/kpis/quality-audit-report/${encodeURIComponent(auditId)}`);
+  return response?.data || response;
 }
 
 export async function getOccupancyKpis(params = {}) {

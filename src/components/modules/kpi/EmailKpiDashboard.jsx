@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef } from "react";
 import { CheckCircle2, Mail, Percent } from "lucide-react";
 import { ChartShell } from "./CallKpiDashboard.jsx";
+import EmailsDrillDownModalContent from "./EmailsDrillDownModalContent.jsx";
 import { getCallAxisTicks, useSyncedHorizontalScroll } from "./callKpiDashboardUtils.js";
 
 function formatNumber(value, digits = 0) {
@@ -625,6 +626,14 @@ export default function EmailKpiDashboard({
             barsPerPeriod={3}
             series={series.length ? series : data?.data?.series}
             customChartHeightStyle={emailChartHeightStyle}
+            renderModalContent={({ selectedIndex, series: modalSeries }) => (
+              <EmailsDrillDownModalContent
+                series={modalSeries}
+                selectedIndex={selectedIndex}
+                filters={data?.filters || data?.data?.filters}
+                targets={data?.targets || data?.data?.targets}
+              />
+            )}
             legend={
               <>
                 <span className="inline-flex items-center gap-1 font-bold text-[#0b3b68]">
@@ -665,6 +674,14 @@ export default function EmailKpiDashboard({
             barsPerPeriod={2}
             series={series.length ? series : data?.data?.series}
             customChartHeightStyle={emailChartHeightStyle}
+            renderModalContent={({ selectedIndex, series: modalSeries }) => (
+              <EmailsDrillDownModalContent
+                series={modalSeries}
+                selectedIndex={selectedIndex}
+                filters={data?.filters || data?.data?.filters}
+                targets={data?.targets || data?.data?.targets}
+              />
+            )}
             legend={
               <>
                 <span className="inline-flex items-center gap-1 font-bold text-[#245d8f]">
