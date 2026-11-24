@@ -1,7 +1,8 @@
 import { recordAuditLog } from "@/lib/audit-logger";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ArrowUpDown,
+  AlertTriangle,
   Check,
   CheckCircle2,
   ChevronDown,
@@ -11,7 +12,6 @@ import {
   Loader2,
   Pencil,
   RefreshCw,
-  RotateCcw,
   Search,
   Upload,
   Users,
@@ -25,12 +25,14 @@ import ConfirmationModal from "@/components/common/ui/ConfirmationModal";
 import LoadingModal from "@/components/common/ui/LoadingModal";
 import EditEmployeeLedgerModal from "@/components/modules/employee-ledger/EditEmployeeLedgerModal";
 import TablePagination from "@/components/common/tables/TablePagination";
+import { getUserAdminAccess } from "@/config/accessControl";
 import useDashboardPage from "@/hooks/useDashboardPage";
 import {
-  fetchMasterDataAccounts,
   fetchMasterDataLedger,
   fetchMasterDataTaskOrders,
   importUsVisaEmployeeLedger,
+  previewKronosEmployeeLedgerSync,
+  applyKronosEmployeeLedgerSync,
   updateEmployeeLedgerRecord,
 } from "@/lib/axios/masterdata";
 
@@ -99,23 +101,28 @@ function ToolCell({ name, type }) {
   );
 }
 
-/* ─── Tenurity Calculator (Join Date to Today in Days) ───────────── */
-function calculateTenurityDays(joinDate, departureDate) {
-  if (!joinDate) return "";
-  const str = String(joinDate).trim();
-  if (!str || str === "0000-00-00" || str === "—") return "";
-  const start = new Date(str);
-  if (isNaN(start.getTime()) || start.getFullYear() < 1990) return "";
+/** The database `status` column is retained untouched for historical/import compatibility. */
+function getEmploymentStatus(employee) {
+  if (["Active", "Inactive", "Needs Verification"].includes(employee?.employmentStatus)) {
+    return employee.employmentStatus;
+  }
+  // No local status inference: the server uses the synchronized Kronos
+  // gy_user_status snapshot (0 = Active, 1 = Inactive).
+  return "Needs Verification";
+}
 
-  const endStr = departureDate ? String(departureDate).trim() : "";
-  const end = endStr && endStr !== "—" ? new Date(endStr) : new Date();
-  if (isNaN(end.getTime())) return "";
+const ORGANIZATIONAL_ROLE_OPTIONS = [
+  ["", "All Roles"],
+  ["AGENT", "Agent"],
+  ["TEAM_LEADER", "Team Leader"],
+  ["MANAGER", "Manager"],
+  ["SENIOR_MANAGER", "SOM / Senior Manager"],
+  ["NEEDS_REVIEW", "Needs Review"],
+  ["UNCLASSIFIED", "Unclassified"],
+];
 
-  const utcStart = Date.UTC(start.getFullYear(), start.getMonth(), start.getDate());
-  const utcEnd = Date.UTC(end.getFullYear(), end.getMonth(), end.getDate());
-
-  const diffDays = Math.floor((utcEnd - utcStart) / (1000 * 60 * 60 * 24));
-  return diffDays >= 0 ? String(diffDays) : "";
+function roleLabel(role) {
+  return ORGANIZATIONAL_ROLE_OPTIONS.find(([key]) => key === role)?.[1] || "Unclassified";
 }
 
 /* ─── Main Page ──────────────────────────────────────────────────── */
@@ -123,8 +130,7 @@ export default function EmployeeMasterDataPage() {
   const dashboard = useDashboardPage();
 
   const [searchTerm, setSearchTerm]           = useState("");
-  const [selectedAccount, setSelectedAccount] = useState("US Visa");
-  const [accountsList, setAccountsList]       = useState([]);
+  const [selectedRole, setSelectedRole]       = useState("");
   const [ledgerList, setLedgerList]           = useState([]);
   const [totalCount, setTotalCount]           = useState(0);
   const [isLoading, setIsLoading]             = useState(true);
@@ -142,13 +148,9 @@ export default function EmployeeMasterDataPage() {
   const [taskOrderSearchTerm, setTaskOrderSearchTerm]         = useState("");
   const taskOrderDropdownRef                                  = useRef(null);
 
-  /* Fetch accounts and task orders */
+  /* Fetch task orders for the US Visa-only ledger */
   useEffect(() => {
     let alive = true;
-    fetchMasterDataAccounts()
-      .then((res) => { if (alive && res?.success) setAccountsList(res.accounts || []); })
-      .catch(console.error);
-
     fetchMasterDataTaskOrders()
       .then((res) => {
         if (alive && res?.success && Array.isArray(res.taskOrders)) {
@@ -178,31 +180,22 @@ export default function EmployeeMasterDataPage() {
   const loadLedgerData = useCallback(
     async (
       searchQuery = "",
-      acc = "US Visa",
       to = "",
       page = 1,
       size = 25,
       activeSortBy = null,
       activeSortOrder = "desc",
+      activeRole = "",
     ) => {
       const query = searchQuery.trim();
-      const targetAccount = acc || "US Visa";
-
-      if (targetAccount && targetAccount.trim().toLowerCase() !== "us visa") {
-        setLedgerList([]);
-        setTotalCount(0);
-        setTotalPages(1);
-        setIsLoading(false);
-        return;
-      }
-
       try {
         setIsLoading(true);
         setErrorMsg("");
         const result = await fetchMasterDataLedger({
           search: query,
-          account: targetAccount,
+          account: "US Visa",
           taskOrder: to || "",
+          organizationalRole: activeRole,
           page,
           limit: size,
           viewAll: true,
@@ -241,40 +234,25 @@ export default function EmployeeMasterDataPage() {
 
   useEffect(() => {
     const t = setTimeout(() => {
-      void loadLedgerData(searchTerm, selectedAccount, selectedTaskOrder, currentPage, pageSize, sortBy, sortOrder);
+      void loadLedgerData(searchTerm, selectedTaskOrder, currentPage, pageSize, sortBy, sortOrder, selectedRole);
     }, 250);
     return () => clearTimeout(t);
-  }, [searchTerm, selectedAccount, selectedTaskOrder, currentPage, pageSize, sortBy, sortOrder, loadLedgerData]);
+  }, [searchTerm, selectedTaskOrder, selectedRole, currentPage, pageSize, sortBy, sortOrder, loadLedgerData]);
 
-  const [isAccountDropdownOpen, setIsAccountDropdownOpen] = useState(false);
-  const [isSearchingAccount, setIsSearchingAccount]       = useState(false);
-  const [accountSearchTerm, setAccountSearchTerm]         = useState("");
-  const accountDropdownRef                                = useRef(null);
-  const accountSearchInputRef                             = useRef(null);
-
+  // Keep only the Task Order dropdown; the page is always scoped to US Visa.
   useEffect(() => {
     const handleClickOutside = (e) => {
-      if (accountDropdownRef.current && !accountDropdownRef.current.contains(e.target)) {
-        setIsAccountDropdownOpen(false);
-        setIsSearchingAccount(false);
-        setAccountSearchTerm("");
-      }
       if (taskOrderDropdownRef.current && !taskOrderDropdownRef.current.contains(e.target)) {
         setIsTaskOrderDropdownOpen(false);
         setTaskOrderSearchTerm("");
       }
     };
-
     const handleKeyDown = (e) => {
       if (e.key === "Escape") {
-        setIsAccountDropdownOpen(false);
-        setIsSearchingAccount(false);
-        setAccountSearchTerm("");
         setIsTaskOrderDropdownOpen(false);
         setTaskOrderSearchTerm("");
       }
     };
-
     document.addEventListener("mousedown", handleClickOutside);
     document.addEventListener("keydown", handleKeyDown);
     return () => {
@@ -282,42 +260,6 @@ export default function EmployeeMasterDataPage() {
       document.removeEventListener("keydown", handleKeyDown);
     };
   }, []);
-
-  useEffect(() => {
-    if (isSearchingAccount) {
-      setTimeout(() => {
-        accountSearchInputRef.current?.focus();
-      }, 50);
-    }
-  }, [isSearchingAccount]);
-
-  const selectableAccounts = useMemo(() => {
-    const list = ["US Visa", "All Accounts"];
-    accountsList.forEach((acc) => {
-      const clean = String(acc || "").trim();
-      if (clean && clean.toLowerCase() !== "us visa" && !list.includes(clean)) {
-        list.push(clean);
-      }
-    });
-    return list;
-  }, [accountsList]);
-
-  const filteredAccountOptions = useMemo(() => {
-    const term = accountSearchTerm.trim().toLowerCase();
-    if (!term) return selectableAccounts;
-    return selectableAccounts.filter((acc) =>
-      acc.toLowerCase().includes(term),
-    );
-  }, [selectableAccounts, accountSearchTerm]);
-
-  const handleSelectAccount = (acc) => {
-    const value = acc === "All Accounts" ? "" : acc;
-    setSelectedAccount(value);
-    setIsAccountDropdownOpen(false);
-    setIsSearchingAccount(false);
-    setAccountSearchTerm("");
-    setCurrentPage(1);
-  };
 
   const [editingEmployee, setEditingEmployee] = useState(null);
   const [isSavingEdit, setIsSavingEdit]       = useState(false);
@@ -338,7 +280,12 @@ export default function EmployeeMasterDataPage() {
     try {
       setIsSavingEdit(true);
       setErrorMsg("");
-      const res = await updateEmployeeLedgerRecord(editingEmployee.sibsId, formData);
+      // Employment status comes from Kronos gy_user_status; preserve the historical ledger status.
+      const updatePayload = { ...formData };
+      delete updatePayload.status;
+      // Read-only API-derived field: never send or optimistically overwrite Tenurity.
+      delete updatePayload.tenurity;
+      const res = await updateEmployeeLedgerRecord(editingEmployee.sibsId, updatePayload);
       if (res?.success) {
         const empName = formData.agentName || editingEmployee.agentName || editingEmployee.kronosName || editingEmployee.sibsId;
         const empSibsId = editingEmployee.sibsId;
@@ -362,11 +309,11 @@ export default function EmployeeMasterDataPage() {
         setLedgerList((prev) =>
           prev.map((emp) =>
             emp.sibsId === editingEmployee.sibsId
-              ? { ...emp, ...formData }
+              ? { ...emp, ...updatePayload }
               : emp
           )
         );
-        void loadLedgerData(searchTerm, selectedAccount, selectedTaskOrder, currentPage, pageSize, sortBy, sortOrder);
+        void loadLedgerData(searchTerm, selectedTaskOrder, currentPage, pageSize, sortBy, sortOrder, selectedRole);
       } else {
         setErrorMsg(res?.message || "Failed to update employee record.");
       }
@@ -391,8 +338,9 @@ export default function EmployeeMasterDataPage() {
       if (totalCount > ledgerList.length) {
         const res = await fetchMasterDataLedger({
           search: searchTerm.trim(),
-          account: selectedAccount || "US Visa",
+          account: "US Visa",
           taskOrder: selectedTaskOrder || "",
+          organizationalRole: selectedRole,
           page: 1,
           limit: Math.max(totalCount, 1000),
           viewAll: true,
@@ -414,7 +362,7 @@ export default function EmployeeMasterDataPage() {
         "HeroDash Name": emp.herodashName || "",
         "MSD Name": emp.msdName || "",
         "Site": emp.site || "",
-        "Status": emp.status || "",
+        "Status": getEmploymentStatus(emp),
         "Phase": emp.phase || "",
         "Task Order": emp.taskOrder || "",
         "Task Order Discription": emp.taskOrderDescription || "",
@@ -423,7 +371,7 @@ export default function EmployeeMasterDataPage() {
         "Team Leader": emp.teamLeader || "",
         "Manager": emp.manager || "",
         "Senior Manager": emp.seniorManager || "",
-        "Tenurity": calculateTenurityDays(emp.usVisaJoinDate, emp.usVisaDepartureDate, emp.tenurity),
+        "Tenurity": emp.tenurity ?? "",
         "Modality (Voice, Chat, Email)": emp.modality || "",
       }));
 
@@ -545,6 +493,7 @@ export default function EmployeeMasterDataPage() {
         { key: "teamLeader", label: "Team Leader", patterns: [/team\s*leader/i, /^tl$/i] },
         { key: "manager", label: "Manager", patterns: [/^manager/i, /^om$/i, /operations\s*manager/i] },
         { key: "seniorManager", label: "Senior Manager", patterns: [/senior\s*manager/i, /^som$/i] },
+        // Keep recognizing legacy Excel headers; uploaded Tenurity values are ignored.
         { key: "tenurity", label: "Tenurity", patterns: [/tenur/i, /tenurity/i] },
         { key: "modality", label: "Modality (Voice, Chat, Email)", patterns: [/modal/i, /channel/i] },
       ];
@@ -692,7 +641,6 @@ export default function EmployeeMasterDataPage() {
           teamLeader: getColVal(row, "teamLeader"),
           manager: getColVal(row, "manager"),
           seniorManager: getColVal(row, "seniorManager"),
-          tenurity: getColVal(row, "tenurity"),
           modality: modalityVal,
         });
       }
@@ -732,7 +680,7 @@ export default function EmployeeMasterDataPage() {
         setPendingImport(null);
         if (fileInputRef.current) fileInputRef.current.value = "";
         // Re-fetch ledger so the table updates immediately
-        void loadLedgerData(searchTerm, selectedAccount, currentPage, pageSize, sortBy, sortOrder);
+        void loadLedgerData(searchTerm, selectedTaskOrder, currentPage, pageSize, sortBy, sortOrder, selectedRole);
       } else {
         setErrorMsg(res?.message || "Failed to save employee records.");
       }
@@ -743,6 +691,60 @@ export default function EmployeeMasterDataPage() {
       setIsExecutingImport(false);
     }
   };
+
+  /* Manual, explicit Kronos ledger synchronization. No fetch on page load. */
+  const [kronosPreview, setKronosPreview] = useState(null);
+  const [isPreviewingKronos, setIsPreviewingKronos] = useState(false);
+  const [isApplyingKronos, setIsApplyingKronos] = useState(false);
+
+  const handleKronosPreview = async () => {
+    if (isPreviewingKronos || isApplyingKronos) return;
+    try {
+      setIsPreviewingKronos(true);
+      setErrorMsg("");
+      setKronosPreview(null);
+      const result = await previewKronosEmployeeLedgerSync();
+      if (!result?.success || !result?.previewToken) {
+        throw new Error(result?.message || "Kronos sync preview was not generated.");
+      }
+      setKronosPreview(result);
+    } catch (err) {
+      setErrorMsg(err?.response?.data?.message || err?.message || "Kronos employee sync preview failed.");
+    } finally {
+      setIsPreviewingKronos(false);
+    }
+  };
+
+  const handleKronosApply = async () => {
+    if (!kronosPreview?.previewToken || isApplyingKronos) return;
+    try {
+      setIsApplyingKronos(true);
+      setErrorMsg("");
+      const result = await applyKronosEmployeeLedgerSync(kronosPreview.previewToken);
+      if (!result?.success) throw new Error(result?.message || "Kronos sync could not be applied.");
+      setKronosPreview(null);
+      try {
+        recordAuditLog({
+          action: "Sync",
+          module: "Employee Ledger",
+          description: `Kronos sync: ${result.inserted} added, ${result.updated} updated, ${result.preserved} preserved`,
+          recordId: "KRONOS_EMPLOYEE_LEDGER",
+        });
+      } catch {}
+      setSaveSuccessMsg(`Kronos sync saved: ${result.inserted} added, ${result.updated} updated, ${result.preserved} historical records preserved.`);
+      void loadLedgerData(searchTerm, selectedTaskOrder, currentPage, pageSize, sortBy, sortOrder, selectedRole);
+    } catch (err) {
+      setErrorMsg(err?.response?.data?.message || err?.message || "Kronos sync failed. Ledger was not changed.");
+      setKronosPreview(null); // A failed/stale preview must be regenerated.
+    } finally {
+      setIsApplyingKronos(false);
+    }
+  };
+
+  // Match the API's explicit sync roles (Super Admin, WFM, Master Data).
+  // Use the centralized resolver so assigned WFM interfaces are recognized.
+  const canSyncKronos = [7, 9, 11].includes(getUserAdminAccess(dashboard.authUser)) ||
+    ["admin", "wfm", "masterdata"].includes(dashboard.role);
 
   const isAdmin =
     dashboard.authUser?.role === "admin" ||
@@ -776,9 +778,9 @@ export default function EmployeeMasterDataPage() {
         <main className="flex flex-1 min-h-0 flex-col gap-2.5 sm:gap-3 overflow-hidden px-2.5 sm:px-4 lg:px-5 pt-2.5 sm:pt-3 pb-2">
 
           {/* ── Toolbar ────────────────────────────────────────────── */}
-          <div className="shrink-0 flex flex-col lg:flex-row lg:flex-wrap lg:items-center gap-2.5 sm:gap-3 rounded-xl border border-slate-200 bg-white p-3 sm:px-4 sm:py-3 shadow-xs">
+          <div className="shrink-0 flex flex-col lg:flex-row lg:items-center gap-2.5 sm:gap-3 rounded-xl border border-slate-200 bg-white p-3 sm:px-4 sm:py-3 shadow-xs">
             {/* Search (Very Left) */}
-            <div className="relative flex-1 w-full min-w-[200px]">
+            <div className="relative flex-1 w-full min-w-0">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
               <input
                 type="text"
@@ -804,116 +806,8 @@ export default function EmployeeMasterDataPage() {
               )}
             </div>
 
-            {/* Account select + Task Order select + Reset */}
+            {/* US Visa-only page: Task Order is the only scope selector. */}
             <div className="flex items-center gap-2 shrink-0 w-full lg:w-auto">
-              <div className="relative flex-1 sm:w-64 md:w-72 sm:flex-none" ref={accountDropdownRef}>
-                {isSearchingAccount ? (
-                  <div className="relative h-9 w-full sm:w-64 md:w-72">
-                    <Search className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
-                    <input
-                      ref={accountSearchInputRef}
-                      type="text"
-                      value={accountSearchTerm}
-                      onChange={(e) => {
-                        setAccountSearchTerm(e.target.value);
-                        setIsAccountDropdownOpen(true);
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" && filteredAccountOptions.length > 0) {
-                          handleSelectAccount(filteredAccountOptions[0]);
-                        }
-                      }}
-                      placeholder="Search department..."
-                      className="h-9 w-full rounded-lg border border-[#0b3b68] bg-white pl-8 pr-7 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0b3b68]/15"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setAccountSearchTerm("");
-                        setIsSearchingAccount(false);
-                        setIsAccountDropdownOpen(false);
-                      }}
-                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
-                  </div>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => setIsAccountDropdownOpen((prev) => !prev)}
-                    onDoubleClick={() => {
-                      setIsSearchingAccount(true);
-                      setIsAccountDropdownOpen(true);
-                    }}
-                    title="Click to select, double-click to search departments"
-                    className="flex h-9 w-full sm:w-64 md:w-72 cursor-pointer items-center justify-between gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 text-xs font-semibold text-slate-800 transition hover:border-slate-300 hover:bg-slate-100 focus:border-[#0b3b68] focus:outline-none"
-                  >
-                    <span className="truncate">
-                      {selectedAccount || "All Accounts"}
-                    </span>
-                    <ChevronDown
-                      className={`h-3.5 w-3.5 text-slate-400 transition-transform ${
-                        isAccountDropdownOpen ? "rotate-180" : ""
-                      }`}
-                    />
-                  </button>
-                )}
-
-                {/* Dropdown Menu */}
-                {isAccountDropdownOpen && (
-                  <div className="absolute left-0 top-full z-50 mt-1 max-h-96 w-full sm:w-64 md:w-72 overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-lg shadow-slate-900/10">
-                    {!isSearchingAccount && (
-                      <div className="border-b border-slate-100 p-1.5">
-                        <div className="relative">
-                          <Search className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
-                          <input
-                            type="text"
-                            value={accountSearchTerm}
-                            onChange={(e) => setAccountSearchTerm(e.target.value)}
-                            placeholder="Type to search..."
-                            className="h-7 w-full rounded-md border border-slate-200 bg-slate-50 pl-6 pr-2 text-[11px] text-slate-800 focus:border-[#0b3b68] focus:bg-white focus:outline-none"
-                            onClick={(e) => e.stopPropagation()}
-                          />
-                        </div>
-                      </div>
-                    )}
-
-                    <div className="max-h-80 overflow-y-auto sibs-scrollbar">
-                      {filteredAccountOptions.length > 0 ? (
-                        filteredAccountOptions.map((acc) => {
-                          const isSelected =
-                            acc === "All Accounts"
-                              ? !selectedAccount
-                              : selectedAccount === acc;
-                          return (
-                            <button
-                              key={acc}
-                              type="button"
-                              onClick={() => handleSelectAccount(acc)}
-                              className={`flex w-full cursor-pointer items-center justify-between px-3 py-1.5 text-left text-xs transition ${
-                                isSelected
-                                  ? "bg-sky-50 font-bold text-[#0b3b68]"
-                                  : "text-slate-700 hover:bg-slate-50 hover:text-slate-900"
-                              }`}
-                            >
-                              <span className="truncate">{acc}</span>
-                              {isSelected && (
-                                <Check className="h-3.5 w-3.5 text-[#0b3b68]" />
-                              )}
-                            </button>
-                          );
-                        })
-                      ) : (
-                        <div className="px-3 py-4 text-center text-xs text-slate-400">
-                          No departments found
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-
               {/* Task Order select */}
               <div className="relative flex-1 sm:w-56 md:w-64 sm:flex-none" ref={taskOrderDropdownRef}>
                 <button
@@ -1009,44 +903,33 @@ export default function EmployeeMasterDataPage() {
                 )}
               </div>
 
-              <button
-                type="button"
-                onClick={() => {
-                  setSearchTerm("");
-                  setSelectedAccount("US Visa");
-                  setSelectedTaskOrder("");
-                  setIsSearchingAccount(false);
-                  setIsAccountDropdownOpen(false);
-                  setIsTaskOrderDropdownOpen(false);
-                  setAccountSearchTerm("");
-                  setTaskOrderSearchTerm("");
-                  setSortBy(null);
-                  setSortOrder("desc");
-                  setCurrentPage(1);
-                }}
-                className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-3 text-xs font-medium text-slate-600 hover:bg-slate-100 transition cursor-pointer shrink-0"
-              >
-                <RotateCcw className="h-3.5 w-3.5 text-slate-400" />
-                Reset
-              </button>
-
-              <button
-                type="button"
-                onClick={() => loadData(currentPage, pageSize, searchTerm, selectedAccount, selectedTaskOrder, sortBy, sortOrder)}
-                disabled={isLoading}
-                title="Refresh ledger data"
-                className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-[#042c51] bg-[#042c51] px-3 text-xs font-bold text-white shadow-2xs transition hover:bg-[#063d70] hover:border-[#063d70] disabled:cursor-not-allowed disabled:opacity-50 shrink-0"
-              >
-                <RefreshCw
-                  size={12}
-                  className={`shrink-0 ${isLoading ? "animate-spin text-white" : ""}`}
-                />
-                <span>Refresh</span>
-              </button>
             </div>
+
+            <select
+              aria-label="Filter by organizational role"
+              value={selectedRole}
+              onChange={(event) => { setSelectedRole(event.target.value); setCurrentPage(1); }}
+              className="h-9 w-full sm:w-40 shrink-0 rounded-lg border border-slate-200 bg-slate-50 px-3 text-xs font-semibold text-slate-800 focus:outline-none focus:border-[#0b3b68]"
+            >
+              {ORGANIZATIONAL_ROLE_OPTIONS.map(([value, label]) => (
+                <option key={value} value={value}>{label}</option>
+              ))}
+            </select>
 
             {/* Template Actions (Right) */}
             <div className="shrink-0 w-full sm:w-auto flex items-center gap-2 justify-end sm:justify-start lg:justify-end">
+              {canSyncKronos && (
+                <button
+                  type="button"
+                  onClick={handleKronosPreview}
+                  disabled={isPreviewingKronos || isApplyingKronos || isLoading}
+                  title="Review Kronos Account 20 employees and their supervisor hierarchy before changing PMS"
+                  className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-[#0b3b68] bg-white px-3 text-xs font-semibold text-[#0b3b68] hover:bg-blue-50 disabled:opacity-50"
+                >
+                  {isPreviewingKronos ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+                  {isPreviewingKronos ? "Checking Kronos…" : "Sync from Kronos"}
+                </button>
+              )}
               <input
                 ref={fileInputRef}
                 type="file"
@@ -1123,7 +1006,7 @@ export default function EmployeeMasterDataPage() {
               className="flex-1 min-h-0 overflow-x-auto overflow-y-auto sibs-scrollbar scroll-smooth"
               style={{ WebkitOverflowScrolling: "touch" }}
             >
-                <table className="w-full min-w-[3700px] table-fixed text-left text-xs border-collapse">
+                <table className="w-full min-w-[3850px] table-fixed text-left text-xs border-collapse">
                   <colgroup>
                     <col style={{ width: "145px" }} />
                     <col style={{ width: "200px" }} />
@@ -1134,6 +1017,7 @@ export default function EmployeeMasterDataPage() {
                     <col style={{ width: "180px" }} />
                     <col style={{ width: "180px" }} />
                     <col style={{ width: "130px" }} />
+                    <col style={{ width: "165px" }} />
                     <col style={{ width: "130px" }} />
                     <col style={{ width: "130px" }} />
                     <col style={{ width: "260px" }} />
@@ -1197,6 +1081,11 @@ export default function EmployeeMasterDataPage() {
                       {/* 10. Status */}
                       <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-white whitespace-nowrap overflow-hidden">
                         Status
+                      </th>
+
+                      {/* Verified or proposed organizational role, distinct from application access */}
+                      <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-white whitespace-nowrap">
+                        Role
                       </th>
 
                       {/* 11. Phase */}
@@ -1298,10 +1187,12 @@ export default function EmployeeMasterDataPage() {
                           <td className="px-4 py-3.5">
                             <div className="h-4 w-16 rounded-md bg-slate-200" />
                           </td>
-                          {/* 10. Status */}
+                          {/* 10. Status loading placeholder */}
                           <td className="px-4 py-3.5">
-                            <div className="h-4 w-20 rounded-md bg-slate-200" />
+                            <div className="h-4 w-20 rounded-full bg-slate-200" />
                           </td>
+                          {/* Organizational Role skeleton: never reference a row here */}
+                          <td className="px-4 py-3.5"><div className="h-4 w-24 rounded-full bg-slate-200" /></td>
                           {/* 11. Phase */}
                           <td className="px-4 py-3.5">
                             <div className="h-4 w-16 rounded-md bg-slate-200" />
@@ -1346,7 +1237,7 @@ export default function EmployeeMasterDataPage() {
                       ))
                     ) : ledgerList.length === 0 ? (
                       <tr>
-                        <td colSpan={20} className="py-24 text-center">
+                        <td colSpan={21} className="py-24 text-center">
                           <Users className="mx-auto mb-2.5 h-8 w-8 text-slate-200" />
                           <p className="text-xs font-semibold text-slate-600 mb-1">
                             No employee records found
@@ -1382,8 +1273,16 @@ export default function EmployeeMasterDataPage() {
                           </td>
 
                           {/* 2. Kronos Name */}
-                          <td className="px-4 py-3 text-slate-800 truncate" title={emp.kronosName}>
-                            {emp.kronosName || <span className="text-slate-300 select-none">—</span>}
+                          <td className="px-4 py-3 text-slate-800 truncate" title={`${emp.kronosName || ""}${emp.kronosLastSyncedAt ? ` | Last sync (Manila): ${emp.kronosLastSyncedAt}` : ""}`}>
+                            <div className="truncate">{emp.kronosName || <span className="text-slate-300 select-none">—</span>}</div>
+                            {emp.kronosMembershipStatus && (
+                              <div className="mt-0.5 truncate text-[9px] font-medium text-slate-500" title={`Hierarchy: ${emp.hierarchySyncStatus || "Not verified"}`}>
+                                {emp.kronosMembershipStatus === "CURRENT_US_VISA" ? "Kronos verified: US Visa" :
+                                  emp.kronosMembershipStatus === "OTHER_ACCOUNT" ? "Kronos: Other account" :
+                                  "Kronos: Not found"}
+                                {emp.hierarchySyncStatus && emp.hierarchySyncStatus !== "VERIFIED" && ` · ${emp.hierarchySyncStatus}`}
+                              </div>
+                            )}
                           </td>
 
                           {/* 3. Call Novo email add */}
@@ -1421,21 +1320,40 @@ export default function EmployeeMasterDataPage() {
                             {emp.site || <span className="text-slate-300 select-none">—</span>}
                           </td>
 
-                          {/* 10. Status */}
+                          {/* 10. Employee status determined only by Kronos gy_user_status */}
                           <td className="px-4 py-3 text-slate-700 truncate">
-                            {emp.status ? (
-                              <span
-                                className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${
-                                  String(emp.status).toLowerCase().includes("active")
-                                    ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                            <span
+                              title={getEmploymentStatus(emp) === "Active"
+                                ? "Active · Kronos gy_user_status = 0"
+                                : getEmploymentStatus(emp) === "Inactive"
+                                  ? "Inactive · Kronos gy_user_status = 1"
+                                  : "Needs Verification · Kronos user status missing, unmatched, or unrecognized. Check Kronos sync."}
+                              className={`inline-flex items-center whitespace-nowrap rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${
+                                getEmploymentStatus(emp) === "Active"
+                                  ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                  : getEmploymentStatus(emp) === "Needs Verification"
+                                    ? "bg-amber-50 text-amber-800 border-amber-200"
                                     : "bg-slate-100 text-slate-600 border-slate-200"
+                              }`}
+                            >
+                              {getEmploymentStatus(emp)}
+                            </span>
+                          </td>
+
+                          {/* Organizational Role */}
+                          <td className="px-4 py-3 text-slate-700">
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              <span
+                                title={`Read-only role · ${emp.roleReviewStatus || "NOT_CLASSIFIED"} · ${emp.roleSource || "NO_KRONOS_CLASSIFICATION"} · Account: ${emp.kronosAccountName || "Not synced"}`}
+                                className={`inline-flex min-w-0 items-center rounded-md border px-2 py-0.5 text-[10px] font-semibold whitespace-nowrap ${
+                                  emp.roleReviewStatus === "NEEDS_REVIEW"
+                                    ? "border-amber-200 bg-amber-50 text-amber-800"
+                                    : "border-slate-200 bg-slate-50 text-slate-700"
                                 }`}
                               >
-                                {emp.status}
+                                {roleLabel(emp.organizationalRole)}{emp.roleReviewStatus === "NEEDS_REVIEW" ? " · Review" : ""}
                               </span>
-                            ) : (
-                              <span className="text-slate-300 select-none">—</span>
-                            )}
+                            </div>
                           </td>
 
                           {/* 11. Phase */}
@@ -1487,8 +1405,19 @@ export default function EmployeeMasterDataPage() {
                           </td>
 
                           {/* 19. Tenurity */}
-                          <td className="px-4 py-3 text-slate-700 truncate" title={calculateTenurityDays(emp.usVisaJoinDate, emp.usVisaDepartureDate, emp.tenurity)}>
-                            {calculateTenurityDays(emp.usVisaJoinDate, emp.usVisaDepartureDate, emp.tenurity) || <span className="text-slate-300 select-none">—</span>}
+                          <td
+                            className="px-4 py-3 text-slate-700 truncate"
+                            title={emp.tenurityDateWarning === "LAST_WORKING_DAY_BEFORE_ACCOUNT_JOIN_DATE"
+                              ? "Last Working Day is earlier than Account Join Date. Check the ledger dates."
+                              : emp.tenurityDateWarning === "INVALID_LAST_WORKING_DAY"
+                                ? "Invalid Last Working Day. Check the ledger dates."
+                                : emp.tenurity ?? ""}
+                          >
+                            {emp.tenurityDateWarning ? (
+                              <span className="inline-flex items-center gap-1 text-amber-700">
+                                <AlertTriangle size={12} aria-label="Date verification required" /> —
+                              </span>
+                            ) : emp.tenurity != null && emp.tenurity !== "" ? emp.tenurity : <span className="text-slate-300 select-none">—</span>}
                           </td>
 
                           {/* 20. Modality (Voice, Chat, Email) */}
@@ -1526,6 +1455,83 @@ export default function EmployeeMasterDataPage() {
         onSave={handleSaveEmployeeRecord}
         isSaving={isSavingEdit}
       />
+
+      {/* Preview -> Apply: keeps existing and inactive employees safe. */}
+      <AppModal isOpen={Boolean(kronosPreview)} className="max-w-3xl max-h-[85vh] overflow-y-auto p-5" zIndex="z-[145]">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h3 className="text-base font-bold text-slate-900">Kronos Employee Ledger Sync</h3>
+            <p className="mt-1 text-xs text-slate-500">Preview only. Nothing changes until you apply verified updates.</p>
+          </div>
+          <button type="button" onClick={() => !isApplyingKronos && setKronosPreview(null)} disabled={isApplyingKronos} className="text-slate-500 hover:text-slate-800" aria-label="Close sync preview"><X size={17} /></button>
+        </div>
+        <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-2">
+          {[
+            ["Add", kronosPreview?.summary?.new],
+            ["Update", kronosPreview?.summary?.update],
+            ["Unchanged", kronosPreview?.summary?.unchanged],
+            ["Preserved", kronosPreview?.summary?.preserved],
+          ].map(([label, count]) => (
+            <div key={label} className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2">
+              <div className="text-[10px] uppercase font-semibold text-slate-500">{label}</div>
+              <div className="text-lg font-bold text-[#0b3b68]">{count ?? 0}</div>
+            </div>
+          ))}
+        </div>
+        <p className="mt-3 text-[11px] text-slate-600">
+          {kronosPreview?.summary?.transferred ?? 0} previously listed employees are now assigned to another account;
+          {" "}{kronosPreview?.summary?.missing ?? 0} are not found in the current Kronos collection.
+          Both groups stay in PMS with their historical records intact.
+          {" "}{kronosPreview?.summary?.nonCurrentRoleUpdates ?? 0} existing non-US-Visa employees have new role/hierarchy classifications.
+        </p>
+        <p className="mt-2 text-[11px] text-slate-600">
+          Verified missing dates to populate: <strong>{kronosPreview?.summary?.joinDatesToPopulate ?? 0}</strong> US Visa joins,
+          {" "}<strong>{kronosPreview?.summary?.departureDatesToPopulate ?? 0}</strong> departures.
+          {" "}<strong>{kronosPreview?.summary?.statusNeedsVerification ?? 0}</strong> employees require status verification,
+          and <strong>{kronosPreview?.summary?.dateWarnings ?? 0}</strong> date-evidence warnings will be retained for review.
+        </p>
+        <p className="mt-1 text-[11px] text-amber-700">
+          {kronosPreview?.summary?.partialHierarchy ?? 0} partial and {kronosPreview?.summary?.unresolvedHierarchy ?? 0} unresolved supervisor chains.
+          {" "}{kronosPreview?.summary?.roleNeedsReview ?? 0} organizational roles need human review.
+          Only verified positions are used for hierarchy. BOD is checked as the root, not added to the ledger.
+        </p>
+        <div className="mt-3 max-h-64 overflow-y-auto rounded-lg border border-slate-200">
+          <table className="w-full text-[11px] text-left">
+            <thead className="sticky top-0 bg-slate-100 text-slate-600"><tr>
+              <th className="p-2">SIBS ID</th><th className="p-2">Employee</th><th className="p-2">Action</th><th className="p-2">Status</th><th className="p-2">Join / Departure</th><th className="p-2">Role</th><th className="p-2">Hierarchy</th>
+            </tr></thead>
+            <tbody>
+              {(kronosPreview?.previewRows || []).map((row) => (
+                <tr key={row.sibsId} className="border-t border-slate-100">
+                  <td className="p-2 font-medium">{row.sibsId}</td>
+                  <td className="p-2">{row.name || "—"}</td>
+                  <td className="p-2">{row.action.replaceAll("_", " ")}</td>
+                  <td className="p-2">{row.employmentStatus || "—"}</td>
+                  <td className="p-2" title={(row.dateWarnings || []).join(", ")}>
+                    {row.joinDate || "—"} / {row.departureDate || "—"}
+                    {row.dateWarnings?.length > 0 ? " · Review" : ""}
+                  </td>
+                  <td className="p-2">{roleLabel(row.organizationalRole)}{row.roleReviewStatus === "NEEDS_REVIEW" ? " · Review" : ""}</td>
+                  <td className="p-2" title={row.warnings?.join(", ") || ""}>{row.hierarchyStatus || "—"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        {kronosPreview?.previewTruncated && (
+          <p className="mt-2 text-[11px] text-slate-500">Showing the first 200 of {kronosPreview.totalPreviewRows} records.</p>
+        )}
+        <p className="mt-3 text-[11px] text-slate-600">
+          Existing PMS employment dates, raw statuses, Task Orders, historical employees and vendor aliases are protected. Only verified missing dates are populated.
+        </p>
+        <div className="mt-4 flex justify-end gap-2">
+          <button type="button" onClick={() => setKronosPreview(null)} disabled={isApplyingKronos} className="h-9 rounded-md border border-slate-200 px-4 text-xs font-semibold text-slate-700">Cancel</button>
+          <button type="button" onClick={handleKronosApply} disabled={isApplyingKronos} className="h-9 inline-flex items-center gap-1.5 rounded-md bg-[#0b3b68] px-4 text-xs font-semibold text-white disabled:opacity-60">
+            {isApplyingKronos && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+            {isApplyingKronos ? "Applying…" : "Apply Verified Updates"}
+          </button>
+        </div>
+      </AppModal>
 
       {/* Record Saved Success Modal */}
       <AppModal
