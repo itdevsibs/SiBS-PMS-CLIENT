@@ -170,6 +170,22 @@ export async function getUsVisaImportBatchErrors(batchId, params) {
   return response.data;
 }
 
+export async function getUsVisaBatchEmployeeMappings(batchId, params = {}) {
+  const response = await api.get(
+    `/us-visa/imports/${encodeURIComponent(batchId)}/employee-mapping`,
+    { params },
+  );
+  return response.data;
+}
+
+export async function getUsVisaBatchEmployeeMappingRows(batchId, groupKey, params = {}) {
+  const response = await api.get(
+    `/us-visa/imports/${encodeURIComponent(batchId)}/employee-mapping/${encodeURIComponent(groupKey)}/rows`,
+    { params },
+  );
+  return response.data;
+}
+
 export async function getUsVisaImportRawData(batchId, params = {}) {
   const response = await api.get(
     `/us-visa/imports/${encodeURIComponent(batchId)}/raw-data`,

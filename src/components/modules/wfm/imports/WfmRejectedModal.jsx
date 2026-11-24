@@ -42,8 +42,6 @@ export default function WfmRejectedModal({
   onClose,
   uploadsByCard = {},
   selectedAccount = "All Accounts",
-  isLoadingUsVisaErrors = false,
-  handleOpenUsVisaErrors,
   handleOpenBatchDetails,
   setUploadToRemove,
 }) {
@@ -316,11 +314,8 @@ export default function WfmRejectedModal({
 
                               <button
                                 type="button"
-                                disabled={isLoadingUsVisaErrors}
                                 onClick={() => {
-                                  handleOpenUsVisaErrors(
-                                    batch.batchId || batch.id,
-                                  );
+                                  handleOpenBatchDetails(batch, "validation");
                                 }}
                                 className="sm:hidden inline-flex shrink-0 whitespace-nowrap items-center gap-1 rounded-md border border-red-300 bg-red-50 px-2 py-0.5 text-[10px] font-semibold text-red-800 transition-all hover:border-red-400 hover:bg-red-100"
                                 title="Click to view error details"
@@ -375,7 +370,7 @@ export default function WfmRejectedModal({
                             <button
                               type="button"
                               onClick={() => {
-                                handleOpenBatchDetails(batch);
+                                handleOpenBatchDetails(batch, "validation");
                               }}
                               className="inline-flex h-8 items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 shadow-xs transition-all hover:border-sibs-primary-1 hover:bg-sibs-primary-1 hover:text-white"
                             >

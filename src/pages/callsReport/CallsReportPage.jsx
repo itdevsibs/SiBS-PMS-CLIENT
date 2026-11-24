@@ -1,3 +1,4 @@
+import { callRate, completeCallSum, formatCallRate } from "@/components/modules/kpi/callRate.js";
 import React, { useEffect, useMemo, useState } from "react";
 import AdminSidebar from "@/components/common/layout/AdminSidebar";
 import AppHeader from "@/components/common/layout/AppHeader";
@@ -252,17 +253,14 @@ export default function CallsReportPage() {
   // Statistics group lacks the column; never treat NULL as zero.
   const totals = useMemo(() => {
     const sumRequired = (key) => filteredData.reduce((sum, r) => sum + Number(r[key] || 0), 0);
-    const sumNullable = (key) => filteredData.length && filteredData.every((r) => r[key] !== null && r[key] !== undefined)
-      ? filteredData.reduce((sum, r) => sum + Number(r[key]), 0) : null;
+    const sumNullable = (key) => completeCallSum(filteredData, key);
     const callsReceived = sumRequired("callsReceived");
     const callsAnswered = sumRequired("callsAnswered");
     const callsAbandoned = sumNullable("callsAbandoned");
     const callsAbandonedAfterSl = sumNullable("callsAbandonedAfterSl");
     const callsAnsweredWithinSl = sumNullable("callsAnsweredWithinSl");
-    const abandonedRate = callsAbandoned === null ? "--" :
-      callsReceived > 0 ? `${(callsAbandoned / callsReceived * 100).toFixed(2)}%` : "0.00%";
-    const sl = callsAnsweredWithinSl === null ? "--" :
-      callsAnswered > 0 ? `${(callsAnsweredWithinSl / callsAnswered * 100).toFixed(2)}%` : "0.00%";
+    const abandonedRate = formatCallRate(callRate(callsAbandoned, callsReceived));
+    const sl = formatCallRate(callRate(callsAnsweredWithinSl, callsAnswered));
     const ahtAvailable = filteredData.length > 0 && filteredData.every((r) =>
       Number(r.callsAnswered || 0) === 0 ||
       (r.ahtHandleSecondsNumerator !== null && r.ahtHandleSecondsNumerator !== undefined &&
@@ -661,7 +659,7 @@ export default function CallsReportPage() {
                     paginatedData.map((row, idx) => {
                       const isAbandonedZero = row.callsAbandoned === 0;
                       const isAbandonedAfterSlZero = row.callsAbandonedAfterSl === 0;
-                      const slNumber = parseFloat(row.sl) || 0;
+                      const slNumber = parseFloat(row.sl);
                       const isHighSL = slNumber >= 80;
 
                       return (
@@ -724,18 +722,18 @@ export default function CallsReportPage() {
                                   : "text-rose-600"
                               }`}
                             >
-                              {row.abandonedRate || "0.00%"}
+                              {row.abandonedRate || "--"}
                             </span>
                           </td>
                           <td className="whitespace-nowrap px-4 py-3 text-right">
                             <span
                               className={`inline-flex items-center justify-end font-bold ${
-                                isHighSL
+                                !Number.isFinite(slNumber) ? "text-slate-400" : isHighSL
                                   ? "text-emerald-700"
                                   : "text-amber-600"
                               }`}
                             >
-                              {row.sl || "0.00%"}
+                              {row.sl || "--"}
                             </span>
                           </td>
                         </tr>

@@ -1,14 +1,17 @@
+import { callRate, completeCallSum, callCount, formatCallRate } from "./callRate.js";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AlertCircle, ChevronLeft, ChevronRight, Search } from "lucide-react";
 import { getCallsReport } from "@/lib/axios/kpis";
 import { convertDurationToSeconds } from "./callKpiDashboardUtils.js";
 
 function formatNumber(value, digits = 0) {
+  if (callCount(value) === null) return "--";
   const num = Number(value || 0);
   return num.toLocaleString(undefined, { maximumFractionDigits: digits });
 }
 
 function formatPercent(value) {
+  if (value == null || !Number.isFinite(Number(value))) return "--";
   const num = Number(value || 0);
   if (num >= 100 || num.toFixed(2) === "100.00") return "100%";
   return `${formatNumber(num, 2)}%`;
@@ -165,6 +168,7 @@ export default function CallsDrillDownModalContent({
 
     async function fetchDrillDown() {
       setIsLoading(true);
+      setRows([]);
       setError(null);
       setCurrentPage(1);
       setSelectedCountry("");
@@ -253,21 +257,13 @@ export default function CallsDrillDownModalContent({
   }, [rows, searchQuery, selectedCountry, selectedLanguage]);
 
   const summary = useMemo(() => {
-    let callsReceived = 0;
-    let callsAnswered = 0;
-    let callsAbandoned = 0;
-    let callsAnsweredWithinSl = 0;
-
-    filteredRows.forEach((row) => {
-      callsReceived += Number(row?.callsReceived || 0);
-      callsAnswered += Number(row?.callsAnswered || 0);
-      callsAbandoned += Number(row?.callsAbandoned || 0);
-      callsAnsweredWithinSl += Number(row?.callsAnsweredWithinSl || 0);
-    });
-
-    const answerRatePct = callsReceived > 0 ? (callsAnswered / callsReceived) * 100 : 0;
-    const abandonedRatePct = callsReceived > 0 ? (callsAbandoned / callsReceived) * 100 : 0;
-    const slPct = callsAnswered > 0 ? (callsAnsweredWithinSl / callsAnswered) * 100 : 0;
+    const callsReceived = completeCallSum(filteredRows, "callsReceived");
+    const callsAnswered = completeCallSum(filteredRows, "callsAnswered");
+    const callsAbandoned = completeCallSum(filteredRows, "callsAbandoned");
+    const callsAnsweredWithinSl = completeCallSum(filteredRows, "callsAnsweredWithinSl");
+    const answerRatePct = callRate(callsAnswered, callsReceived);
+    const abandonedRatePct = callRate(callsAbandoned, callsReceived);
+    const slPct = callRate(callsAnsweredWithinSl, callsAnswered);
 
     return {
       callsReceived,
@@ -435,7 +431,7 @@ export default function CallsDrillDownModalContent({
             Calls Received
           </div>
           <div className="mt-0.5 text-lg font-black text-[#103B63] tabular-nums">
-            {isLoading ? "--" : summary.callsReceived.toLocaleString()}
+            {isLoading ? "--" : formatNumber(summary.callsReceived)}
           </div>
         </div>
 
@@ -444,12 +440,12 @@ export default function CallsDrillDownModalContent({
             <span>Calls Answered</span>
             {!isLoading ? (
               <span className="text-[10px] font-bold text-emerald-700">
-                {summary.answerRatePct.toFixed(2)}%
+                {formatCallRate(summary.answerRatePct)}
               </span>
             ) : null}
           </div>
           <div className="mt-0.5 text-lg font-black text-emerald-600 tabular-nums">
-            {isLoading ? "--" : summary.callsAnswered.toLocaleString()}
+            {isLoading ? "--" : formatNumber(summary.callsAnswered)}
           </div>
         </div>
 
@@ -458,12 +454,12 @@ export default function CallsDrillDownModalContent({
             <span>Calls Abandoned</span>
             {!isLoading ? (
               <span className="text-[10px] font-bold text-rose-600">
-                {summary.abandonedRatePct.toFixed(2)}%
+                {formatCallRate(summary.abandonedRatePct)}
               </span>
             ) : null}
           </div>
           <div className="mt-0.5 text-lg font-black text-rose-600 tabular-nums">
-            {isLoading ? "--" : summary.callsAbandoned.toLocaleString()}
+            {isLoading ? "--" : formatNumber(summary.callsAbandoned)}
           </div>
         </div>
 
@@ -472,7 +468,7 @@ export default function CallsDrillDownModalContent({
             Answered Within SL
           </div>
           <div className="mt-0.5 text-lg font-black text-[#0b3b68] tabular-nums">
-            {isLoading ? "--" : summary.callsAnsweredWithinSl.toLocaleString()}
+            {isLoading ? "--" : formatNumber(summary.callsAnsweredWithinSl)}
           </div>
         </div>
 
@@ -482,14 +478,14 @@ export default function CallsDrillDownModalContent({
           </div>
           <div
             className={`mt-0.5 text-lg font-black tabular-nums ${
-              isLoading
+              isLoading || summary.slPct === null
                 ? "text-slate-400"
                 : summary.slPct >= 80
                 ? "text-emerald-600"
                 : "text-amber-600"
             }`}
           >
-            {isLoading ? "--" : `${summary.slPct.toFixed(2)}%`}
+            {isLoading ? "--" : formatCallRate(summary.slPct)}
           </div>
         </div>
       </div>
@@ -500,8 +496,8 @@ export default function CallsDrillDownModalContent({
           const handled = summary.callsAnswered;
           const handledSla = summary.callsAnsweredWithinSl;
           const abandoned = summary.callsAbandoned;
-          const outsideSla = Math.max(0, handled - handledSla);
-          const outsideSlaPct = handled > 0 ? (outsideSla / handled) * 100 : 0;
+          const outsideSla = handled === null || handledSla === null ? null : Math.max(0, handled - handledSla);
+          const outsideSlaPct = callRate(outsideSla, handled);
           const answerRatePct = summary.answerRatePct;
           const serviceLevelPct = summary.slPct;
           const abandonRatePct = summary.abandonedRatePct;
@@ -514,9 +510,9 @@ export default function CallsDrillDownModalContent({
 
           const targetSlPct = Number(targets?.serviceLevelPct ?? 90);
           const targetAhtSec = convertDurationToSeconds(targets?.ahtSeconds ?? 420);
-          const slMet = serviceLevelPct >= targetSlPct;
+          const slMet = serviceLevelPct !== null && serviceLevelPct >= targetSlPct;
           const ahtMet = ahtSeconds > 0 && ahtSeconds <= targetAhtSec;
-          const slVariance = serviceLevelPct - targetSlPct;
+          const slVariance = serviceLevelPct === null ? null : serviceLevelPct - targetSlPct;
           const ahtVariance = ahtSeconds - targetAhtSec;
 
           return (
@@ -536,7 +532,7 @@ export default function CallsDrillDownModalContent({
                     <ProgressRow
                       label="Total Calls Offered"
                       valueText={formatNumber(offered)}
-                      pct={offered > 0 ? 100 : 0}
+                      pct={offered > 0 ? 100 : null}
                       barColor="bg-[#0b3b68]"
                     />
                     <ProgressRow
@@ -550,14 +546,14 @@ export default function CallsDrillDownModalContent({
                       label="Handled Within SLA"
                       valueText={formatNumber(handledSla)}
                       subtext={`${formatPercent(serviceLevelPct)} of handled`}
-                      pct={offered > 0 ? (handledSla / offered) * 100 : 0}
+                      pct={serviceLevelPct}
                       barColor="bg-[#4c9aca]"
                     />
                     <ProgressRow
                       label="Handled Outside SLA"
                       valueText={formatNumber(outsideSla)}
                       subtext={`${formatPercent(outsideSlaPct)} of handled`}
-                      pct={offered > 0 ? (outsideSla / offered) * 100 : 0}
+                      pct={outsideSlaPct}
                       barColor="bg-amber-400"
                     />
                     <ProgressRow
@@ -585,8 +581,8 @@ export default function CallsDrillDownModalContent({
                       <div className="text-[9.5px] font-bold uppercase tracking-wider text-slate-500">
                         SL Variance vs Target
                       </div>
-                      <div className={`mt-0.5 text-sm font-black tabular-nums ${slMet ? "text-emerald-700" : "text-amber-700"}`}>
-                        {slVariance >= 0 ? `+${slVariance.toFixed(2)}%` : `${slVariance.toFixed(2)}%`}
+                      <div className={`mt-0.5 text-sm font-black tabular-nums ${slVariance === null ? "text-slate-400" : slMet ? "text-emerald-700" : "text-amber-700"}`}>
+                        {slVariance === null ? "--" : slVariance >= 0 ? `+${slVariance.toFixed(2)}%` : `${slVariance.toFixed(2)}%`}
                       </div>
                       <div className="text-[10px] text-slate-400">
                         Actual {formatPercent(serviceLevelPct)} vs {targetSlPct}%
@@ -672,8 +668,8 @@ export default function CallsDrillDownModalContent({
                         <td className="px-3 py-1 text-right font-bold text-[#103B63] tabular-nums">{formatNumber(handledSla)}</td>
                         <td className="px-3 py-1 text-right text-slate-500 tabular-nums">{formatPercent(serviceLevelPct)} vs {targetSlPct}% target</td>
                         <td className="px-3.5 py-1 text-right">
-                          <span className={`inline-block rounded px-1.5 py-0.5 text-[10px] font-bold ${slMet ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>
-                            {slMet ? "Target Met" : "Below Target"}
+                          <span className={`inline-block rounded px-1.5 py-0.5 text-[10px] font-bold ${serviceLevelPct === null ? "text-slate-400" : slMet ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>
+                            {serviceLevelPct === null ? "--" : slMet ? "Target Met" : "Below Target"}
                           </span>
                         </td>
                       </tr>
@@ -849,13 +845,13 @@ export default function CallsDrillDownModalContent({
                             isAbandonedZero ? "text-slate-400" : "text-rose-600"
                           }`}
                         >
-                          {row.abandonedRate || "0.00%"}
+                          {row.abandonedRate ?? "--"}
                         </span>
                       </td>
                       <td className="px-2.5 py-1.5 text-right tabular-nums">
                         <span
                           className={`inline-block font-extrabold ${
-                            row.sl === null || row.sl === undefined || row.sl === "—"
+                            row.sl === null || row.sl === undefined || row.sl === "—" || row.sl === "--"
                               ? "text-slate-400"
                               : isHighSL
                               ? "text-emerald-600"

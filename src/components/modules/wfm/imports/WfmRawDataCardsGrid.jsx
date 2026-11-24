@@ -13,7 +13,7 @@ export default function WfmRawDataCardsGrid({
   onFileSelect,
   onOpenCard,
   onRefreshCard,
-  onOpenErrorDetails,
+  onOpenBatchDetails,
 }) {
   const { levelGroups, otherGroup } = useMemo(() => {
     const levels = [];
@@ -78,7 +78,7 @@ export default function WfmRawDataCardsGrid({
                 onFileSelect={onFileSelect}
                 onOpenCard={onOpenCard}
                 onRefreshCard={onRefreshCard}
-                onOpenErrorDetails={onOpenErrorDetails}
+                onOpenBatchDetails={onOpenBatchDetails}
               />
             ))}
           </div>
@@ -116,7 +116,7 @@ export default function WfmRawDataCardsGrid({
                 onFileSelect={onFileSelect}
                 onOpenCard={onOpenCard}
                 onRefreshCard={onRefreshCard}
-                onOpenErrorDetails={onOpenErrorDetails}
+                onOpenBatchDetails={onOpenBatchDetails}
               />
             ))}
           </div>

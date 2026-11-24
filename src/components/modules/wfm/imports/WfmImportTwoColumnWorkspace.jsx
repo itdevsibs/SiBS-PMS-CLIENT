@@ -1,3 +1,4 @@
+import WfmImportStatusBadge from "@/components/modules/wfm/imports/WfmImportStatusBadge";
 import React, { useMemo, useRef, useState } from "react";
 import {
   PhoneCall,
@@ -12,6 +13,7 @@ import {
   FolderOpen,
   PieChart,
   FileText,
+  Eye,
 } from "lucide-react";
 
 /**
@@ -140,45 +142,6 @@ function formatTableTimestamp(upload) {
   return str || "—";
 }
 
-function StatusBadge({ upload, onOpenErrors }) {
-  const isFailed =
-    upload?.batchStatus === "FAILED" || upload?.status === "FAILED";
-  const isCompletedWithErrors =
-    (upload?.invalidRows || 0) > 0 ||
-    (upload?.warningRows || 0) > 0 ||
-    (upload?.duplicateRows || 0) > 0 ||
-    upload?.batchStatus === "COMPLETED_WITH_ERRORS" ||
-    upload?.displayStatus === "COMPLETED_WITH_ERRORS" ||
-    upload?.displayStatus === "COMPLETED_WITH_WARNINGS";
-
-  if (isFailed) {
-    return (
-      <span className="inline-flex items-center rounded-full bg-[#FEF2F2] px-2.5 py-0.5 text-xs font-semibold text-[#DC2626] border border-[#FCA5A5]/60">
-        Failed
-      </span>
-    );
-  }
-
-  if (isCompletedWithErrors) {
-    return (
-      <button
-        type="button"
-        onClick={() => onOpenErrors?.(upload?.batchId || upload?.id)}
-        className="inline-flex items-center rounded-full bg-[#FEF3C7] px-2.5 py-0.5 text-xs font-semibold text-[#B45309] border border-[#FCD34D]/70 hover:bg-[#FDE68A] transition-colors cursor-pointer"
-        title="Click to view issues/errors"
-      >
-        Completed with Errors
-      </button>
-    );
-  }
-
-  return (
-    <span className="inline-flex items-center rounded-full bg-[#DCFCE7] px-2.5 py-0.5 text-xs font-semibold text-[#15803D] border border-[#86EFAC]/70">
-      Completed
-    </span>
-  );
-}
-
 export default function WfmImportTwoColumnWorkspace({
   maxFileSizeMb = 50,
   groupedCards = [],
@@ -187,7 +150,7 @@ export default function WfmImportTwoColumnWorkspace({
   isUploading = false,
   onFileSelect,
   onOpenCard,
-  onOpenErrorDetails,
+  onOpenBatchDetails,
 }) {
   const [selectedLevelId, setSelectedLevelId] = useState("agent-activity-productive-breaks");
   const [selectedSourceId, setSelectedSourceId] = useState("");
@@ -567,10 +530,11 @@ export default function WfmImportTwoColumnWorkspace({
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
                   <tr className="bg-[#F3F6FA] border-b border-[#D7E1EE] text-[#102448]">
-                    <th className="py-1.5 px-3.5 font-bold w-[25%]">Uploaded At</th>
-                    <th className="py-1.5 px-3.5 font-bold w-[45%]">File Name</th>
-                    <th className="py-1.5 px-3.5 font-bold text-center w-[18%]">Status</th>
-                    <th className="py-1.5 px-3.5 font-bold text-right w-[12%]">Records</th>
+                    <th className="py-1.5 px-3.5 font-bold w-[23%]">Uploaded At</th>
+                    <th className="py-1.5 px-3.5 font-bold w-[35%]">File Name</th>
+                    <th className="py-1.5 px-3.5 font-bold text-center w-[22%]">Status</th>
+                    <th className="py-1.5 px-3.5 font-bold text-right w-[10%]">Records</th>
+                    <th className="py-1.5 px-3.5 font-bold text-right w-[10%]">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#D7E1EE] bg-white">
@@ -587,6 +551,7 @@ export default function WfmImportTwoColumnWorkspace({
                           </td>
                           <td className="py-1.5 px-3.5 text-center font-mono text-[11px] text-[#8EA2BE]">--</td>
                           <td className="py-1.5 px-3.5 text-right font-mono text-[11px] text-[#8EA2BE]">--</td>
+                          <td className="py-1.5 px-3.5 text-right text-[#8EA2BE]">--</td>
                         </tr>
                       );
                     }
@@ -613,13 +578,13 @@ export default function WfmImportTwoColumnWorkspace({
                           {upload.fileName || "—"}
                         </td>
                         <td className="py-1.5 px-3.5 text-center whitespace-nowrap">
-                          <StatusBadge
-                            upload={upload}
-                            onOpenErrors={onOpenErrorDetails}
-                          />
+                          <WfmImportStatusBadge upload={upload} onView={onOpenBatchDetails} />
                         </td>
                         <td className="py-1.5 px-3.5 text-right font-bold text-[#102448] whitespace-nowrap">
                           {recordsCount.toLocaleString()}
+                        </td>
+                        <td className="py-1.5 px-3.5 text-right">
+                          <button type="button" onClick={() => onOpenBatchDetails?.(upload)} className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-slate-700 hover:border-sibs-primary-1 hover:text-sibs-primary-1"><Eye className="h-3.5 w-3.5" />View</button>
                         </td>
                       </tr>
                     );

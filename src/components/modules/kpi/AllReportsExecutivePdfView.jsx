@@ -1,3 +1,4 @@
+import { callCount, callRate, formatCallRate } from "./callRate.js";
 import React from "react";
 import { Users } from "lucide-react";
 import { getCallAxisTicks } from "./callKpiDashboardUtils";
@@ -68,9 +69,9 @@ export default function AllReportsExecutivePdfView({
     const item = callMap.get(lbl) || callList[idx] || {};
     const vol = Number(item.callsOffered ?? item.volume ?? item.interactionCount ?? 0);
     const handled = Number(item.callsHandled ?? item.handled ?? item.answeredCalls ?? 0);
-    const sla = Number(item.handledWithSla ?? item.handledWithinSla ?? item.handledWithSlt ?? 0);
-    const ansRate = Number(item.answerRatePct ?? item.answerRate ?? (vol > 0 ? (handled / vol) * 100 : 0));
-    const sl = Number(item.serviceLevelPct ?? item.serviceLevel ?? (handled > 0 ? (sla / handled) * 100 : 0));
+    const sla = callCount(item.handledWithSla ?? item.handledWithinSla ?? item.handledWithSlt);
+    const ansRate = callRate(item.callsHandled ?? item.handled ?? item.answeredCalls, item.callsOffered ?? item.volume ?? item.interactionCount);
+    const sl = callRate(sla, item.callsHandled ?? item.handled ?? item.answeredCalls);
     const ahtSec = Number(item.ahtSeconds ?? item.averageHandleSeconds ?? item.aht ?? item.averageHandleTime ?? 0);
 
     return {
@@ -1011,6 +1012,7 @@ export default function AllReportsExecutivePdfView({
                               </span>
                             </div>
                           )}
+                          {!(item.answerRate > 0) && <span style={{flex:1, maxWidth:barMaxWidth, fontSize:barFontSize, textAlign:"center"}}>{formatCallRate(item.answerRate, 1)}</span>}
                           {/* SL % - only show if > 0 */}
                           {item.serviceLevel > 0 && (
                             <div style={{ flex: 1, maxWidth: barMaxWidth, height: `${slH}%`, backgroundColor: blueMid, position: "relative", display: "flex", justifyContent: "center", borderRadius: "0px" }}>
@@ -1019,6 +1021,7 @@ export default function AllReportsExecutivePdfView({
                               </span>
                             </div>
                           )}
+                          {!(item.serviceLevel > 0) && <span style={{flex:1, maxWidth:barMaxWidth, fontSize:barFontSize, textAlign:"center"}}>{formatCallRate(item.serviceLevel, 1)}</span>}
                         </div>
                       );
                     })}
@@ -1037,7 +1040,7 @@ export default function AllReportsExecutivePdfView({
 
               {/* Red Subtitle */}
               <div style={{ textAlign: "center", color: redAlert, fontSize: isCallsStacked || isTwoSections ? "11.5px" : "10px", fontWeight: "800", marginTop: "3px", letterSpacing: "0.03em" }}>
-                ANSWER % : OFFERED / HANDLED &nbsp;&nbsp;&nbsp; SL % : HANDLED W/SLA / HANDLED
+                ANSWER % : HANDLED / OFFERED &nbsp;&nbsp;&nbsp; SL % : HANDLED W/SLA / HANDLED
               </div>
             </div>
 
