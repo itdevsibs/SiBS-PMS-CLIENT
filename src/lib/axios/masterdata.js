@@ -15,6 +15,7 @@ export async function fetchMasterDataLedger({
   account = "",
   taskOrder = "",
   organizationalRole = "",
+  employmentStatus = "",
   viewAll = false,
   page = 1,
   limit = 25,
@@ -38,6 +39,9 @@ export async function fetchMasterDataLedger({
   }
   if (organizationalRole) {
     params.set("organizationalRole", organizationalRole);
+  }
+  if (employmentStatus) {
+    params.set("employmentStatus", employmentStatus);
   }
   if (viewAll) {
     params.set("viewAll", "true");
