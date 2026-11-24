@@ -1,3 +1,4 @@
+import WfmImportStatusBadge from "@/components/modules/wfm/imports/WfmImportStatusBadge";
 import {
   AlertCircle,
   AlertTriangle,
@@ -9,7 +10,6 @@ import {
 import AppModal from "@/components/common/ui/AppModal";
 import { Button } from "@/components/common/ui/Button";
 import BatchDetailStat from "@/components/modules/wfm/imports/WfmBatchDetailStat";
-import { getImportDisplayStatus } from "@/lib/wfm-import-utils";
 
 export function DuplicateUploadAlertModal({ duplicateUploadAlert, onClose }) {
   return (
@@ -34,7 +34,6 @@ export function DuplicateUploadAlertModal({ duplicateUploadAlert, onClose }) {
 export function AddedUploadSuccessModal({
   addedUpload,
   onClose,
-  handleOpenUsVisaErrors,
   handleOpenBatchDetails,
 }) {
   return (
@@ -63,23 +62,7 @@ export function AddedUploadSuccessModal({
             <span className="font-mono text-sibs-primary-2">
               Batch: {addedUpload.batch.batchCode}
             </span>
-            {getImportDisplayStatus(addedUpload.batch).tone === "warning" ||
-            Number(addedUpload.batch.warningRows || 0) > 0 ||
-            Number(addedUpload.batch.invalidRows || 0) > 0 ||
-            Number(addedUpload.batch.duplicateRows || 0) > 0 ? (
-              <span className="inline-flex items-center gap-1 rounded border border-amber-400 bg-amber-50 px-2 py-0.5 text-[11px] font-bold text-amber-800">
-                <AlertTriangle className="h-3 w-3 text-amber-600" aria-hidden="true" />
-                <span>{getImportDisplayStatus(addedUpload.batch).label}</span>
-              </span>
-            ) : addedUpload.batch.status === "FAILED" ? (
-              <span className="rounded border border-rose-200 bg-rose-50 px-2 py-0.5 text-[11px] font-bold text-rose-700">
-                Failed
-              </span>
-            ) : (
-              <span className="rounded border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-bold text-emerald-700">
-                Completed
-              </span>
-            )}
+            <WfmImportStatusBadge upload={addedUpload.batch} />
           </div>
           <div className="mt-3 grid grid-cols-2 gap-2 sm:gap-2.5 sm:grid-cols-6">
             <BatchDetailStat
@@ -148,13 +131,9 @@ export function AddedUploadSuccessModal({
             type="button"
             variant="outline"
             onClick={() => {
-              const batchData = addedUpload.batch;
+              const batchData = addedUpload.upload || { ...addedUpload.batch, batchId: addedUpload.batch.id, fileName: addedUpload.batch.sourceFilename || addedUpload.fileName, rawDataTitle: addedUpload.rawDataTitle };
               onClose();
-              if (handleOpenBatchDetails) {
-                handleOpenBatchDetails(batchData);
-              } else if (handleOpenUsVisaErrors) {
-                handleOpenUsVisaErrors(batchData.id || batchData.batchId);
-              }
+              handleOpenBatchDetails?.(batchData);
             }}
             className="h-10 rounded-lg border-sibs-danger/30 px-4 text-sibs-danger hover:bg-sibs-danger hover:text-white"
           >

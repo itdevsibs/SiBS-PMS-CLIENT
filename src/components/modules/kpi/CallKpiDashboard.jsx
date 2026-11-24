@@ -1,3 +1,4 @@
+import { callRate, callCount } from "./callRate.js";
 import { useState } from "react";
 import { CheckCircle2, Clock3, Gauge, Loader2, PhoneCall } from "lucide-react";
 import { Skeleton } from "@/components/common/ui/Skeleton.jsx";
@@ -21,6 +22,7 @@ function formatGraphNumber(value, digits = 0) {
 }
 
 function formatPercent(value) {
+  if (callCount(value) === null) return "--";
   const number = Number(value || 0);
   if (number >= 100 || number.toFixed(2) === "100.00") return "100%";
   return `${formatNumber(value, 2)}%`;
@@ -606,22 +608,17 @@ function VolumeChart({
                                 Calls:
                               </span>
                               <span className="font-extrabold text-sibs-primary-1">
-                                {formatGraphNumber(numericValue)}
+                                {callCount(metric === "Volume" ? item.callsOffered : metric === "Handled" ? item.callsHandled : item.handledWithinSla) === null ? "--" : formatGraphNumber(numericValue)}
                               </span>
                             </div>
 
-                            {metric !== "Volume" &&
-                              Number(item.callsOffered || 0) > 0 && (
+                            {metric !== "Volume" && (
                                 <div className="mt-1 flex items-center justify-between border-t border-slate-100 pt-1 text-[11px]">
                                   <span className="font-semibold text-slate-500">
                                     Rate:
                                   </span>
                                   <span className="font-extrabold text-sibs-primary-1">
-                                    {formatPercent(
-                                      (numericValue /
-                                        Number(item.callsOffered)) *
-                                        100,
-                                    )}
+                                    {formatPercent(metric === "Handled" ? callRate(item.callsHandled, item.callsOffered) : callRate(item.handledWithinSla, item.callsHandled))}
                                   </span>
                                 </div>
                               )}
@@ -686,13 +683,13 @@ function LineChart({
   const rateBarItems = (item) => [
     {
       metric: "Answer",
-      value: Number(item.answerRatePct || 0),
+      value: callCount(item.answerRatePct),
       className: "bg-[#0b3b68]",
       color: "#0b3b68",
     },
     {
       metric: "Service Level",
-      value: Number(item.serviceLevelPct || 0),
+      value: callCount(item.serviceLevelPct),
       className: "bg-[#0284c7]",
       color: "#0284c7",
     },
@@ -824,7 +821,7 @@ function LineChart({
                   >
                   <div className="flex h-full w-full max-w-[82px] items-end justify-center gap-0">
                     {bars.map(({ metric, value, className, color }, barIndex) => {
-                      const numericValue = hasData ? Math.max(0, Math.min(100, Number(value || 0))) : 0;
+                      const numericValue = value === null ? null : Math.max(0, Math.min(100, value));
                       const heightPercent = hasData && numericValue > 0 ? numericValue : 0;
 
                       return (
@@ -834,7 +831,7 @@ function LineChart({
                           aria-label={`${item.label} ${metric}: ${formatPercent(numericValue)}`}
                         >
                           {/* Value inside bar */}
-                          {hasData && numericValue > 0 ? (
+                          {(
                             <span
                               className={`pointer-events-none absolute left-1/2 z-10 -translate-x-1/2 whitespace-nowrap ${isSubmodule ? "text-[8.5px] sm:text-[9px] font-semibold" : "text-[8px] sm:text-[8.5px] 2xl:text-[9px] font-medium"} tracking-tight transition-all duration-200 group-hover/bar:-translate-y-0.5 sibs-graph-number-in ${
                                 heightPercent > 10
@@ -849,11 +846,11 @@ function LineChart({
                                 animationDelay: `${Math.min(periodIndex * 80 + barIndex * 40, 650)}ms`,
                               }}
                             >
-                              {numericValue >= 100 || numericValue.toFixed(1) === "100.0"
+                              {numericValue === null ? "--" : numericValue >= 100 || numericValue.toFixed(1) === "100.0"
                                 ? "100%"
                                 : `${numericValue.toFixed(1)}%`}
                             </span>
-                          ) : null}
+                          )}
 
                           {/* Hover Tooltip Modal */}
                           <div
@@ -891,12 +888,12 @@ function LineChart({
                                 </span>
                                 <span
                                   className={`font-extrabold ${
-                                    numericValue >= numericTarget
+                                    numericValue === null ? "text-slate-400" : numericValue >= numericTarget
                                       ? "text-green-600"
                                       : "text-amber-600"
                                   }`}
                                 >
-                                  {numericValue >= numericTarget ? "Target met" : "Below target"}
+                                  {numericValue === null ? "--" : numericValue >= numericTarget ? "Target met" : "Below target"}
                                 </span>
                               </div>
                             )}
@@ -1223,7 +1220,6 @@ export default function CallKpiDashboard({
   const isFiltersVisible = showFilters !== undefined ? showFilters : showSummaryCards;
   const summary = data?.summary || {};
   const queueUnavailable = data?.queueCoverage && data.queueCoverage.status !== "COMPLETE";
-  const serviceLevelUnavailable = data?.queueCoverage?.metricAvailability?.handledWithinSlt === false;
   const series = Array.isArray(data?.series)
     ? data.series
     : [];
@@ -1520,7 +1516,7 @@ export default function CallKpiDashboard({
             }
           >
             <LineChart
-              series={queueUnavailable || serviceLevelUnavailable ? [] : series.length ? series : data?.data?.series || []}
+              series={queueUnavailable ? [] : series.length ? series : data?.data?.series || []}
               target={
                 targets.serviceLevelPct ??
                 data?.data?.targets?.serviceLevelPct

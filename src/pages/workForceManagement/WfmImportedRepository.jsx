@@ -38,7 +38,6 @@ import WfmImportDayCalendar from "@/components/modules/wfm/imports/WfmImportDayC
 import WfmImportYearCalendar from "@/components/modules/wfm/imports/WfmImportYearCalendar";
 import WfmCalendarDailyImports from "@/components/modules/wfm/imports/WfmCalendarDailyImports";
 import WfmRepositoryReportTypeBadge from "@/components/modules/wfm/imports/WfmRepositoryReportTypeBadge";
-import WfmErrorDetailsModal from "@/components/modules/wfm/imports/WfmErrorDetailsModal";
 import WfmReadOnlyExcelModal from "@/components/modules/wfm/imports/WfmReadOnlyExcelModal";
 import WfmFilterBar from "@/components/modules/wfm/imports/WfmFilterBar";
 import WfmImportSummaryBar from "@/components/modules/wfm/imports/WfmImportSummaryBar";
@@ -61,7 +60,6 @@ import {
 import {
   deleteUsVisaImportBatch,
   getUsVisaImportBatchDetails,
-  getUsVisaImportBatchErrors,
   getUsVisaImportHistory,
   getUsVisaImportSummary,
   getUsVisaImportCalendar,
@@ -234,18 +232,6 @@ export default function WfmImportedRepository() {
   const [removingUploadFileName, setRemovingUploadFileName] = useState("");
   const [removedUpload, setRemovedUpload] = useState(null);
   const [removeUploadError, setRemoveUploadError] = useState(null);
-  const [isLoadingUsVisaErrors, setIsLoadingUsVisaErrors] = useState(false);
-  const [usVisaErrorDetails, setUsVisaErrorDetails] = useState(null);
-  const [activeErrorBatchId, setActiveErrorBatchId] = useState(null);
-  const [errorSearchQuery, setErrorSearchQuery] = useState("");
-  const [errorSeverityFilter, setErrorSeverityFilter] = useState("ALL");
-  const [jumpPageInput, setJumpPageInput] = useState("");
-  const [errorPagination, setErrorPagination] = useState({
-    page: 1,
-    limit: 25,
-    total: 0,
-    totalPages: 1,
-  });
 
   // Sync uploads with local cache
   useEffect(() => {
@@ -634,8 +620,9 @@ export default function WfmImportedRepository() {
   const headerTitle = "Uploaded Data Repository";
 
   // View Batch Details
-  const handleOpenBatchDetails = async (upload) => {
-    setSelectedUploadDetails(upload);
+  const handleOpenBatchDetails = async (upload, initialIssueType = null) => {
+    if (!upload) return;
+    setSelectedUploadDetails({ ...upload, initialIssueType });
 
     if (upload?.batchId) {
       try {
@@ -665,55 +652,6 @@ export default function WfmImportedRepository() {
       } catch (err) {
         console.warn("Could not fetch latest batch details:", err?.message);
       }
-    }
-  };
-
-  // Open error details modal
-  const handleOpenUsVisaErrors = async (
-    batchId,
-    targetPage = 1,
-    targetLimit,
-    targetSearch = errorSearchQuery,
-    targetSeverity = errorSeverityFilter,
-  ) => {
-    const rawBatchId = batchId || activeErrorBatchId;
-    const targetBatchId =
-      typeof rawBatchId === "string" && rawBatchId.startsWith("batch-")
-        ? rawBatchId.replace("batch-", "")
-        : rawBatchId;
-
-    if (!targetBatchId || isLoadingUsVisaErrors) return;
-
-    const currentLimit = targetLimit || errorPagination.limit || 25;
-    setIsLoadingUsVisaErrors(true);
-    setActiveErrorBatchId(targetBatchId);
-
-    try {
-      const response = await getUsVisaImportBatchErrors(targetBatchId, {
-        page: targetPage,
-        limit: currentLimit,
-        search: targetSearch || undefined,
-        severity: targetSeverity !== "ALL" ? targetSeverity : undefined,
-      });
-
-      setUsVisaErrorDetails(response);
-      const totalCount =
-        response?.pagination?.total ?? response?.data?.length ?? 0;
-      const totalPages =
-        response?.pagination?.totalPages ??
-        Math.max(1, Math.ceil(totalCount / currentLimit));
-
-      setErrorPagination({
-        page: targetPage,
-        limit: currentLimit,
-        total: totalCount,
-        totalPages,
-      });
-      setJumpPageInput(String(targetPage));
-    } catch (error) {
-      console.error("Failed to load US VISA import errors:", error);
-    } finally {
-      setIsLoadingUsVisaErrors(false);
     }
   };
 
@@ -1366,8 +1304,6 @@ export default function WfmImportedRepository() {
               }
             : null
         }
-        isLoadingUsVisaErrors={isLoadingUsVisaErrors}
-        handleOpenUsVisaErrors={handleOpenUsVisaErrors}
         onOpenRawData={(batch) => setSelectedRawBatch(batch)}
         onClose={() => setSelectedUploadDetails(null)}
       />
@@ -1385,8 +1321,6 @@ export default function WfmImportedRepository() {
         onClose={() => setIsWarningsModalOpen(false)}
         uploadsByCard={uploadsByCard}
         selectedAccount={selectedAccount}
-        isLoadingUsVisaErrors={isLoadingUsVisaErrors}
-        handleOpenUsVisaErrors={handleOpenUsVisaErrors}
         handleOpenBatchDetails={handleOpenBatchDetails}
         setUploadToRemove={setUploadToRemove}
       />
@@ -1397,8 +1331,6 @@ export default function WfmImportedRepository() {
         onClose={() => setIsRejectedModalOpen(false)}
         uploadsByCard={uploadsByCard}
         selectedAccount={selectedAccount}
-        isLoadingUsVisaErrors={isLoadingUsVisaErrors}
-        handleOpenUsVisaErrors={handleOpenUsVisaErrors}
         handleOpenBatchDetails={handleOpenBatchDetails}
         setUploadToRemove={setUploadToRemove}
       />
@@ -1409,8 +1341,6 @@ export default function WfmImportedRepository() {
         onClose={() => setIsDuplicatesModalOpen(false)}
         uploadsByCard={uploadsByCard}
         selectedAccount={selectedAccount}
-        isLoadingUsVisaErrors={isLoadingUsVisaErrors}
-        handleOpenUsVisaErrors={handleOpenUsVisaErrors}
         handleOpenBatchDetails={handleOpenBatchDetails}
         setUploadToRemove={setUploadToRemove}
       />

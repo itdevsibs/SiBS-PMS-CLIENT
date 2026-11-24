@@ -1,3 +1,4 @@
+import WfmImportStatusBadge from "@/components/modules/wfm/imports/WfmImportStatusBadge";
 import { useMemo, useState } from "react";
 import {
   AlertTriangle,
@@ -15,6 +16,7 @@ import SingleSelectDropdown from "@/components/common/filters/SingleSelectDropdo
 import {
   formatRelativeTime,
   getBatchCategory,
+  getImportDisplayStatus,
   getPageNumbers,
 } from "@/lib/wfm-import-utils";
 
@@ -41,8 +43,6 @@ export default function WfmWarningsModal({
   onClose,
   uploadsByCard = {},
   selectedAccount = "All Accounts",
-  isLoadingUsVisaErrors = false,
-  handleOpenUsVisaErrors,
   handleOpenBatchDetails,
   setUploadToRemove,
 }) {
@@ -63,7 +63,7 @@ export default function WfmWarningsModal({
 
         const isUsVisaWarning =
           upload.account === "US VISA" &&
-          (upload.batchStatus === "COMPLETED_WITH_ERRORS" ||
+          (getImportDisplayStatus(upload).status === "COMPLETED_WITH_WARNINGS" ||
             Number(upload.warningRows || 0) > 0 ||
             Number(upload.invalidRows || 0) > 0 ||
             Number(upload.duplicateRows || 0) > 0);
@@ -290,11 +290,6 @@ export default function WfmWarningsModal({
                 {group.batches.length > 0 ? (
                   <div className="space-y-2.5">
                     {group.batches.map((batch) => {
-                      const isCompletedWithErrors =
-                        batch.batchStatus === "COMPLETED_WITH_ERRORS" ||
-                        (batch.invalidRows > 0 ||
-                          batch.warningRows > 0 ||
-                          batch.duplicateRows > 0);
 
                       return (
                         <div
@@ -313,23 +308,7 @@ export default function WfmWarningsModal({
                               >
                                 {batch.fileName}
                               </p>
-                              {isCompletedWithErrors ? (
-                                <button
-                                  type="button"
-                                  disabled={isLoadingUsVisaErrors}
-                                  onClick={() => {
-                                    handleOpenBatchDetails(batch);
-                                  }}
-                                  className="sm:hidden inline-flex shrink-0 whitespace-nowrap items-center gap-1 rounded-md border border-amber-400 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-800 transition-all hover:border-amber-500 hover:bg-amber-100"
-                                  title="Open batch details"
-                                >
-                                  <AlertTriangle
-                                    className="h-2.5 w-2.5 shrink-0 text-amber-600"
-                                    aria-hidden="true"
-                                  />
-                                  <span>Completed with warnings</span>
-                                </button>
-                              ) : null}
+                              <WfmImportStatusBadge upload={batch} className="sm:hidden" onView={(upload) => handleOpenBatchDetails(upload, "validation")} />
                             </div>
 
                             <div className="mt-1 flex flex-wrap items-center gap-1.5 sm:gap-2 text-xs text-sibs-tertiary-5">
@@ -360,7 +339,7 @@ export default function WfmWarningsModal({
                             <button
                               type="button"
                               onClick={() => {
-                                handleOpenBatchDetails(batch);
+                                handleOpenBatchDetails(batch, "validation");
                               }}
                               className="inline-flex h-8 items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 shadow-xs transition-all hover:border-sibs-primary-1 hover:bg-sibs-primary-1 hover:text-white"
                             >

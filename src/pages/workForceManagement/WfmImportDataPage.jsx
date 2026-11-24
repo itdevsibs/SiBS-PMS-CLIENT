@@ -11,7 +11,6 @@ import WfmImportModals from "@/components/modules/wfm/imports/WfmImportModals";
 import WfmImportSummaryBar from "@/components/modules/wfm/imports/WfmImportSummaryBar";
 import WfmImportPageHeader from "@/components/modules/wfm/imports/WfmImportPageHeader";
 import WfmImportTwoColumnWorkspace from "@/components/modules/wfm/imports/WfmImportTwoColumnWorkspace";
-import WfmRawDataCardsGrid from "@/components/modules/wfm/imports/WfmRawDataCardsGrid";
 import useDashboardPage from "@/hooks/useDashboardPage";
 import { getAuthDisplayName } from "@/lib/auth";
 import { recordWfmHistoryLogQuietly } from "@/lib/axios/wfm-history-logs";
@@ -23,7 +22,6 @@ import {
   deleteUsVisaImportBatch,
   getUsVisaImportBatchDetails,
   getUsVisaImportConfig,
-  getUsVisaImportBatchErrors,
   getUsVisaImportHistory,
   getUsVisaImportSummary,
 } from "@/lib/axios/us-visa-imports";
@@ -61,21 +59,8 @@ function WfmImportDataPage() {
     totalRows: null,
   });
   const [importFileName, setImportFileName] = useState("");
-  const [usVisaBatchResult, setUsVisaBatchResult] = useState(null);
   const [importSummary, setImportSummary] = useState(EMPTY_IMPORT_SUMMARY);
   const [summaryRefreshVersion, setSummaryRefreshVersion] = useState(0);
-  const [isLoadingUsVisaErrors, setIsLoadingUsVisaErrors] = useState(false);
-  const [usVisaErrorDetails, setUsVisaErrorDetails] = useState(null);
-  const [errorPagination, setErrorPagination] = useState({
-    page: 1,
-    limit: 25,
-    total: 0,
-    totalPages: 1,
-  });
-  const [activeErrorBatchId, setActiveErrorBatchId] = useState(null);
-  const [errorSearchQuery, setErrorSearchQuery] = useState("");
-  const [errorSeverityFilter, setErrorSeverityFilter] = useState("ALL");
-  const [jumpPageInput, setJumpPageInput] = useState("");
   const [activeOpenCard, setActiveOpenCard] = useState(null);
   const [uploadToRemove, setUploadToRemove] = useState(null);
   const [selectedUploadDetails, setSelectedUploadDetails] = useState(null);
@@ -220,62 +205,9 @@ function WfmImportDataPage() {
     };
   }, [selectedAccount, summaryRefreshVersion]);
 
-  const handleOpenUsVisaErrors = async (
-    batchId,
-    targetPage = 1,
-    targetLimit,
-    targetSearch = errorSearchQuery,
-    targetSeverity = errorSeverityFilter,
-  ) => {
-    const rawBatchId = batchId || activeErrorBatchId || usVisaBatchResult?.id;
-    const targetBatchId =
-      typeof rawBatchId === "string" && rawBatchId.startsWith("batch-")
-        ? rawBatchId.replace("batch-", "")
-        : rawBatchId;
-
-    if (!targetBatchId || isLoadingUsVisaErrors) return;
-
-    const currentLimit = targetLimit || errorPagination.limit || 25;
-    setIsLoadingUsVisaErrors(true);
-    setActiveErrorBatchId(targetBatchId);
-
-    try {
-      const response = await getUsVisaImportBatchErrors(targetBatchId, {
-        page: targetPage,
-        limit: currentLimit,
-        search: targetSearch || undefined,
-        severity: targetSeverity !== "ALL" ? targetSeverity : undefined,
-      });
-
-      setUsVisaErrorDetails(response);
-      const totalCount =
-        response?.pagination?.total ?? response?.data?.length ?? 0;
-      const totalPages =
-        response?.pagination?.totalPages ??
-        Math.max(1, Math.ceil(totalCount / currentLimit));
-
-      setErrorPagination({
-        page: targetPage,
-        limit: currentLimit,
-        total: totalCount,
-        totalPages,
-      });
-      setJumpPageInput(String(targetPage));
-    } catch (error) {
-      console.error("Failed to load US VISA import errors:", error);
-      setErrorModalInfo({
-        title: "Error Loading Details",
-        message:
-          error?.response?.data?.message ||
-          "Unable to load the batch error records from the server.",
-      });
-    } finally {
-      setIsLoadingUsVisaErrors(false);
-    }
-  };
-
-  const handleOpenBatchDetails = async (upload) => {
-    setSelectedUploadDetails(upload);
+  const handleOpenBatchDetails = async (upload, initialIssueType = null) => {
+    if (!upload) return;
+    setSelectedUploadDetails({ ...upload, initialIssueType });
 
     if (upload?.batchId) {
       try {
@@ -338,7 +270,6 @@ function WfmImportDataPage() {
       processedRows: null,
       totalRows: null,
     });
-    setUsVisaBatchResult(null);
 
     try {
       const result = await executeCardImport({
@@ -374,15 +305,13 @@ function WfmImportDataPage() {
       void fetchDatabaseUploads();
       setSummaryRefreshVersion((current) => current + 1);
 
-      if (batchResult) {
-        setUsVisaBatchResult(batchResult);
-      }
 
       setAddedUpload({
         count: 1,
         rawDataTitle: card.title,
         fileName: file.name,
         batch: batchResult,
+        upload: newUpload,
       });
 
       void recordWfmHistoryLogQuietly({
@@ -706,7 +635,7 @@ function WfmImportDataPage() {
               isUploading={isUploading}
               onFileSelect={handleCardFileSelect}
               onOpenCard={handleOpenCard}
-              onOpenErrorDetails={handleOpenUsVisaErrors}
+              onOpenBatchDetails={handleOpenBatchDetails}
             />
           )}
         </div>
@@ -731,26 +660,8 @@ function WfmImportDataPage() {
         onCloseCardUploads={() => setActiveOpenCard(null)}
         uploadedDataSearch={uploadedDataSearch}
         setUploadedDataSearch={setUploadedDataSearch}
-        isLoadingUsVisaErrors={isLoadingUsVisaErrors}
-        handleOpenUsVisaErrors={handleOpenUsVisaErrors}
         handleOpenBatchDetails={handleOpenBatchDetails}
         setUploadToRemove={setUploadToRemove}
-        usVisaErrorDetails={usVisaErrorDetails}
-        usVisaBatchResult={usVisaBatchResult}
-        errorPagination={errorPagination}
-        activeErrorBatchId={activeErrorBatchId}
-        errorSearchQuery={errorSearchQuery}
-        setErrorSearchQuery={setErrorSearchQuery}
-        errorSeverityFilter={errorSeverityFilter}
-        setErrorSeverityFilter={setErrorSeverityFilter}
-        jumpPageInput={jumpPageInput}
-        setJumpPageInput={setJumpPageInput}
-        onCloseErrorDetails={() => {
-          setUsVisaErrorDetails(null);
-          setActiveErrorBatchId(null);
-          setErrorSearchQuery("");
-          setErrorSeverityFilter("ALL");
-        }}
         selectedUploadDetails={selectedUploadDetails}
         onCloseBatchDetails={() => setSelectedUploadDetails(null)}
         isWarningsModalOpen={isWarningsModalOpen}

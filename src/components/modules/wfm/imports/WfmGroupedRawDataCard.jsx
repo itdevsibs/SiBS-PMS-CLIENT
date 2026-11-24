@@ -1,3 +1,4 @@
+import WfmImportStatusBadge from "@/components/modules/wfm/imports/WfmImportStatusBadge";
 import { useEffect, useMemo, useState } from "react";
 import {
   AlertCircle,
@@ -21,7 +22,7 @@ export default function WfmGroupedRawDataCard({
   onFileSelect,
   onOpenCard,
   onRefreshCard,
-  onOpenErrorDetails,
+  onOpenBatchDetails,
 }) {
   const cards = group?.cards || [];
   const [selectedCardId, setSelectedCardId] = useState(() => cards[0]?.id || "");
@@ -44,13 +45,7 @@ export default function WfmGroupedRawDataCard({
 
   const latestUpload = activeUploads[0] || null;
 
-  const isCompletedWithErrors = Boolean(
-    latestUpload &&
-      (latestUpload.batchStatus === "COMPLETED_WITH_ERRORS" && !latestUpload.displayStatus ||
-        (latestUpload.invalidRows || 0) > 0 ||
-        (latestUpload.warningRows || 0) > 0 ||
-        (latestUpload.duplicateRows || 0) > 0),
-  );
+  const hasIssues = Boolean(latestUpload && getImportDisplayStatus(latestUpload).tone !== "success");
 
   const dropdownOptions = useMemo(() => {
     return cards.map((card) => {
@@ -201,26 +196,7 @@ export default function WfmGroupedRawDataCard({
               </div>
 
               {/* Status Badge */}
-              {isCompletedWithErrors ? (
-                <button
-                  type="button"
-                  onClick={() =>
-                    onOpenErrorDetails?.(
-                      latestUpload.batchId || latestUpload.id,
-                    )
-                  }
-                  className="inline-flex shrink-0 items-center gap-1 rounded-full border border-amber-400 bg-amber-50 px-2 py-0.5 text-[9.5px] font-semibold text-amber-800 shadow-2xs hover:bg-amber-100 transition-colors cursor-pointer"
-                  title="Review validation issues"
-                >
-                  <AlertTriangle size={10} className="shrink-0 text-amber-600" />
-                  <span>{getImportDisplayStatus(latestUpload).label}</span>
-                </button>
-              ) : (
-                <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[9.5px] font-extrabold uppercase tracking-wide text-emerald-700 shadow-2xs">
-                  <CheckCircle2 size={10} className="shrink-0 text-emerald-600" />
-                  <span>Completed</span>
-                </span>
-              )}
+              <WfmImportStatusBadge upload={latestUpload} onView={onOpenBatchDetails} />
             </div>
 
             {/* 6 Stats Pills Grid matching Batch Details Modal */}
@@ -264,14 +240,12 @@ export default function WfmGroupedRawDataCard({
             </div>
 
             {/* Bottom action: View Error Details button */}
-            {isCompletedWithErrors && (
+            {hasIssues && (
               <div className="mt-2.5 pt-2 border-t border-slate-100 flex items-center justify-end">
                 <button
                   type="button"
                   onClick={() =>
-                    onOpenErrorDetails?.(
-                      latestUpload.batchId || latestUpload.id,
-                    )
+                    onOpenBatchDetails?.(latestUpload)
                   }
                   className="inline-flex h-7 items-center gap-1.5 rounded-lg border border-rose-200 bg-rose-50 px-2.5 text-[10.5px] font-bold text-rose-700 shadow-2xs hover:bg-rose-100 hover:border-rose-300 transition-colors cursor-pointer"
                 >

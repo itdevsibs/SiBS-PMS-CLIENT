@@ -4,7 +4,6 @@ import ImportProgressModal from "@/components/common/ui/ImportProgressModal";
 import LoadingModal from "@/components/common/ui/LoadingModal";
 import WfmBatchDetailsModal from "@/components/modules/wfm/imports/WfmBatchDetailsModal";
 import WfmCardUploadsModal from "@/components/modules/wfm/imports/WfmCardUploadsModal";
-import WfmErrorDetailsModal from "@/components/modules/wfm/imports/WfmErrorDetailsModal";
 import WfmReadOnlyExcelModal from "@/components/modules/wfm/imports/WfmReadOnlyExcelModal";
 import {
   AddedUploadSuccessModal,
@@ -41,23 +40,8 @@ export default function WfmImportModals({
   onCloseCardUploads,
   uploadedDataSearch,
   setUploadedDataSearch,
-  isLoadingUsVisaErrors,
-  handleOpenUsVisaErrors,
   handleOpenBatchDetails,
   setUploadToRemove,
-
-  // Error Details
-  usVisaErrorDetails,
-  usVisaBatchResult,
-  errorPagination,
-  activeErrorBatchId,
-  errorSearchQuery,
-  setErrorSearchQuery,
-  errorSeverityFilter,
-  setErrorSeverityFilter,
-  jumpPageInput,
-  setJumpPageInput,
-  onCloseErrorDetails,
 
   // Batch Details
   selectedUploadDetails,
@@ -131,36 +115,15 @@ export default function WfmImportModals({
         uploadedDataSearch={uploadedDataSearch}
         setUploadedDataSearch={setUploadedDataSearch}
         uploadsByCard={uploadsByCard}
-        isLoadingUsVisaErrors={isLoadingUsVisaErrors}
-        handleOpenUsVisaErrors={handleOpenUsVisaErrors}
         handleOpenBatchDetails={handleOpenBatchDetails}
         onOpenRawData={(batch) => setSelectedRawBatch(batch)}
         setUploadToRemove={setUploadToRemove}
-      />
-
-      {/* Error Details Modal */}
-      <WfmErrorDetailsModal
-        usVisaErrorDetails={usVisaErrorDetails}
-        usVisaBatchResult={usVisaBatchResult}
-        errorPagination={errorPagination}
-        activeErrorBatchId={activeErrorBatchId}
-        errorSearchQuery={errorSearchQuery}
-        setErrorSearchQuery={setErrorSearchQuery}
-        errorSeverityFilter={errorSeverityFilter}
-        setErrorSeverityFilter={setErrorSeverityFilter}
-        jumpPageInput={jumpPageInput}
-        setJumpPageInput={setJumpPageInput}
-        isLoadingUsVisaErrors={isLoadingUsVisaErrors}
-        handleOpenUsVisaErrors={handleOpenUsVisaErrors}
-        onClose={onCloseErrorDetails}
       />
 
       {/* Batch Details Modal */}
       <WfmBatchDetailsModal
         selectedUploadDetails={selectedUploadDetails}
         activeOpenCard={activeOpenCard}
-        isLoadingUsVisaErrors={isLoadingUsVisaErrors}
-        handleOpenUsVisaErrors={handleOpenUsVisaErrors}
         onOpenRawData={(batch) => setSelectedRawBatch(batch)}
         onClose={onCloseBatchDetails}
       />
@@ -178,8 +141,6 @@ export default function WfmImportModals({
         onClose={onCloseWarnings}
         uploadsByCard={uploadsByCard}
         selectedAccount={selectedAccount}
-        isLoadingUsVisaErrors={isLoadingUsVisaErrors}
-        handleOpenUsVisaErrors={handleOpenUsVisaErrors}
         handleOpenBatchDetails={handleOpenBatchDetails}
         setUploadToRemove={setUploadToRemove}
       />
@@ -190,8 +151,6 @@ export default function WfmImportModals({
         onClose={onCloseRejected}
         uploadsByCard={uploadsByCard}
         selectedAccount={selectedAccount}
-        isLoadingUsVisaErrors={isLoadingUsVisaErrors}
-        handleOpenUsVisaErrors={handleOpenUsVisaErrors}
         handleOpenBatchDetails={handleOpenBatchDetails}
         setUploadToRemove={setUploadToRemove}
       />
@@ -202,8 +161,6 @@ export default function WfmImportModals({
         onClose={onCloseDuplicates}
         uploadsByCard={uploadsByCard}
         selectedAccount={selectedAccount}
-        isLoadingUsVisaErrors={isLoadingUsVisaErrors}
-        handleOpenUsVisaErrors={handleOpenUsVisaErrors}
         handleOpenBatchDetails={handleOpenBatchDetails}
         setUploadToRemove={setUploadToRemove}
       />
@@ -217,7 +174,6 @@ export default function WfmImportModals({
       <AddedUploadSuccessModal
         addedUpload={addedUpload}
         onClose={onCloseAddedUpload}
-        handleOpenUsVisaErrors={handleOpenUsVisaErrors}
         handleOpenBatchDetails={handleOpenBatchDetails}
       />
 

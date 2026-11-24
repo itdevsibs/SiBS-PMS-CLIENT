@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
-import { AlertCircle, AlertTriangle, CheckCircle2, FileSpreadsheet, Loader2, Search, Users, ShieldAlert, Copy, Eye, UserX, FileText } from "lucide-react";
+import { useEffect, useState } from "react";
+import { AlertCircle, AlertTriangle, CheckCircle2, FileSpreadsheet, Loader2, Search, Users, ShieldAlert, Copy, Eye, UserX } from "lucide-react";
 import AppModal from "@/components/common/ui/AppModal";
 import { Button } from "@/components/common/ui/Button";
 import BatchDetailStat from "@/components/modules/wfm/imports/WfmBatchDetailStat";
-import { getUsVisaImportBatchErrors } from "@/lib/axios/us-visa-imports";
+import { getUsVisaImportBatchErrors, getUsVisaBatchEmployeeMappings } from "@/lib/axios/us-visa-imports";
+import WfmEmployeeMappingDetailsModal from "@/components/modules/wfm/imports/WfmEmployeeMappingDetailsModal";
 import { formatRelativeTime, getImportDisplayStatus } from "@/lib/wfm-import-utils";
 
 const PAGE_SIZE = 25;
@@ -21,6 +22,8 @@ function getIssueKey(issue) {
 export default function WfmBatchDetailsModal({ selectedUploadDetails: batch, activeOpenCard, onOpenRawData, onClose }) {
   const [tab, setTab] = useState("overview");
   const [issueType, setIssueType] = useState("validation");
+  const [mappingView, setMappingView] = useState("employees");
+  const [selectedEmployee, setSelectedEmployee] = useState(null);
   const [search, setSearch] = useState("");
   const [appliedSearch, setAppliedSearch] = useState("");
   const [page, setPage] = useState(1);
@@ -31,41 +34,39 @@ export default function WfmBatchDetailsModal({ selectedUploadDetails: batch, act
   const display = getImportDisplayStatus(batch);
   const currentCategory = tab === "mapping" ? "mapping" : issueType;
 
+  const initialIssueType = batch?.initialIssueType;
   useEffect(() => {
-    setTab("overview"); setPage(1); setSearch(""); setAppliedSearch("");
-    setIssueType("validation"); setIssueResponse(null);
-  }, [batchId]);
+    setTab(initialIssueType ? "validation" : "overview"); setPage(1); setSearch(""); setAppliedSearch("");
+    setIssueType(initialIssueType === "duplicate" ? "duplicate" : "validation"); setMappingView("employees"); setSelectedEmployee(null); setIssueResponse(null);
+  }, [batchId, initialIssueType]);
 
   useEffect(() => {
     if (!batchId || !["mapping", "validation"].includes(tab)) return;
     let cancelled = false;
     setLoading(true); setLoadError("");
-    getUsVisaImportBatchErrors(batchId, {
-      category: currentCategory, page, limit: PAGE_SIZE, search: appliedSearch || undefined,
-    }).then((result) => { if (!cancelled) setIssueResponse(result); })
+    const isGroupedEmployees = tab === "mapping" && mappingView === "employees";
+    const request = isGroupedEmployees
+      ? getUsVisaBatchEmployeeMappings(batchId, { page, limit: PAGE_SIZE, search: appliedSearch || undefined })
+      : getUsVisaImportBatchErrors(batchId, {
+          category: currentCategory, page, limit: PAGE_SIZE, search: appliedSearch || undefined,
+          ...(tab === "mapping" ? { mappingKind: "task-order" } : {}),
+        });
+    request.then((result) => { if (!cancelled) setIssueResponse(result); })
       .catch(() => { if (!cancelled) { setIssueResponse(null); setLoadError("Unable to load issues. Please retry."); } })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [batchId, tab, currentCategory, page, appliedSearch]);
+  }, [batchId, tab, currentCategory, mappingView, page, appliedSearch]);
 
-  const groupedMapping = useMemo(() => {
-    if (tab !== "mapping") return [];
-    const names = new Map();
-    for (const item of issueResponse?.data || []) {
-      const key = `${String(item.rawValue || "Unknown source name").trim().toUpperCase()}|${item.errorCode}`;
-      if (!names.has(key)) names.set(key, { name: item.rawValue || "Unknown source name", code: item.errorCode, entries: [] });
-      names.get(key).entries.push(item);
-    }
-    return [...names.values()];
-  }, [tab, issueResponse]);
   const issues = issueResponse?.data || [];
   const pagination = issueResponse?.pagination || {};
   const issueTotal = pagination.total || 0;
   const totalPages = Math.max(1, pagination.totalPages || 1);
 
-  const changeTab = (next) => { setTab(next); setPage(1); setSearch(""); setAppliedSearch(""); setIssueResponse(null); };
+  const changeTab = (next) => { setTab(next); setPage(1); setSearch(""); setAppliedSearch(""); setIssueResponse(null); setSelectedEmployee(null); };
+  const changeMappingView = (next) => { setMappingView(next); setPage(1); setSearch(""); setAppliedSearch(""); setIssueResponse(null); };
 
   return (
+    <>
     <AppModal isOpen={Boolean(batch)} className="!max-w-none w-full !w-[min(96vw,1280px)] !p-0 overflow-hidden" zIndex="z-[140]">
       <div className="flex h-[84vh] max-h-[84vh] flex-col overflow-hidden rounded-2xl bg-white">
         <div className="shrink-0 border-b border-slate-100 bg-gradient-to-br from-slate-50 via-white to-sky-50/50 p-4 sm:p-5">
@@ -75,7 +76,7 @@ export default function WfmBatchDetailsModal({ selectedUploadDetails: batch, act
               <div className="min-w-0">
                 <p className="m-0 text-[10px] font-extrabold uppercase tracking-wider text-slate-500">Batch Details</p>
                 <p className="mt-1 text-sm font-bold text-sibs-primary-1 break-words">{batch?.fileName || "Import"}</p>
-                <p className="mt-1 text-[11px] text-slate-500">{activeOpenCard?.title || batch?.rawDataTitle || "US Visa"} · {batch?.batchCode || ""} · {batch?.uploadedAt ? `${formatRelativeTime(batch)} · ${batch.uploadedAt}` : ""}</p>
+                <p className="mt-1 text-[11px] text-slate-500">{batch?.rawDataTitle || activeOpenCard?.title || "US Visa"} · {batch?.batchCode || ""} · {batch?.uploadedAt ? `${formatRelativeTime(batch)} · ${batch.uploadedAt}` : ""}</p>
               </div>
             </div>
             <span className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-[11px] font-bold ${display.tone === "success" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : display.tone === "danger" ? "border-rose-200 bg-rose-50 text-rose-700" : "border-amber-200 bg-amber-50 text-amber-700"}`}>
@@ -135,8 +136,23 @@ export default function WfmBatchDetailsModal({ selectedUploadDetails: batch, act
             {(batch?.invalidRows || 0) === 0 && (batch?.duplicateRows || 0) === 0 && (batch?.warningRows || 0) === 0 ? <p className="m-0 flex items-center gap-2 text-xs font-semibold text-emerald-700"><CheckCircle2 className="h-4 w-4" />No import-validation issues were reported.</p> : null}
           </div>}
           {["mapping", "validation"].includes(tab) && <div className="space-y-3">
-            {tab === "validation" ? <div className="flex gap-2">{["validation","duplicate"].map((type) => <button key={type} onClick={() => { setIssueType(type); setPage(1); setIssueResponse(null); }} type="button" className={`rounded-lg border px-3 py-1.5 text-xs font-semibold ${issueType === type ? "bg-sibs-primary-1 text-white" : "bg-white text-slate-600"}`}>{type === "validation" ? "Validation & warnings" : "Duplicates & conflicts"}</button>)}</div> : <p className="m-0 text-xs text-slate-500">Unresolved employee identities and Task Orders are tracked here, not as validation errors. Repeated names are grouped within each page.</p>}
-            <form className="flex gap-2" onSubmit={(event) => { event.preventDefault(); setPage(1); setAppliedSearch(search); }}><div className="relative flex-1"><Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400"/><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search name, row, issue code..." className="h-9 w-full rounded-lg border border-slate-200 pl-9 pr-3 text-xs outline-none focus:border-sky-400" /></div><Button type="submit" variant="outline" className="h-9 text-xs">Search</Button></form>
+            {tab === "validation" ? <div className="flex gap-2">{["validation","duplicate"].map((type) => <button key={type} onClick={() => { setIssueType(type); setPage(1); setIssueResponse(null); }} type="button" className={`rounded-lg border px-3 py-1.5 text-xs font-semibold ${issueType === type ? "bg-sibs-primary-1 text-white" : "bg-white text-slate-600"}`}>{type === "validation" ? "Validation & warnings" : "Duplicates & conflicts"}</button>)}</div> : <>
+              <div className="flex flex-wrap gap-2">{[
+                ["employees", "Unmapped employees"],
+                ...(batch?.importProfileCode === "US_VISA_EMAIL_RAW_DATA" ? [] : [["task-orders", "Task Order issues"]]),
+              ].map(([key, label]) => <button key={key} type="button" onClick={() => changeMappingView(key)} className={`rounded-lg border px-3 py-1.5 text-xs font-semibold ${mappingView === key ? "border-sibs-primary-1 bg-sibs-primary-1 text-white" : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"}`}>{label}</button>)}</div>
+              <p className="m-0 text-xs text-slate-500">{mappingView === "employees" ? "One record per unique source employee across the entire batch. View to inspect every affected row." : "Task Order and scope issues are tracked separately from unresolved employee identities."}</p>
+            </>}
+            <form className="flex gap-2" onSubmit={(event) => { event.preventDefault(); setPage(1); setAppliedSearch(search); }}><div className="relative flex-1"><Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400"/><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={tab === "mapping" && mappingView === "employees" ? "Search source employee, reason, or row..." : "Search name, row, issue code..."} className="h-9 w-full rounded-lg border border-slate-200 pl-9 pr-3 text-xs outline-none focus:border-sky-400" /></div><Button type="submit" variant="outline" className="h-9 text-xs">Search</Button></form>
+            {tab === "mapping" && mappingView === "employees" && !loading && !loadError && issueResponse && (
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                {[
+                  ["Unique Employees", issueResponse?.summary?.uniqueEmployees || 0],
+                  ["Affected Rows", issueResponse?.summary?.affectedRows || 0],
+                  ["Ambiguous Employees", issueResponse?.summary?.ambiguousEmployees || 0],
+                ].map(([label, value]) => <div key={label} className="rounded-xl border border-slate-200 bg-slate-50/60 p-3"><p className="m-0 text-[10px] font-bold uppercase tracking-wide text-slate-500">{label}</p><p className="mb-0 mt-1 text-lg font-bold text-sibs-primary-1">{Number(value).toLocaleString()}</p></div>)}
+              </div>
+            )}
             {loading ? (
               <p className="flex items-center gap-2 py-5 text-xs text-slate-500">
                 <Loader2 className="h-4 w-4 animate-spin"/>Loading records...
@@ -147,54 +163,24 @@ export default function WfmBatchDetailsModal({ selectedUploadDetails: batch, act
               <div className="rounded-lg border border-dashed p-6 text-center text-xs text-slate-500">
                 No records in this category.
               </div>
-            ) : tab === "mapping" ? (
-              <div className="space-y-2">
-                {groupedMapping.map((group) => (
-                  <div
-                    key={`${group.code}-${group.name}`}
-                    className="rounded-lg border border-slate-200/80 bg-white p-2.5 sm:px-3 shadow-2xs transition-colors hover:border-slate-300"
-                  >
-                    {/* Top Row: Name, Status Badge, and Count */}
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <span className="flex h-5.5 w-5.5 shrink-0 items-center justify-center rounded-md bg-slate-100 text-slate-500 border border-slate-200/80">
-                          <UserX className="h-3 w-3" />
-                        </span>
-                        <p className="m-0 truncate text-xs font-bold text-slate-800">
-                          {group.name}
-                        </p>
-                      </div>
-
-                      <div className="flex items-center gap-2 shrink-0">
-                        <span className="inline-flex items-center rounded-md border border-amber-200/70 bg-amber-50/60 px-1.5 py-0.2 text-[9.5px] font-semibold text-amber-700">
-                          {group.code ? group.code.replaceAll("_", " ") : "EMPLOYEE NOT MAPPED"}
-                        </span>
-                        <span className="text-[10px] text-slate-400 font-medium">
-                          {group.entries.length} on this page
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Compact, crisp, highly legible row occurrences */}
-                    <div className="mt-2 pt-2 border-t border-slate-100 flex flex-wrap items-center gap-1.5">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mr-1">
-                        Affected Rows:
-                      </span>
-                      {group.entries.map((item, idx) => (
-                        <span
-                          key={`${item.sheetName}-${item.excelRowNumber}-${idx}`}
-                          className="inline-flex items-center gap-1.5 rounded-md border border-sky-200/70 bg-sky-50/50 px-2 py-0.5 text-[11px] shadow-2xs transition-colors hover:bg-sky-50 hover:border-sky-300"
-                        >
-                          <span className="font-semibold text-sibs-primary-1">{item.sheetName || "Sheet"}</span>
-                          <span className="text-sky-300 font-bold">·</span>
-                          <span className="inline-block rounded bg-sky-100/70 border border-sky-200/50 px-1.5 py-0.2 font-mono text-[10.5px] font-bold text-sky-800">
-                            row {item.excelRowNumber || "-"}
-                          </span>
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                ))}
+            ) : tab === "mapping" && mappingView === "employees" ? (
+              <div className="space-y-3">
+                <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-slate-50 text-[10.5px] font-bold uppercase tracking-wide text-slate-500"><tr>
+                      <th className="px-4 py-3">Source Employee</th>
+                      <th className="px-3 py-3">Status</th>
+                      <th className="px-3 py-3 text-center">Affected Rows</th>
+                      <th className="px-4 py-3 text-right">Action</th>
+                    </tr></thead>
+                    <tbody className="divide-y divide-slate-100">{issues.map((group) => <tr key={group.groupKey} className="hover:bg-slate-50/60">
+                      <td className="px-4 py-2.5"><div className="flex min-w-0 items-center gap-2"><UserX className="h-4 w-4 shrink-0 text-slate-400"/><div className="min-w-0"><p className="m-0 break-words font-semibold text-slate-800">{group.sourceEmployee}</p><p className="m-0 mt-0.5 text-[10px] text-slate-500">{group.sourceColumn || "Source identity unavailable"}</p></div></div></td>
+                      <td className="px-3 py-2.5"><span className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-semibold ${group.status === "AMBIGUOUS" ? "border-amber-200 bg-amber-50 text-amber-700" : "border-slate-200 bg-slate-50 text-slate-700"}`}>{group.missingIdentity ? "Missing identity" : group.status === "AMBIGUOUS" ? "Ambiguous" : "Unmapped"}</span></td>
+                      <td className="px-3 py-2.5 text-center font-semibold tabular-nums text-slate-700">{Number(group.affectedRows || 0).toLocaleString()}</td>
+                      <td className="px-4 py-2.5 text-right"><Button type="button" variant="outline" className="h-8 text-xs" onClick={() => setSelectedEmployee(group)}><Eye className="h-3.5 w-3.5"/> View</Button></td>
+                    </tr>)}</tbody>
+                  </table>
+                </div>
               </div>
             ) : (
               <div className="overflow-x-auto rounded-xl border border-slate-200/90 bg-white shadow-2xs">
@@ -259,7 +245,7 @@ export default function WfmBatchDetailsModal({ selectedUploadDetails: batch, act
               </div>
             )}
             <div className="flex items-center justify-between gap-2 text-xs text-slate-500">
-              <span>{issueTotal.toLocaleString()} issue event{issueTotal === 1 ? "" : "s"}</span>
+              <span>{issueTotal.toLocaleString()} {tab === "mapping" && mappingView === "employees" ? `unique employee${issueTotal === 1 ? "" : "s"}` : `issue event${issueTotal === 1 ? "" : "s"}`}</span>
               {issueTotal > 0 ? (
                 <div className="flex items-center gap-2">
                   <Button variant="outline" type="button" disabled={page <= 1 || loading} onClick={() => setPage((p) => p - 1)}>Back</Button>
@@ -274,5 +260,7 @@ export default function WfmBatchDetailsModal({ selectedUploadDetails: batch, act
         <div className="flex shrink-0 justify-end border-t border-slate-100 bg-slate-50/50 px-4 py-3 sm:px-5"><Button type="button" onClick={onClose} className="h-9 rounded-lg bg-sibs-primary-1 px-5 text-xs text-white">Close</Button></div>
       </div>
     </AppModal>
+    <WfmEmployeeMappingDetailsModal batchId={batchId} employee={selectedEmployee} onClose={() => setSelectedEmployee(null)} />
+    </>
   );
 }

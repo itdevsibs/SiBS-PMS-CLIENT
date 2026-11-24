@@ -16,7 +16,12 @@ import { uploadUsVisaImport } from "@/lib/axios/us-visa-imports";
 // API display status is derived from stored counters and historical issue events.
 // Raw database status stays unchanged so older KPI queries remain compatible.
 export function getImportDisplayStatus(batch = {}) {
-  const status = String(batch?.displayStatus || batch?.batchDisplayStatus || batch?.batchStatus || batch?.status || 'COMPLETED').toUpperCase();
+  let status = String(batch?.displayStatus || batch?.batchDisplayStatus || batch?.batchStatus || batch?.status || 'COMPLETED').toUpperCase();
+  if (!batch?.displayStatus && !batch?.batchDisplayStatus && ["COMPLETED", "COMPLETED_WITH_ERRORS"].includes(status)) {
+    const invalid = Number(batch?.invalidRows || 0);
+    const valid = Number(batch?.validRows || 0);
+    status = invalid > 0 && valid > 0 ? "PARTIALLY_IMPORTED" : invalid > 0 || Number(batch?.warningRows || 0) > 0 || Number(batch?.duplicateRows || 0) > 0 ? "COMPLETED_WITH_WARNINGS" : "COMPLETED";
+  }
   const labelMap = {
     COMPLETED: ['Completed', 'success'],
     COMPLETED_WITH_WARNINGS: ['Completed with warnings', 'warning'],

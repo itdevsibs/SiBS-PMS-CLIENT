@@ -42,8 +42,6 @@ export default function WfmDuplicatesModal({
   onClose,
   uploadsByCard = {},
   selectedAccount = "All Accounts",
-  isLoadingUsVisaErrors = false,
-  handleOpenUsVisaErrors,
   handleOpenBatchDetails,
   setUploadToRemove,
 }) {
@@ -291,9 +289,6 @@ export default function WfmDuplicatesModal({
                   <div className="space-y-2.5">
                     {group.batches.map((batch) => {
                       const duplicateCount = Number(batch.duplicateRows || 0);
-                      const hasErrors =
-                        batch.batchStatus === "COMPLETED_WITH_ERRORS" ||
-                        Number(batch.invalidRows || 0) > 0;
 
                       return (
                         <div
@@ -313,14 +308,11 @@ export default function WfmDuplicatesModal({
                                 {batch.fileName}
                               </p>
 
-                              {duplicateCount > 0 || hasErrors ? (
+                              {duplicateCount > 0 ? (
                                 <button
                                   type="button"
-                                  disabled={isLoadingUsVisaErrors}
                                   onClick={() => {
-                                    handleOpenUsVisaErrors(
-                                      batch.batchId || batch.id,
-                                    );
+                                    handleOpenBatchDetails(batch, "duplicate");
                                   }}
                                   className="sm:hidden inline-flex shrink-0 whitespace-nowrap items-center gap-1 rounded-md border border-orange-300 bg-orange-50 px-2 py-0.5 text-[10px] font-semibold text-orange-800 transition-all hover:border-orange-400 hover:bg-orange-100"
                                   title="View duplicate records"
@@ -372,7 +364,7 @@ export default function WfmDuplicatesModal({
                             <button
                               type="button"
                               onClick={() => {
-                                handleOpenBatchDetails(batch);
+                                handleOpenBatchDetails(batch, "duplicate");
                               }}
                               className="inline-flex h-8 items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 shadow-xs transition-all hover:border-sibs-primary-1 hover:bg-sibs-primary-1 hover:text-white"
                             >
