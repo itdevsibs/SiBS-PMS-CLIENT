@@ -14,6 +14,7 @@ export async function fetchMasterDataLedger({
   filter = "all",
   account = "",
   taskOrder = "",
+  organizationalRole = "",
   viewAll = false,
   page = 1,
   limit = 25,
@@ -34,6 +35,9 @@ export async function fetchMasterDataLedger({
   }
   if (taskOrder && taskOrder !== "All Task Orders") {
     params.set("taskOrder", taskOrder);
+  }
+  if (organizationalRole) {
+    params.set("organizationalRole", organizationalRole);
   }
   if (viewAll) {
     params.set("viewAll", "true");
@@ -64,4 +68,14 @@ export async function importUsVisaEmployeeLedger(items) {
   return apiPost("/masterdata/ledger/import-us-visa", { items });
 }
 
+
+
+/** Manual Kronos hierarchy sync: preview is read-only until explicitly applied. */
+export async function previewKronosEmployeeLedgerSync() {
+  return apiPost("/masterdata/ledger/kronos-sync/preview", {});
+}
+
+export async function applyKronosEmployeeLedgerSync(previewToken) {
+  return apiPost("/masterdata/ledger/kronos-sync/apply", { previewToken });
+}
 

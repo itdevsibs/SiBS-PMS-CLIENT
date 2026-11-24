@@ -115,7 +115,7 @@ export function getApiErrorMessage(error, card) {
   }
 
   if (card?.importProfileCode === "US_VISA_DOCUMENTED_CALLS" && backendCode === "MISSING_REQUIRED_COLUMN") {
-    return "The selected workbook must contain the Microsoft Dynamics WFM Call Logs headers (Call Log, Created On, System Call ID, Created By, Name, Call Duration, Owner, Category, Subcategory).";
+    return "The selected workbook must contain the final 10-column Microsoft Dynamics WFM Call Logs headers (Call Log, Row Checksum, Modified On, Created On, System Call ID, Created By, Call Duration, Owner, Category, Subcategory).";
   }
 
   if (backendCode === "FILE_TOO_LARGE") {

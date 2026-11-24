@@ -46,7 +46,7 @@ const BENTO_SECTIONS = [
     badgeColor: "bg-emerald-50 text-emerald-700 border border-emerald-200/80",
     fields: [
       { key: "site", label: "Site", icon: MapPin, placeholder: "e.g. Tagum, Davao" },
-      { key: "status", label: "Status", icon: Shield, placeholder: "e.g. Active, Resigned" },
+      { key: "status", label: "Employment Status", icon: Shield, placeholder: "Kronos user status: 0 Active, 1 Inactive", readOnly: true },
       { key: "phase", label: "Phase", icon: Flag, placeholder: "e.g. Production, Grad Bay" },
       { key: "modality", label: "Modality", icon: Headphones, placeholder: "e.g. Voice, Chat, Email" },
       {
@@ -77,7 +77,7 @@ const BENTO_SECTIONS = [
       { key: "teamLeader", label: "Team Leader", icon: Users, placeholder: "Team Leader name" },
       { key: "manager", label: "Manager", icon: Users, placeholder: "Manager name" },
       { key: "seniorManager", label: "Senior Manager", icon: Users, placeholder: "Senior Manager name" },
-      { key: "tenurity", label: "Tenurity (days)", icon: Calendar, placeholder: "Auto-computed: Join Date to Today", readOnly: true },
+      { key: "tenurity", label: "Tenurity (days)", icon: Calendar, placeholder: "Calculated from account dates by server", readOnly: true },
       { key: "usVisaJoinDate", label: "US Visa Join Date", icon: Calendar, placeholder: "YYYY-MM-DD", type: "date", readOnly: true },
       { key: "usVisaDepartureDate", label: "US Visa Departure Date", icon: Calendar, placeholder: "YYYY-MM-DD", type: "date", readOnly: true },
     ],
@@ -97,35 +97,12 @@ const BENTO_SECTIONS = [
   },
 ];
 
-function calculateTenurityDays(joinDate, departureDate) {
-  if (!joinDate) return "";
-  const str = String(joinDate).trim();
-  if (!str || str === "0000-00-00" || str === "—") return "";
-  const start = new Date(str);
-  if (isNaN(start.getTime()) || start.getFullYear() < 1990) return "";
-
-  const endStr = departureDate ? String(departureDate).trim() : "";
-  const end = endStr && endStr !== "—" ? new Date(endStr) : new Date();
-  if (isNaN(end.getTime())) return "";
-
-  const utcStart = Date.UTC(start.getFullYear(), start.getMonth(), start.getDate());
-  const utcEnd = Date.UTC(end.getFullYear(), end.getMonth(), end.getDate());
-
-  const diffDays = Math.floor((utcEnd - utcStart) / (1000 * 60 * 60 * 24));
-  return diffDays >= 0 ? String(diffDays) : "";
-}
-
 function buildInitialFormData(employee = {}) {
   const clean = (val) => {
     if (!val) return "";
     const str = String(val).trim();
     return str.includes("#REF!") || str.includes("#N/A") || str.includes("#VALUE!") ? "" : str;
   };
-
-  const computedTenurity = calculateTenurityDays(
-    employee.usVisaJoinDate,
-    employee.usVisaDepartureDate
-  );
 
   return {
     kronosName: clean(employee.kronosName),
@@ -136,7 +113,7 @@ function buildInitialFormData(employee = {}) {
     herodashName: clean(employee.herodashName),
     msdName: clean(employee.msdName),
     site: clean(employee.site),
-    status: clean(employee.status),
+    status: clean(employee.employmentStatus || employee.status),
     phase: clean(employee.phase),
     taskOrder: clean(employee.taskOrder),
     taskOrderDescription: clean(employee.taskOrderDescription),
@@ -144,7 +121,7 @@ function buildInitialFormData(employee = {}) {
     teamLeader: clean(employee.teamLeader),
     manager: clean(employee.manager),
     seniorManager: clean(employee.seniorManager),
-    tenurity: computedTenurity || clean(employee.tenurity),
+    tenurity: clean(employee.tenurity),
     usVisaJoinDate: employee.usVisaJoinDate || "",
     usVisaDepartureDate: employee.usVisaDepartureDate || "",
   };
@@ -185,16 +162,7 @@ function EditEmployeeLedgerForm({ isOpen, employee, onClose, onSave, isSaving })
   };
 
   const handleChange = (key, val) => {
-    setFormData((prev) => {
-      const next = { ...prev, [key]: val };
-      if (key === "usVisaJoinDate" || key === "usVisaDepartureDate") {
-        const autoDays = calculateTenurityDays(next.usVisaJoinDate, next.usVisaDepartureDate);
-        if (autoDays) {
-          next.tenurity = autoDays;
-        }
-      }
-      return next;
-    });
+    setFormData((prev) => ({ ...prev, [key]: val }));
   };
 
   const handleSubmit = async (e) => {
@@ -202,7 +170,8 @@ function EditEmployeeLedgerForm({ isOpen, employee, onClose, onSave, isSaving })
     if (!isSaveReady) return;
     setIsSubmitting(true);
     try {
-      await onSave?.(formData);
+      const { tenurity: _serverCalculatedTenurity, ...editableFields } = formData;
+      await onSave?.(editableFields);
     } finally {
       setIsSubmitting(false);
     }
