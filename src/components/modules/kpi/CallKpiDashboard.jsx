@@ -3,6 +3,7 @@ import { useState } from "react";
 import { CheckCircle2, Clock3, Gauge, Loader2, PhoneCall } from "lucide-react";
 import { Skeleton } from "@/components/common/ui/Skeleton.jsx";
 import KpiChartModal from "./KpiChartModal.jsx";
+import AhtDrillDownModalContent from "./AhtDrillDownModalContent.jsx";
 import CallsDrillDownModalContent from "./CallsDrillDownModalContent.jsx";
 import {
   buildVolumeBarItems,
@@ -288,7 +289,7 @@ function ChartShell({
         if (rect.height <= 0 || rect.width <= 0) return;
         const barLabel = barEl.closest("[aria-label]")?.getAttribute("aria-label") || null;
         const matchedIndex = Array.isArray(series)
-          ? series.findIndex((item) => item?.label && barLabel?.startsWith(item.label))
+          ? series.findIndex((item) => item?.label && (barLabel === item.label || barLabel?.startsWith(`${item.label} `)))
           : -1;
         setModalInfo({
           subtitle: barLabel,
@@ -1540,7 +1541,7 @@ export default function CallKpiDashboard({
             showFilters={isFiltersVisible}
             series={series.length ? series : data?.data?.series}
             renderModalContent={({ selectedIndex, series: modalSeries }) => (
-              <CallsDrillDownModalContent
+              <AhtDrillDownModalContent
                 series={modalSeries}
                 selectedIndex={selectedIndex}
                 filters={data?.filters || data?.data?.filters}

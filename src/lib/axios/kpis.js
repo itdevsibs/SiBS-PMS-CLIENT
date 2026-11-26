@@ -75,3 +75,8 @@ export async function compareTaskOrderVersions(body) {
   const response = await api.post('/kpis/task-order-version-comparison', body);
   return response?.data || response;
 }
+
+export async function getDocumentedCallsAhtReport(params = {}, config = {}) {
+  const response = await api.get("/kpis/documented-calls-aht-report", { ...config, params });
+  return response?.data || response;
+}
