@@ -1,21 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   AlertCircle,
-  CalendarDays,
-  Check,
   CheckCircle2,
-  ChevronDown,
   Clock,
   Clock3,
-  Database,
-  Filter,
-  Loader2,
   RefreshCw,
-  RotateCcw,
   Search,
-  Server,
-  ShieldCheck,
-  Users,
   X,
 } from "lucide-react";
 
@@ -24,16 +14,50 @@ import AppHeader from "@/components/common/layout/AppHeader";
 import TablePagination from "@/components/common/tables/TablePagination";
 import ConfirmationModal from "@/components/common/ui/ConfirmationModal";
 import DatePicker from "@/components/common/filters/DatePicker";
+import SingleSelectDropdown from "@/components/common/filters/SingleSelectDropdown";
 import LoadingModal from "@/components/common/ui/LoadingModal";
 import useDashboardPage from "@/hooks/useDashboardPage";
 import {
   fetchAttendanceSheet,
   fetchAttendanceSheetAccounts,
-  fetchAttendanceSheetStatus,
 } from "@/lib/axios/attendance-sheet";
 import { getAttendanceEmployeeName } from "./attendanceSheetEmployeeName.js";
+import AttendanceSummaryCards from "./AttendanceSummaryCards.jsx";
 
-const PAGE_SIZE_OPTIONS = [15, 25, 50, 100];
+const ROLE_OPTIONS = [
+  { value: "all", label: "All Roles" },
+  { value: "AGENT", label: "Agent" },
+  { value: "TEAM_LEADER", label: "Team Leader" },
+];
+
+const STATUS_OPTIONS = [
+  { value: "all", label: "All Status" },
+  { value: "present", label: "Present" },
+  { value: "absent", label: "Absent" },
+  { value: "plannedLeave", label: "Planned Leave" },
+  { value: "unplannedLeave", label: "Unplanned Leave" },
+  { value: "leaveUnavailable", label: "Leave Verification Unavailable" },
+];
+
+const CARD_FILTER_LABELS = {
+  scheduled: "Scheduled to Work",
+  restDay: "Rest Day",
+  noSchedule: "No Schedule",
+  pending: "Pending",
+  scheduleUnavailable: "Schedule Unavailable",
+  incomplete: "Missing In",
+};
+
+function resolveUsVisaAccount(accounts) {
+  // Match the same account-name rule used by the server's strict roster path.
+  const matches = accounts.filter((account) => /^US[\s_-]*VISA$/i.test(String(account?.accountName || "").trim()));
+  if (matches.length !== 1) return null;
+  const account = matches[0];
+  const accountId = Number(account?.accountId);
+  const kronosAccountId = Number(account?.kronosMapping?.kronosAccountId);
+  return Number.isInteger(accountId) && accountId > 0 && Number.isInteger(kronosAccountId) && kronosAccountId > 0
+    ? account : null;
+}
 
 function formatManilaDate(date = new Date()) {
   const parts = new Intl.DateTimeFormat("en-US", {
@@ -44,14 +68,6 @@ function formatManilaDate(date = new Date()) {
   }).formatToParts(date);
   const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
   return `${values.year}-${values.month}-${values.day}`;
-}
-
-function getInitialDateRange() {
-  const today = formatManilaDate();
-  return {
-    dateFrom: `${today.slice(0, 7)}-01`,
-    dateTo: today,
-  };
 }
 
 function normalizeEmployeeCode(value) {
@@ -306,6 +322,8 @@ function getAttendanceTotalHours(row, responseMeta) {
 }
 
 function getAttendanceStatus(row, responseMeta) {
+  // The sheet API is authoritative, including an intentionally blank pending status.
+  if (row?.attendanceState) return row.status ?? null;
   const configuredField = responseMeta?.fieldConfiguration?.status;
   const login = getAttendanceLogin(row, responseMeta);
   const logout = getAttendanceLogout(row, responseMeta);
@@ -372,26 +390,24 @@ function StatusPill({ active, activeText, inactiveText }) {
 
 export default function AttendanceSheetPage() {
   const dashboard = useDashboardPage();
-  const initialRange = useMemo(() => getInitialDateRange(), []);
-
-  const [status, setStatus] = useState(null);
-  const [accounts, setAccounts] = useState([]);
+  const [selectedAccount, setSelectedAccount] = useState(null);
+  const selectedAccountId = selectedAccount ? String(selectedAccount.accountId) : "";
   const [isLoadingMetadata, setIsLoadingMetadata] = useState(true);
   const [metadataError, setMetadataError] = useState(null);
 
-  const [selectedAccountId, setSelectedAccountId] = useState("");
   const [employeeSearch, setEmployeeSearch] = useState("");
   const [selectedDate, setSelectedDate] = useState(() => formatManilaDate());
-  const [pageSize, setPageSize] = useState(25);
-
-  const [isAccountDropdownOpen, setIsAccountDropdownOpen] = useState(false);
-  const [accountSearchTerm, setAccountSearchTerm] = useState("");
-  const accountDropdownRef = useRef(null);
+  const pageSize = 25;
+  const [roleFilter, setRoleFilter] = useState("all");
+  const [attendanceStatusFilter, setAttendanceStatusFilter] = useState("all");
 
   const [dataRows, setDataRows] = useState([]);
   // Do not retain employee data in localStorage. Ignore stale responses when the
   // user changes dates/searches or pages while a prior fetch is still pending.
   const attendanceRequestId = useRef(0);
+  const prefetchAbort = useRef(null);
+  const foregroundAbort = useRef(null);
+  const [prefetchError, setPrefetchError] = useState(null);
 
   useEffect(() => {
     // Remove obsolete localStorage rows saved by the previous implementation.
@@ -408,107 +424,39 @@ export default function AttendanceSheetPage() {
   const [dataError, setDataError] = useState(null);
   const [hasLoadedData, setHasLoadedData] = useState(false);
 
-  const mappedAccounts = useMemo(
-    () => accounts.filter((account) => Number(account?.kronosMapping?.kronosAccountId) > 0),
-    [accounts],
-  );
-
-  const selectedAccount = useMemo(
-    () => accounts.find((account) => String(account.accountId) === String(selectedAccountId)) || null,
-    [accounts, selectedAccountId],
-  );
-
-  // Close account dropdown on outside click
-  useEffect(() => {
-    if (!isAccountDropdownOpen) return;
-    const handleClickOutside = (event) => {
-      if (accountDropdownRef.current && !accountDropdownRef.current.contains(event.target)) {
-        setIsAccountDropdownOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [isAccountDropdownOpen]);
-
-  const filteredAccountOptions = useMemo(() => {
-    if (!accountSearchTerm.trim()) return accounts;
-    const term = accountSearchTerm.toLowerCase();
-    return accounts.filter((acc) =>
-      String(acc.accountName || "").toLowerCase().includes(term) ||
-      String(acc.accountId || "").includes(term)
-    );
-  }, [accounts, accountSearchTerm]);
-
-  const attendanceFieldsReady = Boolean(
-    responseMeta?.fieldConfiguration?.complete || status?.attendanceFieldConfiguration?.complete,
-  );
-
-  const invalidateViewerData = () => {
+  const loadMetadata = useCallback(async () => {
+    prefetchAbort.current?.abort();
+    foregroundAbort.current?.abort();
+    setPrefetchError(null);
+    setIsLoadingMetadata(true);
+    setMetadataError(null);
+    setSelectedAccount(null);
     setDataRows([]);
     setResponseMeta(null);
     setDataError(null);
     setHasLoadedData(false);
-    setPagination({
-      currentPage: 1,
-      totalPages: 1,
-      total: 0,
-      limit: pageSize,
-    });
-  };
-
-  const loadMetadata = useCallback(async () => {
-    setIsLoadingMetadata(true);
-    setMetadataError(null);
-
-    const [statusResult, accountsResult] = await Promise.allSettled([
-      fetchAttendanceSheetStatus(),
-      fetchAttendanceSheetAccounts(),
-    ]);
-
-    if (statusResult.status === "fulfilled" && statusResult.value?.success) {
-      setStatus(statusResult.value.data || null);
-    } else if (statusResult.status === "rejected") {
-      setMetadataError(
-        getErrorDetails(statusResult.reason, "Unable to load attendance API status."),
-      );
+    setPagination({ currentPage: 1, totalPages: 1, total: 0, limit: 25 });
+    attendanceRequestId.current += 1;
+    setIsLoadingData(true);
+    try {
+      const response = await fetchAttendanceSheetAccounts();
+      const accounts = response?.success && Array.isArray(response.data) ? response.data : [];
+      const account = resolveUsVisaAccount(accounts);
+      if (!account) {
+        setMetadataError({
+          code: "ATTENDANCE_US_VISA_ACCOUNT_REQUIRED",
+          message: "US Visa could not be uniquely resolved to a mapped Kronos account. No other account will be used. Click Refresh to retry.",
+        });
+        setIsLoadingData(false);
+        return;
+      }
+      setSelectedAccount(account);
+    } catch (error) {
+      setMetadataError(getErrorDetails(error, "Unable to resolve the US Visa account."));
+      setIsLoadingData(false);
+    } finally {
+      setIsLoadingMetadata(false);
     }
-
-    if (accountsResult.status === "fulfilled" && accountsResult.value?.success) {
-      const nextAccounts = Array.isArray(accountsResult.value.data)
-        ? accountsResult.value.data
-        : [];
-      setAccounts(nextAccounts);
-
-      setSelectedAccountId((current) => {
-        if (
-          current &&
-          nextAccounts.some(
-            (account) =>
-              String(account.accountId) === String(current) &&
-              Number(account?.kronosMapping?.kronosAccountId) > 0,
-          )
-        ) {
-          return current;
-        }
-
-        const preferredUsVisa = nextAccounts.find(
-          (account) =>
-            /us\s*visa/i.test(String(account?.accountName || "")) &&
-            Number(account?.kronosMapping?.kronosAccountId) > 0,
-        );
-        const firstMapped = nextAccounts.find(
-          (account) => Number(account?.kronosMapping?.kronosAccountId) > 0,
-        );
-        return String(preferredUsVisa?.accountId || firstMapped?.accountId || "");
-      });
-    } else if (accountsResult.status === "rejected") {
-      setMetadataError(
-        getErrorDetails(accountsResult.reason, "Unable to load Call Center Operations accounts."),
-      );
-      setAccounts([]);
-    }
-
-    setIsLoadingMetadata(false);
   }, []);
 
   useEffect(() => {
@@ -520,7 +468,7 @@ export default function AttendanceSheetPage() {
       if (!selectedAccountId) {
         setDataError({
           code: "ATTENDANCE_ACCOUNT_REQUIRED",
-          message: "Select a Call Center Operations account that was matched to the live attendance source.",
+          message: "US Visa must be resolved to the live attendance source.",
         });
         return;
       }
@@ -528,7 +476,7 @@ export default function AttendanceSheetPage() {
       if (!selectedAccount?.kronosMapping?.kronosAccountId) {
         setDataError({
           code: "ATTENDANCE_ACCOUNT_MAPPING_REQUIRED",
-          message: "The selected account was not matched to a unique account in the live attendance source.",
+          message: "US Visa was not matched to a unique account in the live attendance source.",
         });
         return;
       }
@@ -538,6 +486,9 @@ export default function AttendanceSheetPage() {
           code: "ATTENDANCE_DATE_REQUIRED",
           message: "Please select a date to view attendance records.",
         });
+        setDataRows([]);
+        setResponseMeta(null);
+        setIsLoadingData(false);
         return;
       }
 
@@ -547,6 +498,14 @@ export default function AttendanceSheetPage() {
         currentPage: targetPage,
       }));
 
+      foregroundAbort.current?.abort();
+      const controller = new AbortController();
+      foregroundAbort.current = controller;
+      if (forceRefresh) {
+        prefetchAbort.current?.abort();
+        setResponseMeta(null);
+        setPrefetchError(null);
+      }
       const requestId = ++attendanceRequestId.current;
       setIsLoadingData(true);
       setDataError(null);
@@ -562,18 +521,33 @@ export default function AttendanceSheetPage() {
         dateTo: selectedDate,
         page: targetPage,
         limit: pageSize,
+        attendanceStatus: attendanceStatusFilter,
+        role: roleFilter,
+        progressive: true,
         ...(forceRefresh ? { forceRefresh: true } : {}),
       };
 
       try {
-        const response = await fetchAttendanceSheet(params);
+        const response = await fetchAttendanceSheet(params, { signal: controller.signal });
         if (requestId !== attendanceRequestId.current) return;
         const payload = response?.data || {};
+        if (String(payload?.scope?.accountId ?? "") !== selectedAccountId ||
+            !/^US[\s_-]*VISA$/i.test(String(payload?.scope?.accountName || "").trim())) {
+          throw new Error("Attendance response does not match the resolved US Visa account.");
+        }
+        if (payload?.roleFilter !== roleFilter || payload?.attendanceDate !== selectedDate) {
+          throw new Error("Attendance response does not match the selected role or date.");
+        }
         const rows = Array.isArray(payload?.data) ? payload.data : [];
         const nextPagination = payload?.pagination || {};
 
         setDataRows(rows);
-        setResponseMeta(payload);
+        setResponseMeta(previous => {
+          if (previous?.roleFilter === roleFilter && previous?.progressive?.sessionId === payload?.progressive?.sessionId && previous?.progressive?.loadedEmployees > payload?.progressive?.loadedEmployees) {
+            return { ...payload, summary: previous.summary, progressive: previous.progressive, performance: previous.performance };
+          }
+          return payload;
+        });
         const resolvedPagination = {
           currentPage: Number(nextPagination.currentPage || targetPage) || targetPage,
           totalPages: Math.max(1, Number(nextPagination.totalPages || 1) || 1),
@@ -590,6 +564,8 @@ export default function AttendanceSheetPage() {
         if (requestId !== attendanceRequestId.current) return;
         const details = getErrorDetails(error, "Unable to load attendance data.");
         setDataError(details);
+        setDataRows([]);
+        setResponseMeta(null);
         setHasLoadedData(true);
       } finally {
         if (requestId === attendanceRequestId.current) setIsLoadingData(false);
@@ -598,6 +574,8 @@ export default function AttendanceSheetPage() {
     [
       selectedDate,
       employeeSearch,
+      attendanceStatusFilter,
+      roleFilter,
       pageSize,
       selectedAccount,
       selectedAccountId,
@@ -610,11 +588,20 @@ export default function AttendanceSheetPage() {
       return;
     }
 
+    // Invalidate in-flight results as soon as any filter changes, not only
+    // after the debounced request starts.
+    attendanceRequestId.current += 1;
+    foregroundAbort.current?.abort();
+    setIsLoadingData(true);
     const timer = setTimeout(() => {
       void loadViewerData(1);
     }, 250);
 
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+      foregroundAbort.current?.abort();
+      attendanceRequestId.current += 1;
+    };
   }, [
     selectedAccountId,
     selectedAccount,
@@ -624,20 +611,40 @@ export default function AttendanceSheetPage() {
     loadViewerData,
   ]);
 
-  const handleReset = () => {
-    const today = formatManilaDate();
-    const preferredUsVisa = mappedAccounts.find((account) =>
-      /us\s*visa/i.test(String(account?.accountName || "")),
-    );
-    setSelectedAccountId(
-      String(preferredUsVisa?.accountId || mappedAccounts[0]?.accountId || ""),
-    );
-    setIsAccountDropdownOpen(false);
-    setAccountSearchTerm("");
-    setEmployeeSearch("");
-    setSelectedDate(today);
-    setPageSize(25);
-  };
+  // Load one additional batch at a time. The server prioritizes interactive
+  // requests over queued prefetch calls. Abort the loop on date/session change.
+  const progressiveSession = responseMeta?.roleFilter === roleFilter && responseMeta?.attendanceDate === selectedDate &&
+    String(responseMeta?.scope?.accountId) === selectedAccountId
+    ? responseMeta?.progressive?.sessionId : null;
+  const progressiveComplete = responseMeta?.progressive?.complete === true;
+  useEffect(() => {
+    if (!progressiveSession || progressiveComplete) return;
+    const controller = new AbortController();
+    prefetchAbort.current = controller;
+    setPrefetchError(null);
+    const run = async () => {
+      try {
+        while (!controller.signal.aborted) {
+          const response = await fetchAttendanceSheet({ accountId: selectedAccountId,
+            dateFrom: selectedDate, dateTo: selectedDate, progressive: true,
+            prefetch: true, role: roleFilter, sessionId: progressiveSession }, { signal: controller.signal });
+          if (controller.signal.aborted) return;
+          const payload = response?.data;
+          if (payload?.roleFilter !== roleFilter || payload?.progressive?.sessionId !== progressiveSession || payload?.attendanceDate !== selectedDate ||
+              String(payload?.scope?.accountId) !== selectedAccountId) throw new Error("Attendance loading session changed.");
+          setResponseMeta(previous => previous?.roleFilter === roleFilter && previous?.progressive?.sessionId === progressiveSession &&
+            previous.progressive.loadedEmployees <= payload.progressive.loadedEmployees
+            ? { ...previous, summary: payload.summary, progressive: payload.progressive, performance: payload.performance }
+            : previous);
+          if (payload.progressive.complete) return;
+        }
+      } catch (error) {
+        if (!controller.signal.aborted) setPrefetchError("Remaining attendance data could not be loaded. Refresh to retry.");
+      }
+    };
+    void run();
+    return () => controller.abort();
+  }, [progressiveSession, progressiveComplete, selectedAccountId, selectedDate, roleFilter]);
 
   const tableMinWidth = 1100;
 
@@ -655,13 +662,13 @@ export default function AttendanceSheetPage() {
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         <AppHeader
           title="Attendance Sheet"
-          subtitle="Call Center Operations attendance data"
+          subtitle="US Visa Operations attendance data"
           userName={dashboard.userName}
           onMenuClick={() => dashboard.setIsMobileSidebarOpen(true)}
           onLogoutClick={() => dashboard.setShowLogoutModal(true)}
         />
 
-        <main className="flex min-h-0 flex-1 flex-col gap-2.5 overflow-hidden px-2.5 pb-2 pt-2.5 sm:gap-3 sm:px-4 sm:pt-3 lg:px-5">
+        <main className="flex min-h-0 flex-1 flex-col gap-2.5 overflow-y-auto px-2.5 pb-2 pt-2.5 lg:overflow-hidden sm:gap-3 sm:px-4 sm:pt-3 lg:px-5">
           {metadataError && (
             <div className="shrink-0 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2.5 text-xs text-rose-700">
               <div className="flex items-start gap-2">
@@ -671,6 +678,25 @@ export default function AttendanceSheetPage() {
                   <p className="m-0 mt-0.5">{metadataError.message}</p>
                 </div>
               </div>
+            </div>
+          )}
+
+          <AttendanceSummaryCards
+            summary={!dataError && responseMeta?.roleFilter === roleFilter && String(responseMeta?.scope?.accountId) === String(selectedAccountId) && responseMeta?.attendanceDate === selectedDate ? responseMeta?.summary : null}
+            activeFilter={attendanceStatusFilter}
+            onFilterChange={setAttendanceStatusFilter}
+            loading={isLoadingData || Boolean(progressiveSession && !progressiveComplete && !prefetchError)}
+            progressive={Boolean(progressiveSession && !progressiveComplete && !prefetchError)}
+          />
+
+          {prefetchError && progressiveSession && !progressiveComplete && (
+            <div role="status" className="shrink-0 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">{prefetchError}</div>
+          )}
+
+          {!dataError && responseMeta?.roleFilter === roleFilter && responseMeta?.attendanceDate === selectedDate && responseMeta?.performance?.incomplete && (
+            <div role="status" className="flex shrink-0 items-center gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+              <AlertCircle className="h-4 w-4 shrink-0" aria-hidden="true" />
+              <span>Incomplete Kronos data: {responseMeta.performance.roleAttendanceFailures ?? responseMeta.performance.attendanceFailures ?? 0} attendance and {responseMeta.performance.roleScheduleFailures ?? responseMeta.performance.scheduleFailures ?? 0} schedule lookups unavailable; {responseMeta.performance.roleLeaveFailures ?? responseMeta.performance.leaveFailures ?? 0} leave verifications unavailable. Refresh to retry. Unverified records are not counted as absent.</span>
             </div>
           )}
 
@@ -707,127 +733,52 @@ export default function AttendanceSheetPage() {
                 </div>
               </div>
 
-              {/* 2. Department */}
-              <div className="w-full sm:w-auto sm:flex-1 sm:min-w-[160px] sm:max-w-[210px]">
-                <span className="mb-0.5 block text-[9.5px] font-extrabold uppercase text-sibs-tertiary-5">
-                  Department
-                </span>
-                <div className="flex h-8 items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50/80 px-2.5 text-xs font-semibold text-slate-700">
-                  <ShieldCheck size={13} className="shrink-0 text-sibs-primary-1" />
-                  <span className="truncate">Call Center Operations</span>
-                </div>
-              </div>
-
-              {/* 3. Account Dropdown */}
-              <div className="relative w-full sm:w-auto sm:flex-1 sm:min-w-[160px] sm:max-w-[210px]" ref={accountDropdownRef}>
-                <span className="mb-0.5 block text-[9.5px] font-extrabold uppercase text-sibs-tertiary-5">
-                  Account
-                </span>
-                <button
-                  type="button"
-                  disabled={isLoadingMetadata || accounts.length === 0}
-                  onClick={() => setIsAccountDropdownOpen((prev) => !prev)}
-                  className={`group flex h-8 w-full cursor-pointer items-center justify-between gap-1.5 rounded-lg border bg-white px-2.5 text-left text-xs font-semibold outline-none transition disabled:cursor-not-allowed disabled:opacity-50 ${
-                    isAccountDropdownOpen
-                      ? "border-sibs-primary-1 ring-1 ring-sibs-primary-1/20"
-                      : "border-sibs-tertiary-8 hover:border-sibs-primary-1 hover:bg-slate-50/50"
-                  }`}
-                >
-                  <span
-                    className={`truncate min-w-0 flex-1 ${
-                      selectedAccount
-                        ? "font-bold text-sibs-primary-1"
-                        : "font-semibold text-slate-800"
-                    }`}
-                  >
-                    {selectedAccount?.accountName || "Select account"}
-                  </span>
-                  <ChevronDown
-                    size={13}
-                    className={`shrink-0 text-slate-500 transition-transform duration-200 group-hover:text-sibs-primary-1 ${
-                      isAccountDropdownOpen ? "rotate-180 text-sibs-primary-1" : ""
-                    }`}
-                  />
-                </button>
-
-                {isAccountDropdownOpen && (
-                  <div className="absolute left-0 top-full z-50 mt-1 max-h-80 w-full min-w-[240px] overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-lg shadow-slate-900/10">
-                    <div className="border-b border-slate-100 p-1.5">
-                      <div className="relative">
-                        <Search className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
-                        <input
-                          type="text"
-                          value={accountSearchTerm}
-                          onChange={(e) => setAccountSearchTerm(e.target.value)}
-                          placeholder="Search account..."
-                          className="h-7 w-full rounded-md border border-slate-200 bg-slate-50 pl-6 pr-2 text-[11px] text-slate-800 focus:border-[#0b3b68] focus:bg-white focus:outline-none"
-                          onClick={(e) => e.stopPropagation()}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="max-h-64 overflow-y-auto sibs-scrollbar">
-                      {filteredAccountOptions.length > 0 ? (
-                        filteredAccountOptions.map((account) => {
-                          const isSelected = String(account.accountId) === String(selectedAccountId);
-                          const isMapped = Number(account?.kronosMapping?.kronosAccountId) > 0;
-                          return (
-                            <button
-                              key={account.accountId}
-                              type="button"
-                              disabled={!isMapped}
-                              onClick={() => {
-                                setSelectedAccountId(account.accountId);
-                                setIsAccountDropdownOpen(false);
-                                setAccountSearchTerm("");
-                              }}
-                              className={`flex w-full items-center justify-between px-3 py-2 text-left text-xs transition ${
-                                !isMapped
-                                  ? "cursor-not-allowed opacity-40 text-slate-400"
-                                  : isSelected
-                                  ? "bg-sky-50 font-bold text-[#0b3b68] cursor-pointer"
-                                  : "text-slate-700 hover:bg-slate-50 hover:text-slate-900 cursor-pointer"
-                              }`}
-                            >
-                              <span className="truncate">
-                                {account.accountName}
-                                {!isMapped && " (Unmapped)"}
-                              </span>
-                              {isSelected && (
-                                <Check className="h-3.5 w-3.5 text-[#0b3b68] shrink-0" />
-                              )}
-                            </button>
-                          );
-                        })
-                      ) : (
-                        <div className="px-3 py-3 text-center text-xs text-slate-400">
-                          No accounts found
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* 4. Select Date */}
+              {/* 2. Select Date */}
               <div className="w-full sm:w-auto sm:flex-1 sm:min-w-[150px] sm:max-w-[190px]">
                 <DatePicker
                   label="Select Date"
                   value={selectedDate}
                   onChange={(val) => {
                     setSelectedDate(val || "");
+                    setAttendanceStatusFilter("all");
                   }}
                 />
               </div>
 
-              {/* 5. Actions: Latest & Refresh */}
+              <SingleSelectDropdown
+                label="Role"
+                value={roleFilter}
+                options={ROLE_OPTIONS}
+                onChange={(event) => {
+                  attendanceRequestId.current += 1;
+                  foregroundAbort.current?.abort();
+                  prefetchAbort.current?.abort();
+                  setPrefetchError(null);
+                  setIsLoadingData(true);
+                  setRoleFilter(event.target.value);
+                  setPagination(prev => ({ ...prev, currentPage: 1 }));
+                }}
+                className="w-full sm:w-auto sm:flex-1 sm:min-w-[130px] sm:max-w-[190px]"
+              />
+
+              {/* 3. Status: summary-only filters remain selectable via cards. */}
+              <SingleSelectDropdown
+                label="Status"
+                value={attendanceStatusFilter}
+                options={STATUS_OPTIONS}
+                placeholder={CARD_FILTER_LABELS[attendanceStatusFilter] || "All Status"}
+                onChange={(event) => setAttendanceStatusFilter(event.target.value)}
+                className="w-full sm:w-auto sm:flex-1 sm:min-w-[150px] sm:max-w-[190px]"
+              />
+
+              {/* 4. Actions: Latest & Refresh */}
               <div className="flex items-center gap-1.5 w-full sm:w-auto sm:flex-1 sm:min-w-[190px] sm:max-w-[230px] justify-end">
                 <button
                   type="button"
                   onClick={() => {
                     setEmployeeSearch("");
-                    setAccountSearchTerm("");
                     setSelectedDate(formatManilaDate());
+                    setAttendanceStatusFilter("all");
                   }}
                   disabled={isLoadingData}
                   title="Use the latest date and clear search."
@@ -839,8 +790,8 @@ export default function AttendanceSheetPage() {
 
                 <button
                   type="button"
-                  onClick={() => loadViewerData(1, { forceRefresh: true })}
-                  disabled={isLoadingData || !selectedAccountId}
+                  onClick={() => selectedAccountId ? loadViewerData(1, { forceRefresh: true }) : loadMetadata()}
+                  disabled={isLoadingMetadata || (isLoadingData && Boolean(selectedAccountId))}
                   title="Refresh attendance records"
                   className="inline-flex h-8 flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-[#042c51] bg-[#042c51] px-2.5 text-xs font-bold text-white shadow-2xs transition hover:bg-[#063d70] hover:border-[#063d70] disabled:cursor-not-allowed disabled:opacity-50"
                 >
@@ -866,7 +817,7 @@ export default function AttendanceSheetPage() {
             </div>
           )}
 
-          <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs">
+          <div className="flex min-h-[240px] lg:min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs">
             <div className="min-h-0 flex-1 overflow-auto sibs-scrollbar">
               <table
                 className="w-full table-auto border-collapse text-left text-[12.5px]"
@@ -877,7 +828,7 @@ export default function AttendanceSheetPage() {
                     {[
                       "Employee ID",
                       "Name",
-                      "Account Name",
+                      "Role",
                       "Schedule In",
                       "Schedule Out",
                       "Login",
@@ -961,16 +912,11 @@ export default function AttendanceSheetPage() {
                             {employeeName || "—"}
                           </td>
                           <td className="whitespace-nowrap px-4 py-3">
-                            <div className="flex items-center gap-1.5 whitespace-nowrap">
-                              <span className="inline-flex items-center rounded-md bg-sky-50 px-2 py-0.5 text-[11px] font-bold text-[#0b3b68] border border-sky-200/80 shadow-2xs">
-                                {accountName || "—"}
-                              </span>
-                              {row?.employeeRole === "TEAM_LEADER" && (
-                                <span className="inline-flex items-center rounded-md border border-violet-200 bg-violet-50 px-2 py-0.5 text-[11px] font-bold text-violet-700 shadow-2xs">
-                                  Team Leaders
-                                </span>
-                              )}
-                            </div>
+                            {row?.employeeRole === "TEAM_LEADER" ? (
+                              <span className="inline-flex items-center rounded-md border border-violet-200 bg-violet-50 px-2 py-0.5 text-[11px] font-bold text-violet-700 shadow-2xs">Team Leader</span>
+                            ) : row?.employeeRole === "AGENT" ? (
+                              <span className="inline-flex items-center rounded-md border border-sky-200/80 bg-sky-50 px-2 py-0.5 text-[11px] font-bold text-[#0b3b68] shadow-2xs">Agent</span>
+                            ) : <span className="text-slate-400">—</span>}
                           </td>
                           {/* Schedule In */}
                           <td className="whitespace-nowrap px-4 py-3 font-mono text-[12px] text-slate-700">
@@ -1011,6 +957,8 @@ export default function AttendanceSheetPage() {
                                     ? "bg-green-100 text-green-700 border border-green-200"
                                     : attendanceStatus === "Absent"
                                     ? "bg-rose-100 text-rose-700 border border-rose-200"
+                                    : attendanceStatus === "Planned Leave"
+                                    ? "bg-indigo-100 text-indigo-700 border border-indigo-200"
                                     : attendanceStatus === "Rest Day"
                                     ? "bg-slate-100 text-slate-600 border border-slate-200"
                                     : "bg-amber-100 text-amber-700 border border-amber-200"
@@ -1030,7 +978,7 @@ export default function AttendanceSheetPage() {
                         <td colSpan={10} className="py-20 text-center text-slate-400">
                           {hasLoadedData
                             ? "No attendance records found for the selected filters."
-                            : "Select an account to view attendance records."}
+                            : "US Visa attendance is unavailable. Refresh to retry account resolution."}
                         </td>
                       </tr>
                     )}

@@ -699,90 +699,80 @@ export default function ViewGraphsPage() {
         setAbsenteeismKpiResponse(null);
 
         if (weeklyWindows.length === 6) {
-          // Only one week is orchestrated at a time. Both KPI sources for
-          // that week are allowed to share the same in-flight Attendance API.
-          // The underlying Kronos pool still caps physical requests at 3.
+          // Separate week pipelines prevent one KPI from blocking the other.
+          // Physical Kronos requests still use the shared bounded server pool.
           void (async () => {
-            const utilizationWeeks = [];
-            const absenteeismWeeks = [];
-            let failedCount = 0;
-            for (const [index, window] of weeklyWindows.entries()) {
-              if (weekAbort.signal.aborted) return;
-              setWeeklyProgress({ loaded: index, total: 6,
-                current: window.weekFrom, failed: failedCount, active: true });
-              const isCurrent = () => !weekAbort.signal.aborted &&
-                utilizationRequestId === utilizationRequestRef.current &&
-                absenteeismRequestId === absenteeismRequestRef.current;
+            const state = {
+              utilization: { loaded: 0, failed: 0, done: false },
+              absenteeism: { loaded: 0, failed: 0, done: false },
+            };
+            const isCurrent = () => !weekAbort.signal.aborted &&
+              utilizationRequestId === utilizationRequestRef.current &&
+              absenteeismRequestId === absenteeismRequestRef.current;
+            const publishProgress = () => {
+              if (!isCurrent()) return;
+              const loaded = Math.min(state.utilization.loaded, state.absenteeism.loaded);
+              setWeeklyProgress({ loaded, total: 6,
+                current: weeklyWindows[Math.min(loaded, 5)]?.weekFrom,
+                failed: state.utilization.failed + state.absenteeism.failed,
+                active: !(state.utilization.done && state.absenteeism.done),
+                finalizing: loaded === 6 && !(state.utilization.done && state.absenteeism.done),
+              });
+            };
+            const loadKpi = async ({ kind, fetchKpi, params, publish, setLoading, setError }) => {
+              const progress = state[kind];
+              const weeks = [];
+              const name = kind === 'utilization' ? 'Utilization' : 'Absenteeism';
               const config = { signal: weekAbort.signal };
-              // Publish each KPI as soon as it resolves, without waiting for
-              // the other KPI's schedule/leave dependencies in this week.
-              await Promise.allSettled([
-                getUtilizationKpis({ ...utilizationParams, ...window }, config)
-                  .then((res) => {
+              try {
+                for (const window of weeklyWindows) {
+                  if (!isCurrent()) return;
+                  try {
+                    const res = await fetchKpi({ ...params, ...window }, config);
                     if (!isCurrent()) return;
-                    if (!isWeeklyKpiUsable(res, 'utilization')) throw new Error('Incomplete Utilization week');
-                    utilizationWeeks.push(res);
-                    setUtilizationKpiResponse(buildPartialWeeklyResponse(utilizationWeeks, 'utilization'));
-                    setIsUtilizationLoading(false);
-                  })
-                  .catch((error) => {
+                    if (!isWeeklyKpiUsable(res, kind)) throw new Error(`Incomplete ${name} week`);
+                    weeks.push(res);
+                    publish(buildPartialWeeklyResponse(weeks, kind));
+                    setLoading(false);
+                  } catch (error) {
                     if (!isCurrent()) return;
-                    failedCount += 1;
-                    setUtilizationError('One or more Utilization weeks could not be verified.');
-                  }),
-                getAbsenteeismKpis({ ...absenteeismParams, ...window }, config)
-                  .then((res) => {
+                    progress.failed += 1;
+                    setError(`One or more ${name} weeks could not be verified.`);
+                  }
+                  progress.loaded += 1;
+                  publishProgress();
+                }
+                if (!progress.failed && isCurrent()) {
+                  try {
+                    const res = await fetchKpi(params, config);
                     if (!isCurrent()) return;
-                    if (!isWeeklyKpiUsable(res, 'absenteeism')) throw new Error('Incomplete Absenteeism week');
-                    absenteeismWeeks.push(res);
-                    setAbsenteeismKpiResponse(buildPartialWeeklyResponse(absenteeismWeeks, 'absenteeism'));
-                    setIsAbsenteeismLoading(false);
-                  })
-                  .catch((error) => {
+                    const status = res?.data?.data?.[kind]?.status;
+                    if (['UNAVAILABLE', 'ACCOUNT_UNAVAILABLE'].includes(status)) throw new Error('Incomplete total');
+                    publish(res);
+                  } catch (error) {
                     if (!isCurrent()) return;
-                    failedCount += 1;
-                    setAbsenteeismError('One or more Absenteeism weeks could not be verified.');
-                  }),
-              ]);
-              if (!isCurrent()) return;
-              setWeeklyProgress({ loaded: index + 1, total: 6,
-                current: window.weekFrom, failed: failedCount, active: index < 5 });
-            }
-            if (weekAbort.signal.aborted) return;
-            if (failedCount === 0) {
-              // After all six slices arrive, the original full-range services
-              // calculate the authoritative summary (distinct HC, weighted
-              // rates, staffing snapshots). Raw attendance is reassembled from
-              // the weekly cache; schedules and leaves reuse the full-range
-              // source cache. No arithmetic average of weekly rates is used.
-              setWeeklyProgress({ loaded: 6, total: 6, failed: 0, active: true, finalizing: true });
-              const [utilTotal, absentTotal] = await Promise.allSettled([
-                getUtilizationKpis(utilizationParams, { signal: weekAbort.signal }),
-                getAbsenteeismKpis(absenteeismParams, { signal: weekAbort.signal }),
-              ]);
-              if (!isCurrent()) return;
-              if (utilTotal.status === 'fulfilled' &&
-                  !['UNAVAILABLE', 'ACCOUNT_UNAVAILABLE'].includes(utilTotal.value?.data?.data?.utilization?.status)) {
-                setUtilizationKpiResponse(utilTotal.value);
-              } else {
-                failedCount += 1;
-                setUtilizationError('Full-period Utilization summary is unavailable. Weekly results remain visible.');
+                    progress.failed += 1;
+                    setError(`Full-period ${name} summary is unavailable. Weekly results remain visible.`);
+                  }
+                }
+              } finally {
+                progress.done = true;
+                if (isCurrent()) {
+                  setLoading(false);
+                  publishProgress();
+                }
               }
-              if (absentTotal.status === 'fulfilled' &&
-                  absentTotal.value?.data?.data?.absenteeism?.status !== 'UNAVAILABLE') {
-                setAbsenteeismKpiResponse(absentTotal.value);
-              } else {
-                failedCount += 1;
-                setAbsenteeismError('Full-period Absenteeism summary is unavailable. Weekly results remain visible.');
-              }
-            }
-            if (isCurrent()) {
-              setWeeklyProgress({ loaded: 6, total: 6, failed: failedCount, active: false });
-              setIsUtilizationLoading(false);
-              setIsAbsenteeismLoading(false);
-            }
+            };
+            publishProgress();
+            await Promise.allSettled([
+              loadKpi({ kind: 'utilization', fetchKpi: getUtilizationKpis, params: utilizationParams,
+                publish: setUtilizationKpiResponse, setLoading: setIsUtilizationLoading, setError: setUtilizationError }),
+              loadKpi({ kind: 'absenteeism', fetchKpi: getAbsenteeismKpis, params: absenteeismParams,
+                publish: setAbsenteeismKpiResponse, setLoading: setIsAbsenteeismLoading, setError: setAbsenteeismError }),
+            ]);
           })().catch((error) => {
-            if (weekAbort.signal.aborted) return;
+            if (weekAbort.signal.aborted || utilizationRequestId !== utilizationRequestRef.current ||
+                absenteeismRequestId !== absenteeismRequestRef.current) return;
             console.error('Progressive weekly KPI fetch failed:', error);
             setWeeklyProgress({ loaded: 0, total: 6, failed: 1, active: false });
             setIsUtilizationLoading(false);
