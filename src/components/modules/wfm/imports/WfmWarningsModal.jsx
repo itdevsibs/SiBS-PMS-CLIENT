@@ -23,7 +23,8 @@ import {
 const WARNING_LEVEL_ORDER = [
   "CALL REPORT (EOD)",
   "CHAT REPORT (EOD)",
-  "AGENT ACTIVITY - PRODUCTIVE BREAKS",
+  "AGENT ACTIVITY & BREAKS",
+  "AGENT LOGIN & LOGOUT",
   "AGENT PERFORMANCE BY SKILL",
   "SKILL STATISTICS",
   "SERVICE / QUEUE LEVEL",
@@ -102,7 +103,8 @@ export default function WfmWarningsModal({
     const counts = {
       "CALL REPORT (EOD)": 0,
       "CHAT REPORT (EOD)": 0,
-      "AGENT ACTIVITY - PRODUCTIVE BREAKS": 0,
+      "AGENT ACTIVITY & BREAKS": 0,
+      "AGENT LOGIN & LOGOUT": 0,
       "AGENT PERFORMANCE BY SKILL": 0,
       "SKILL STATISTICS": 0,
       "SERVICE / QUEUE LEVEL": 0,
@@ -135,8 +137,12 @@ export default function WfmWarningsModal({
         label: `CHAT REPORT (EOD) (${levelCounts["CHAT REPORT (EOD)"] || 0})`,
       },
       {
-        value: "AGENT ACTIVITY - PRODUCTIVE BREAKS",
-        label: `AGENT ACTIVITY - PRODUCTIVE BREAKS (${levelCounts["AGENT ACTIVITY - PRODUCTIVE BREAKS"] || 0})`,
+        value: "AGENT ACTIVITY & BREAKS",
+        label: `AGENT ACTIVITY & BREAKS (${levelCounts["AGENT ACTIVITY & BREAKS"] || 0})`,
+      },
+      {
+        value: "AGENT LOGIN & LOGOUT",
+        label: `AGENT LOGIN & LOGOUT (${levelCounts["AGENT LOGIN & LOGOUT"] || 0})`,
       },
       {
         value: "AGENT PERFORMANCE BY SKILL",

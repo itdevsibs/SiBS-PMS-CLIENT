@@ -43,8 +43,8 @@ export async function getQualityAuditRowDetail(auditId) {
   return response?.data || response;
 }
 
-export async function getOccupancyKpis(params = {}) {
-  const response = await api.get("/kpis/occupancy", { params });
+export async function getOccupancyKpis(params = {}, config = {}) {
+  const response = await api.get("/kpis/occupancy", { ...config, params });
   return response;
 }
 
@@ -78,5 +78,21 @@ export async function compareTaskOrderVersions(body) {
 
 export async function getDocumentedCallsAhtReport(params = {}, config = {}) {
   const response = await api.get("/kpis/documented-calls-aht-report", { ...config, params });
+  return response?.data || response;
+}
+
+export async function getWorkforceKpiEvidence(metric, params = {}, config = {}) {
+  if (!['absenteeism','headcount','occupancy','utilization'].includes(metric)) throw new Error('Unsupported report.');
+  const response = await api.get(`/kpis/${metric}-report`, { ...config, params });
+  return response?.data || response;
+}
+
+export async function renewWorkforceKpiEvidence(body, config = {}) {
+  const response = await api.post('/kpis/evidence/renew', body, { ...config, skipAuthRedirect: true });
+  return response?.data || response;
+}
+
+export async function releaseWorkforceKpiEvidence(body, config = {}) {
+  const response = await api.post('/kpis/evidence/release', body, { ...config, skipAuthRedirect: true });
   return response?.data || response;
 }

@@ -6,6 +6,7 @@ import {
   BarChart3,
 } from "lucide-react";
 import { ChartShell } from "./CallKpiDashboard.jsx";
+import WorkforceKpiEvidenceModalContent from "./WorkforceKpiEvidenceModalContent.jsx";
 import OccupancyDrillDownModalContent from "./OccupancyDrillDownModalContent.jsx";
 import { getCallAxisTicks } from "./callKpiDashboardUtils.js";
 
@@ -36,7 +37,7 @@ export function OccupancySummaryCards({
   const cards = [
     {
       label: "Occupancy Rate",
-      value: summary?.occupancyPct != null ? `${formatNumber(summary.occupancyPct, 2)}%` : "0%",
+      value: summary?.occupancyPct != null ? `${formatNumber(summary.occupancyPct, 2)}%` : "—",
       hint: "Total work time ÷ productive time",
       icon: Gauge,
       status: {
@@ -289,6 +290,9 @@ function ChartCanvasGrid({
                         const rawVal = item[spec.key];
                         const hasValue = rawVal != null && Number.isFinite(Number(rawVal));
                         const value = hasValue ? Number(rawVal) : null;
+                        const family = ({occupancyPct:'occupancy',utilizationPct:'utilization',absenteeismPct:'absenteeism',attritionPct:'attrition'})[spec.key] || 'headcount';
+                        const state = item.weekStates?.[family];
+                        const pending = !hasValue && ['PENDING','LOADING'].includes(state);
                         const maxValue = maxAxisValue || 100;
                         // A negative buffer is a shortfall: show its magnitude
                         // but retain the signed value and a distinct warning color.
@@ -330,6 +334,8 @@ function ChartCanvasGrid({
 
                             {value != null ? (
                               <div
+                                data-kpi-bucket={item.key}
+                                data-kpi-metric={spec.key}
                                 aria-label={`${xAxisLabels[index] || ""} ${spec.label || ""}: ${formatValue ? formatValue(value) : value}`.trim()}
                                 className={`w-full ${barSpecs.length > 1
                                     ? isSubmodule
@@ -341,11 +347,18 @@ function ChartCanvasGrid({
                                   } rounded-none ${chartBarColor} transition-all duration-200 ease-out group-hover/bar:-translate-y-0.5 group-hover/bar:brightness-110 shadow-xs sibs-graph-bar-rise`}
                                 style={{
                                   height: `${height}%`,
+                                  minHeight: isSubmodule && value === 0 ? "6px" : undefined,
+                                  backgroundColor: isSubmodule && value === 0 ? "transparent" : undefined,
                                   animationDelay: `${Math.min(index * 60 + barIndex * 30, 500)}ms`,
                                 }}
                               />
                             ) : null}
 
+                            {!hasValue && (pending ? (
+                              <div role="status" aria-label={`${item.label} ${spec.label} loading`} className="h-[42%] w-full max-w-[46px] animate-pulse rounded-sm bg-slate-200/80" />
+                            ) : (
+                              <span title={`${spec.label}: unavailable`} className="mb-1 text-[9px] text-slate-400">--</span>
+                            ))}
                             {value != null ? (
                               <div
                                 className={`pointer-events-none absolute top-2 z-50 hidden min-w-36 rounded-xl border border-sibs-tertiary-10/80 bg-white/95 p-2 shadow-xl backdrop-blur-md group-hover/bar:block ${index <= 1
@@ -431,7 +444,9 @@ export default function OccupancyKpiDashboard({
   isLoading = false,
   isUtilizationLoading = false,
   isAbsenteeismLoading = false,
+  isHeadcountLoading = false,
   wowSectionPart = null,
+  recoverEvidence = null,
 } = {}) {
   const summary = data?.summary || {};
   const series = data?.series || [];
@@ -499,7 +514,10 @@ export default function OccupancyKpiDashboard({
 
   // Progressive mode: do not hide the first verified week while another
   // Kronos source or an older week is still fetching.
-  const isAnyOccupancyLoading = Boolean(isLoading || (isUtilizationLoading && !series.some(row => row.utilizationPct != null)));
+  const hasWeekPlaceholders = series.some(row=>row.weekStates);
+  const isAnyOccupancyLoading = !hasWeekPlaceholders && (isLoading || isUtilizationLoading) && !series.some(row=>row.occupancyPct != null || row.utilizationPct != null);
+  const isHeadcountChartLoading = !hasWeekPlaceholders && isHeadcountLoading && !series.some(row=>row.actualHeadcount != null || row.requiredHeadcount != null);
+  const isPeopleChartLoading = !hasWeekPlaceholders && isAbsenteeismLoading && !series.some(row=>row.absenteeismPct != null || row.attritionPct != null);
 
   return (
     <div className={isSubmodule ? (showFilters ? "space-y-1.5 sm:space-y-2" : "space-y-2.5") : "flex-1 min-h-0 flex flex-col"}>
@@ -534,11 +552,9 @@ export default function OccupancyKpiDashboard({
               showFilters={showFilters}
               barsPerPeriod={2}
               series={series}
-              renderModalContent={({ selectedIndex, series: modalSeries }) => (
-                <OccupancyDrillDownModalContent
-                  series={modalSeries}
-                  selectedIndex={selectedIndex}
-                />
+              preserveSelectedKey
+              renderModalContent={({ selectedIndex, series: modalSeries, clickedLabel, clickedMetric }) => (
+                <WorkforceKpiEvidenceModalContent recoverGraph={recoverEvidence} metric={clickedMetric === "utilizationPct" || (!clickedMetric && clickedLabel?.includes("Utilization:")) ? "utilization" : "occupancy"} active={modalSeries[selectedIndex]}/>
               )}
               legend={
                 <>
@@ -576,16 +592,14 @@ export default function OccupancyKpiDashboard({
             <ChartShell
               title="Headcount Metrics"
               darkHeader={isSubmodule}
-              isLoading={isLoading || (isAbsenteeismLoading && !series.some(row => row.actualHeadcount != null))}
+              isLoading={isHeadcountChartLoading}
               isSubmodule={isSubmodule}
               showFilters={showFilters}
               barsPerPeriod={1}
               series={series}
-              renderModalContent={({ selectedIndex, series: modalSeries }) => (
-                <OccupancyDrillDownModalContent
-                  series={modalSeries}
-                  selectedIndex={selectedIndex}
-                />
+              preserveSelectedKey
+              renderModalContent={({ selectedIndex, series: modalSeries, clickedLabel, clickedMetric }) => (
+                <WorkforceKpiEvidenceModalContent recoverGraph={recoverEvidence} metric="headcount" active={modalSeries[selectedIndex]} initialReport={(clickedMetric==="actualHeadcount"||(!clickedMetric&&clickedLabel?.includes("Actual HC:")))?"details":"summary"}/>
               )}
               legend={
                 <>
@@ -631,18 +645,15 @@ export default function OccupancyKpiDashboard({
             <ChartShell
               title="People Metrics"
               darkHeader={isSubmodule}
-              isLoading={isLoading || (isAbsenteeismLoading && !series.some(row => row.absenteeismPct != null))}
+              isLoading={isPeopleChartLoading}
               isSubmodule={isSubmodule}
               showFilters={showFilters}
               barsPerPeriod={2}
               series={series}
-              renderModalContent={({ selectedIndex, series: modalSeries }) => (
-                <OccupancyDrillDownModalContent
-                  series={modalSeries}
-                  selectedIndex={selectedIndex}
-                />
+              preserveSelectedKey
+              renderModalContent={({ selectedIndex, series: modalSeries, clickedLabel, clickedMetric }) => (
+                (clickedMetric==="attritionPct"||(!clickedMetric&&clickedLabel?.includes("Attrition:"))) ? <OccupancyDrillDownModalContent series={modalSeries} selectedIndex={selectedIndex}/> : <WorkforceKpiEvidenceModalContent recoverGraph={recoverEvidence} metric="absenteeism" active={modalSeries[selectedIndex]} initialReport="details"/>
               )}
-              series={series}
               legend={
                 <>
                   <span className="inline-flex items-center gap-1 font-bold text-[#0b3b68]">
@@ -699,7 +710,7 @@ export default function OccupancyKpiDashboard({
               darkHeader={isSubmodule}
               tightLeft={!isSubmodule}
               onClick={!isSubmodule ? onSectionClick : undefined}
-              isLoading={isLoading}
+              isLoading={isAnyOccupancyLoading}
               isSubmodule={isSubmodule}
               showFilters={showFilters}
               series={series}
@@ -744,7 +755,7 @@ export default function OccupancyKpiDashboard({
               darkHeader={isSubmodule}
               tightLeft={!isSubmodule}
               onClick={!isSubmodule ? onSectionClick : undefined}
-              isLoading={isUtilizationLoading}
+              isLoading={isHeadcountChartLoading}
               isSubmodule={isSubmodule}
               showFilters={showFilters}
               series={series}
@@ -794,7 +805,7 @@ export default function OccupancyKpiDashboard({
               darkHeader={isSubmodule}
               tightLeft={!isSubmodule}
               onClick={!isSubmodule ? onSectionClick : undefined}
-              isLoading={isAbsenteeismLoading}
+              isLoading={isPeopleChartLoading}
               isSubmodule={isSubmodule}
               showFilters={showFilters}
               series={series}
