@@ -143,8 +143,10 @@ export function getApiErrorMessage(error, card) {
         ? "Email Raw Data"
         : /performance.*skill/i.test(profileLabel)
           ? "Agent Performance By Skill"
-          : /activity|productive.*break/i.test(profileLabel)
-            ? "Agent Activity - Productive Breaks"
+          : /login|logout/i.test(profileLabel)
+            ? "Agent Login & Logout"
+            : /activity|productive.*break/i.test(profileLabel)
+            ? "Agent Activity & Breaks"
             : /chat/i.test(profileLabel)
               ? "Chat Report (EOD)"
               : /call/i.test(profileLabel)
@@ -585,7 +587,8 @@ export const WARNING_CATEGORY_LABELS = [
   "SERVICE / QUEUE LEVEL",
   "AGENT LEVEL",
   "AGENT OCCUPANCY",
-  "AGENT ACTIVITY - PRODUCTIVE BREAKS",
+  "AGENT ACTIVITY & BREAKS",
+  "AGENT LOGIN & LOGOUT",
   "AGENT PERFORMANCE BY SKILL",
   "EMAIL LEVEL",
   "QUALITY AUDIT",
@@ -593,6 +596,16 @@ export const WARNING_CATEGORY_LABELS = [
 
 export function getBatchCategory(batch) {
   if (!batch) return "SERVICE / QUEUE LEVEL";
+  // Historical cached uploads can retain the old combined group label.
+  const profileCard = getRawDataCardByImportProfileCode(batch.importProfileCode);
+  const stableCard = getRawDataCards("US VISA").find((c) => c.id === batch.cardId);
+  const identityCard = profileCard || stableCard;
+  if (["AGENT ACTIVITY & BREAKS", "AGENT LOGIN & LOGOUT"].includes(identityCard?.groupLabel)) {
+    return identityCard.groupLabel;
+  }
+  const reportIdentity = `${batch.importProfileCode || ""} ${batch.cardId || ""} ${batch.rawDataTitle || ""} ${batch.importProfileName || ""}`;
+  if (!identityCard && /hero.*(?:login|logout)|agent[_ -]login[_ -]logout/i.test(reportIdentity)) return "AGENT LOGIN & LOGOUT";
+  if (batch.groupLabel === "AGENT ACTIVITY - PRODUCTIVE BREAKS") return "AGENT ACTIVITY & BREAKS";
   if (batch.groupLabel && WARNING_CATEGORY_LABELS.includes(batch.groupLabel)) {
     return batch.groupLabel;
   }
@@ -617,7 +630,7 @@ export function getBatchCategory(batch) {
   if (text.includes("quality") || text.includes("qa ")) return "QUALITY AUDIT";
   if (text.includes("email")) return "EMAIL LEVEL";
   if (text.includes("occupancy")) return "AGENT OCCUPANCY";
-  if (text.includes("agent activity") || text.includes("productive breaks") || text.includes("productive_breaks")) return "AGENT ACTIVITY - PRODUCTIVE BREAKS";
+  if (text.includes("agent activity") || text.includes("productive breaks") || text.includes("productive_breaks")) return "AGENT ACTIVITY & BREAKS";
   if (text.includes("agent performance by skill") || text.includes("agent_performance_by_skill")) return "AGENT PERFORMANCE BY SKILL";
   if (text.includes("agent level")) return "AGENT LEVEL";
   if (
@@ -797,7 +810,8 @@ export function groupRawDataCards(cards = []) {
     "SERVICE / QUEUE LEVEL",
     "AGENT LEVEL",
     "AGENT OCCUPANCY",
-    "AGENT ACTIVITY - PRODUCTIVE BREAKS",
+    "AGENT ACTIVITY & BREAKS",
+    "AGENT LOGIN & LOGOUT",
     "AGENT PERFORMANCE BY SKILL",
     "EMAIL LEVEL",
     "QUALITY AUDIT",

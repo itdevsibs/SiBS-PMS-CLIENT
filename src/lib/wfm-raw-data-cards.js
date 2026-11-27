@@ -143,11 +143,23 @@ const accountRawDataCards = {
       requiresTaskOrderSelection: true,
       requiresReportingPeriod: false,
     },
+    ...["FuseCom", "FuseNet"].map(source => ({
+      id: `agent-activity-${source.toLowerCase()}`, title: `${source} Agent Activity`,
+      sourceLabel: source, groupLabel: "AGENT ACTIVITY & BREAKS", taskOrders: [],
+      importProfileCode: `${source.toUpperCase()}_AGENT_ACTIVITY`, fileExtension: ".xlsx", acceptedFileTypes: ".xlsx",
+      requiresTaskOrderSelection: false, requiresReportingPeriod: false,
+    })),
+    {
+      id: "agent-activity-login-herodash", title: "HeroDash Login/Logout", sourceLabel: "HeroDash",
+      groupLabel: "AGENT LOGIN & LOGOUT", taskOrders: [],
+      importProfileCode: "HERODASH_AGENT_LOGIN_LOGOUT", fileExtension: ".xlsx", acceptedFileTypes: ".xlsx",
+      requiresTaskOrderSelection: false, requiresReportingPeriod: false,
+    },
     {
       id: "agent-activity-productive-breaks-herodash",
-      title: "HeroDash",
+      title: "HeroDash Productive Breaks",
       sourceLabel: "HeroDash",
-      groupLabel: "AGENT ACTIVITY - PRODUCTIVE BREAKS",
+      groupLabel: "AGENT ACTIVITY & BREAKS",
       taskOrders: [],
       importProfileCode: "HERODASH_AGENT_ACTIVITY_PRODUCTIVE_BREAKS",
       fileExtension: ".xlsx",
@@ -165,7 +177,7 @@ const accountRawDataCards = {
       fileExtension: ".xlsx",
       acceptedFileTypes: ".xlsx",
       requiresTaskOrderSelection: false,
-      // The exported report has no date column; store a user-confirmed date.
+      // The aggregated export requires the full user-confirmed reporting range.
       requiresReportingPeriod: true,
     },
     {

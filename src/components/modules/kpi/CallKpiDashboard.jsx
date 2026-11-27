@@ -276,9 +276,16 @@ function ChartShell({
   customChartHeightStyle = null,
   darkHeader = false,
   renderModalContent = null,
+  preserveSelectedKey = false,
 }) {
   const [modalInfo, setModalInfo] = useState(null);
   const canOpenModal = isSubmodule && !onClick;
+  const liveIndex = modalInfo && preserveSelectedKey && modalInfo.bucketKey
+    ? series?.findIndex(item => item.key === modalInfo.bucketKey) ?? -1
+    : modalInfo?.selectedIndex ?? 0;
+  const modalSeries = preserveSelectedKey && modalInfo?.bucketKey && liveIndex < 0 && modalInfo.selectedBucket
+    ? [modalInfo.selectedBucket] : series;
+  const selectedIndex = modalSeries !== series ? 0 : liveIndex;
   const handleChartClick = onClick
     ? onClick
     : canOpenModal
@@ -291,9 +298,16 @@ function ChartShell({
         const matchedIndex = Array.isArray(series)
           ? series.findIndex((item) => item?.label && (barLabel === item.label || barLabel?.startsWith(`${item.label} `)))
           : -1;
+        const explicitKey = barEl.getAttribute('data-kpi-bucket');
+        const clickedMetric = barEl.getAttribute('data-kpi-metric');
+        const index = explicitKey ? series?.findIndex(item => String(item.key) === explicitKey) ?? -1 : matchedIndex;
+        if ((explicitKey || preserveSelectedKey) && index < 0) return;
+        if (preserveSelectedKey && !series?.[index >= 0 ? index : 0]?.key) return;
         setModalInfo({
+          clickedMetric, selectedBucket: series?.[index >= 0 ? index : 0],
           subtitle: barLabel,
-          selectedIndex: matchedIndex >= 0 ? matchedIndex : 0,
+          selectedIndex: index >= 0 ? index : 0,
+          bucketKey: preserveSelectedKey ? series?.[index >= 0 ? index : 0]?.key : undefined,
         });
       }
     : undefined;
@@ -368,25 +382,28 @@ function ChartShell({
         isOpen={Boolean(modalInfo)}
         onClose={() => setModalInfo(null)}
         title={title}
-        periodLabel={modalInfo ? series?.[modalInfo.selectedIndex]?.label || null : null}
+        periodLabel={modalInfo ? modalSeries?.[selectedIndex]?.label || null : null}
         subtitle={modalInfo?.subtitle || subtitle}
         legend={legend}
       >
-        {modalInfo && renderModalContent
+        {modalInfo && renderModalContent && selectedIndex >= 0
           ? renderModalContent({
-              selectedIndex: modalInfo.selectedIndex ?? 0,
+              selectedIndex,
               setSelectedIndex: (nextIndex) =>
                 setModalInfo((prev) =>
                   prev
                     ? {
                         ...prev,
                         selectedIndex: nextIndex,
+                        bucketKey: preserveSelectedKey ? modalSeries?.[nextIndex]?.key : undefined,
+                        selectedBucket: modalSeries?.[nextIndex],
                         subtitle: series?.[nextIndex]?.label || prev.subtitle,
                       }
                     : prev,
                 ),
               clickedLabel: modalInfo.subtitle,
-              series: Array.isArray(series) ? series : [],
+              clickedMetric: modalInfo.clickedMetric,
+              series: Array.isArray(modalSeries) ? modalSeries : [],
             })
           : null}
       </KpiChartModal>

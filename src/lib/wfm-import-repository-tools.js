@@ -10,7 +10,9 @@ export const REPOSITORY_TOOLS_BY_LEVEL = Object.freeze({
   "DOCUMENTED CALLS": ["MS Dynamics"],
   "CHAT REPORT (EOD)": ["Fusecom", "FuseNet", "HeroDash"],
   "AGENT OCCUPANCY": ["Fusecom", "FuseNet", "HeroDash"],
-  "AGENT ACTIVITY - PRODUCTIVE BREAKS": ["HeroDash"],
+  "AGENT ACTIVITY & BREAKS": ["Fusecom", "FuseNet", "HeroDash"],
+  "AGENT LOGIN & LOGOUT": ["HeroDash"],
+  "AGENT ACTIVITY - PRODUCTIVE BREAKS": ["Fusecom", "FuseNet", "HeroDash"],
   "AGENT PERFORMANCE BY SKILL": ["HeroDash"],
   "EMAIL LEVEL": ["MS Dynamics"],
   "QUALITY AUDIT": ["Quality Audit"],
@@ -49,7 +51,10 @@ export function getRepositoryToolForUpload(upload = {}) {
 // Preserve distinct labels for retired historical imports.
 const REPOSITORY_REPORT_TYPES = Object.freeze([
   ["PERFORMANCE_BY_SKILL", "Agent Performance By Skill"],
-  ["PRODUCTIVE_BREAKS", "Agent Activity – Productive Breaks"],
+  ["AGENT_LOGIN_LOGOUT", "Agent Login & Logout"],
+  ["LOGIN_LOGOUT", "Agent Login & Logout"],
+  ["PRODUCTIVE_BREAKS", "Agent Activity & Breaks"],
+  ["AGENT_ACTIVITY", "Agent Activity & Breaks"],
   ["SKILL_STATISTICS", "Skill Statistics"],
   ["DOCUMENTED_CALLS", "Documented Calls (AHT)"],
   ["SERVICE_/_QUEUE_LEVEL", "Skill Statistics"],
@@ -67,6 +72,8 @@ const REPOSITORY_REPORT_TYPES = Object.freeze([
 export function getRepositoryReportTypeForUpload(upload = {}) {
   const metadata = [
     upload.importProfileCode,
+    // The stable login card predates the category split.
+    ...(String(upload.cardId || "").includes("agent-activity-login-herodash") ? ["AGENT_LOGIN_LOGOUT"] : []),
     upload.groupLabel,
     upload.importProfileName,
     upload.rawDataTitle,

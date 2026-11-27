@@ -91,7 +91,8 @@ function normalizeLevelValue(val) {
   if (upper.includes("SKILL STATISTICS") || upper.includes("SERVICE") || upper.includes("QUEUE")) return "SKILL STATISTICS";
   if (upper.includes("QUALITY") || upper === "QA") return "QUALITY AUDIT";
   if (upper.includes("OCCUPANCY")) return "AGENT OCCUPANCY";
-  if (upper.includes("AGENT ACTIVITY") || upper.includes("PRODUCTIVE BREAK")) return "AGENT ACTIVITY - PRODUCTIVE BREAKS";
+  if (upper.includes("AGENT LOGIN") || upper.includes("LOGIN/LOGOUT")) return "AGENT LOGIN & LOGOUT";
+  if (upper.includes("AGENT ACTIVITY") || upper.includes("PRODUCTIVE BREAK")) return "AGENT ACTIVITY & BREAKS";
   if (upper.includes("AGENT PERFORMANCE") && upper.includes("SKILL")) return "AGENT PERFORMANCE BY SKILL";
   if (upper.includes("EMAIL")) return "EMAIL LEVEL";
   return val;
@@ -310,6 +311,8 @@ export default function WfmImportedRepository() {
   // Legacy Agent Level batches are grouped under Call Report (EOD);
   // Skill Statistics is active again; old queue-level batches share this category.
   const getUploadLevel = useCallback((upload) => {
+    const category = getBatchCategory(upload);
+    if (["AGENT ACTIVITY & BREAKS", "AGENT LOGIN & LOGOUT"].includes(category)) return category;
     const rawLevel =
       upload.groupLabel ||
       upload.level ||
@@ -322,7 +325,8 @@ export default function WfmImportedRepository() {
     if (upper.includes("CALL REPORT")) return "CALL REPORT (EOD)";
     if (upper.includes("CHAT REPORT")) return "CHAT REPORT (EOD)";
     if (upper.includes("OCCUPANCY")) return "AGENT OCCUPANCY";
-    if (upper.includes("AGENT ACTIVITY") || upper.includes("PRODUCTIVE BREAK")) return "AGENT ACTIVITY - PRODUCTIVE BREAKS";
+    if (upper.includes("AGENT LOGIN") || upper.includes("LOGIN/LOGOUT")) return "AGENT LOGIN & LOGOUT";
+    if (upper.includes("AGENT ACTIVITY") || upper.includes("PRODUCTIVE BREAK")) return "AGENT ACTIVITY & BREAKS";
     if (upper.includes("AGENT PERFORMANCE") && upper.includes("SKILL")) return "AGENT PERFORMANCE BY SKILL";
     if (upper.includes("EMAIL")) return "EMAIL LEVEL";
     if (upper.includes("QUALITY") || upper === "QA") return "QUALITY AUDIT";
@@ -354,7 +358,8 @@ export default function WfmImportedRepository() {
       "DOCUMENTED CALLS": 0,
       "CHAT REPORT (EOD)": 0,
       "AGENT OCCUPANCY": 0,
-      "AGENT ACTIVITY - PRODUCTIVE BREAKS": 0,
+      "AGENT ACTIVITY & BREAKS": 0,
+      "AGENT LOGIN & LOGOUT": 0,
       "AGENT PERFORMANCE BY SKILL": 0,
       "EMAIL LEVEL": 0,
       "QUALITY AUDIT": 0,
@@ -398,8 +403,12 @@ export default function WfmImportedRepository() {
         label: `AGENT OCCUPANCY (${levelCounts["AGENT OCCUPANCY"] || 0})`,
       },
       {
-        value: "AGENT ACTIVITY - PRODUCTIVE BREAKS",
-        label: `AGENT ACTIVITY - PRODUCTIVE BREAKS (${levelCounts["AGENT ACTIVITY - PRODUCTIVE BREAKS"] || 0})`,
+        value: "AGENT ACTIVITY & BREAKS",
+        label: `AGENT ACTIVITY & BREAKS (${levelCounts["AGENT ACTIVITY & BREAKS"] || 0})`,
+      },
+      {
+        value: "AGENT LOGIN & LOGOUT",
+        label: `AGENT LOGIN & LOGOUT (${levelCounts["AGENT LOGIN & LOGOUT"] || 0})`,
       },
       {
         value: "AGENT PERFORMANCE BY SKILL",

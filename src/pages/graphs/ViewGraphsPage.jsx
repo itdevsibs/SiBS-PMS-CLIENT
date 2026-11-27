@@ -52,7 +52,7 @@ import {
   getUtilizationKpis,
   getAbsenteeismKpis,
 } from "@/lib/axios/kpis";
-import { getProgressiveWeeklyWindows, buildPartialWeeklyResponse, isWeeklyKpiUsable } from "./progressiveWeeklyKpis";
+import { getProgressiveWeeklyWindows, buildPartialWeeklyResponse, isWeeklyKpiUsable, weeklyBucket, pickHeadcount, selectHeadcount, isSourceUnavailable, mergeFinalWeeklyResponse, mergeRecoveredWeeklyBucket, appendProgressiveWeeklyResponse } from "./progressiveWeeklyKpis";
 import {
   PERIOD_OPTIONS,
   SOURCE_OPTIONS,
@@ -243,72 +243,22 @@ function mergeOccupancyMetrics(
   occupancyData = {},
   utilizationData = {},
   absenteeismData = {},
+  headcountData = {},
+  weekStates = null,
 ) {
-  const occupancySeries = Array.isArray(occupancyData?.series)
-    ? occupancyData.series
-    : [];
-  const utilizationSeries = Array.isArray(utilizationData?.series)
-    ? utilizationData.series
-    : [];
-  const absenteeismSeries = Array.isArray(absenteeismData?.series)
-    ? absenteeismData.series
-    : [];
-
-  const utilizationByKey = new Map(
-    utilizationSeries.map((item) => [item?.key, item]),
-  );
-  const absenteeismByKey = new Map(
-    absenteeismSeries.map((item) => [item?.key, item]),
-  );
-  const mergedKeys = new Set();
-
-  const mergedSeries = occupancySeries.map((item) => {
-    mergedKeys.add(item?.key);
-    const absenteeismItem = absenteeismByKey.get(item?.key) || null;
-
-    return {
-      ...item,
-      ...(utilizationByKey.get(item?.key) || {}),
-      ...(absenteeismItem || {}),
-      // Actual HC must never fall back to Occupancy source activity. Until
-      // Kronos attendance is available, keep it unavailable instead of showing
-      // the count of agents who handled calls/chats/email.
-      actualHeadcount: absenteeismItem?.actualHeadcount ?? null,
-    };
+  const families = {occupancy:occupancyData, utilization:utilizationData, absenteeism:absenteeismData, headcount:headcountData};
+  const maps = Object.fromEntries(Object.entries(families).map(([kind,data])=>[kind,new Map((data?.series || []).map(row=>[row.key,row]))]));
+  const keys = new Set(Object.values(maps).flatMap(map=>[...map.keys()]));
+  for(const key of Object.keys(weekStates || {})) keys.add(key);
+  const series = [...keys].sort().map(key=>{
+    const o=maps.occupancy.get(key), u=maps.utilization.get(key), a=maps.absenteeism.get(key), h=maps.headcount.get(key);
+    const row={...o,...u,...a,...pickHeadcount(a,h),key,label:o?.label||u?.label||a?.label||h?.label||weekStates?.[key]?.label};
+    const state=weekStates?.[key];
+    row.weekStates=state ? {occupancy:o?'AVAILABLE':state.occupancy,utilization:state.utilization,absenteeism:state.absenteeism,headcount:row.actualHeadcount!=null||row.requiredHeadcount!=null?'AVAILABLE':state.headcount,attrition:a?.attritionPct!=null?'AVAILABLE':state.absenteeism} : null;
+    return row;
   });
-
-  for (const item of utilizationSeries) {
-    if (!mergedKeys.has(item?.key)) {
-      mergedKeys.add(item?.key);
-      const absenteeismItem = absenteeismByKey.get(item?.key) || null;
-      mergedSeries.push({
-        ...item,
-        ...(absenteeismItem || {}),
-        actualHeadcount: absenteeismItem?.actualHeadcount ?? null,
-      });
-    }
-  }
-
-  for (const item of absenteeismSeries) {
-    if (!mergedKeys.has(item?.key)) {
-      mergedKeys.add(item?.key);
-      mergedSeries.push(item);
-    }
-  }
-
-  return {
-    ...occupancyData,
-    summary: {
-      ...(occupancyData?.summary || {}),
-      ...(utilizationData?.summary || {}),
-      ...(absenteeismData?.summary || {}),
-      // Headcount is an attendance metric, not an Occupancy-source metric.
-      actualHeadcount: absenteeismData?.summary?.actualHeadcount ?? null,
-    },
-    series: mergedSeries,
-    utilization: utilizationData?.utilization || occupancyData?.utilization || null,
-    absenteeism: absenteeismData?.absenteeism || occupancyData?.absenteeism || null,
-  };
+  return {...occupancyData, summary:{...occupancyData?.summary,...utilizationData?.summary,...absenteeismData?.summary,...pickHeadcount(absenteeismData?.summary,headcountData?.summary)},series,
+    utilization:utilizationData?.utilization || null,absenteeism:absenteeismData?.absenteeism || null};
 }
 
 function buildQualityAuditRequestParams(filters) {
@@ -376,6 +326,10 @@ export default function ViewGraphsPage() {
   const [occupancyKpiResponse, setOccupancyKpiResponse] = useState(null);
   const [utilizationKpiResponse, setUtilizationKpiResponse] = useState(null);
   const [absenteeismKpiResponse, setAbsenteeismKpiResponse] = useState(null);
+  const [headcountKpiResponse,setHeadcountKpiResponse]=useState(null);
+  const [isHeadcountLoading,setIsHeadcountLoading]=useState(false);
+  const [headcountError,setHeadcountError]=useState("");
+  const [weekStates,setWeekStates]=useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isCallsLoading, setIsCallsLoading] = useState(false);
   const [isEmailsLoading, setIsEmailsLoading] = useState(false);
@@ -401,6 +355,90 @@ export default function ViewGraphsPage() {
   const utilizationRequestRef = useRef(0);
   const absenteeismRequestRef = useRef(0);
   const weeklyAbortRef = useRef(null);
+  const workforceRetryRef = useRef(new Map());
+
+  // Recovery refreshes only the affected KPI family, with the same reporting
+  // scope. Replace its entire response atomically so period totals and bars agree.
+  const evidenceRecoveryRef = useRef(new Map());
+  const evidenceScopeKey = JSON.stringify([filters, selectedVersion, showOccupancy, canViewGraphs]);
+  const evidenceScopeRef = useRef(evidenceScopeKey);
+  evidenceScopeRef.current = evidenceScopeKey;
+  useEffect(() => () => {
+    for (const entry of evidenceRecoveryRef.current.values()) entry.controller.abort();
+    evidenceRecoveryRef.current.clear();
+  }, [evidenceScopeKey]);
+  const recoverWorkforceEvidence = useCallback(async (metric, bucketKey, signal) => {
+    if (!canViewGraphs || !showOccupancy || signal?.aborted) throw new Error('Report is no longer active.');
+    const occupancy = metric === 'occupancy';
+    const utilization = metric === 'utilization';
+    const headcount = metric === 'headcount';
+    const combinedBucket = absenteeismKpiResponse?.data?.data?.series?.find(row=>row.key===bucketKey);
+    const earlyBucket = headcountKpiResponse?.data?.data?.series?.find(row=>row.key===bucketKey);
+    const headcountOnly = headcount && selectHeadcount(combinedBucket,earlyBucket) === earlyBucket;
+    if (!bucketKey) throw new Error("No reporting period was selected.");
+    const family = occupancy?'occupancy':utilization?'utilization':headcountOnly?'headcount':'absenteeism';
+    const backgroundLoading = family!=='occupancy' && weeklyProgress?.active && !weeklyProgress[`${family}Done`];
+    const familyLoading = occupancy?isOccupancyLoading:utilization?isUtilizationLoading:headcountOnly?isHeadcountLoading:isAbsenteeismLoading;
+    // A completed week can recover independently of other weeks. Never start a
+    // competing full-range recovery while the initial progressive job is active.
+    const selectedWindow=filters.period==='weekly' && !occupancy && !headcountOnly && backgroundLoading
+      ? getProgressiveWeeklyWindows(filters.referenceDate).find(w=>weeklyBucket(w).key===bucketKey) : null;
+    if ((familyLoading || backgroundLoading) && (!selectedWindow || weekStates?.[bucketKey]?.[family]!=='AVAILABLE')) {
+      throw new Error('The selected reporting period is still loading.');
+    }
+    const requestEpoch = weeklyAbortRef.current;
+    const oldResponse = occupancy ? occupancyKpiResponse : utilization ? utilizationKpiResponse : headcountOnly ? headcountKpiResponse : absenteeismKpiResponse;
+    const anchor = oldResponse?.data?.data?.filters?.referenceDate;
+    const scope = {...filters, referenceDate: filters.referenceDate || anchor};
+    const params = occupancy || utilization ? buildEmailRequestParams(scope) : buildAbsenteeismRequestParams(scope, selectedVersion);
+    if(headcountOnly) params.headcountOnly=true;
+    if(selectedWindow) Object.assign(params,selectedWindow);
+    const key = JSON.stringify([evidenceScopeKey,occupancy?'occupancy':utilization?'utilization':'staffing',params]);
+    let entry = evidenceRecoveryRef.current.get(key);
+    if (!entry) {
+      const controller = new AbortController();
+      entry = {controller,subscribers:0};
+      const fetchKpi = occupancy ? getOccupancyKpis : utilization ? getUtilizationKpis : getAbsenteeismKpis;
+      entry.promise = fetchKpi(params,{signal:controller.signal}).finally(() => {
+        if (evidenceRecoveryRef.current.get(key) === entry) evidenceRecoveryRef.current.delete(key);
+      });
+      evidenceRecoveryRef.current.set(key,entry);
+    }
+    entry.subscribers++;
+    let released = false;
+    const release = () => {
+      if (released) return;
+      released = true;
+      if (--entry.subscribers === 0 && evidenceRecoveryRef.current.get(key) === entry) {
+        evidenceRecoveryRef.current.delete(key);
+        entry.controller.abort();
+      }
+    };
+    signal?.addEventListener('abort',release,{once:true});
+    try {
+      const res = await entry.promise;
+      if (signal?.aborted || evidenceScopeRef.current !== evidenceScopeKey || weeklyAbortRef.current !== requestEpoch) throw new Error('Report scope changed.');
+      const body = res?.data?.data;
+      const bucket = body?.series?.find(row => row.key === bucketKey);
+      const evidenceId = bucket?.[`${metric}EvidenceId`];
+      if (!bucket) throw new Error('The selected reporting period is missing from the KPI response.');
+      if (!evidenceId || (metric==='headcount' && selectHeadcount(bucket,headcountOnly?earlyBucket:combinedBucket)!==bucket) || (metric==='absenteeism' && body.absenteeism?.status==='UNAVAILABLE')) throw new Error('The selected period has no published calculation evidence.');
+      // A scoped recovery updates only the selected week and never substitutes
+      // a one-week total for the six-week summary.
+      const mergeRecovery=(previous,kind)=>selectedWindow
+        ? mergeRecoveredWeeklyBucket(previous,res,kind)
+        : mergeFinalWeeklyResponse(previous,res,kind,{recover:true});
+      // Do not replace the graph if the selected period could not be recovered.
+      if (occupancy) setOccupancyKpiResponse(res);
+      else if (utilization) setUtilizationKpiResponse(previous=>mergeRecovery(previous,'utilization'));
+      else if(headcountOnly) setHeadcountKpiResponse(previous=>mergeRecovery(previous,'headcount'));
+      else setAbsenteeismKpiResponse(previous=>mergeRecovery(previous,'absenteeism'));
+      return evidenceId;
+    } finally {
+      signal?.removeEventListener('abort',release);
+      release();
+    }
+  }, [canViewGraphs,showOccupancy,evidenceScopeKey,filters,selectedVersion,isOccupancyLoading,isUtilizationLoading,isAbsenteeismLoading,weeklyProgress?.active,weeklyProgress?.utilizationDone,weeklyProgress?.absenteeismDone,occupancyKpiResponse,utilizationKpiResponse,absenteeismKpiResponse,headcountKpiResponse,isHeadcountLoading,weeklyProgress?.headcountDone,weekStates]);
 
   const handleExecutePdfDownload = async (selectedReportIds = []) => {
     if (isDownloadingPdf || !selectedReportIds.length) return;
@@ -576,10 +614,14 @@ export default function ViewGraphsPage() {
 
     // A filter change must prevent stale weekly responses from overwriting
     // the newly selected reporting period, even after the user navigates away.
+    for (const entry of evidenceRecoveryRef.current.values()) entry.controller.abort();
+    evidenceRecoveryRef.current.clear();
     weeklyAbortRef.current?.abort();
     const weekAbort = new AbortController();
     weeklyAbortRef.current = weekAbort;
     setWeeklyProgress(null);
+    setWeekStates(null);
+    setHeadcountError("");
     setIsLoading(true);
     setIsCallsLoading(showCalls);
     setIsEmailsLoading(showEmails);
@@ -666,25 +708,33 @@ export default function ViewGraphsPage() {
       if (showOccupancy) {
         const occupancyParams = buildEmailRequestParams(filters);
         setOccupancyKpiResponse(null);
+        setHeadcountKpiResponse(null);
+        setIsHeadcountLoading(true);
         const utilizationRequestId = ++utilizationRequestRef.current;
         const absenteeismRequestId = ++absenteeismRequestRef.current;
 
         // Occupancy remains a fast PMS-only request and controls the main page loader.
         promises.push(
-          getOccupancyKpis(occupancyParams)
+          getOccupancyKpis(occupancyParams, {signal:weekAbort.signal})
             .then((res) => {
-              setOccupancyKpiResponse(res);
+              if (!weekAbort.signal.aborted) setOccupancyKpiResponse(res);
             })
             .catch((err) => {
               const occMessage =
                 err?.response?.data?.message ||
                 err?.message ||
                 "Unable to load Occupancy & Headcount KPI data.";
-              setOccupancyError(occMessage);
-              setOccupancyKpiResponse(null);
+              if (!weekAbort.signal.aborted) {
+                setOccupancyError(occMessage); setOccupancyKpiResponse(null);
+                if(filters.period==='weekly'&&!filters.referenceDate) {
+                  setHeadcountError('Headcount is waiting for the reporting reference date.');
+                  setAbsenteeismError('People Metrics are waiting for the reporting reference date.');
+                  setUtilizationError('Utilization is waiting for the reporting reference date.');
+                }
+              }
             })
             .finally(() => {
-              setIsOccupancyLoading(false);
+              if (!weekAbort.signal.aborted) setIsOccupancyLoading(false);
             }),
         );
 
@@ -698,57 +748,77 @@ export default function ViewGraphsPage() {
         setUtilizationKpiResponse(null);
         setAbsenteeismKpiResponse(null);
 
-        if (weeklyWindows.length === 6) {
+        if (filters.period === 'weekly' && !filters.referenceDate) {
+          // Wait for the existing graph response to resolve the latest reference
+          // date; its effect restarts all three pipelines with an explicit anchor.
+          setIsHeadcountLoading(false);
+          setIsUtilizationLoading(false);
+          setIsAbsenteeismLoading(false);
+        } else if (weeklyWindows.length === 6) {
+          const initial=Object.fromEntries(weeklyWindows.map(window=>{const bucket=weeklyBucket(window);return [bucket.key,{label:bucket.label,occupancy:'PENDING',utilization:'PENDING',absenteeism:'PENDING',headcount:'PENDING'}];}));
+          setWeekStates(initial);
           // Separate week pipelines prevent one KPI from blocking the other.
           // Physical Kronos requests still use the shared bounded server pool.
           void (async () => {
             const state = {
               utilization: { loaded: 0, failed: 0, done: false },
               absenteeism: { loaded: 0, failed: 0, done: false },
+              headcount: { loaded: 0, failed: 0, done: false },
             };
             const isCurrent = () => !weekAbort.signal.aborted &&
               utilizationRequestId === utilizationRequestRef.current &&
               absenteeismRequestId === absenteeismRequestRef.current;
             const publishProgress = () => {
               if (!isCurrent()) return;
-              const loaded = Math.min(state.utilization.loaded, state.absenteeism.loaded);
+              const loaded = Math.min(state.utilization.loaded, state.absenteeism.loaded, state.headcount.loaded);
               setWeeklyProgress({ loaded, total: 6,
                 current: weeklyWindows[Math.min(loaded, 5)]?.weekFrom,
-                failed: state.utilization.failed + state.absenteeism.failed,
-                active: !(state.utilization.done && state.absenteeism.done),
-                finalizing: loaded === 6 && !(state.utilization.done && state.absenteeism.done),
+                failed: state.utilization.failed + state.absenteeism.failed + state.headcount.failed,
+                active: !(state.utilization.done && state.absenteeism.done && state.headcount.done),
+                utilizationDone: state.utilization.done, absenteeismDone: state.absenteeism.done, headcountDone:state.headcount.done,
+                finalizing: loaded === 6 && !(state.utilization.done && state.absenteeism.done && state.headcount.done),
               });
             };
             const loadKpi = async ({ kind, fetchKpi, params, publish, setLoading, setError }) => {
               const progress = state[kind];
               const weeks = [];
-              const name = kind === 'utilization' ? 'Utilization' : 'Absenteeism';
+              const name = kind === 'utilization' ? 'Utilization' : kind === 'headcount' ? 'Headcount' : 'Absenteeism / Attrition';
+              const mark=(window,value)=>{const {key}=weeklyBucket(window);if(isCurrent())setWeekStates(prev=>prev&&({...prev,[key]:{...prev[key],[kind]:value}}));};
               const config = { signal: weekAbort.signal };
               try {
                 for (const window of weeklyWindows) {
                   if (!isCurrent()) return;
+                  mark(window,'LOADING');
                   try {
                     const res = await fetchKpi({ ...params, ...window }, config);
                     if (!isCurrent()) return;
                     if (!isWeeklyKpiUsable(res, kind)) throw new Error(`Incomplete ${name} week`);
+                    const responseRow=res.data.data.series[0];
+                    if(responseRow.key!==weeklyBucket(window).key) throw new Error('Unexpected reporting week');
                     weeks.push(res);
-                    publish(buildPartialWeeklyResponse(weeks, kind));
-                    setLoading(false);
+                    publish(previous=>appendProgressiveWeeklyResponse(previous,buildPartialWeeklyResponse(weeks, kind),responseRow.key));
+                    mark(window,'AVAILABLE');
+                    setLoading(false); // initial result is ready; weekStates tracks remaining work
+                    if(isSourceUnavailable(res.data.data,kind)) setError(`Some ${name} source data is unavailable. Verified metrics remain visible.`);
                   } catch (error) {
                     if (!isCurrent()) return;
                     progress.failed += 1;
+                    mark(window,'UNAVAILABLE');
                     setError(`One or more ${name} weeks could not be verified.`);
                   }
                   progress.loaded += 1;
                   publishProgress();
                 }
-                if (!progress.failed && isCurrent()) {
+                if (kind !== 'headcount' && !progress.failed && isCurrent()) {
                   try {
                     const res = await fetchKpi(params, config);
                     if (!isCurrent()) return;
-                    const status = res?.data?.data?.[kind]?.status;
-                    if (['UNAVAILABLE', 'ACCOUNT_UNAVAILABLE'].includes(status)) throw new Error('Incomplete total');
-                    publish(res);
+                    if (!Array.isArray(res?.data?.data?.series)) throw new Error('Incomplete total');
+                    // Do not replace published week snapshots. If any weekly request
+                    // failed, keep it unavailable rather than mixing a newer range snapshot.
+                    const merged=mergeFinalWeeklyResponse(buildPartialWeeklyResponse(weeks,kind),res,kind);
+                    publish(previous=>mergeFinalWeeklyResponse(previous||buildPartialWeeklyResponse(weeks,kind),res,kind));
+                    if(isSourceUnavailable(res.data.data,kind)||merged.data.data.retainedWeeklyMetrics.length) setError(`Full-period ${name} is partly unavailable. Verified weeks remain visible.`);
                   } catch (error) {
                     if (!isCurrent()) return;
                     progress.failed += 1;
@@ -763,12 +833,35 @@ export default function ViewGraphsPage() {
                 }
               }
             };
+            const loadHeadcountRange = async () => {
+              const progress = state.headcount;
+              try {
+                const res=await getAbsenteeismKpis({...absenteeismParams,headcountOnly:true},{signal:weekAbort.signal});
+                if(!isCurrent()) return;
+                const body=res?.data?.data;
+                if(!Array.isArray(body?.series)) throw new Error('No Headcount reporting buckets returned.');
+                setHeadcountKpiResponse(res);
+                const byKey=new Map(body.series.map(row=>[row.key,row]));
+                setWeekStates(prev=>prev&&Object.fromEntries(Object.entries(prev).map(([key,value])=>[key,{...value,headcount:byKey.get(key)&&isWeeklyKpiUsable({data:{data:{...body,series:[byKey.get(key)]}}},'headcount')?'AVAILABLE':'UNAVAILABLE'}])));
+                progress.failed=weeklyWindows.filter(window=>!isWeeklyKpiUsable({data:{data:{...body,series:[byKey.get(weeklyBucket(window).key)]}}},'headcount')).length;
+                if(progress.failed||isSourceUnavailable(body,'headcount')) setHeadcountError('Some Headcount source data is unavailable. Verified metrics remain visible.');
+              } catch(error) {
+                if(!isCurrent()) return;
+                progress.failed=6;
+                setWeekStates(prev=>prev&&Object.fromEntries(Object.entries(prev).map(([key,value])=>[key,{...value,headcount:'UNAVAILABLE'}])));
+                setHeadcountError('Unable to load Headcount.');
+              } finally {
+                progress.loaded=6; progress.done=true;
+                if(isCurrent()){setIsHeadcountLoading(false);publishProgress();}
+              }
+            };
             publishProgress();
             await Promise.allSettled([
               loadKpi({ kind: 'utilization', fetchKpi: getUtilizationKpis, params: utilizationParams,
                 publish: setUtilizationKpiResponse, setLoading: setIsUtilizationLoading, setError: setUtilizationError }),
               loadKpi({ kind: 'absenteeism', fetchKpi: getAbsenteeismKpis, params: absenteeismParams,
                 publish: setAbsenteeismKpiResponse, setLoading: setIsAbsenteeismLoading, setError: setAbsenteeismError }),
+              loadHeadcountRange(),
             ]);
           })().catch((error) => {
             if (weekAbort.signal.aborted || utilizationRequestId !== utilizationRequestRef.current ||
@@ -777,24 +870,29 @@ export default function ViewGraphsPage() {
             setWeeklyProgress({ loaded: 0, total: 6, failed: 1, active: false });
             setIsUtilizationLoading(false);
             setIsAbsenteeismLoading(false);
+            setIsHeadcountLoading(false);
           });
         } else {
           // Custom/monthly/quarterly/annual reports remain backward compatible.
           promises.push(
+            getAbsenteeismKpis({...absenteeismParams,headcountOnly:true}, { signal:weekAbort.signal })
+              .then(res=>{if(!weekAbort.signal.aborted){setHeadcountKpiResponse(res);if(isSourceUnavailable(res.data.data,'headcount'))setHeadcountError('Some Headcount source data is unavailable.');}})
+              .catch(err=>{if(!weekAbort.signal.aborted)setHeadcountError(err?.response?.data?.message||'Unable to load Headcount.');})
+              .finally(()=>{if(!weekAbort.signal.aborted)setIsHeadcountLoading(false);}),
             getUtilizationKpis(utilizationParams, { signal: weekAbort.signal })
-              .then((res) => { if (utilizationRequestId === utilizationRequestRef.current) setUtilizationKpiResponse(res); })
+              .then((res) => { if (!weekAbort.signal.aborted && utilizationRequestId === utilizationRequestRef.current) {setUtilizationKpiResponse(res);if(isSourceUnavailable(res.data.data,'utilization'))setUtilizationError('Utilization source unavailable.');} })
               .catch((err) => {
                 if (weekAbort.signal.aborted || utilizationRequestId !== utilizationRequestRef.current) return;
                 setUtilizationError(err?.response?.data?.message || err?.message || 'Unable to load Utilization KPI data.');
               })
-              .finally(() => { if (utilizationRequestId === utilizationRequestRef.current) setIsUtilizationLoading(false); }),
+              .finally(() => { if (!weekAbort.signal.aborted && utilizationRequestId === utilizationRequestRef.current) setIsUtilizationLoading(false); }),
             getAbsenteeismKpis(absenteeismParams, { signal: weekAbort.signal })
-              .then((res) => { if (absenteeismRequestId === absenteeismRequestRef.current) setAbsenteeismKpiResponse(res); })
+              .then((res) => { if (!weekAbort.signal.aborted && absenteeismRequestId === absenteeismRequestRef.current) {setAbsenteeismKpiResponse(res);if(isSourceUnavailable(res.data.data,'absenteeism'))setAbsenteeismError('Some People Metrics source data is unavailable.');} })
               .catch((err) => {
                 if (weekAbort.signal.aborted || absenteeismRequestId !== absenteeismRequestRef.current) return;
                 setAbsenteeismError(err?.response?.data?.message || err?.message || 'Unable to load Absenteeism KPI data.');
               })
-              .finally(() => { if (absenteeismRequestId === absenteeismRequestRef.current) setIsAbsenteeismLoading(false); }),
+              .finally(() => { if (!weekAbort.signal.aborted && absenteeismRequestId === absenteeismRequestRef.current) setIsAbsenteeismLoading(false); }),
           );
         }
       } else {
@@ -804,6 +902,9 @@ export default function ViewGraphsPage() {
         setUtilizationKpiResponse(null);
         setAbsenteeismKpiResponse(null);
         setWeeklyProgress(null);
+        setHeadcountKpiResponse(null);
+        setIsHeadcountLoading(false);
+        setWeekStates(null);
         setIsOccupancyLoading(false);
         setIsUtilizationLoading(false);
         setIsAbsenteeismLoading(false);
@@ -811,9 +912,48 @@ export default function ViewGraphsPage() {
 
       await Promise.allSettled(promises);
     } finally {
-      setIsLoading(false);
+      if (!weekAbort.signal.aborted) setIsLoading(false);
     }
   }, [canViewGraphs, filters, showCalls, showEmails, showQa, showOccupancy,selectedVersion]);
+
+  const retryWorkforceFamily = async (kind) => {
+    const families = {
+      occupancy: { fetch:getOccupancyKpis, publish:setOccupancyKpiResponse, loading:isOccupancyLoading, setLoading:setIsOccupancyLoading, setError:setOccupancyError },
+      utilization: { fetch:getUtilizationKpis, publish:setUtilizationKpiResponse, loading:isUtilizationLoading, setLoading:setIsUtilizationLoading, setError:setUtilizationError },
+      absenteeism: { fetch:getAbsenteeismKpis, publish:setAbsenteeismKpiResponse, loading:isAbsenteeismLoading, setLoading:setIsAbsenteeismLoading, setError:setAbsenteeismError },
+      headcount: { fetch:getAbsenteeismKpis, publish:setHeadcountKpiResponse, loading:isHeadcountLoading, setLoading:setIsHeadcountLoading, setError:setHeadcountError },
+    };
+    const config=families[kind];
+    const epoch=weeklyAbortRef.current;
+    if(!config || !canViewGraphs || !showOccupancy || config.loading || (weeklyProgress?.active && kind!=='occupancy' && !weeklyProgress[`${kind}Done`]) || !epoch || epoch.signal.aborted || workforceRetryRef.current.get(kind)===epoch) return;
+    // Keep the existing server-side cache and retry only this KPI family.
+    // A failed metric cannot erase another family's published weekly values.
+    workforceRetryRef.current.set(kind,epoch);
+    config.setLoading(true);
+    const params=kind==='occupancy'||kind==='utilization'?buildEmailRequestParams(filters):buildAbsenteeismRequestParams(filters,selectedVersion);
+    if(kind==='headcount') params.headcountOnly=true;
+    const stillCurrent=()=>!epoch.signal.aborted&&weeklyAbortRef.current===epoch;
+    try {
+      const response=await config.fetch(params,{signal:epoch.signal});
+      if(!stillCurrent()) return;
+      const body=response?.data?.data;
+      if(!Array.isArray(body?.series)) throw new Error('No reporting buckets returned.');
+      if(kind==='occupancy') config.publish(response);
+      else config.publish(previous=>mergeFinalWeeklyResponse(previous,response,kind,{recover:true}));
+      if(isSourceUnavailable(body,kind)) config.setError(`Some ${kind} data is still unavailable. Previously verified values are retained where possible.`);
+      else config.setError('');
+      setWeekStates(previous=>previous&&Object.fromEntries(Object.entries(previous).map(([key,value])=>{
+        const row=body.series.find(item=>item.key===key);
+        const usable=kind==='occupancy'?row?.occupancyPct!=null:row&&isWeeklyKpiUsable({data:{data:{...body,series:[row]}}},kind);
+        return [key,{...value,[kind]:usable?'AVAILABLE':'UNAVAILABLE'}];
+      })));
+    } catch(error) {
+      if(stillCurrent()) config.setError(error?.response?.data?.message||error?.message||`Unable to retry ${kind}.`);
+    } finally {
+      if(workforceRetryRef.current.get(kind)===epoch) workforceRetryRef.current.delete(kind);
+      if(stillCurrent()) config.setLoading(false);
+    }
+  };
 
   useEffect(() => {
     loadKpis();
@@ -841,7 +981,7 @@ export default function ViewGraphsPage() {
         (!showEmails || emailReturnedFilters.referenceDate === returnedReferenceDate) &&
         (!showQa || qualityAuditReturnedFilters.referenceDate === returnedReferenceDate) &&
         (!showOccupancy || occupancyReturnedFilters.referenceDate === returnedReferenceDate);
-      skipNextFetchRef.current = allAligned;
+      skipNextFetchRef.current = allAligned && !(showOccupancy && filters.period === 'weekly');
       setFilters((current) => ({
         ...current,
         referenceDate: returnedReferenceDate,
@@ -851,6 +991,7 @@ export default function ViewGraphsPage() {
     kpiResponse,
     emailKpiResponse,
     qualityAuditKpiResponse,
+    occupancyKpiResponse,
     filters.referenceDate,
     filters.period,
   ]);
@@ -1036,6 +1177,8 @@ export default function ViewGraphsPage() {
     occupancyKpiResponse?.data?.data || {},
     utilizationDashboardData,
     absenteeismDashboardData,
+    headcountKpiResponse?.data?.data || {},
+    weekStates && Object.fromEntries(Object.entries(weekStates).map(([key,state])=>[key,{...state,occupancy:isOccupancyLoading?'LOADING':'UNAVAILABLE'}])),
   );
 
   const availableGrains =
@@ -1527,13 +1670,15 @@ export default function ViewGraphsPage() {
                         <div className="h-[2px] w-full bg-[#F28C28] shrink-0" />
                         <OccupancyKpiDashboard
                           data={occupancyDashboardData || {}}
+                          recoverEvidence={recoverWorkforceEvidence}
                           showSummaryCards={false}
                           period={filters.period}
                           isSubmodule={false}
                           showFilters={showFilters}
-                          isLoading={isUnifiedLoading}
-                          isUtilizationLoading={isUnifiedLoading}
-                          isAbsenteeismLoading={isUnifiedLoading}
+                          isLoading={isOccupancyLoading}
+                          isUtilizationLoading={isUtilizationLoading}
+                          isAbsenteeismLoading={isAbsenteeismLoading}
+                          isHeadcountLoading={isHeadcountLoading}
                           onSectionClick={() => handleNavigateToSection("occupancy")}
                           wowSectionPart="occupancy"
                         />
@@ -1608,14 +1753,21 @@ export default function ViewGraphsPage() {
                             <div className="h-[2px] w-full bg-[#F28C28] shrink-0" />
                           </>
                         )}
-                        {occupancyError ? (
-                          <div className="sibs-card mb-1 flex items-start gap-2 border border-amber-200 bg-amber-50/70 p-2 text-xs font-semibold text-amber-800">
+                        {[
+                          {kind:'occupancy',message:occupancyError,loading:isOccupancyLoading},
+                          {kind:'utilization',message:utilizationError,loading:isUtilizationLoading},
+                          {kind:'absenteeism',message:absenteeismError,loading:isAbsenteeismLoading},
+                          {kind:'headcount',message:headcountError,loading:isHeadcountLoading},
+                        ].filter(item=>item.message).map(({kind,message,loading})=>(
+                          <div key={kind} className="sibs-card mb-1 flex items-start gap-2 border border-amber-200 bg-amber-50/70 p-2 text-xs font-semibold text-amber-800">
                             <AlertCircle size={14} className="mt-0.5 shrink-0" />
-                            <span>{occupancyError}</span>
+                            <span className="flex-1">{message}</span>
+                            <button type="button" disabled={loading || (kind!=="occupancy" && weeklyProgress?.active && !weeklyProgress[`${kind}Done`])} onClick={()=>retryWorkforceFamily(kind)} className="underline disabled:opacity-50">Retry</button>
                           </div>
-                        ) : null}
+                        ))}
                         <OccupancyKpiDashboard
                           data={occupancyDashboardData || {}}
+                          recoverEvidence={recoverWorkforceEvidence}
                           showSummaryCards={isOccupancyOnly ? showFilters : false}
                           period={filters.period}
                           isSubmodule={isOccupancyOnly}
@@ -1623,6 +1775,7 @@ export default function ViewGraphsPage() {
                           isLoading={isOccupancyLoading}
                           isUtilizationLoading={isUtilizationLoading}
                           isAbsenteeismLoading={isAbsenteeismLoading}
+                          isHeadcountLoading={isHeadcountLoading}
                           onSectionClick={!currentSection ? () => handleNavigateToSection("occupancy") : null}
                           wowSectionPart={!currentSection ? "headcount" : null}
                         />

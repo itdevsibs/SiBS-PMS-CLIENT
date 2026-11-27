@@ -5,6 +5,7 @@ import {
   MessageSquare,
   Users,
   Clock,
+  LogIn,
   BarChart3,
   Mail,
   ShieldCheck,
@@ -22,11 +23,20 @@ import {
 const REPORT_LEVELS_CONFIG = [
   {
     id: "agent-activity-productive-breaks",
-    label: "AGENT ACTIVITY - PRODUCTIVE BREAKS",
-    displayName: "Agent Activity – Productive Breaks",
+    label: "AGENT ACTIVITY & BREAKS",
+    displayName: "Agent Activity & Breaks",
     icon: Clock,
+    fallbackSourcesSummary: "FuseCom · FuseNet · HeroDash",
+    supportedExtensions: "XLSX",
+    maxSize: "25 MB",
+  },
+  {
+    id: "agent-login-logout",
+    label: "AGENT LOGIN & LOGOUT",
+    displayName: "Agent Login & Logout",
+    icon: LogIn,
     fallbackSourcesSummary: "HeroDash",
-    supportedExtensions: "CSV, XLSX",
+    supportedExtensions: "XLSX",
     maxSize: "25 MB",
   },
   {
@@ -236,6 +246,9 @@ export default function WfmImportTwoColumnWorkspace({
     }
     const filtered = allUploadsList.filter((u) => {
       if (u.cardId === activeCard.id) return true;
+      if (["agent-activity-productive-breaks", "agent-login-logout"].includes(activeLevel.id)) {
+        return u.importProfileCode === activeCard.importProfileCode;
+      }
       if (
         u.groupLabel === activeCard.groupLabel &&
         u.sourceSystem?.toLowerCase() === activeCard.sourceLabel?.toLowerCase()
@@ -245,7 +258,7 @@ export default function WfmImportTwoColumnWorkspace({
       return false;
     });
     return filtered.slice(0, 5);
-  }, [activeCard, uploadsByCard, allUploadsList]);
+  }, [activeCard, activeLevel.id, uploadsByCard, allUploadsList]);
 
   // Drag and drop handlers
   const handleDragEnter = (e) => {
@@ -298,7 +311,7 @@ export default function WfmImportTwoColumnWorkspace({
   // Dynamic upload label
   const dragDropLabel = useMemo(() => {
     if (!activeCard) return "Drag and drop your file here";
-    const src = activeCard.sourceLabel || activeCard.title || "";
+    const src = ["AGENT ACTIVITY & BREAKS", "AGENT LOGIN & LOGOUT"].includes(activeCard.groupLabel) ? activeCard.title : activeCard.sourceLabel || activeCard.title || "";
     return `Drag and drop your ${src} file here`;
   }, [activeCard]);
 
@@ -405,11 +418,11 @@ export default function WfmImportTwoColumnWorkspace({
               <span className="text-[12px] font-extrabold text-[#102448] whitespace-nowrap">
                 Report / Source
               </span>
-              <div className="inline-flex items-center rounded-full bg-[#F3F6FA] p-0.5 border border-[#D7E1EE]">
+              <div className="inline-flex flex-wrap items-center rounded-full bg-[#F3F6FA] p-0.5 border border-[#D7E1EE]">
                 {availableCards.length > 0 ? (
                   availableCards.map((card) => {
                     const isSelected = activeCard?.id === card.id;
-                    const label = card.sourceLabel || card.title;
+                    const label = activeLevel.id === "agent-activity-productive-breaks" ? card.title : card.sourceLabel || card.title;
                     return (
                       <button
                         key={card.id}
